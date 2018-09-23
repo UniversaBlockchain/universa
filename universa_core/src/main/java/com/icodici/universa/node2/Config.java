@@ -87,6 +87,7 @@ public class Config {
         config.minPayment = new HashMap<>(minPayment);
         config.rate = new HashMap<>(rate);
         config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
+        config.queryContractsLimit = queryContractsLimit;
         return config;
     }
 
@@ -187,6 +188,7 @@ public class Config {
     private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
     private Duration holdDuration = Duration.ofDays(30);
     private int paymentQuantaLimit = 200;
+    private int queryContractsLimit = 100;
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -461,5 +463,13 @@ public class Config {
             return false;
 
         return permanetMode;
+    }
+
+    public int getQueryContractsLimit() {
+        return queryContractsLimit;
+    }
+
+    public void setQueryContractsLimit(int queryContractsLimit) {
+        this.queryContractsLimit = queryContractsLimit;
     }
 }

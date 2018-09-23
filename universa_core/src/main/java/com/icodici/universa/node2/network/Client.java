@@ -750,17 +750,38 @@ public class Client {
      * @return packed transaction
      * @throws ClientError
      */
-    public Binder getBody(HashId itemId) throws ClientError {
+    public byte[] getBody(HashId itemId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getBody", "itemId", itemId);
+            try {
+                Bytes bytes = result.getBytesOrThrow("packedContract");
+                return bytes.getData();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Get the body of active contract with the given origin (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one)
+     * @param origin contract origin
+     * @param limit of list items
+     * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getContract(HashId origin, int limit) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getContract", "origin", origin, "limit", limit);
             return result;
         });
     }
 
     /**
-     * Get the current contract ID with the given origin
+     * Get the body of active contract with the given origin (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one) limited by 100
      * @param origin contract origin
-     * @return contracts ID
+     * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
     public Binder getContract(HashId origin) throws ClientError {
@@ -769,5 +790,4 @@ public class Client {
             return result;
         });
     }
-
 }

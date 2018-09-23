@@ -84,6 +84,8 @@ public class ClientHTTPServer extends BasicHttpServer {
                 if (data == null) {
                     data = node.getLedger().getContractInStorage(id);
                 }
+                if ((data == null) && node.getConfig().isPermanetMode())
+                    data = node.getLedger().getKeepingItem(id);
             }
 
             if (data != null) {
@@ -288,14 +290,19 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (itemResult == ItemResult.UNDEFINED)
             return null;
 
-        //
+        Approvable item = node.getKeepingItemFromNetwork(itemId);
+        if (item == null)
+            return null;
 
-        //StateRecord r = node.getLedger().getRecord(itemId);
-        //r.save();
-        //node.getLedger().putItem(r,body, Instant.now().plus(config.getMaxDiskCacheAge()));
+        StateRecord record = node.getLedger().getRecord(itemId);
+        node.getLedger().putKeepingItem(record, item);
 
-        //byte[] packedContract = ((Contract) body).getPackedTransaction();
-        //res.put("body", body);
+        if (item instanceof Contract)
+            body = ((Contract) item).getPackedTransaction();
+        else
+            return null;
+
+        res.put("packedContract", body);
 
         return res;
     }
@@ -306,8 +313,14 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         Binder res = new Binder();
         HashId origin = (HashId) params.get("origin");
+        int limit = params.getInt("limit", 100);
 
-        Object keeping = node.getLedger().getKeepingByOrigin(origin, 100);
+        if (limit > node.getConfig().getQueryContractsLimit())
+            limit = node.getConfig().getQueryContractsLimit();
+        if (limit < 1)
+            limit = 1;
+
+        Object keeping = node.getLedger().getKeepingByOrigin(origin, limit);
         if (keeping == null){
             return null;
         }

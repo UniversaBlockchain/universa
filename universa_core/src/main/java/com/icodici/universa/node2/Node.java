@@ -947,6 +947,30 @@ public class Node {
     }
 
     /**
+     * Get the keeping item from random network node. Only for permanet network mode.
+     *
+     * @param itemId is {@link HashId} of the looking item
+     *
+     * @return keeping item or null if it is missing
+     */
+    public Approvable getKeepingItemFromNetwork(HashId itemId) {
+        if (!config.isPermanetMode())
+            return null;
+
+        try {
+            NodeInfo source = Do.sample(network.allNodes());
+            Approvable item = network.getItem(itemId, source, config.getMaxGetItemTime());
+
+            if (item != null)
+                return item;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    /**
      * Get the cached parcel.
      *
      * @param parcelId is {@link HashId} of {@link Parcel}

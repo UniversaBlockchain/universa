@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -306,7 +307,9 @@ public class PostgresLedger implements Ledger {
     @Override
     public Object getKeepingByOrigin(HashId origin, int limit) {
         return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where origin = ? limit ?", origin.getDigest(), limit))) {
+            try (ResultSet rs = inPool(db -> db.queryRow(
+                    "select keeping_items.packed, keeping_items.id from keeping_items, ledger where ledger.id = keeping_items.id and origin = ? and state = ? limit ?",
+                    origin.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
                 if ((rs == null) || (!rs.last()))
                     return null;
 
@@ -335,8 +338,11 @@ public class PostgresLedger implements Ledger {
                                         "insert into keeping_items (id,hash,origin,packed) values(?,?,?,?);"
                                 )
                 ) {
-                    statement.setLong(1, record.getRecordId());
-                    statement.setBytes(2, record.getId().getDigest());
+                    if (record != null)
+                        statement.setLong(1, record.getRecordId());
+                    else
+                        statement.setNull(1, Types.INTEGER);
+                    statement.setBytes(2, ((Contract) item).getId().getDigest());
                     statement.setBytes(3, ((Contract) item).getOrigin().getDigest());
                     statement.setBytes(4, ((Contract) item).getPackedTransaction());
                     db.updateWithStatement(statement);

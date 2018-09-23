@@ -6329,4 +6329,118 @@ public class MainTest {
 
         mm.forEach(x -> x.shutdown());
     }
+
+    @Test
+    public void testGetContractAPIforOneActive() throws Exception {
+
+        // init network in permanet mode
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), "_permanet", false));
+        Main main = mm.get(0);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        assertTrue(main.config.isPermanetMode());
+        for (int i = 1; i < 4; i++)
+            assertTrue(mm.get(i).config.isPermanetMode());
+
+        // try cancel permanet mode
+        main.config.setPermanetMode(false);
+        assertTrue(main.config.isPermanetMode());
+
+        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+
+        Set<PublicKey> publicKeys = new HashSet<>();
+        for (PrivateKey pk : privateKeys) {
+            publicKeys.add(pk.getPublicKey());
+        }
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract parcelContract = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        parcelContract.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
+        parcelContract.addSignerKey(manufacturePrivateKey);
+        parcelContract.seal();
+
+        parcelContract.check();
+        parcelContract.traceErrors();
+
+        Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
+        client.registerParcel(parcel.pack(), 8000);
+
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        HashId origin = parcelContract.getId();
+
+        // check getContract
+        Binder result = client.getContract(origin);
+        byte[] keeping_root = result.getBytesOrThrow("packedContract").toArray();
+        assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root));
+        assertFalse(result.containsKey("contractIds"));
+
+        // create revision
+        Contract revisionContract = parcelContract.createRevision(manufacturePrivateKey);
+        revisionContract.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        revisionContract.addSignerKey(TestKeys.privateKey(1));
+        revisionContract.seal();
+
+        revisionContract.check();
+        revisionContract.traceErrors();
+
+        parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
+        client.registerParcel(parcel.pack(), 8000);
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("revision : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        itemResult = client.getState(parcelContract.getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        // check getContract
+        result = client.getContract(origin);
+        byte[] keeping_revision = result.getBytesOrThrow("packedContract").toArray();
+        assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
+        assertFalse(result.containsKey("contractIds"));
+
+        // revoke contract
+        Contract revokeContract = ContractsService.createRevocation(revisionContract, manufacturePrivateKey);
+        revokeContract.seal();
+
+        revokeContract.check();
+        revokeContract.traceErrors();
+
+        parcel = createParcelWithFreshU(client, revokeContract, privateKeys);
+        client.registerParcel(parcel.pack(), 8000);
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("revocation : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        itemResult = client.getState(parcelContract.getId());
+        System.out.println("revision : " + itemResult);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        itemResult = client.getState(revisionContract.getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        // check getContract
+        result = client.getContract(origin);
+        byte[] keeping_revoke = result.getBytesOrThrow("packedContract").toArray();
+        assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke));
+        assertFalse(result.containsKey("contractIds"));
+
+        mm.forEach(x -> x.shutdown());
+    }
 }
