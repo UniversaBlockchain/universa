@@ -290,12 +290,12 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Approvable getKeepingItem(HashId itemId) {
+    public byte[] getKeepingItem(HashId itemId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where hash = ? limit 1", itemId.getDigest()))) {
                 if (rs == null)
                     return null;
-                return Contract.fromPackedTransaction(rs.getBytes("packed"));
+                return rs.getBytes("packed");
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -304,12 +304,20 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Approvable getKeepingIdByOrigin(HashId origin_id) {
+    public Object getKeepingByOrigin(HashId origin, int limit) {
         return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where origin = ? limit 1", origin_id.getDigest()))) {
-                if (rs == null)
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where origin = ? limit ?", origin.getDigest(), limit))) {
+                if ((rs == null) || (!rs.last()))
                     return null;
-                return Contract.fromPackedTransaction(rs.getBytes("id"));
+
+                if (rs.getRow() == 1)
+                    return rs.getBytes("packed");
+
+                List<byte[]> contractIds = new ArrayList<>();
+                do {
+                    contractIds.add(rs.getBytes("id"));
+                } while (rs.previous());
+                return contractIds;
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -737,15 +745,17 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    public void cleanup() {
+    public void cleanup(boolean isPermanetMode) {
         try (PooledDb db = dbPool.db()) {
 
             long now = Instant.now().getEpochSecond();
             String sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
             db.update(sqlText, now);
 
-            sqlText = "delete from ledger where expires_at < ?;";
-            db.update(sqlText, now);
+            if (!isPermanetMode) {
+                sqlText = "delete from ledger where expires_at < ?;";
+                db.update(sqlText, now);
+            }
 
             sqlText = "delete from items where keepTill < ?;";
             db.update(sqlText, now);

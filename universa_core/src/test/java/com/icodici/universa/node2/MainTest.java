@@ -6190,9 +6190,9 @@ public class MainTest {
 
         // check keeping contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping = (Contract) mm.get(i).node.getLedger().getKeepingItem(payment.getId());
+            byte[] keeping = mm.get(i).node.getLedger().getKeepingItem(payment.getId());
             assertNotNull(keeping);
-            assertTrue(Arrays.equals(payment.getPackedTransaction(), keeping.getPackedTransaction()));
+            assertTrue(Arrays.equals(payment.getPackedTransaction(), keeping));
         }
 
         Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
@@ -6213,9 +6213,9 @@ public class MainTest {
 
         // check keeping contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping = (Contract) mm.get(i).node.getLedger().getKeepingItem(baseContract.getId());
+            byte[] keeping = mm.get(i).node.getLedger().getKeepingItem(baseContract.getId());
             assertNotNull(keeping);
-            assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping.getPackedTransaction()));
+            assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping));
         }
 
         Thread.sleep(8000);
@@ -6226,9 +6226,9 @@ public class MainTest {
 
         // check for expired contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping = (Contract) mm.get(i).node.getLedger().getKeepingItem(baseContract.getId());
+            byte[] keeping = mm.get(i).node.getLedger().getKeepingItem(baseContract.getId());
             assertNotNull(keeping);
-            assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping.getPackedTransaction()));
+            assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping));
         }
 
         main.config.setIsFreeRegistrationsAllowedFromYaml(false);
@@ -6253,9 +6253,9 @@ public class MainTest {
 
         // check keeping contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping = (Contract) mm.get(i).node.getLedger().getKeepingItem(parcel.getPayloadContract().getId());
+            byte[] keeping = mm.get(i).node.getLedger().getKeepingItem(parcel.getPayloadContract().getId());
             assertNotNull(keeping);
-            assertTrue(Arrays.equals(parcel.getPayloadContract().getPackedTransaction(), keeping.getPackedTransaction()));
+            assertTrue(Arrays.equals(parcel.getPayloadContract().getPackedTransaction(), keeping));
         }
 
         // create revision
@@ -6282,12 +6282,12 @@ public class MainTest {
 
         // check keeping contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping_root = (Contract) mm.get(i).node.getLedger().getKeepingItem(parcelContract.getId());
-            Contract keeping_revision = (Contract) mm.get(i).node.getLedger().getKeepingItem(revisionContract.getId());
+            byte[] keeping_root = mm.get(i).node.getLedger().getKeepingItem(parcelContract.getId());
+            byte[] keeping_revision = mm.get(i).node.getLedger().getKeepingItem(revisionContract.getId());
             assertNotNull(keeping_root);
             assertNotNull(keeping_revision);
-            assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root.getPackedTransaction()));
-            assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision.getPackedTransaction()));
+            assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root));
+            assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
         }
 
         // revoke contract
@@ -6316,15 +6316,15 @@ public class MainTest {
 
         // check keeping contract
         for (int i = 1; i < 4; i++) {
-            Contract keeping_root = (Contract) mm.get(i).node.getLedger().getKeepingItem(parcelContract.getId());
-            Contract keeping_revision = (Contract) mm.get(i).node.getLedger().getKeepingItem(revisionContract.getId());
-            Contract keeping_revoke = (Contract) mm.get(i).node.getLedger().getKeepingItem(revokeContract.getId());
+            byte[] keeping_root = mm.get(i).node.getLedger().getKeepingItem(parcelContract.getId());
+            byte[] keeping_revision = mm.get(i).node.getLedger().getKeepingItem(revisionContract.getId());
+            byte[] keeping_revoke = mm.get(i).node.getLedger().getKeepingItem(revokeContract.getId());
             assertNotNull(keeping_root);
             assertNotNull(keeping_revision);
             assertNotNull(keeping_revoke);
-            assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root.getPackedTransaction()));
-            assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision.getPackedTransaction()));
-            assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke.getPackedTransaction()));
+            assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root));
+            assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
+            assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke));
         }
 
         mm.forEach(x -> x.shutdown());

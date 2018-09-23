@@ -244,12 +244,12 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public Approvable getKeepingItem(HashId itemId)  {
+    public byte[] getKeepingItem(HashId itemId)  {
         return null;
     }
 
     @Override
-    public Approvable getKeepingIdByOrigin(HashId origin_id)  {
+    public Object getKeepingByOrigin(HashId origin, int limit)  {
         return null;
     }
 
@@ -461,8 +461,6 @@ public class SqliteLedger implements Ledger {
         return db;
     }
 
-    public void cleanup() {
-
-    }
+    public void cleanup(boolean isPermanetMode) {}
 
 }

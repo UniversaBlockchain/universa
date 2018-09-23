@@ -589,7 +589,7 @@ public class PostgresLedgerTest extends TestCase {
 
         HashId hash2 = contract.getId();
 
-        ledger.cleanup();
+        ledger.cleanup(false);
 
 
         PreparedStatement st = ledger.getDb().statement("select count(*) from ledger where hash = ?", hash1.getDigest());

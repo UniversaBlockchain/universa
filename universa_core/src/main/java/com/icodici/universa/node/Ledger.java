@@ -196,9 +196,9 @@ public interface Ledger {
     Approvable getItem(StateRecord record);
     void putItem(StateRecord record, Approvable item, Instant keepTill);
 
-    Approvable getKeepingItem(HashId itemId);
+    byte[] getKeepingItem(HashId itemId);
     void putKeepingItem(StateRecord record, Approvable item);
-    Approvable getKeepingIdByOrigin(HashId origin_id);
+    Object getKeepingByOrigin(HashId origin, int limit);
 
     NImmutableEnvironment getEnvironment(long environmentId);
     NImmutableEnvironment getEnvironment(HashId contractId);
@@ -235,5 +235,5 @@ public interface Ledger {
     List<String> isAllAddressesAvailable(final Collection<String> addresses);
     void clearExpiredNameRecords(Duration holdDuration);
 
-    void cleanup();
+    void cleanup(boolean isPermanetMode);
 }

@@ -274,32 +274,28 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         Binder res = new Binder();
+        HashId itemId = (HashId) params.get("itemId");
 
-        HashId itemId = HashId.withDigest(params.getBinary("itemId"));
-
-        Approvable body = node.getLedger().getKeepingItem(itemId);
-        if (body instanceof Contract) {
-            byte[] packedContract = ((Contract) body).getPackedTransaction();
-            res.put("packedContract", packedContract);
+        byte[] body = node.getLedger().getKeepingItem(itemId);
+        if (body != null) {
+            res.put("packedContract", body);
             return res;
         }
 
         node.resync(itemId);
         ItemResult itemResult = node.checkItem(itemId);
 
-        if (itemResult == ItemResult.UNDEFINED){
+        if (itemResult == ItemResult.UNDEFINED)
             return null;
-        }
 
         //
-        //
 
-        StateRecord r = node.getLedger().getRecord(itemId);
-        r.save();
-        node.getLedger().putItem(r,body, Instant.now().plus(config.getMaxDiskCacheAge()));
+        //StateRecord r = node.getLedger().getRecord(itemId);
+        //r.save();
+        //node.getLedger().putItem(r,body, Instant.now().plus(config.getMaxDiskCacheAge()));
 
-        byte[] packedContract = ((Contract) body).getPackedTransaction();
-        res.put("packedContract", packedContract);
+        //byte[] packedContract = ((Contract) body).getPackedTransaction();
+        //res.put("body", body);
 
         return res;
     }
@@ -309,17 +305,19 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         Binder res = new Binder();
+        HashId origin = (HashId) params.get("origin");
 
-        HashId origin_id = HashId.withDigest(params.getBinary("origin_id"));
-
-        Approvable contractId = node.getLedger().getKeepingIdByOrigin(origin_id);
-        if (contractId == null){
+        Object keeping = node.getLedger().getKeepingByOrigin(origin, 100);
+        if (keeping == null){
             return null;
         }
 
-        if (contractId instanceof Contract) {
-
-        }
+        if (keeping instanceof byte[])
+            res.put("packedContract", keeping);
+        else if (keeping instanceof List)
+            res.put("contractIds", keeping);
+        else
+            return null;
 
         return res;
     }

@@ -752,20 +752,20 @@ public class Client {
      */
     public Binder getBody(HashId itemId) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getBody", "itemId", itemId.getDigest());
+            Binder result = httpClient.command("getBody", "itemId", itemId);
             return result;
         });
     }
 
     /**
      * Get the current contract ID with the given origin
-     * @param origin_id contract origin
+     * @param origin contract origin
      * @return contracts ID
      * @throws ClientError
      */
-    public Binder getContract(HashId origin_id) throws ClientError {
+    public Binder getContract(HashId origin) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getContract", "origin_id", origin_id.getDigest());
+            Binder result = httpClient.command("getContract", "origin", origin);
             return result;
         });
     }
