@@ -6435,11 +6435,9 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check getContract
+        // check getContract (can be null)
         result = client.getContract(origin);
-        byte[] keeping_revoke = result.getBytesOrThrow("packedContract").toArray();
-        assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke));
-        assertFalse(result.containsKey("contractIds"));
+        assertNull(result);
 
         mm.forEach(x -> x.shutdown());
     }

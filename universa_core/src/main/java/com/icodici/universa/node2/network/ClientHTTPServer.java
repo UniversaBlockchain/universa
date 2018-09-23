@@ -288,21 +288,19 @@ public class ClientHTTPServer extends BasicHttpServer {
         ItemResult itemResult = node.checkItem(itemId);
 
         if (itemResult == ItemResult.UNDEFINED)
-            return null;
+            return res;
 
         Approvable item = node.getKeepingItemFromNetwork(itemId);
         if (item == null)
-            return null;
+            return res;
 
-        StateRecord record = node.getLedger().getRecord(itemId);
-        node.getLedger().putKeepingItem(record, item);
+        if ((item instanceof Contract) && (item.getId().equals(itemId))) {
+            StateRecord record = node.getLedger().getRecord(itemId);
+            node.getLedger().putKeepingItem(record, item);
 
-        if (item instanceof Contract)
             body = ((Contract) item).getPackedTransaction();
-        else
-            return null;
-
-        res.put("packedContract", body);
+            res.put("packedContract", body);
+        }
 
         return res;
     }
@@ -321,16 +319,13 @@ public class ClientHTTPServer extends BasicHttpServer {
             limit = 1;
 
         Object keeping = node.getLedger().getKeepingByOrigin(origin, limit);
-        if (keeping == null){
-            return null;
-        }
+        if (keeping == null)
+            return res;
 
         if (keeping instanceof byte[])
             res.put("packedContract", keeping);
         else if (keeping instanceof List)
             res.put("contractIds", keeping);
-        else
-            return null;
 
         return res;
     }

@@ -773,7 +773,10 @@ public class Client {
     public Binder getContract(HashId origin, int limit) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getContract", "origin", origin, "limit", limit);
-            return result;
+            if (result.size() > 0)
+                return result;
+            else
+                return null;
         });
     }
 
@@ -787,7 +790,10 @@ public class Client {
     public Binder getContract(HashId origin) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getContract", "origin", origin);
-            return result;
+            if (result.size() > 0)
+                return result;
+            else
+                return null;
         });
     }
 }

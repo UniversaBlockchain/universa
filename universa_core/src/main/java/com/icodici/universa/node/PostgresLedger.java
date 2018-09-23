@@ -310,17 +310,20 @@ public class PostgresLedger implements Ledger {
             try (ResultSet rs = inPool(db -> db.queryRow(
                     "select keeping_items.packed, keeping_items.id from keeping_items, ledger where ledger.id = keeping_items.id and origin = ? and state = ? limit ?",
                     origin.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
-                if ((rs == null) || (!rs.last()))
+                if (rs == null)
                     return null;
 
-                if (rs.getRow() == 1)
-                    return rs.getBytes("packed");
-
+                byte[] packed = rs.getBytes("packed");
                 List<byte[]> contractIds = new ArrayList<>();
-                do {
+                contractIds.add(rs.getBytes("id"));
+
+                while (rs.next())
                     contractIds.add(rs.getBytes("id"));
-                } while (rs.previous());
-                return contractIds;
+
+                if (contractIds.size() > 1)
+                    return contractIds;
+                else
+                    return packed;
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
