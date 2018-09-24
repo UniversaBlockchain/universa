@@ -294,7 +294,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (item == null)
             return res;
 
-        if ((item instanceof Contract) && (item.getId().equals(itemId))) {
+        if ((item instanceof Contract) &&
+            (item.getId().equals(itemId)) &&
+            (HashId.of(((Contract) item).getLastSealedBinary()).equals(itemId))) {
             StateRecord record = node.getLedger().getRecord(itemId);
             node.getLedger().putKeepingItem(record, item);
 

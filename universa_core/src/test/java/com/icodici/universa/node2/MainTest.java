@@ -12,6 +12,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.digest.Crc32;
+import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
@@ -6388,7 +6389,7 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check keeping contract
+        // check getBody
         keeping = client.getBody(baseContract.getId());
         assertNotNull(keeping);
         assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping));
@@ -6399,7 +6400,7 @@ public class MainTest {
         System.out.println("expired : " + itemResult);
         assertEquals(ItemState.UNDEFINED, itemResult.state);
 
-        // check for expired contract
+        // check getBody for expired contract
         keeping = client.getBody(baseContract.getId());
         assertNotNull(keeping);
         assertTrue(Arrays.equals(baseContract.getPackedTransaction(), keeping));
@@ -6424,7 +6425,7 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check keeping contract
+        // check getBody
         keeping = client.getBody(parcel.getPayloadContract().getId());
         assertNotNull(keeping);
         assertTrue(Arrays.equals(parcel.getPayloadContract().getPackedTransaction(), keeping));
@@ -6451,7 +6452,7 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check keeping contract
+        // check getBody
         byte[] keeping_root = client.getBody(parcelContract.getId());
         byte[] keeping_revision = client.getBody(revisionContract.getId());
         assertNotNull(keeping_root);
@@ -6483,7 +6484,7 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check keeping contract
+        // check getBody
         keeping_root = client.getBody(parcelContract.getId());
         keeping_revision = client.getBody(revisionContract.getId());
         byte[] keeping_revoke = client.getBody(revokeContract.getId());
@@ -6494,6 +6495,119 @@ public class MainTest {
         assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root));
         assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
         assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke));
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void testPermanetApiGetBodyResync() throws Exception {
+
+        // init network in permanet mode
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), "_permanet", false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        assertTrue(main.config.isPermanetMode());
+        for (int i = 1; i < 4; i++)
+            assertTrue(mm.get(i).config.isPermanetMode());
+
+        // try cancel permanet mode
+        main.config.setPermanetMode(false);
+        assertTrue(main.config.isPermanetMode());
+
+        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+
+        Set<PublicKey> publicKeys = new HashSet<>();
+        for (PrivateKey pk : privateKeys) {
+            publicKeys.add(pk.getPublicKey());
+        }
+
+        Contract parcelContract = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        parcelContract.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
+        parcelContract.addSignerKey(manufacturePrivateKey);
+        parcelContract.seal();
+
+        parcelContract.check();
+        parcelContract.traceErrors();
+
+        Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
+        client.registerParcel(parcel.pack(), 8000);
+
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        HashId origin = parcelContract.getId();
+
+        // delete body from node db
+        Db db  = ((PostgresLedger) main.node.getLedger()).getDb();
+        try (PreparedStatement statement = db.statement("delete from keeping_items where origin = ?")) {
+            statement.setBytes(1, origin.getDigest());
+            db.updateWithStatement(statement);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+
+        // check getKeepingItem for null
+        assertNull(main.node.getLedger().getKeepingItem(parcelContract.getId()));
+
+        // check getBody
+        byte[] keeping = client.getBody(parcel.getPayloadContract().getId());
+        assertNotNull(keeping);
+        assertTrue(Arrays.equals(parcel.getPayloadContract().getPackedTransaction(), keeping));
+
+        // create revision
+        Contract revisionContract = parcelContract.createRevision(manufacturePrivateKey);
+        revisionContract.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        revisionContract.addSignerKey(TestKeys.privateKey(1));
+        revisionContract.seal();
+
+        revisionContract.check();
+        revisionContract.traceErrors();
+
+        parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
+        client.registerParcel(parcel.pack(), 8000);
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("revision : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        itemResult = client.getState(parcelContract.getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        // delete bodies from node db
+        try (PreparedStatement statement = db.statement("delete from keeping_items where origin = ?")) {
+            statement.setBytes(1, origin.getDigest());
+            db.updateWithStatement(statement);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+
+        // check getKeepingItem for nulls
+        assertNull(main.node.getLedger().getKeepingItem(parcelContract.getId()));
+        assertNull(main.node.getLedger().getKeepingItem(revisionContract.getId()));
+
+        // check getBody
+        byte[] keeping_root = client.getBody(parcelContract.getId());
+        byte[] keeping_revision = client.getBody(revisionContract.getId());
+        assertNotNull(keeping_root);
+        assertNotNull(keeping_revision);
+        assertTrue(Arrays.equals(parcelContract.getPackedTransaction(), keeping_root));
+        assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
+
+        Thread.sleep(2000);
 
         mm.forEach(x -> x.shutdown());
     }
@@ -6606,6 +6720,119 @@ public class MainTest {
         // check getContract (can be null)
         result = client.getContract(origin);
         assertNull(result);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void testGetContractAPIforManyActive() throws Exception {
+
+        // init network in permanet mode
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), "_permanet", false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        assertTrue(main.config.isPermanetMode());
+        for (int i = 1; i < 4; i++)
+            assertTrue(mm.get(i).config.isPermanetMode());
+
+        // try cancel permanet mode
+        main.config.setPermanetMode(false);
+        assertTrue(main.config.isPermanetMode());
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+
+        List<Contract> splits = new ArrayList<>();
+        Integer amountTokens = 1000;
+
+        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys, ownerPublicKeys, "1000");
+        tokenContract.check();
+        tokenContract.traceErrors();
+
+        HashId origin = tokenContract.getId();
+
+        ItemResult itemResult = client.register(tokenContract.getPackedTransaction(), 5000);
+        System.out.println("tokenContract : " + itemResult + " = " + amountTokens.toString());
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        for (Integer i = 1; i < 41; i++) {
+            Contract contractRemainder = ContractsService.createSplit(tokenContract, i.toString(), "amount", issuerPrivateKeys2, true);
+            Contract contractSplit = contractRemainder.getNew().get(0);
+            amountTokens -= i;
+
+            splits.add(contractSplit);
+
+            itemResult = client.register(contractRemainder.getPackedTransaction(), 5000);
+            System.out.println("contractRemainder : " + itemResult + " = " + amountTokens.toString());
+            assertEquals(ItemState.APPROVED, itemResult.state);
+
+            assertEquals(amountTokens.toString(), contractRemainder.getStateData().get("amount").toString());
+            assertEquals(i.toString(), contractSplit.getStateData().get("amount").toString());
+            assertEquals(ItemState.REVOKED, main.node.waitItem(tokenContract.getId(), 5000).state);
+            assertEquals(ItemState.APPROVED, main.node.waitItem(contractRemainder.getId(), 5000).state);
+            assertEquals(ItemState.APPROVED, main.node.waitItem(contractSplit.getId(), 5000).state);
+
+            tokenContract = contractRemainder;
+        }
+
+        // check getContract (default limit 100)
+        Binder result = client.getContract(origin);
+        List<byte[]> allKeepingIds = result.getListOrThrow("contractIds");
+        assertFalse(result.containsKey("packedContract"));
+        assertEquals(allKeepingIds.size(), splits.size() + 1);
+
+        final HashId hash = tokenContract.getId();
+        assertTrue(allKeepingIds.stream().anyMatch(id -> Arrays.equals(hash.getDigest(), id)));
+
+        splits.forEach(s -> assertTrue(allKeepingIds.stream().anyMatch(id -> Arrays.equals(s.getId().getDigest(), id))));
+
+        // check getContract with limit
+        result = client.getContract(origin, 10);
+        List<byte[]> keepingIds = result.getListOrThrow("contractIds");
+        assertFalse(result.containsKey("packedContract"));
+        assertEquals(keepingIds.size(), 10);
+
+        assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hash.getDigest(), id)));
+
+        for (int i = splits.size() - 1; i > splits.size() - 10; i--) {
+            final HashId hashSplit = splits.get(i).getId();
+            assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hashSplit.getDigest(), id)));
+        }
+
+        // set limit in node config
+        mm.forEach(x -> x.config.setQueryContractsLimit(20));
+
+        // check getContract (default limit 100)
+        result = client.getContract(origin);
+        keepingIds = result.getListOrThrow("contractIds");
+        assertFalse(result.containsKey("packedContract"));
+        assertEquals(keepingIds.size(), 20);
+
+        assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hash.getDigest(), id)));
+
+        for (int i = splits.size() - 1; i > splits.size() - 20; i--) {
+            final HashId hashSplit = splits.get(i).getId();
+            assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hashSplit.getDigest(), id)));
+        }
+
+        // check getContract with limit
+        result = client.getContract(origin, 30);
+        keepingIds = result.getListOrThrow("contractIds");
+        assertFalse(result.containsKey("packedContract"));
+        assertEquals(keepingIds.size(), 20);
+
+        assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hash.getDigest(), id)));
+
+        for (int i = splits.size() - 1; i > splits.size() - 20; i--) {
+            final HashId hashSplit = splits.get(i).getId();
+            assertTrue(keepingIds.stream().anyMatch(id -> Arrays.equals(hashSplit.getDigest(), id)));
+        }
 
         mm.forEach(x -> x.shutdown());
     }

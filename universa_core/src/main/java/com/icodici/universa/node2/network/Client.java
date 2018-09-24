@@ -764,7 +764,8 @@ public class Client {
 
     /**
      * Get the body of active contract with the given origin (if one active contract is returned),
-     * or list of IDs active contracts (if there are more than one)
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
      * @param limit of list items
      * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
@@ -773,16 +774,23 @@ public class Client {
     public Binder getContract(HashId origin, int limit) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getContract", "origin", origin, "limit", limit);
-            if (result.size() > 0)
+            if (result.size() > 0) {
+                if (result.containsKey("contractIds")) {
+                    List<byte[]> contractIds = new ArrayList<>();
+                    for (Object id: result.getListOrThrow(("contractIds")))
+                        contractIds.add(((Bytes)id).getData());
+                    result.put("contractIds", contractIds);
+                }
                 return result;
-            else
+            } else
                 return null;
         });
     }
 
     /**
      * Get the body of active contract with the given origin (if one active contract is returned),
-     * or list of IDs active contracts (if there are more than one) limited by 100
+     * or list of IDs active contracts (if there are more than one) limited by 100.
+     * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
      * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
@@ -790,9 +798,15 @@ public class Client {
     public Binder getContract(HashId origin) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getContract", "origin", origin);
-            if (result.size() > 0)
+            if (result.size() > 0) {
+                if (result.containsKey("contractIds")) {
+                    List<byte[]> contractIds = new ArrayList<>();
+                    for (Object id: result.getListOrThrow(("contractIds")))
+                        contractIds.add(((Bytes)id).getData());
+                    result.put("contractIds", contractIds);
+                }
                 return result;
-            else
+            } else
                 return null;
         });
     }

@@ -308,17 +308,17 @@ public class PostgresLedger implements Ledger {
     public Object getKeepingByOrigin(HashId origin, int limit) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow(
-                    "select keeping_items.packed, keeping_items.id from keeping_items, ledger where ledger.id = keeping_items.id and origin = ? and state = ? limit ?",
+                    "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and origin = ? and state = ? order by keeping_items.id desc limit ?",
                     origin.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
                 if (rs == null)
                     return null;
 
                 byte[] packed = rs.getBytes("packed");
                 List<byte[]> contractIds = new ArrayList<>();
-                contractIds.add(rs.getBytes("id"));
+                contractIds.add(rs.getBytes("hash"));
 
                 while (rs.next())
-                    contractIds.add(rs.getBytes("id"));
+                    contractIds.add(rs.getBytes("hash"));
 
                 if (contractIds.size() > 1)
                     return contractIds;
