@@ -6161,6 +6161,7 @@ public class MainTest {
             mm.add(createMain("node" + (i + 1), "_permanet", false));
         Main main = mm.get(0);
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
         assertTrue(main.config.isPermanetMode());
@@ -6340,6 +6341,7 @@ public class MainTest {
             mm.add(createMain("node" + (i + 1), "_permanet", false));
         Main main = mm.get(0);
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
         assertTrue(main.config.isPermanetMode());
@@ -6508,6 +6510,7 @@ public class MainTest {
             mm.add(createMain("node" + (i + 1), "_permanet", false));
         Main main = mm.get(0);
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
         assertTrue(main.config.isPermanetMode());
@@ -6620,6 +6623,7 @@ public class MainTest {
         for (int i = 0; i < 4; i++)
             mm.add(createMain("node" + (i + 1), "_permanet", false));
         Main main = mm.get(0);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
         assertTrue(main.config.isPermanetMode());
