@@ -276,6 +276,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         Binder res = new Binder();
+
+        if (!node.getConfig().isPermanetMode())
+            return res;
+
         HashId itemId = (HashId) params.get("itemId");
 
         byte[] body = node.getLedger().getKeepingItem(itemId);
@@ -312,6 +316,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         Binder res = new Binder();
+
+        if (!node.getConfig().isPermanetMode())
+            return res;
+
         HashId origin = (HashId) params.get("origin");
         int limit = params.getInt("limit", 100);
 

@@ -861,7 +861,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack());
+        client.registerParcel(parcel.pack(), 5000);
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
 
@@ -889,8 +889,8 @@ public class MainTest {
         }
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
-        assertEquals (ItemState.UNDEFINED, itemResult.state);
-        assertEquals (ItemState.UNDEFINED, itemResult2.state);
+        assertEquals (ItemState.APPROVED, itemResult.state);
+        assertEquals (ItemState.APPROVED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
     }
@@ -6555,11 +6555,8 @@ public class MainTest {
 
         Thread.sleep(2000);
 
-        // check getBody
+        // check getBody (can be null)
         byte[] stranger = client.getBody(HashId.createRandom());
-
-        assertFalse(Arrays.equals(payment.getPackedTransaction(), stranger));
-        assertFalse(Arrays.equals(baseContract.getPackedTransaction(), stranger));
         assertNull(stranger);
 
         mm.forEach(x -> x.shutdown());
@@ -6760,6 +6757,10 @@ public class MainTest {
         byte[] keeping_revision = result.getBytesOrThrow("packedContract").toArray();
         assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
         assertFalse(result.containsKey("contractIds"));
+
+        // check getContract by revision id (can be null)
+        result = client.getContract(revisionContract.getId());
+        assertNull(result);
 
         // revoke contract
         Contract revokeContract = ContractsService.createRevocation(revisionContract, manufacturePrivateKey);
