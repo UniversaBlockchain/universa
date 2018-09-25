@@ -745,9 +745,9 @@ public class Client {
     }
 
     /**
-     * Get the body contract with the given hash
+     * Get the contract with the given contract id.
      * @param itemId contract hash
-     * @return packed transaction
+     * @return contract with the given contract id
      * @throws ClientError
      */
     public byte[] getBody(HashId itemId) throws ClientError {
@@ -789,7 +789,7 @@ public class Client {
 
     /**
      * Get the body of active contract with the given origin (if one active contract is returned),
-     * or list of IDs active contracts (if there are more than one) limited by 100.
+     * or list of IDs active contracts (if there are more than one).
      * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
      * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)

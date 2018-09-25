@@ -6502,6 +6502,70 @@ public class MainTest {
     }
 
     @Test
+    public void testPermanetApiGetBodyNull() throws Exception {
+
+        // init network in permanet mode
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), "_permanet", false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        assertTrue(main.config.isPermanetMode());
+        for (int i = 1; i < 4; i++)
+            assertTrue(mm.get(i).config.isPermanetMode());
+
+        // try cancel permanet mode
+        main.config.setPermanetMode(false);
+        assertTrue(main.config.isPermanetMode());
+
+        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+
+        Set<PublicKey> publicKeys = new HashSet<>();
+        for (PrivateKey pk : privateKeys) {
+            publicKeys.add(pk.getPublicKey());
+        }
+
+        Contract payment = InnerContractsService.createFreshU(100, publicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+
+        ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
+        System.out.println("payment : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        baseContract.setExpiresAt(ZonedDateTime.now().plusSeconds(5));
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+
+        baseContract.check();
+        baseContract.traceErrors();
+
+        itemResult = client.register(baseContract.getPackedTransaction(), 5000);
+        System.out.println("contract : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Thread.sleep(2000);
+
+        // check getBody
+        byte[] stranger = client.getBody(HashId.createRandom());
+
+        assertFalse(Arrays.equals(payment.getPackedTransaction(), stranger));
+        assertFalse(Arrays.equals(baseContract.getPackedTransaction(), stranger));
+        assertNull(stranger);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
     public void testPermanetApiGetBodyResync() throws Exception {
 
         // init network in permanet mode
