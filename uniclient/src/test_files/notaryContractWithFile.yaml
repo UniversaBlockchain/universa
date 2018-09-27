@@ -1,7 +1,7 @@
 api_level: 3
 definition:
   expires_at:
-    seconds: 1694698298
+    seconds: 2094698298
     __type: unixtime
   data:
     template_name: NOTARY_CONTRACT
@@ -93,9 +93,7 @@ definition:
         name: owner
         anonIds: []
       __type: ChangeOwnerPermission
-  created_at:
-    seconds: 1536931898
-    __type: unixtime
+  created_at: now()
   issuer:
     addresses: []
     keys:
@@ -136,9 +134,7 @@ state:
   references: []
   branch_id: null
   origin: null
-  created_at:
-    seconds: 1536931898
-    __type: unixtime
+  created_at: now()
   created_by:
     target_name: issuer
     __type: RoleLink
