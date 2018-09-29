@@ -35,17 +35,14 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void rollback();
 
     /**
-     * Create subscription to the existing (stored) contract
+     * Create subscription to the chain of contracts
      *
-     * @param contractId
-     *         stored revision
-     * @param expiresAt
-     *         time to expiration
+     * @param origin
+     *         origin of contracts chain
      *
      * @return subscription or null if this contract is not known to the storage service
      */
-    @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId contractId,
-                                                                    @NonNull ZonedDateTime expiresAt);
+    @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId origin);
 
     /**
      * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.

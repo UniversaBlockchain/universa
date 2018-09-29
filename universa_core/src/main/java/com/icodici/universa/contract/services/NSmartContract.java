@@ -214,7 +214,8 @@ public class NSmartContract extends Contract implements NContract {
     public enum SmartContractType {
         N_SMART_CONTRACT,
         SLOT1,
-        UNS1
+        UNS1,
+        FOLLOWER1
     }
     protected int getMinPayment() {
         return nodeInfoProvider.getMinPayment(getExtendedType());

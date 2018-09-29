@@ -587,7 +587,7 @@ public class SlotContract extends NSmartContract {
         }
 
         // check for tracking contract existing
-        checkResult = trackingContracts.size() == 0 || getTrackingContract() != null;
+        checkResult = getTrackingContract() != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Tracking contract is missed");
             return checkResult;

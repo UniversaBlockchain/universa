@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 
 import java.time.ZonedDateTime;
@@ -28,6 +29,11 @@ public interface ContractStorageSubscription {
      * @return stored packed representation (transaction pack)
      */
     byte[] getPackedContract();
+
+    /**
+     * @return the origin of contracts chain of subscription.
+     */
+    HashId getOrigin();
 
     /**
      * The subscription event base interface. Real events are either {@link ApprovedEvent} or {@link RevokedEvent}

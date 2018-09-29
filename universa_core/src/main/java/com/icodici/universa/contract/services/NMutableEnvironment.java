@@ -49,9 +49,10 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId contractId, @NonNull ZonedDateTime expiresAt) {
-        //TODO: is it really needed?
-        return null;
+    public @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId origin) {
+        NContractStorageSubscription sub = new NContractStorageSubscription(origin);
+        subscriptionsToAdd.add(sub);
+        return sub;
     }
 
     @Override
