@@ -33,7 +33,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     protected NSmartContract contract;
     protected ZonedDateTime createdAt;
     // set of subscriptions holds by slot contract
-    protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
+    protected Set<ContractSubscription> storageSubscriptionsSet = new HashSet<>();
     protected Set<NameRecord> nameRecordsSet = new HashSet<>();
     protected Binder kvStore = new Binder();
 
@@ -64,7 +64,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
      * @param kvBinder map stored in the ledger
      */
     public NImmutableEnvironment(NSmartContract contract, Binder kvBinder,
-                                 Collection<ContractStorageSubscription> subscriptions,
+                                 Collection<ContractSubscription> subscriptions,
                                  Collection<NameRecord> nameRecords, Ledger ledger) {
         this(contract,ledger);
 
@@ -98,7 +98,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     @Override
-    public Iterable<ContractStorageSubscription> storageSubscriptions() {
+    public Iterable<ContractSubscription> storageSubscriptions() {
         return storageSubscriptionsSet;
     }
 

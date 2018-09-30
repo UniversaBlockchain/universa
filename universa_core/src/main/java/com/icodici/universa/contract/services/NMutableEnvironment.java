@@ -28,7 +28,9 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     private Set<NNameRecord> nameRecordsToDestroy = new HashSet<>();
     private Set<NNameRecord> nameRecordsToSave = new HashSet<>();
 
-
+    private Set<NContractFollowerSubscription> subscriptionsFollowerToAdd = new HashSet<>();
+    private Set<NContractFollowerSubscription> subscriptionsFollowerToDestroy = new HashSet<>();
+    private Set<NContractFollowerSubscription> subscriptionsFollowerToSave = new HashSet<>();
 
     public NMutableEnvironment(NImmutableEnvironment ime) {
         super(ime.contract, ime.kvStore,ime.storageSubscriptionsSet,ime.nameRecordsSet,ime.ledger);
@@ -49,21 +51,21 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId origin) {
-        NContractStorageSubscription sub = new NContractStorageSubscription(origin);
-        subscriptionsToAdd.add(sub);
+    public @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin) {
+        NContractFollowerSubscription sub = new NContractFollowerSubscription(origin);
+        subscriptionsFollowerToAdd.add(sub);
         return sub;
     }
 
     @Override
-    public @NonNull ContractStorageSubscription createStorageSubscription(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt) {
+    public @NonNull ContractSubscription createStorageSubscription(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt) {
         NContractStorageSubscription sub = new NContractStorageSubscription(packedTransaction, expiresAt);
         subscriptionsToAdd.add(sub);
         return sub;
     }
 
     @Override
-    public void setSubscriptionExpiresAt(ContractStorageSubscription subscription, ZonedDateTime expiresAt) {
+    public void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt) {
         NContractStorageSubscription sub = (NContractStorageSubscription) subscription;
         sub.setExpiresAt(expiresAt);
         //existing subscription
@@ -73,8 +75,11 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public void destroySubscription(ContractStorageSubscription subscription) {
-        subscriptionsToDestroy.add((NContractStorageSubscription) subscription);
+    public void destroySubscription(ContractSubscription subscription) {
+        if (subscription instanceof NContractStorageSubscription)
+            subscriptionsToDestroy.add((NContractStorageSubscription) subscription);
+        else if (subscription instanceof NContractFollowerSubscription)
+            subscriptionsFollowerToDestroy.add((NContractFollowerSubscription) subscription);
     }
 
     @Override

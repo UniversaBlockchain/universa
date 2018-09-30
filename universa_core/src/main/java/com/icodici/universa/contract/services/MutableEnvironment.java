@@ -42,7 +42,7 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return subscription or null if this contract is not known to the storage service
      */
-    @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId origin);
+    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin);
 
     /**
      * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.
@@ -54,16 +54,16 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return susbscription.
      */
-    @NonNull ContractStorageSubscription createStorageSubscription(byte[] packedTransaction,
+    @NonNull ContractSubscription createStorageSubscription(byte[] packedTransaction,
                                                                    @NonNull ZonedDateTime expiresAt);
 
 
     @NonNull NameRecord createNameRecord(@NonNull UnsName unsName,
                                               @NonNull ZonedDateTime expiresAt);
 
-    void setSubscriptionExpiresAt(ContractStorageSubscription subscription, ZonedDateTime expiresAt);
+    void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt);
 
-    void destroySubscription(ContractStorageSubscription subscription);
+    void destroySubscription(ContractSubscription subscription);
 
 
     void setNameRecordExpiresAt(NameRecord nameRecord, ZonedDateTime expiresAt);

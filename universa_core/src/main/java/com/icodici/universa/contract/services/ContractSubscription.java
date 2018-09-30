@@ -16,7 +16,7 @@ import java.time.ZonedDateTime;
  * revoked, all its subscriptions must be destroyed.
  */
 
-public interface ContractStorageSubscription {
+public interface ContractSubscription {
 
     ZonedDateTime expiresAt();
 
@@ -40,7 +40,7 @@ public interface ContractStorageSubscription {
      * implementations.
      */
     interface Event {
-        ContractStorageSubscription getSubscription();
+        ContractSubscription getSubscription();
     }
 
     interface ApprovedEvent extends Event {
@@ -64,7 +64,7 @@ public interface ContractStorageSubscription {
 
     /**
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
-     * NContract#onContractStorageSubscriptionEvent(Event)}
+     * NContract#onContractSubscriptionEvent(Event)}
      *
      * @param doReceive true to receive events, false to stop
      */

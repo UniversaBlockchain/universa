@@ -179,7 +179,7 @@ public class NSmartContract extends Contract implements NContract {
     }
 
     @Override
-    public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+    public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
     }
 

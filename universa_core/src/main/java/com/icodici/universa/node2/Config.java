@@ -46,9 +46,11 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
         rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 0.2);
 
-        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(),100);
+        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
+        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 50);
     }
 
     public Config copy() {

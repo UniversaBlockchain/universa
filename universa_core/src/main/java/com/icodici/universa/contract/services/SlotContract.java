@@ -346,7 +346,7 @@ public class SlotContract extends NSmartContract {
 
     /**
      * Own private slot's method for saving subscription. It calls
-     * from {@link SlotContract#onContractStorageSubscriptionEvent(ContractStorageSubscription.Event)} (when tracking
+     * from {@link SlotContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking
      * contract have registered new revision, from {@link SlotContract#onCreated(MutableEnvironment)} and
      * from {@link SlotContract#onUpdated(MutableEnvironment)} (both when this slot contract have registered new revision).
      * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
@@ -384,7 +384,7 @@ public class SlotContract extends NSmartContract {
 
         for(Contract tc : newContracts.values()) {
             try {
-                ContractStorageSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
+                ContractSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
                 css.receiveEvents(true);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -400,13 +400,13 @@ public class SlotContract extends NSmartContract {
     }
 
     @Override
-    public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+    public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
 
-        if(event instanceof ContractStorageSubscription.ApprovedEvent) {
-            MutableEnvironment me = ((ContractStorageSubscription.ApprovedEvent) event).getEnvironment();
+        if(event instanceof ContractSubscription.ApprovedEvent) {
+            MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
             // recreate subscription:
-            Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
+            Contract newStoredItem = ((ContractSubscription.ApprovedEvent)event).getNewRevision();
 
             putTrackingContract(newStoredItem);
             saveTrackingContractsToState();
@@ -414,7 +414,7 @@ public class SlotContract extends NSmartContract {
             // and save new
             updateSubscriptions(me);
 
-        } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
+        } else if(event instanceof ContractSubscription.RevokedEvent) {
 
         }
 

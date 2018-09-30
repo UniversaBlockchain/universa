@@ -873,7 +873,7 @@ public class PostgresLedger implements Ledger {
 
 
 
-    private Collection<ContractStorageSubscription> getContractStorageSubscriptions(long environmentId) {
+    private Collection<ContractSubscription> getContractStorageSubscriptions(long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
@@ -893,7 +893,7 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("getContractStorageSubscriptions failed: returning null");
-                List<ContractStorageSubscription> res = new ArrayList<>();
+                List<ContractSubscription> res = new ArrayList<>();
                 while (rs.next()) {
                     NContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
                     css.setId(rs.getLong(3));
@@ -971,7 +971,7 @@ public class PostgresLedger implements Ledger {
             contract = findNContract == null ? contract : findNContract;
             NSmartContract nSmartContract = (NSmartContract) contract;
             Binder kvBinder = Boss.unpack(smkv.get(1));
-            Collection<ContractStorageSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
+            Collection<ContractSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
             List<String> reducedNames = getReducedNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String reducedName : reducedNames) {
@@ -1155,7 +1155,7 @@ public class PostgresLedger implements Ledger {
                 nnr.setEnvironmentId(envId);
                 addNameRecord(nnr);
             }
-            for (ContractStorageSubscription css : environment.storageSubscriptions()) {
+            for (ContractSubscription css : environment.storageSubscriptions()) {
                 NContractStorageSubscription ncss = (NContractStorageSubscription) css;
                 long contractStorageId = saveContractInStorage(ncss.getContract().getId(), ncss.getPackedContract(), ncss.expiresAt(), ncss.getContract().getOrigin());
                 saveSubscriptionInStorage(contractStorageId, ncss.expiresAt(), envId);

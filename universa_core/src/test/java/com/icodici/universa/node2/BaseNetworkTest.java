@@ -8284,7 +8284,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8345,7 +8345,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8411,7 +8411,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8537,7 +8537,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
@@ -8655,7 +8655,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -8676,7 +8676,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8792,7 +8792,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8812,7 +8812,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -8920,7 +8920,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
@@ -9056,7 +9056,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
@@ -9134,7 +9134,7 @@ public class BaseNetworkTest extends TestCase {
         if(envs.size() > 0) {
             for (Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }

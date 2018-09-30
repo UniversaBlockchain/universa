@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -33,10 +34,12 @@ import java.util.stream.Collectors;
  */
 public class FollowerContract extends NSmartContract {
 
-    public static final String PREPAID_CALLBACKS_FIELD_NAME = "prepaid_Callbacks";
+    public static final String PREPAID_CALLBACKS_FIELD_NAME = "prepaid_callbacks";
     public static final String TRACKING_ORIGINS_FIELD_NAME = "tracking_origins";
+    public static final String CALLBACK_KEYS_FIELD_NAME = "callback_keys";
 
-    private List<HashId> trackingOrigins = new ArrayList<>();
+    private Map<HashId, String> trackingOrigins = new HashMap<>();
+    private Map<String, PublicKey> callbackKeys = new HashMap<>();
 
     // Calculate U paid with las revision of slot
     private int paidU = 0;
@@ -126,6 +129,7 @@ public class FollowerContract extends NSmartContract {
             fieldsMap.put(PAID_U_FIELD_NAME, null);
             fieldsMap.put(PREPAID_CALLBACKS_FIELD_NAME, null);
             fieldsMap.put(TRACKING_ORIGINS_FIELD_NAME, null);
+            fieldsMap.put(CALLBACK_KEYS_FIELD_NAME, null);
                Binder modifyDataParams = Binder.of("fields", fieldsMap);
             ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
             addPermission(modifyDataPermission);
@@ -157,8 +161,12 @@ public class FollowerContract extends NSmartContract {
         }
     }
 
-    public List<HashId> getTrackingOrigins() {
+    public Map<HashId, String> getTrackingOrigins() {
         return trackingOrigins;
+    }
+
+    public Map<String, PublicKey> getCallbackKeys() {
+        return callbackKeys;
     }
 
     /**
@@ -167,18 +175,62 @@ public class FollowerContract extends NSmartContract {
      */
     public boolean isOriginTracking(HashId origin) {
         if (trackingOrigins != null)
-            return trackingOrigins.contains(origin);
+            return trackingOrigins.containsKey(origin);
 
         return false;
     }
 
+    /**
+     * Put new tracking origin and his callback data (URL and callback public key) to the follower contract.
+     * If origin already contained in follower contract, old callback data is replaced.
+     * If callback URL already contained in follower contract, old callback key is replaced.
+     * @param origin for tracking {@link HashId}.
+     * @param URL for callback if registered new revision with tracking origin
+     * @param key for checking receipt from callback by network
+     */
+    public void putTrackingOrigin(HashId origin, String URL, PublicKey key) {
+        trackingOrigins.put(origin, URL);
+        callbackKeys.put(URL, key);
+    }
 
     /**
-     * Put origin to the tracking origin's revisions queue.
-     * @param origin for tracking {@link HashId}.
+     * Remove tracking origin from the follower contract.
+     * @param origin for remove {@link HashId}.
      */
-    public void putTrackingOrigin(HashId origin) {
-        trackingOrigins.add(origin);
+    public void removeTrackingOrigin(HashId origin) {
+        if (trackingOrigins.containsKey(origin)) {
+            String URL = trackingOrigins.get(origin);
+
+            trackingOrigins.remove(origin);
+
+            if (!trackingOrigins.containsValue(URL))
+                callbackKeys.remove(URL);
+        }
+    }
+
+    /**
+     * @param URL to check
+     * @return true if callback URL is used in tracking origins
+     */
+    public boolean isCallbackURLUsed(String URL) {
+        if (callbackKeys != null)
+            return callbackKeys.containsKey(URL);
+
+        return false;
+    }
+
+    /**
+     * @param URL is updated callback URL
+     * @param key is public check of callback for update on callback URL
+     * @return true if callback URL was updated
+     */
+    public boolean updateCallbackKey(String URL, PublicKey key) {
+        if ((callbackKeys != null) && callbackKeys.containsKey(URL)) {
+            callbackKeys.put(URL, key);
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -217,7 +269,7 @@ public class FollowerContract extends NSmartContract {
 
     /**
      * Own private slot's method for saving subscription. It calls
-     * from {@link FollowerContract#onContractStorageSubscriptionEvent(ContractStorageSubscription.Event)} (when tracking
+     * from {@link FollowerContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking
      * contract have registered new revision, from {@link FollowerContract#onCreated(MutableEnvironment)} and
      * from {@link FollowerContract#onUpdated(MutableEnvironment)} (both when this slot contract have registered new revision).
      * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
@@ -228,7 +280,7 @@ public class FollowerContract extends NSmartContract {
         // recalculate prepaid callbacks without saving to state to get valid storing data
         calculatePrepaidCallbacks(false);
 
-        List<HashId> newOrigins = trackingOrigins;
+        Set<HashId> newOrigins = trackingOrigins.keySet();
 
         me.storageSubscriptions().forEach(sub -> {
             HashId origin = sub.getOrigin();
@@ -240,7 +292,7 @@ public class FollowerContract extends NSmartContract {
 
         for (HashId origin: newOrigins) {
             try {
-                ContractStorageSubscription css = me.createStorageSubscription(origin);
+                ContractSubscription css = me.createFollowerSubscription(origin);
                 css.receiveEvents(true);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -267,11 +319,17 @@ public class FollowerContract extends NSmartContract {
     }
 
     private void saveTrackingOriginsToState() {
-        List<String> forState = new ArrayList();
-        for (HashId origin: trackingOrigins) {
-            forState.add(origin.toBase64String());
+        Binder origins = new Binder();
+        for (Map.Entry<HashId, String> entry: trackingOrigins.entrySet()) {
+            origins.set(entry.getKey().toBase64String(), entry.getValue());
         }
-        getStateData().set(TRACKING_ORIGINS_FIELD_NAME, forState);
+        getStateData().set(TRACKING_ORIGINS_FIELD_NAME, origins);
+
+        Binder callbacks = new Binder();
+        for (Map.Entry<String, PublicKey> entry: callbackKeys.entrySet()) {
+            callbacks.set(entry.getKey(), entry.getValue().pack());
+        }
+        getStateData().set(CALLBACK_KEYS_FIELD_NAME, callbacks);
     }
 
 
@@ -288,22 +346,40 @@ public class FollowerContract extends NSmartContract {
     private void deserializeForFollower() {
 
         if(trackingOrigins == null)
-            trackingOrigins = new ArrayList<>();
+            trackingOrigins = new HashMap<>();
         else
             trackingOrigins.clear();
+
+        if(callbackKeys == null)
+            callbackKeys = new HashMap<>();
+        else
+            callbackKeys.clear();
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
 
         // extract saved prepaid callbacks value
         prepaidCallbacks = getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
 
-        // extract tracking origins
-        List<String> trackingOriginsAsBase64 = getStateData().getList(TRACKING_ORIGINS_FIELD_NAME, null);
-        if (trackingOriginsAsBase64 != null)
-            for (String s: trackingOriginsAsBase64) {
-                HashId origin = HashId.withDigest(s);
-                trackingOrigins.add(origin);
-            }
+        // extract tracking origins nad callbacks data
+        Binder trackingOriginsAsBase64 = getStateData().getBinder(TRACKING_ORIGINS_FIELD_NAME);
+        Binder callbacksData = getStateData().getBinder(CALLBACK_KEYS_FIELD_NAME);
+
+        for (String URL: callbacksData.keySet()) {
+            byte[] packedKey = trackingOriginsAsBase64.getBinary(URL);
+            PublicKey key = new PublicKey();
+            try {
+                key.unpack(packedKey);
+                callbackKeys.put(URL, key);
+            } catch (EncryptionError encryptionError) {}
+        }
+
+        for (String s: trackingOriginsAsBase64.keySet()) {
+            String URL = trackingOriginsAsBase64.getString(s);
+            HashId origin = HashId.withDigest(s);
+
+            if (callbackKeys.containsKey(URL))
+                trackingOrigins.put(origin, URL);
+        }
     }
 
     @Override
@@ -395,6 +471,16 @@ public class FollowerContract extends NSmartContract {
             return checkResult;
         }
 
+        // check for any tracking origin contains callbacks data
+        checkResult = true;
+        for (String URL: trackingOrigins.values())
+            if (!callbackKeys.containsKey(URL))
+                checkResult = false;
+        if(!checkResult) {
+            addError(Errors.FAILED_CHECK, "Callback key for tracking origin is missed");
+            return checkResult;
+        }
+
         return checkResult;
     }
 
@@ -414,8 +500,6 @@ public class FollowerContract extends NSmartContract {
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
-        // remove subscriptions
-        //ledger.removeSlotContractWithAllSubscriptions(getId());
     }
 
     static {

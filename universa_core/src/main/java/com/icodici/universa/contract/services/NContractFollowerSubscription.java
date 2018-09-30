@@ -13,32 +13,22 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Implements {@link ContractSubscription} interface for slot contract.
+ * Implements {@link NContractFollowerSubscription} interface for follower contract.
  */
-public class NContractStorageSubscription implements ContractSubscription, BiSerializable {
+public class NContractFollowerSubscription implements ContractSubscription, BiSerializable {
 
     private long id = 0;
-
-    private byte[] packedContract;
-    private long contractStorageId = 0;
     private long environmentId = 0;
-    private ZonedDateTime expiresAt = ZonedDateTime.now().plusMonths(1);
+    private ZonedDateTime expiresAt = ZonedDateTime.ofInstant(Instant.MAX, ZoneId.systemDefault());
     private boolean isReceiveEvents = false;
+    private HashId origin;
 
-    private Contract trackingContract;
-
-    public NContractStorageSubscription() {
+    public NContractFollowerSubscription() {
 
     }
 
-    public NContractStorageSubscription(byte[] packedContract, ZonedDateTime expiresAt) {
-        this.packedContract = packedContract;
-        this.expiresAt = expiresAt;
-        try {
-            this.trackingContract = Contract.fromPackedTransaction(packedContract);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("NContractStorageSubscription unable to unpack TP " + e.getMessage());
-        }
+    public NContractFollowerSubscription(HashId origin) {
+        this.origin = origin;
     }
 
     @Override
@@ -51,10 +41,6 @@ public class NContractStorageSubscription implements ContractSubscription, BiSer
         return expiresAt;
     }
 
-    public void setExpiresAt(ZonedDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
-
     public void setId(long value) {
         id = value;
     }
@@ -62,29 +48,17 @@ public class NContractStorageSubscription implements ContractSubscription, BiSer
         return id;
     }
 
-    /**
-     * Set id from ledger for record with stored contract.
-     *
-     * @param value is id
-     */
-    public void setContractStorageId(long value) {
-        contractStorageId = value;
-    }
-    public long getContractStorageId() {
-        return contractStorageId;
-    }
-
     @Override
     public Contract getContract() {
-        return trackingContract;
+        return null;
     }
     @Override
     public byte[] getPackedContract() {
-        return packedContract;
+        return null;
     }
     @Override
     public HashId getOrigin() {
-        return null;
+        return origin;
     }
 
 
@@ -102,15 +76,14 @@ public class NContractStorageSubscription implements ContractSubscription, BiSer
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
-        packedContract = data.getBinary("packedContract");
-        trackingContract = Contract.fromPackedTransaction(packedContract);
+        origin = deserializer.deserialize(data.get("origin"));
         expiresAt = data.getZonedDateTimeOrThrow("expiresAt");
     }
 
     @Override
     public Binder serialize(BiSerializer serializer) {
         Binder data = new Binder();
-        data.put("packedContract",serializer.serialize(packedContract));
+        data.put("origin",serializer.serialize(origin));
         data.put("expiresAt", serializer.serialize(expiresAt));
         return data;
     }

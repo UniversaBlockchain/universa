@@ -2705,7 +2705,7 @@ public class Node {
                         contract.setNodeInfoProvider(nodeInfoProvider);
                         NMutableEnvironment me = ime.getMutable();
                         NContractStorageSubscription subscription = null;
-                        for(ContractStorageSubscription sub : ime.storageSubscriptions() ) {
+                        for(ContractSubscription sub : ime.storageSubscriptions() ) {
                             if(sub.getContract().getId().equals(lookingId)) {
                                 subscription = (NContractStorageSubscription) sub;
                                 break;
@@ -2715,7 +2715,7 @@ public class Node {
                         NContractStorageSubscription finalSubscription = subscription;
                         if (subscription != null) {
                             if (updatingState == ItemState.APPROVED) {
-                                contract.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
+                                contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
                                     @Override
                                     public Contract getNewRevision() {
                                         return (Contract) updatingItem;
@@ -2732,21 +2732,21 @@ public class Node {
                                     }
 
                                     @Override
-                                    public ContractStorageSubscription getSubscription() {
+                                    public ContractSubscription getSubscription() {
                                         return finalSubscription;
                                     }
                                 });
                                 me.save();
                             }
                             if (updatingState == ItemState.REVOKED) {
-                                contract.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
+                                contract.onContractSubscriptionEvent(new ContractSubscription.RevokedEvent() {
                                     @Override
                                     public ImmutableEnvironment getEnvironment() {
                                         return ime;
                                     }
 
                                     @Override
-                                    public ContractStorageSubscription getSubscription() {
+                                    public ContractSubscription getSubscription() {
                                         return finalSubscription;
                                     }
                                 });
