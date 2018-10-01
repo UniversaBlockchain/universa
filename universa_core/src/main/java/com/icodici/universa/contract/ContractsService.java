@@ -1353,6 +1353,55 @@ public class ContractsService {
         return UnsContract;
     }
 
+    public synchronized static FollowerContract createFollowerContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys) {
+        FollowerContract followerContract = new FollowerContract();
+
+        followerContract.setApiLevel(3);
+
+        Contract.Definition cd = followerContract.getDefinition();
+        cd.setExpiresAt(followerContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default follower");
+        data.set("description", "Default follower description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        followerContract.registerRole(issuerRole);
+        followerContract.createRole("issuer", issuerRole);
+        followerContract.createRole("creator", issuerRole);
+
+        followerContract.registerRole(ownerRole);
+        followerContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        followerContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        followerContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        followerContract.addPermission(revokePerm2);
+
+        followerContract.addFollowerSpecific();
+
+        followerContract.seal();
+        followerContract.addSignatureToSeal(issuerKeys);
+
+        return followerContract;
+    }
+
     /**
      * Add to base {@link Contract} reference and referenced contract.
      * When the returned {@link Contract} is unpacking referenced contract verifies
