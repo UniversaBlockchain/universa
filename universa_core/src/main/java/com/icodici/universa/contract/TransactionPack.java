@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
+import com.icodici.universa.contract.services.FollowerContract;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.contract.services.UnsContract;
@@ -340,6 +341,10 @@ public class TransactionPack implements BiSerializable {
 
                     case UNS1:
                         contract = new UnsContract(bb, this);
+                        break;
+
+                    case FOLLOWER1:
+                        contract = new FollowerContract(bb, this);
                         break;
                 }
             } else {

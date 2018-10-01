@@ -44,7 +44,7 @@ public class FollowerContract extends NSmartContract {
     // Calculate U paid with las revision of slot
     private int paidU = 0;
     // All callbacks prepaid from first revision (sum of all paidU, converted to callbacks)
-    private double prepaidCallbacks = 0;
+    private int prepaidCallbacks = 0;
 
     /**
      * Follower contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
@@ -248,14 +248,14 @@ public class FollowerContract extends NSmartContract {
 
         // then looking for prepaid early U that can be find at the stat.data
         // additionally we looking for and calculate callbacks of payment fillings and some other data
-        double wasPrepaidCallbacks;
+        int wasPrepaidCallbacks;
         Contract parentContract = getRevokingItem(getParent());
         if(parentContract != null)
-            wasPrepaidCallbacks = parentContract.getStateData().getDouble(PREPAID_CALLBACKS_FIELD_NAME);
+            wasPrepaidCallbacks = parentContract.getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
         else
             wasPrepaidCallbacks = 0;
 
-        prepaidCallbacks = wasPrepaidCallbacks + paidU * getRate();
+        prepaidCallbacks = (int) Math.floor(wasPrepaidCallbacks + paidU * getRate());
 
         // if true we save it to stat.data
         if(withSaveToState) {
@@ -292,7 +292,7 @@ public class FollowerContract extends NSmartContract {
 
         for (HashId origin: newOrigins) {
             try {
-                ContractSubscription css = me.createFollowerSubscription(origin);
+                ContractSubscription css = me.createFollowerSubscription(origin, /*newExpires*/ ZonedDateTime.now().plusYears(5));
                 css.receiveEvents(true);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -303,7 +303,7 @@ public class FollowerContract extends NSmartContract {
     /**
      * @return calculated prepaid callbacks for all time, from first revision
      */
-    public double getPrepaidCallbacks() {
+    public int getPrepaidCallbacks() {
         return prepaidCallbacks;
     }
 
@@ -365,7 +365,7 @@ public class FollowerContract extends NSmartContract {
         Binder callbacksData = getStateData().getBinder(CALLBACK_KEYS_FIELD_NAME);
 
         for (String URL: callbacksData.keySet()) {
-            byte[] packedKey = trackingOriginsAsBase64.getBinary(URL);
+            byte[] packedKey = callbacksData.getBinary(URL);
             PublicKey key = new PublicKey();
             try {
                 key.unpack(packedKey);

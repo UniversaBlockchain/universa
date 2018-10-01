@@ -39,10 +39,12 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @param origin
      *         origin of contracts chain
+     * @param expiresAt
+     *         time to expiration
      *
      * @return subscription or null if this contract is not known to the storage service
      */
-    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin);
+    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt);
 
     /**
      * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.

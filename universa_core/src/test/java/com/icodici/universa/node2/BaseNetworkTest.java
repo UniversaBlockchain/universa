@@ -13702,4 +13702,255 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"), 0);
         assertEquals(parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"), 100);
     }
+
+    @Test
+    public void registerFollowerContract() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> followerIssuerPrivateKeys = new HashSet<>();
+        followerIssuerPrivateKeys.add(key);
+        Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
+        followerIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for follow
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // register callback
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        // follower contract
+        FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey.getPublicKey());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for follow
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        followerContract.check();
+        followerContract.traceErrors();
+        assertTrue(followerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
+        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidCallbacks(), 0.1);
+
+//        for(Node n : nodes) {
+//            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        }
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
+
+        /*assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
+
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        ZonedDateTime now;
+
+        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        double hours = days * 24;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we store environment
+        assertNotNull(node.getLedger().getEnvironment(slotContract.getId()));
+
+
+        // refill slot contract with U (means add storing days).
+
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        double spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+
+        days = (double) (100 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
+
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
+
+
+        // refill slot contract with U again (means add storing days). the oldest revision should removed
+
+        SlotContract refilledSlotContract2 = (SlotContract) refilledSlotContract.createRevision(key);
+        refilledSlotContract2.setNodeInfoProvider(nodeInfoProvider);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract2.check();
+        refilledSlotContract2.traceErrors();
+        assertTrue(refilledSlotContract2.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract2.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        spentSeconds = (timeReg3.toEpochSecond() - timeReg1.toEpochSecond());
+        spentDays = (double) spentSeconds / (3600 * 24);
+        spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+
+        days = (double) (100 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
+
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
+
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));
+
+
+        // revoke slot contract, means remove stored contract from storage
+
+        Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract2, key);
+
+        registerAndCheckApproved(revokingSlotContract);
+
+        itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        // check if we remove stored contract from storage
+
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
+
+        // check if we remove subscriptions
+
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        assertEquals(envs.size(),0);
+        // check if we remove environment
+
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));*/
+    }
 }

@@ -51,8 +51,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin) {
-        NContractFollowerSubscription sub = new NContractFollowerSubscription(origin);
+    public @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt) {
+        NContractFollowerSubscription sub = new NContractFollowerSubscription(origin, expiresAt);
         subscriptionsFollowerToAdd.add(sub);
         return sub;
     }

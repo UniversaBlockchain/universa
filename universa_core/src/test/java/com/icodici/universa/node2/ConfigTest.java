@@ -55,6 +55,9 @@ public class ConfigTest extends TestCase {
         assertEquals(config.getNetworkAdminKeyAddress(), copyConfig.getNetworkAdminKeyAddress());
         assertEquals(config.getAuthorizedNameServiceCenterKey(), copyConfig.getAuthorizedNameServiceCenterKey());
         assertEquals(config.getUIssuerName(), copyConfig.getUIssuerName());
+        assertEquals(config.getQueryContractsLimit(), copyConfig.getQueryContractsLimit());
+        assertEquals(config.isPermanetMode(), copyConfig.isPermanetMode());
+        assertEquals(config.getFollowerCallbackPrice(), copyConfig.getFollowerCallbackPrice());
     }
 
     @Test

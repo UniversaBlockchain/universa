@@ -19,7 +19,7 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
 
     private long id = 0;
     private long environmentId = 0;
-    private ZonedDateTime expiresAt = ZonedDateTime.ofInstant(Instant.MAX, ZoneId.systemDefault());
+    private ZonedDateTime expiresAt = ZonedDateTime.now().plusYears(5);
     private boolean isReceiveEvents = false;
     private HashId origin;
 
@@ -27,8 +27,9 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
 
     }
 
-    public NContractFollowerSubscription(HashId origin) {
+    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt) {
         this.origin = origin;
+        this.expiresAt = expiresAt;
     }
 
     @Override
@@ -39,6 +40,10 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     @Override
     public ZonedDateTime expiresAt() {
         return expiresAt;
+    }
+
+    public void setExpiresAt(ZonedDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
     public void setId(long value) {

@@ -46,11 +46,11 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
         rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
-        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 0.2);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 5.0);
 
         minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
-        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 50);
+        minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 200);
     }
 
     public Config copy() {
@@ -90,6 +90,7 @@ public class Config {
         config.rate = new HashMap<>(rate);
         config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
         config.queryContractsLimit = queryContractsLimit;
+        config.followerCallbackPrice = followerCallbackPrice;
         return config;
     }
 
@@ -139,6 +140,8 @@ public class Config {
     public void setRate(String name, double value) {
         rate.put(name,value);
     }
+
+    public void setFollowerCallbackPrice(int followerCallbackPrice) { this.followerCallbackPrice = followerCallbackPrice; }
 
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
@@ -191,6 +194,7 @@ public class Config {
     private Duration holdDuration = Duration.ofDays(30);
     private int paymentQuantaLimit = 200;
     private int queryContractsLimit = 100;
+    private int followerCallbackPrice = 50;
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -235,6 +239,8 @@ public class Config {
     {
         return rate.get(extendedType);
     }
+
+    public int getFollowerCallbackPrice() { return followerCallbackPrice; }
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 

@@ -1353,9 +1353,23 @@ public class ContractsService {
         return UnsContract;
     }
 
-    public synchronized static FollowerContract createFollowerContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys) {
+    /**
+     * Create and return ready {@link FollowerContract} contract with need permissions and values. {@link FollowerContract} is
+     * used for control and for payment for follow new revisions from some contract chains by origin.
+     * <br><br>
+     * Created {@link FollowerContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special follower
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link FollowerContract#putTrackingOrigin(HashId, String, PublicKey)}
+     * for putting follow chain by origin with callback URL and public key.
+     * <br><br>
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
+     * @param nodeInfoProvider
+     * @return ready {@link FollowerContract}
+     */
+    public synchronized static FollowerContract createFollowerContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
         FollowerContract followerContract = new FollowerContract();
-
+        followerContract.setNodeInfoProvider(nodeInfoProvider);
         followerContract.setApiLevel(3);
 
         Contract.Definition cd = followerContract.getDefinition();
