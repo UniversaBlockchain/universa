@@ -211,6 +211,7 @@ public interface Ledger {
 
 
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
+    long saveFollowerSubscriptionInStorage(ZonedDateTime expiresAt, long environmentId);
 
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);

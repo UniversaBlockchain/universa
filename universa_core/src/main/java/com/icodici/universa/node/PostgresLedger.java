@@ -1239,6 +1239,36 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public long saveFollowerSubscriptionInStorage(ZonedDateTime expiresAt, long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at,environment_id) VALUES(?,?,?) RETURNING id")
+            ) {
+                statement.setNull(1, Types.INTEGER);
+                statement.setLong(2, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, environmentId);
+                //db.updateWithStatement(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("saveFollowerSubscriptionInStorage failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveFollowerSubscriptionInStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+
+    @Override
     public List<Long> clearExpiredStorageSubscriptions() {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime now = ZonedDateTime.now();

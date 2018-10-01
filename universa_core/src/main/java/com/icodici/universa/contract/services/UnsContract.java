@@ -77,8 +77,7 @@ public class UnsContract extends NSmartContract {
     }
 
     /**
-     * Create a default empty new contract using a provided key as issuer and owner and sealer. Default expiration is
-     * set to 5 years.
+     * Create a default empty new contract using a provided key as issuer and owner and sealer.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after

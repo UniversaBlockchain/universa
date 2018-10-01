@@ -382,6 +382,9 @@ public class SqliteLedger implements Ledger {
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
+    public long saveFollowerSubscriptionInStorage(ZonedDateTime expiresAt, long environmentId) {return 0;}
+
+    @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
         return null;
     }

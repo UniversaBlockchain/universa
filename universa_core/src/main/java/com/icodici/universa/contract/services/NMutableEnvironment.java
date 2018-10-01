@@ -66,11 +66,20 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
 
     @Override
     public void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt) {
-        NContractStorageSubscription sub = (NContractStorageSubscription) subscription;
-        sub.setExpiresAt(expiresAt);
-        //existing subscription
-        if(sub.getId() != 0) {
-            subscriptionsToSave.add((NContractStorageSubscription) subscription);
+        if (subscription instanceof NContractStorageSubscription) {
+            NContractStorageSubscription sub = (NContractStorageSubscription) subscription;
+            sub.setExpiresAt(expiresAt);
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsToSave.add(sub);
+        } else if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.setExpiresAt(expiresAt);
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
         }
     }
 
@@ -110,8 +119,12 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());
 
         subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
+        subscriptionsFollowerToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
 
         subscriptionsToSave.forEach(sub-> {
+            ledger.updateSubscriptionInStorage(sub.getId(),sub.expiresAt());
+        });
+        subscriptionsFollowerToSave.forEach(sub-> {
             ledger.updateSubscriptionInStorage(sub.getId(),sub.expiresAt());
         });
 
@@ -119,6 +132,11 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                     long storageId = ledger.saveContractInStorage(sub.getContract().getId(), sub.getPackedContract(), sub.getContract().getExpiresAt(), sub.getContract().getOrigin());
                     sub.setContractStorageId(storageId);
                     long subId = ledger.saveSubscriptionInStorage(storageId, sub.expiresAt(), getId());
+                    sub.setId(subId);
+                }
+        );
+        subscriptionsFollowerToAdd.forEach(sub -> {
+                    long subId = ledger.saveFollowerSubscriptionInStorage(sub.expiresAt(), getId());
                     sub.setId(subId);
                 }
         );

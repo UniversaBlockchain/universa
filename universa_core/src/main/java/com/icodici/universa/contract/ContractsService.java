@@ -1077,6 +1077,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link SlotContract} contract with need permissions and values. {@link SlotContract} is
      * used for control and for payment for store some contracts in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link SlotContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special slot
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link SlotContract#putTrackingContract(Contract)}
@@ -1140,6 +1141,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link UnsContract#addUnsName(UnsName)}
@@ -1203,6 +1205,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
@@ -1280,6 +1283,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
@@ -1356,6 +1360,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link FollowerContract} contract with need permissions and values. {@link FollowerContract} is
      * used for control and for payment for follow new revisions from some contract chains by origin.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link FollowerContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special follower
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link FollowerContract#putTrackingOrigin(HashId, String, PublicKey)}

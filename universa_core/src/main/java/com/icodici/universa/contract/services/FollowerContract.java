@@ -34,9 +34,14 @@ import java.util.stream.Collectors;
  */
 public class FollowerContract extends NSmartContract {
 
-    public static final String PREPAID_CALLBACKS_FIELD_NAME = "prepaid_callbacks";
+    public static final String PREPAID_OD_FIELD_NAME = "prepaid_OD";
+    public static final String PREPAID_FROM_TIME_FIELD_NAME = "prepaid_from";
+    public static final String FOLLOWED_ORIGINS_FIELD_NAME = "followed_origins";
+    public static final String SPENT_OD_FIELD_NAME = "spent_OD";
+    public static final String SPENT_OD_TIME_FIELD_NAME = "spent_OD_time";
     public static final String TRACKING_ORIGINS_FIELD_NAME = "tracking_origins";
     public static final String CALLBACK_KEYS_FIELD_NAME = "callback_keys";
+    public static final String PREPAID_CALLBACKS_FIELD_NAME = "prepaid_callbacks";
 
     private Map<HashId, String> trackingOrigins = new HashMap<>();
     private Map<String, PublicKey> callbackKeys = new HashMap<>();
@@ -45,6 +50,20 @@ public class FollowerContract extends NSmartContract {
     private int paidU = 0;
     // All callbacks prepaid from first revision (sum of all paidU, converted to callbacks)
     private int prepaidCallbacks = 0;
+    // All OD (origins*days) prepaid from first revision (sum of all paidU, converted to OD)
+    private double prepaidOriginDays = 0;
+    // Time of first payment
+    private ZonedDateTime prepaidFrom = null;
+    // Followed origins for previous revision. Use for calculate spent ODs
+    private long storedEarlyOrigins = 0;
+    // Spent ODs for previous revision
+    private double spentEarlyODs = 0;
+    // Time of spent OD's calculation for previous revision
+    private ZonedDateTime spentEarlyODsTime = null;
+    // Spent ODs for current revision
+    private double spentODs = 0;
+    // Time of spent OD's calculation for current revision
+    private ZonedDateTime spentODsTime = null;
 
     /**
      * Follower contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
@@ -60,7 +79,6 @@ public class FollowerContract extends NSmartContract {
      * <br><br>
      * Create a default empty new follower contract using a provided key as issuer and owner and sealer. Will set
      * follower's specific permissions and values.
-     * Default expiration is set to 5 years.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
@@ -127,6 +145,11 @@ public class FollowerContract extends NSmartContract {
             fieldsMap.put("action", null);
             fieldsMap.put("/expires_at", null);
             fieldsMap.put(PAID_U_FIELD_NAME, null);
+            fieldsMap.put(PREPAID_OD_FIELD_NAME, null);
+            fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
+            fieldsMap.put(FOLLOWED_ORIGINS_FIELD_NAME, null);
+            fieldsMap.put(SPENT_OD_FIELD_NAME, null);
+            fieldsMap.put(SPENT_OD_TIME_FIELD_NAME, null);
             fieldsMap.put(PREPAID_CALLBACKS_FIELD_NAME, null);
             fieldsMap.put(TRACKING_ORIGINS_FIELD_NAME, null);
             fieldsMap.put(CALLBACK_KEYS_FIELD_NAME, null);

@@ -66,7 +66,7 @@ public class SlotContract extends NSmartContract {
     private double spentEarlyKDs = 0;
     // Time of spent KD's calculation for previous revision
     private ZonedDateTime spentEarlyKDsTime = null;
-    // Spent KDs for current revious revision
+    // Spent KDs for current revision
     private double spentKDs = 0;
     // Time of spent KD's calculation for current revision
     private ZonedDateTime spentKDsTime = null;
@@ -89,7 +89,6 @@ public class SlotContract extends NSmartContract {
      * <br><br>
      * Create a default empty new slot contract using a provided key as issuer and owner and sealer. Will set slot's specific
      * permissions and values.
-     * Default expiration is set to 5 years.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
