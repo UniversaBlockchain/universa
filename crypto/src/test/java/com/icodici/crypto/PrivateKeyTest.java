@@ -12,6 +12,9 @@ import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
@@ -95,6 +98,28 @@ public class PrivateKeyTest {
         assertEquals(PrivateKey.unpackWithPassword(packed,UUID.randomUUID().toString()),key);
 
         assertEquals(PrivateKey.unpackWithPassword(packedWithPassword,password),key);
+    }
+
+    @Test
+    public void concurrencyTest() throws Exception {
+        PrivateKey privateKey = new PrivateKey(2048);
+        PublicKey publicKey = privateKey.getPublicKey();
+        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128);
+        AtomicInteger errorsCount = new AtomicInteger(0);
+        for (int i = 0; i < 100000; ++i) {
+            executorService.submit(() -> {
+                try {
+                    byte[] data = Bytes.random(128).getData();
+                    byte[] encrypted = publicKey.encrypt(data);
+                    byte[] decrypted = privateKey.decrypt(encrypted);
+                    assertArrayEquals(data, decrypted);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    errorsCount.incrementAndGet();
+                }
+            });
+        }
+        assertEquals(0, errorsCount.get());
     }
 
     static String plainText = "FUBAR means Fucked Up Beyoud All Recognition";
