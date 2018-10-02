@@ -524,6 +524,7 @@ public class CLIMain {
                         .ofType(String.class)
                         .describedAs("address");
                 accepts("id", "extract ID from a packed contract").withRequiredArg().ofType(String.class).describedAs("packed contract");
+                accepts("hash", "get HashId of a file").withRequiredArg().ofType(String.class).describedAs("file");
 
 //                acceptsAll(asList("ie"), "Test - delete.")
 //                        .withRequiredArg().ofType(String.class)
@@ -596,6 +597,10 @@ public class CLIMain {
             }
             if(options.has("id")) {
                 doShowId();
+            }
+
+            if(options.has("hash")) {
+                doShowHash();
             }
 
             if(options.has("probe-file")) {
@@ -1436,11 +1441,15 @@ public class CLIMain {
         }
         String acceptableContract = acceptableContractId == null ? null : wallet.uPathes.get(acceptableContractId);
 
-
-        System.out.println("U contract is " + (acceptableContract == null ? "not" : "") + " found in UUTN wallet" + (acceptableContract == null ? "!" : ": " + acceptableContract));
-        System.out.println("Checking status...");
-        if(getClientNetwork().check(wallet.us.get(acceptableContractId).getId()).state != ItemState.APPROVED) {
-            return getUFromWallet(fixUUTNWallet(wallet.path),amount,isTest);
+        if(acceptableContract == null) {
+            addError(Errors.NOT_FOUND.name(),"U contract", "U contract is not found in UUTN wallet.");
+            return null;
+        } else {
+            System.out.println("U contract is found in UUTN wallet: " + acceptableContract);
+            System.out.println("Checking status...");
+            if(getClientNetwork().check(wallet.us.get(acceptableContractId).getId()).state != ItemState.APPROVED) {
+                return getUFromWallet(fixUUTNWallet(wallet.path),amount,isTest);
+            }
         }
 
         return wallet.path + File.separator + acceptableContract;
@@ -1843,6 +1852,13 @@ public class CLIMain {
         String contractFile = (String) options.valueOf("id");
         Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
         reporter.message(c.getId().toBase64String());
+        finish();
+    }
+
+
+    private static void doShowHash() throws Exception {
+        String file = (String) options.valueOf("hash");
+        reporter.message(HashId.of(Files.readAllBytes(Paths.get(file))).toBase64String());
         finish();
     }
 
