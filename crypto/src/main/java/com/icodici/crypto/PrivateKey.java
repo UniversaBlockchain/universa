@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Basic private key used in the system. At the moment it is long RSA key ad probably more strong
@@ -51,8 +52,8 @@ public class PrivateKey extends AbstractKey {
             // e, p, q: private key
             try {
                 Binder pp = new Binder("e", ((Bytes) parts.get(1)).toArray(),
-                                       "p", ((Bytes) parts.get(2)).toArray(),
-                                       "q", ((Bytes) parts.get(3)).toArray());
+                        "p", ((Bytes) parts.get(2)).toArray(),
+                        "q", ((Bytes) parts.get(3)).toArray());
                 privateKey.updateFromHash(pp);
             } catch (Exception error) {
                 error.printStackTrace();
@@ -72,23 +73,44 @@ public class PrivateKey extends AbstractKey {
     /**
      * Used to load stored keys, see {@link net.sergeych.tools.Bindable} in {@link
      * AbstractKey}.
-     *
+     * <p>
      * Never use it directly.
      */
     public PrivateKey() {
     }
 
 
+    private AtomicBoolean inUse = new AtomicBoolean();
+    private PrivateKey copy = null;
+    private Object copyMutex = new Object();
+
     @Override
     public byte[] decrypt(final byte[] encrypted) throws EncryptionError {
-        return privateKey.decrypt(encrypted);
+        // mini-pooling of keys for parallel processing:
+        if (inUse.getAndSet(true)) {
+            // our copy is in use - create a copy for later use
+            synchronized (copyMutex) {
+                // we lock only to create a copy
+                if (copy == null)
+                    copy = new PrivateKey(pack());
+            }
+            // now the copy will do the same: encrypt or create a copy...
+            return copy.decrypt(encrypted);
+        } else {
+            try {
+                return privateKey.decrypt(encrypted);
+            }
+            finally {
+                inUse.set(false);
+            }
+        }
     }
 
     private PublicKey cachedPublicKey;
 
     public PublicKey getPublicKey() {
-        if( cachedPublicKey == null )
-           cachedPublicKey = new PublicKey(privateKey.getPublicKey());
+        if (cachedPublicKey == null)
+            cachedPublicKey = new PublicKey(privateKey.getPublicKey());
         return cachedPublicKey;
     }
 
@@ -201,9 +223,9 @@ public class PrivateKey extends AbstractKey {
 
     public static PrivateKey unpackWithPassword(byte[] packedBinary, String password) throws EncryptionError {
         List params = Boss.load(packedBinary);
-        if((Integer) params.get(0) == 0) {
+        if ((Integer) params.get(0) == 0) {
             return new PrivateKey(packedBinary);
-        } else if((Integer) params.get(0) == 1) {
+        } else if ((Integer) params.get(0) == 1) {
             try {
                 int rounds = (int) params.get(1);
                 Bytes salt = (Bytes) params.get(2);
@@ -215,16 +237,16 @@ public class PrivateKey extends AbstractKey {
                 byte[] packedKey = key.decrypt(packedEncryptedKey.getData());
                 byte[] resDigest = new Crc32().update(packedKey).digest();
 
-                if(!digest.equals(new Bytes(resDigest))) {
+                if (!digest.equals(new Bytes(resDigest))) {
                     throw new PasswordProtectedException("wrong password");
                 }
 
                 return new PrivateKey(packedKey);
             } catch (Exception e) {
-                if(e instanceof PasswordProtectedException)
+                if (e instanceof PasswordProtectedException)
                     throw e;
 
-                throw new EncryptionError("failed to parse password protected private key",e);
+                throw new EncryptionError("failed to parse password protected private key", e);
             }
 
         } else {

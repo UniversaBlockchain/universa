@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by sergeych on 02/12/16.
@@ -96,13 +97,36 @@ public class PublicKey extends AbstractKey {
         cachedHint = null;
     }
 
+    private AtomicBoolean inUse = new AtomicBoolean();
+    private PublicKey copy = null;
+    private Object copyMutex = new Object();
+
+    @Override
+    public byte[] encrypt(final byte[] bytes) throws EncryptionError {
+        if (inUse.getAndSet(true)) {
+            // our copy is in use
+            synchronized (copyMutex) {
+                if (copy == null)
+                    copy = new PublicKey(pack());
+            }
+            return copy.encrypt(bytes);
+        } else {
+            try {
+                return publicKey.encrypt(bytes);
+            }
+            finally {
+                inUse.set(false);
+            }
+        }
+    }
+
     public byte[] encrypt(String plainText) throws EncryptionError {
         return encrypt(plainText.getBytes(Ut.utf8));
     }
 
-    public byte[] encrypt(byte[] bytes) throws EncryptionError {
-        return publicKey.encrypt(bytes);
-    }
+//    public byte[] encrypt(byte[] bytes) throws EncryptionError {
+//        return publicKey.encrypt(bytes);
+//    }
 
     public byte[] pack() {
         Map<String, Object> params = publicKey.toHash();
