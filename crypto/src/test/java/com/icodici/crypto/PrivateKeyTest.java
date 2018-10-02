@@ -14,6 +14,7 @@ import org.junit.Test;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
@@ -106,7 +107,7 @@ public class PrivateKeyTest {
         PublicKey publicKey = privateKey.getPublicKey();
         ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128);
         AtomicInteger errorsCount = new AtomicInteger(0);
-        for (int i = 0; i < 100000; ++i) {
+        for (int i = 0; i < 10000; ++i) {
             executorService.submit(() -> {
                 try {
                     byte[] data = Bytes.random(128).getData();
@@ -119,6 +120,8 @@ public class PrivateKeyTest {
                 }
             });
         }
+        executorService.shutdown();
+        executorService.awaitTermination(120, TimeUnit.SECONDS);
         assertEquals(0, errorsCount.get());
     }
 
