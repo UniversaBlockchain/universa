@@ -125,6 +125,54 @@ public class PrivateKeyTest {
         assertEquals(0, errorsCount.get());
     }
 
+    @Test
+    public void concurrencyTestSignatures() throws Exception {
+        PrivateKey privateKey = new PrivateKey(2048);
+        PublicKey publicKey = privateKey.getPublicKey();
+        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128);
+        AtomicInteger errorsCount = new AtomicInteger(0);
+        for (int i = 0; i < 10000; ++i) {
+            executorService.submit(() -> {
+                try {
+                    byte[] data = Bytes.random(128).getData();
+                    byte[] signature = privateKey.sign(data, HashType.SHA512);
+                    if(!publicKey.verify(data,signature,HashType.SHA512)) {
+                        errorsCount.incrementAndGet();
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    errorsCount.incrementAndGet();
+                }
+            });
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(120, TimeUnit.SECONDS);
+        assertEquals(0, errorsCount.get());
+
+        executorService = new ScheduledThreadPoolExecutor(128);
+        for (int i = 0; i < 10000; ++i) {
+            executorService.submit(() -> {
+                try {
+                    byte[] data = Bytes.random(128).getData();
+                    byte[] signature = privateKey.sign(data, HashType.SHA3_384);
+                    if(!publicKey.verify(data,signature,HashType.SHA3_384)) {
+                        errorsCount.incrementAndGet();
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    errorsCount.incrementAndGet();
+                }
+            });
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(120, TimeUnit.SECONDS);
+        assertEquals(0, errorsCount.get());
+    }
+
+
+
     static String plainText = "FUBAR means Fucked Up Beyoud All Recognition";
 
     static String encrypted64 =

@@ -19,16 +19,12 @@ import org.junit.Test;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class ExtendedSignatureTest extends TestCase{
 
@@ -152,5 +148,32 @@ public class ExtendedSignatureTest extends TestCase{
         for(Future<?> f: all)
             f.get();
         return (System.nanoTime() - t) * 1e-9;
+    }
+
+
+    @Test
+    public void concurrencyTest() throws Exception {
+        PrivateKey privateKey = new PrivateKey(2048);
+        PublicKey publicKey = privateKey.getPublicKey();
+        ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(256);
+        AtomicInteger errorsCount = new AtomicInteger(0);
+        for (int i = 0; i < 10000; ++i) {
+            executorService.submit(() -> {
+                try {
+
+                    byte[] data = Bytes.random(128).getData();
+                    byte[] signature = ExtendedSignature.sign(privateKey,data);
+                    if(ExtendedSignature.verify(publicKey,signature,data) == null) {
+                        errorsCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    errorsCount.incrementAndGet();
+                }
+            });
+        }
+        executorService.shutdown();
+        executorService.awaitTermination(120, TimeUnit.SECONDS);
+        assertEquals(0, errorsCount.get());
     }
 }
