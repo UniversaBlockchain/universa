@@ -119,13 +119,13 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());
 
         subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
-        subscriptionsFollowerToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
+        subscriptionsFollowerToDestroy.forEach(sub -> ledger.removeEnvironmentFollowerSubscription(sub.getId()));
 
         subscriptionsToSave.forEach(sub-> {
             ledger.updateSubscriptionInStorage(sub.getId(),sub.expiresAt());
         });
         subscriptionsFollowerToSave.forEach(sub-> {
-            ledger.updateSubscriptionInStorage(sub.getId(),sub.expiresAt());
+            ledger.updateFollowerSubscriptionInStorage(sub.getId(),sub.expiresAt());
         });
 
         subscriptionsToAdd.forEach(sub -> {
@@ -136,7 +136,7 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                 }
         );
         subscriptionsFollowerToAdd.forEach(sub -> {
-                    long subId = ledger.saveFollowerSubscriptionInStorage(sub.expiresAt(), getId());
+                    long subId = ledger.saveFollowerSubscriptionInStorage(sub.getOrigin(), sub.expiresAt(), getId());
                     sub.setId(subId);
                 }
         );

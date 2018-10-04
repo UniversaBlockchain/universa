@@ -13733,7 +13733,7 @@ public class BaseNetworkTest extends TestCase {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), paymentContract, 1, 200, stepaPrivateKeys, false);
 
         followerContract.check();
         followerContract.traceErrors();
@@ -13741,7 +13741,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidCallbacks(), 0.1);
+        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 / config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback"), followerContract.getPrepaidCallbacks(), 0.1);
 
 //        for(Node n : nodes) {
 //            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -13754,13 +13755,13 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
 
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+
         ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-
-        // check payment and payload contracts
-        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
 
         /*assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());

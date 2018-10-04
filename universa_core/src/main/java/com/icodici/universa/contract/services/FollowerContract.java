@@ -41,15 +41,12 @@ public class FollowerContract extends NSmartContract {
     public static final String SPENT_OD_TIME_FIELD_NAME = "spent_OD_time";
     public static final String TRACKING_ORIGINS_FIELD_NAME = "tracking_origins";
     public static final String CALLBACK_KEYS_FIELD_NAME = "callback_keys";
-    public static final String PREPAID_CALLBACKS_FIELD_NAME = "prepaid_callbacks";
 
     private Map<HashId, String> trackingOrigins = new HashMap<>();
     private Map<String, PublicKey> callbackKeys = new HashMap<>();
 
     // Calculate U paid with las revision of slot
     private int paidU = 0;
-    // All callbacks prepaid from first revision (sum of all paidU, converted to callbacks)
-    private int prepaidCallbacks = 0;
     // All OD (origins*days) prepaid from first revision (sum of all paidU, converted to OD)
     private double prepaidOriginDays = 0;
     // Time of first payment
@@ -150,7 +147,6 @@ public class FollowerContract extends NSmartContract {
             fieldsMap.put(FOLLOWED_ORIGINS_FIELD_NAME, null);
             fieldsMap.put(SPENT_OD_FIELD_NAME, null);
             fieldsMap.put(SPENT_OD_TIME_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_CALLBACKS_FIELD_NAME, null);
             fieldsMap.put(TRACKING_ORIGINS_FIELD_NAME, null);
             fieldsMap.put(CALLBACK_KEYS_FIELD_NAME, null);
                Binder modifyDataParams = Binder.of("fields", fieldsMap);
@@ -258,36 +254,61 @@ public class FollowerContract extends NSmartContract {
 
     /**
      * It is private method that looking for U contract in the new items of this follower contract. Then calculates
-     * new payment, looking for already paid, summize it and calculate new prepaid number of callbacks, that sets to
-     * {@link FollowerContract#calculatePrepaidCallbacks}.
+     * new payment, looking for already paid, summize it and calculate new prepaid period for storing, that sets to
+     * {@link FollowerContract#prepaidOriginDays}. This field is measured in the origins*days, means how many origins
+     * can follow for how many days.
      * But if withSaveToState param is false, calculated value
      * do not saving to state. It is useful for checking set state.data values.
      * @param withSaveToState if true, calculated values is saving to  state.data
-     * @return calculated {@link FollowerContract#calculatePrepaidCallbacks}.
+     * @return calculated {@link FollowerContract#calculatePrepaidOriginDays}.
      */
-    private double calculatePrepaidCallbacks(boolean withSaveToState) {
+    private double calculatePrepaidOriginDays(boolean withSaveToState) {
 
         paidU = getPaidU();
 
         // then looking for prepaid early U that can be find at the stat.data
-        // additionally we looking for and calculate callbacks of payment fillings and some other data
-        int wasPrepaidCallbacks;
+        // additionally we looking for and calculate times of payment fillings and some other data
+        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        double wasPrepaidOriginDays;
+        long wasPrepaidFrom = now.toEpochSecond();
+        long spentEarlyODsTimeSecs = now.toEpochSecond();
         Contract parentContract = getRevokingItem(getParent());
-        if(parentContract != null)
-            wasPrepaidCallbacks = parentContract.getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
-        else
-            wasPrepaidCallbacks = 0;
+        if(parentContract != null) {
+            wasPrepaidOriginDays = parentContract.getStateData().getDouble(PREPAID_OD_FIELD_NAME);
+            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
+            storedEarlyOrigins = parentContract.getStateData().getLong(FOLLOWED_ORIGINS_FIELD_NAME, 0);
+            spentEarlyODs = parentContract.getStateData().getDouble(SPENT_OD_FIELD_NAME);
+            spentEarlyODsTimeSecs = parentContract.getStateData().getLong(SPENT_OD_TIME_FIELD_NAME, now.toEpochSecond());
+        } else {
+            wasPrepaidOriginDays = 0;
+        }
 
-        prepaidCallbacks = (int) Math.floor(wasPrepaidCallbacks + paidU * getRate());
+        spentEarlyODsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyODsTimeSecs), ZoneId.systemDefault());
+        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
+        prepaidOriginDays = wasPrepaidOriginDays + paidU * getRate();
+
+        spentODsTime = now;
 
         // if true we save it to stat.data
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
 
-            getStateData().set(PREPAID_CALLBACKS_FIELD_NAME, prepaidCallbacks);
+            getStateData().set(PREPAID_OD_FIELD_NAME, prepaidOriginDays);
+            if(getRevision() == 1) {
+                getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
+            }
+
+            getStateData().set(FOLLOWED_ORIGINS_FIELD_NAME, trackingOrigins.size());
+
+            long spentSeconds = (spentODsTime.toEpochSecond() - spentEarlyODsTime.toEpochSecond());
+            double spentDays = (double) spentSeconds / (3600 * 24);
+            spentODs = spentEarlyODs + spentDays * storedEarlyOrigins;
+
+            getStateData().set(SPENT_OD_FIELD_NAME, spentODs);
+            getStateData().set(SPENT_OD_TIME_FIELD_NAME, spentODsTime.toEpochSecond());
         }
 
-        return prepaidCallbacks;
+        return prepaidOriginDays;
     }
 
     /**
@@ -300,8 +321,8 @@ public class FollowerContract extends NSmartContract {
      */
     private void updateSubscriptions(MutableEnvironment me) {
 
-        // recalculate prepaid callbacks without saving to state to get valid storing data
-        calculatePrepaidCallbacks(false);
+        // recalculate prepaid origins*days without saving to state to get valid storing data
+        calculatePrepaidOriginDays(false);
 
         Set<HashId> newOrigins = trackingOrigins.keySet();
 
@@ -324,10 +345,17 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
+     * @return calculated prepaid origins*days for all time, from first revision
+     */
+    public double getPrepaidOriginsForDays() {
+        return prepaidOriginDays;
+    }
+
+    /**
      * @return calculated prepaid callbacks for all time, from first revision
      */
     public int getPrepaidCallbacks() {
-        return prepaidCallbacks;
+        return (int) Math.floor(calculatePrepaidOriginDays(false) / (getRate() * getRate("callback")));
     }
 
     @Override
@@ -336,7 +364,7 @@ public class FollowerContract extends NSmartContract {
      */
     public byte[] seal() {
         saveTrackingOriginsToState();
-        calculatePrepaidCallbacks(true);
+        calculatePrepaidOriginDays(true);
 
         return super.seal();
     }
@@ -380,8 +408,12 @@ public class FollowerContract extends NSmartContract {
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
 
-        // extract saved prepaid callbacks value
-        prepaidCallbacks = getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
+        // extract saved prepaid OD (origins*days) value
+        prepaidOriginDays = getStateData().getInt(PREPAID_OD_FIELD_NAME, 0);
+
+        // and extract time when first time payment was
+        long prepaidFromSeconds = getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
+        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
 
         // extract tracking origins nad callbacks data
         Binder trackingOriginsAsBase64 = getStateData().getBinder(TRACKING_ORIGINS_FIELD_NAME);
@@ -410,8 +442,8 @@ public class FollowerContract extends NSmartContract {
 
         boolean checkResult = true;
 
-        // recalculate prepaid callbacks without saving to state to get valid storing data
-        calculatePrepaidCallbacks(false);
+        // recalculate prepaid origins*days without saving to state to get valid storing data
+        calculatePrepaidOriginDays(false);
 
         int paidU = getPaidU();
         if(paidU == 0) {
@@ -430,9 +462,9 @@ public class FollowerContract extends NSmartContract {
         }
 
         // check that payment was not hacked
-        checkResult = prepaidCallbacks == getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
+        checkResult = prepaidOriginDays == getStateData().getInt(PREPAID_OD_FIELD_NAME, 0);
         if(!checkResult) {
-            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_CALLBACKS_FIELD_NAME + "] value. " +
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_OD_FIELD_NAME + "] value. " +
                     "Should be sum of early paid U and paid U by current revision.");
             return checkResult;
         }
@@ -447,13 +479,13 @@ public class FollowerContract extends NSmartContract {
     public boolean beforeUpdate(ImmutableEnvironment c) {
         boolean checkResult = false;
 
-        // recalculate prepaid callbacks without saving to state to get valid storing data
-        calculatePrepaidCallbacks(false);
+        // recalculate prepaid origins*days without saving to state to get valid storing data
+        calculatePrepaidOriginDays(false);
 
         // check that payment was not hacked
-        checkResult = prepaidCallbacks == getStateData().getInt(PREPAID_CALLBACKS_FIELD_NAME, 0);
+        checkResult = prepaidOriginDays == getStateData().getInt(PREPAID_OD_FIELD_NAME, 0);
         if(!checkResult) {
-            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_CALLBACKS_FIELD_NAME + "] value. " +
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_OD_FIELD_NAME + "] value. " +
                     "Should be sum of early paid U and paid U by current revision.");
             return checkResult;
         }

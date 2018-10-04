@@ -194,6 +194,9 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt) {}
+
+    @Override
     public void updateNameRecord(long id, ZonedDateTime expiresAt) {
 
     }
@@ -372,6 +375,9 @@ public class SqliteLedger implements Ledger {
     public List<Long> clearExpiredStorageSubscriptions() {return null;}
 
     @Override
+    public void clearExpiredFollowerSubscriptions() {}
+
+    @Override
     public void clearExpiredStorageContracts() {}
 
 
@@ -382,16 +388,21 @@ public class SqliteLedger implements Ledger {
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
-    public long saveFollowerSubscriptionInStorage(ZonedDateTime expiresAt, long environmentId) {return 0;}
+    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
         return null;
     }
 
+    @Override
+    public Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin) {
+        return null;
+    }
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}
+
 
     @Override
     public byte[] getContractInStorage(HashId slotId, HashId contractId) {return null;}
@@ -401,6 +412,8 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {}
+    @Override
+    public void removeEnvironmentFollowerSubscription(long subscriptionId) {}
 
     @Override
     public long removeEnvironment(HashId ncontractHashId) {return 0;}

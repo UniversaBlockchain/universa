@@ -158,6 +158,7 @@ public interface Ledger {
     boolean isTestnet(HashId itemId);
 
     void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
+    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt);
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 
@@ -211,12 +212,14 @@ public interface Ledger {
 
 
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
-    long saveFollowerSubscriptionInStorage(ZonedDateTime expiresAt, long environmentId);
-
+    long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, long environmentId);
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
+    Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);
 
     List<Long> clearExpiredStorageSubscriptions();
+    void clearExpiredFollowerSubscriptions();
+
     void clearExpiredStorageContracts();
 
     byte[] getSlotContractBySlotId(HashId slotId);
@@ -225,6 +228,7 @@ public interface Ledger {
     List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId);
 
     void removeEnvironmentSubscription(long subscriptionId);
+    void removeEnvironmentFollowerSubscription(long subscriptionId);
     long removeEnvironment(HashId ncontractHashId);
     void removeExpiredStorageSubscriptionsCascade();
 

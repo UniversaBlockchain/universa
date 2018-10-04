@@ -271,6 +271,10 @@ public class NSmartContract extends Contract implements NContract {
         return nodeInfoProvider.getRate(getExtendedType());
     }
 
+    protected double getRate(String key) {
+        return nodeInfoProvider.getRate(getExtendedType() + ":" + key);
+    }
+
     protected Collection<PublicKey> getAdditionalKeysToSignWith() {
         return nodeInfoProvider.getAdditionalKeysToSignWith(getExtendedType());
     }
