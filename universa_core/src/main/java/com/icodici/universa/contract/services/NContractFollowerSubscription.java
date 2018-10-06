@@ -19,9 +19,11 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
 
     private long id = 0;
     private long environmentId = 0;
-    private ZonedDateTime expiresAt = ZonedDateTime.now().plusYears(5);
+    private ZonedDateTime expiresAt = ZonedDateTime.now().plusMonths(1);
+    private ZonedDateTime mutedAt = ZonedDateTime.now().plusMonths(1);
     private boolean isReceiveEvents = false;
     private HashId origin;
+    private int callbacks = 0;
 
     public NContractFollowerSubscription() {
 
@@ -41,9 +43,15 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     public ZonedDateTime expiresAt() {
         return expiresAt;
     }
+    public ZonedDateTime mutedAt() {
+        return mutedAt;
+    }
 
     public void setExpiresAt(ZonedDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+    public void setMutedAt(ZonedDateTime mutedAt) {
+        this.mutedAt = mutedAt;
     }
 
     public void setId(long value) {
@@ -51,6 +59,13 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     }
     public long getId() {
         return id;
+    }
+
+    public void insreaseCallbacks() {
+        callbacks++;
+    }
+    public int getCallbacks() {
+        return callbacks;
     }
 
     @Override

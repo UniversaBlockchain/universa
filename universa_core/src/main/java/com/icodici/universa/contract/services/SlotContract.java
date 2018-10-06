@@ -317,24 +317,23 @@ public class SlotContract extends NSmartContract {
 
         spentKDsTime = now;
 
+        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
+
         // if true we save it to stat.data
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
 
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
-            if(getRevision() == 1) {
+            if(getRevision() == 1)
                 getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
-            }
 
             int storingBytes = 0;
-            for(byte[] p : packedTrackingContracts) {
+            for(byte[] p : packedTrackingContracts)
                 storingBytes += p.length;
-            }
-            getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
-            long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
-            double spentDays = (double) spentSeconds / (3600 * 24);
-            spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
+            getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
             getStateData().set(SPENT_KD_FIELD_NAME, spentKDs);
             getStateData().set(SPENT_KD_TIME_FIELD_NAME, spentKDsTime.toEpochSecond());

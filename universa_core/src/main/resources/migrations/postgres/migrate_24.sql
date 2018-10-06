@@ -1,8 +1,9 @@
 create table follower_subscription(
     id bigserial primary key,
     origin bytea not null,
-    expires_at bigint not null,
     environment_id bigint not null,
+    expires_at bigint not null,
+    muted_at bigint not null,
     callbacks int
 );
 

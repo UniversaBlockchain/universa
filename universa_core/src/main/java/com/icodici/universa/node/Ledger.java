@@ -158,7 +158,8 @@ public interface Ledger {
     boolean isTestnet(HashId itemId);
 
     void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
-    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt);
+    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks);
+    void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt);
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 
@@ -212,7 +213,7 @@ public interface Ledger {
 
 
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
-    long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, long environmentId);
+    long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId);
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
     Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);

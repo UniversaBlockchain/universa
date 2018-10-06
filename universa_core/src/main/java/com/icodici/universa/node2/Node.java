@@ -2507,6 +2507,7 @@ public class Node {
 
                                 // update new item's smart contracts link to
                                 notifyStorageSubscribers(newItem, r.getState());
+                                notifyFollowerSubscribers(newItem);
 
                                 synchronized (cache) {
                                     ItemResult rr = new ItemResult(r);
@@ -2634,6 +2635,7 @@ public class Node {
 
                         // update item's smart contracts link to
                         notifyStorageSubscribers(item, getState());
+                        notifyFollowerSubscribers(item);
 
                     } catch (Exception ex) {
                         System.err.println(myInfo);
@@ -2753,6 +2755,68 @@ public class Node {
                                 //me.destroySubscription(subscription);
                                 me.save();
                             }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println(myInfo);
+                ex.printStackTrace();
+            }
+        }
+
+        /**
+         * Method looking for item's follower subscriptions and if it exist fire events
+         * @param updatingItem is item that processing
+         */
+        private void notifyFollowerSubscribers(Approvable updatingItem) {
+            try {
+                HashId origin = null;
+
+                // we are looking for updatingItem's follower subscriptions by origin
+                if (updatingItem instanceof Contract)
+                    origin = ((Contract) updatingItem).getOrigin();
+
+                if (origin != null) {
+                    // find all enviroments that have follower subscription for item
+                    Set<Long> enviromentIdsForContractId = ledger.getFollowerSubscriptionEnviromentIdsForOrigin(origin);
+                    for (Long environmentId : enviromentIdsForContractId) {
+                        NImmutableEnvironment ime = getEnvironment(environmentId);
+                        ime.setNameCache(nameCache);
+                        NSmartContract contract = ime.getContract();
+                        contract.setNodeInfoProvider(nodeInfoProvider);
+                        NMutableEnvironment me = ime.getMutable();
+                        NContractFollowerSubscription subscription = null;
+                        for(ContractSubscription sub : ime.followerSubscriptions() ) {
+                            if(sub.getOrigin().equals(origin)) {
+                                subscription = (NContractFollowerSubscription) sub;
+                                break;
+                            }
+                        }
+
+                        NContractFollowerSubscription finalSubscription = subscription;
+                        if (subscription != null) {
+                            contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
+                                @Override
+                                public Contract getNewRevision() {
+                                    return (Contract) updatingItem;
+                                }
+
+                                @Override
+                                public byte[] getPackedTransaction() {
+                                    return ((Contract) updatingItem).getPackedTransaction();
+                                }
+
+                                @Override
+                                public MutableEnvironment getEnvironment() {
+                                    return me;
+                                }
+
+                                @Override
+                                public ContractSubscription getSubscription() {
+                                    return finalSubscription;
+                                }
+                            });
+                            me.save();
                         }
                     }
                 }

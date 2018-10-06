@@ -1033,25 +1033,49 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt) {
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "UPDATE follower_subscription SET expires_at = ?, callbacks = ? WHERE id = ?"
+                    )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setInt(2, callbacks);
+                statement.setLong(3, subscriptionId);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateFollowerSubscriptionInStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateFollowerSubscriptionInStorage failed: " + e);
+        }
+    }
+
+    @Override
+    public void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "UPDATE follower_subscription  SET expires_at = ? WHERE id = ?"
+                                    "UPDATE follower_subscription SET muted_at = ? WHERE id = ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(1, StateRecord.unixTime(mutedAt));
                 statement.setLong(2, subscriptionId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("updateEnvironment failed: " + se);
+            throw new Failure("updateFollowerSubscriptionMitedTimeInStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("updateEnvironment failed: " + e);
+            throw new Failure("updateFollowerSubscriptionMitedTimeInStorage failed: " + e);
         }
     }
 
@@ -1262,15 +1286,16 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, long environmentId) {
+    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("INSERT INTO follower_subscription (origin,expires_at,environment_id,callbacks) VALUES(?,?,?,0) RETURNING id")
+                            db.statement("INSERT INTO follower_subscription (origin,expires_at,muted_at,environment_id,callbacks) VALUES(?,?,?,?,0) RETURNING id")
             ) {
                 statement.setBytes(1, origin.getDigest());
                 statement.setLong(2, StateRecord.unixTime(expiresAt));
-                statement.setLong(3, environmentId);
+                statement.setLong(3, StateRecord.unixTime(mutedAt));
+                statement.setLong(4, environmentId);
                 //db.updateWithStatement(statement);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -1451,8 +1476,9 @@ public class PostgresLedger implements Ledger {
     public Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin) {
         return protect(() -> {
             HashSet<Long> environmentIds = new HashSet<>();
+            long now = ZonedDateTime.now().toEpochSecond();
 
-            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM follower_subscription WHERE origin=?", origin.getDigest()))) {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM follower_subscription WHERE origin=? AND muted_at<?", origin.getDigest(), now))) {
                 if (rs == null)
                     return new HashSet<>();
                 do {

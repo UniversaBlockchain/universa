@@ -194,7 +194,9 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt) {}
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks) {}
+    @Override
+    public void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt) {}
 
     @Override
     public void updateNameRecord(long id, ZonedDateTime expiresAt) {
@@ -388,7 +390,7 @@ public class SqliteLedger implements Ledger {
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
-    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, long environmentId) {return 0;}
+    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId) {return 0;}
 
     @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
