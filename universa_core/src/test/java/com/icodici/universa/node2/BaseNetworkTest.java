@@ -8693,7 +8693,7 @@ public class BaseNetworkTest extends TestCase {
             envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
-                    NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
@@ -13965,7 +13965,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
         assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
-        assertEquals(200 / config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback"), followerContract.getPrepaidCallbacks(), 0.1);
 
 //        for(Node n : nodes) {
 //            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);

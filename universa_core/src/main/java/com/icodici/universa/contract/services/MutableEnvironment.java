@@ -41,10 +41,12 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *         origin of contracts chain
      * @param expiresAt
      *         time to expiration
+     * @param mutedAt
+     *         time to muted (not send callbacks due to insufficient payments)
      *
      * @return subscription or null if this contract is not known to the storage service
      */
-    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt);
+    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt, @NonNull ZonedDateTime mutedAt);
 
     /**
      * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.
@@ -73,4 +75,14 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void destroyNameRecord(NameRecord nameRecord);
 
 
+    double getSubscriptionCallbacksSpentODs(ContractSubscription subscription);
+    int getSubscriptionStartedCallbacks(ContractSubscription subscription);
+
+    void decreaseSubscriptionExpiresAt(ContractSubscription subscription, int decreaseSeconds);
+    void changeSubscriptionMutedAt(ContractSubscription subscription, int deltaSeconds);
+
+    void increaseCallbacksSpent(ContractSubscription subscription, double addSpent);
+
+    void increaseStartedCallbacks(ContractSubscription subscription);
+    void decreaseStartedCallbacks(ContractSubscription subscription);
 }

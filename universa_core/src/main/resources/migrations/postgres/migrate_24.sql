@@ -4,7 +4,8 @@ create table follower_subscription(
     environment_id bigint not null,
     expires_at bigint not null,
     muted_at bigint not null,
-    callbacks int
+    spent_for_callbacks double precision not null,
+    started_callbacks int not null
 );
 
 create index ix_follower_subscription_origin on follower_subscription(origin);

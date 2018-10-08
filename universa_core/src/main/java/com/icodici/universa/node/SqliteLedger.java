@@ -194,9 +194,7 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks) {}
-    @Override
-    public void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt) {}
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {}
 
     @Override
     public void updateNameRecord(long id, ZonedDateTime expiresAt) {

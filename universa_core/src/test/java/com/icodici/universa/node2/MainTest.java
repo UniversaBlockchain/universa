@@ -3281,9 +3281,16 @@ public class MainTest {
         assertTrue(sub.getContract().getId().equals(contract.getId()));
         assertEquals(sub.expiresAt().toEpochSecond(),now.toEpochSecond());
 
+        NContractFollowerSubscription subf = Boss.load(Boss.pack(new NContractFollowerSubscription(contract.getOrigin(), now, now)));
+        assertTrue(subf.getOrigin().equals(contract.getOrigin()));
+        assertEquals(subf.expiresAt().toEpochSecond(), now.toEpochSecond());
+        assertEquals(subf.mutedAt().toEpochSecond(), now.toEpochSecond());
+        assertTrue(subf.getCallbacksSpent() == 0);
+        assertTrue(subf.getStartedCallbacks() == 0);
+
         Binder kvStore = new Binder();
         kvStore.put("test","test1");
-        NImmutableEnvironment environment = new NImmutableEnvironment(smartContract,kvStore,Do.listOf(sub),Do.listOf(nnr2),null);
+        NImmutableEnvironment environment = new NImmutableEnvironment(smartContract,kvStore,Do.listOf(sub),Do.listOf(subf),Do.listOf(nnr2),null);
 
         environment = Boss.load(Boss.pack(environment));
         assertEquals(environment.get("test",null),"test1");
@@ -4261,10 +4268,10 @@ public class MainTest {
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
-        //put some envorinment for rev1
+        //put some environment for rev1
         Ledger ledger = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger();
         assertNull(ledger.getEnvironment(rev1.getId()));
-        NImmutableEnvironment environment = new NImmutableEnvironment(rev1,new Binder(),Do.listOf(),Do.listOf(),null);
+        NImmutableEnvironment environment = new NImmutableEnvironment(rev1,new Binder(),Do.listOf(),Do.listOf(),Do.listOf(),null);
         ledger.saveEnvironment(environment);
         assertNotNull(ledger.getEnvironment(rev1.getId()));
 

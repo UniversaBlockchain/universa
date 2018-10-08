@@ -68,7 +68,8 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
      * @param kvBinder map stored in the ledger
      */
     public NImmutableEnvironment(NSmartContract contract, Binder kvBinder,
-                                 Collection<ContractSubscription> subscriptions,
+                                 Collection<ContractSubscription> storageSubscriptions,
+                                 Collection<ContractSubscription> followerSubscriptions,
                                  Collection<NameRecord> nameRecords, Ledger ledger) {
         this(contract,ledger);
 
@@ -78,10 +79,13 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
             }
         }
 
-        subscriptions.forEach(sub -> {
+        storageSubscriptions.forEach(sub -> {
             if (sub instanceof NContractStorageSubscription)
                 storageSubscriptionsSet.add(sub);
-            else if (sub instanceof NContractFollowerSubscription)
+        });
+
+        followerSubscriptions.forEach(sub -> {
+            if (sub instanceof NContractFollowerSubscription)
                 followerSubscriptionsSet.add(sub);
         });
 

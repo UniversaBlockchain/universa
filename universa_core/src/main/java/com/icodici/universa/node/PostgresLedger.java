@@ -911,6 +911,42 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    private Collection<ContractSubscription> getFollowerSubscriptions(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "SELECT id, origin, expires_at, muted_at, spent_for_callbacks, started_callbacks FROM follower_subscription WHERE environment_id = ?"
+                    )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getFollowerSubscriptions failed: returning null");
+                List<ContractSubscription> res = new ArrayList<>();
+                while (rs.next()) {
+                    NContractFollowerSubscription css = new NContractFollowerSubscription(
+                            HashId.withDigest(rs.getBytes(2)),
+                            StateRecord.getTime(rs.getLong(3)),
+                            StateRecord.getTime(rs.getLong(4)),
+                            rs.getDouble(5),
+                            rs.getInt(6));
+                    css.setId(rs.getLong(1));
+                    res.add(css);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getFollowerSubscriptions failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getFollowerSubscriptions failed: " + e);
+        }
+    }
+
 
     private List<String> getReducedNames(long environmentId) {
         try (PooledDb db = dbPool.db()) {
@@ -972,6 +1008,7 @@ public class PostgresLedger implements Ledger {
             NSmartContract nSmartContract = (NSmartContract) contract;
             Binder kvBinder = Boss.unpack(smkv.get(1));
             Collection<ContractSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
+            Collection<ContractSubscription> contractFollowerSubscriptions = getFollowerSubscriptions(environmentId);
             List<String> reducedNames = getReducedNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String reducedName : reducedNames) {
@@ -979,7 +1016,8 @@ public class PostgresLedger implements Ledger {
                 //nr.setId(nrModel.id);
                 nameRecords.add(nr);
             }
-            NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder, contractStorageSubscriptions, nameRecords, this);
+            NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder,
+                    contractStorageSubscriptions, contractFollowerSubscriptions, nameRecords, this);
             nImmutableEnvironment.setId(environmentId);
             return nImmutableEnvironment;
         });
@@ -1033,17 +1071,19 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks) {
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "UPDATE follower_subscription SET expires_at = ?, callbacks = ? WHERE id = ?"
+                        "UPDATE follower_subscription SET expires_at = ?, muted_at = ?, spent_for_callbacks = ?, started_callbacks = ? WHERE id = ?"
                     )
             ) {
                 statement.setLong(1, StateRecord.unixTime(expiresAt));
-                statement.setInt(2, callbacks);
-                statement.setLong(3, subscriptionId);
+                statement.setLong(2, StateRecord.unixTime(mutedAt));
+                statement.setDouble(3, spent);
+                statement.setInt(4, startedCallbacks);
+                statement.setLong(5, subscriptionId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
             }
@@ -1053,29 +1093,6 @@ public class PostgresLedger implements Ledger {
         } catch (Exception e) {
             e.printStackTrace();
             throw new Failure("updateFollowerSubscriptionInStorage failed: " + e);
-        }
-    }
-
-    @Override
-    public void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "UPDATE follower_subscription SET muted_at = ? WHERE id = ?"
-                            )
-            ) {
-                statement.setLong(1, StateRecord.unixTime(mutedAt));
-                statement.setLong(2, subscriptionId);
-                statement.closeOnCompletion();
-                statement.executeUpdate();
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("updateFollowerSubscriptionMitedTimeInStorage failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Failure("updateFollowerSubscriptionMitedTimeInStorage failed: " + e);
         }
     }
 
@@ -1289,8 +1306,8 @@ public class PostgresLedger implements Ledger {
     public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
-                    PreparedStatement statement =
-                            db.statement("INSERT INTO follower_subscription (origin,expires_at,muted_at,environment_id,callbacks) VALUES(?,?,?,?,0) RETURNING id")
+                PreparedStatement statement =
+                    db.statement("INSERT INTO follower_subscription (origin,expires_at,muted_at,environment_id,spent_for_callbacks,started_callbacks) VALUES(?,?,?,?,0,0) RETURNING id")
             ) {
                 statement.setBytes(1, origin.getDigest());
                 statement.setLong(2, StateRecord.unixTime(expiresAt));

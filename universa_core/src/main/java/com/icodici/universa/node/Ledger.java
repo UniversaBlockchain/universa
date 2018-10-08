@@ -158,8 +158,7 @@ public interface Ledger {
     boolean isTestnet(HashId itemId);
 
     void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
-    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, int callbacks);
-    void updateFollowerSubscriptionMitedTimeInStorage(long subscriptionId, ZonedDateTime mutedAt);
+    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks);
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 

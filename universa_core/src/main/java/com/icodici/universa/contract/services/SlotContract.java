@@ -362,7 +362,7 @@ public class SlotContract extends NSmartContract {
 
         // calculate time that will be added to now as new expiring time
         // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
-        double days = (prepaidKilobytesForDays - spentKDs) * getRate() * 1024 / storingBytes;
+        double days = (prepaidKilobytesForDays - spentKDs) * 1024 / storingBytes;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
                 .plusSeconds(seconds);

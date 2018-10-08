@@ -23,15 +23,25 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     private ZonedDateTime mutedAt = ZonedDateTime.now().plusMonths(1);
     private boolean isReceiveEvents = false;
     private HashId origin;
-    private int callbacks = 0;
+    private double spent = 0;
+    private int startedCallbacks = 0;
 
     public NContractFollowerSubscription() {
 
     }
 
-    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt) {
+    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {
         this.origin = origin;
         this.expiresAt = expiresAt;
+        this.mutedAt = mutedAt;
+        this.spent = spent;
+        this.startedCallbacks = startedCallbacks;
+    }
+
+    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt) {
+        this.origin = origin;
+        this.expiresAt = expiresAt;
+        this.mutedAt = mutedAt;
     }
 
     @Override
@@ -61,12 +71,12 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
         return id;
     }
 
-    public void insreaseCallbacks() {
-        callbacks++;
-    }
-    public int getCallbacks() {
-        return callbacks;
-    }
+    public void increaseCallbacksSpent(double addSpent) { spent += addSpent; }
+    public double getCallbacksSpent() { return spent; }
+
+    public void increaseStartedCallbacks() { startedCallbacks++; }
+    public void decreaseStartedCallbacks() { startedCallbacks--; }
+    public int getStartedCallbacks() { return startedCallbacks; }
 
     @Override
     public Contract getContract() {
@@ -98,6 +108,9 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
         origin = deserializer.deserialize(data.get("origin"));
         expiresAt = data.getZonedDateTimeOrThrow("expiresAt");
+        mutedAt = data.getZonedDateTimeOrThrow("mutedAt");
+        spent = data.getDouble("spent");
+        startedCallbacks = data.getIntOrThrow("startedCallbacks");
     }
 
     @Override
@@ -105,6 +118,9 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
         Binder data = new Binder();
         data.put("origin",serializer.serialize(origin));
         data.put("expiresAt", serializer.serialize(expiresAt));
+        data.put("mutedAt", serializer.serialize(mutedAt));
+        data.put("spent", spent);
+        data.put("startedCallbacks", startedCallbacks);
         return data;
     }
 }

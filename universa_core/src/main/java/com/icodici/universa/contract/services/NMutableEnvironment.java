@@ -33,7 +33,7 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     private Set<NContractFollowerSubscription> subscriptionsFollowerToSave = new HashSet<>();
 
     public NMutableEnvironment(NImmutableEnvironment ime) {
-        super(ime.contract, ime.kvStore,ime.storageSubscriptionsSet,ime.nameRecordsSet,ime.ledger);
+        super(ime.contract, ime.kvStore, ime.storageSubscriptionsSet, ime.followerSubscriptionsSet, ime.nameRecordsSet, ime.ledger);
         setNameCache(ime.nameCache);
         setId(ime.getId());
         this.immutable = ime;
@@ -51,8 +51,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt) {
-        NContractFollowerSubscription sub = new NContractFollowerSubscription(origin, expiresAt);
+    public @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt, @NonNull ZonedDateTime mutedAt) {
+        NContractFollowerSubscription sub = new NContractFollowerSubscription(origin, expiresAt, mutedAt);
         subscriptionsFollowerToAdd.add(sub);
         return sub;
     }
@@ -114,6 +114,84 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         nameRecordsToDestroy.add((NNameRecord) nameRecord);
     }
 
+    @Override
+    public double getSubscriptionCallbacksSpentODs(ContractSubscription subscription) {
+        if (!(subscription instanceof NContractFollowerSubscription))
+            return 0;
+
+        NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+        return sub.getCallbacksSpent();
+    }
+
+    @Override
+    public int getSubscriptionStartedCallbacks(ContractSubscription subscription) {
+        if (!(subscription instanceof NContractFollowerSubscription))
+            return 0;
+
+        NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+        return sub.getStartedCallbacks();
+    }
+
+    @Override
+    public void decreaseSubscriptionExpiresAt(ContractSubscription subscription, int decreaseSeconds) {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.setExpiresAt(sub.expiresAt().minusSeconds(decreaseSeconds));
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
+    @Override
+    public void changeSubscriptionMutedAt(ContractSubscription subscription, int deltaSeconds)  {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.setMutedAt(sub.mutedAt().plusSeconds(deltaSeconds));
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
+    @Override
+    public void increaseCallbacksSpent(ContractSubscription subscription, double addSpent) {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.increaseCallbacksSpent(addSpent);
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
+    @Override
+    public void increaseStartedCallbacks(ContractSubscription subscription) {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.increaseStartedCallbacks();
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
+    @Override
+    public void decreaseStartedCallbacks(ContractSubscription subscription) {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.decreaseStartedCallbacks();
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
     public void save() {
 
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());
@@ -121,12 +199,9 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
         subscriptionsFollowerToDestroy.forEach(sub -> ledger.removeEnvironmentFollowerSubscription(sub.getId()));
 
-        subscriptionsToSave.forEach(sub-> {
-            ledger.updateSubscriptionInStorage(sub.getId(), sub.expiresAt());
-        });
-        subscriptionsFollowerToSave.forEach(sub-> {
-            ledger.updateFollowerSubscriptionInStorage(sub.getId(), sub.expiresAt(), sub.getCallbacks());
-        });
+        subscriptionsToSave.forEach(sub-> ledger.updateSubscriptionInStorage(sub.getId(), sub.expiresAt()));
+        subscriptionsFollowerToSave.forEach(sub->
+                ledger.updateFollowerSubscriptionInStorage(sub.getId(), sub.expiresAt(), sub.mutedAt(), sub.getCallbacksSpent(), sub.getStartedCallbacks()));
 
         subscriptionsToAdd.forEach(sub -> {
                     long storageId = ledger.saveContractInStorage(sub.getContract().getId(), sub.getPackedContract(), sub.getContract().getExpiresAt(), sub.getContract().getOrigin());
