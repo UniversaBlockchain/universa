@@ -773,7 +773,7 @@ public class CLIMain {
             config.put("utncontracts",new ArrayList<>());
             config.put("keys",new ArrayList<>());
             config.put("version",1);
-            config.put("auto_payment",Binder.of("min_balance",50,"amount",100));
+            config.put("auto_payment",Binder.of("min_balance",10,"amount",15));
             Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
         }
 
@@ -1557,7 +1557,7 @@ public class CLIMain {
                 BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
                 BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/info");
 
-                int rate = answer.data.getBinder("rates").getIntOrThrow("U_UTN");
+                Double rate = answer.data.getBinder("rates").getDouble("U_UTN");
                 int min = answer.data.getBinder("limits").getBinder("U").getIntOrThrow("min");
                 int max = answer.data.getBinder("limits").getBinder("U").getIntOrThrow("max");
                 int amount = config.getBinder("auto_payment").getInt("amount", min);
@@ -1607,8 +1607,10 @@ public class CLIMain {
             config.put("utncontracts",utnContracts);
             config.put("ucontracts",uContracts);
             Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+            return loadWallet(walletPath,buyMoreIfNeeded);
+        } else {
+            return wallet;
         }
-        return wallet;
     }
 
     private static UUTNWallet fixUUTNWallet(String walletPath) throws IOException {
