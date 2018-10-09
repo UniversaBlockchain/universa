@@ -58,7 +58,7 @@ public class JSApiHelpers {
         return res.size()>0 ? res.get(0) : null;
     }
 
-    private static String unpackJSString(Binder scriptBinder, byte[] jsFileContent) {
+    public static String unpackJSString(Binder scriptBinder, byte[] jsFileContent) {
         JSApiCompressionEnum compression = JSApiCompressionEnum.valueOf(scriptBinder.getStringOrThrow("compression"));
         switch (compression) {
             case RAW:
@@ -92,51 +92,51 @@ public class JSApiHelpers {
         }
     }
 
-    public static Object execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
-            byte[] jsFileContent, Contract currentContract, String... params)
-            throws Exception {
-        HashId jsFileHashId = HashId.of(jsFileContent);
-        Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
-        if (scriptBinder == null)
-            scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
-        if (scriptBinder != null) {
-            JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
-            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi(currentContract, execOptions, scriptParameters));
-            String[] stringParams = new String[params.length];
-            for (int i = 0; i < params.length; ++i)
-                stringParams[i] = params[i].toString();
-            jse.put("jsApiParams", stringParams);
-            String jsString = unpackJSString(scriptBinder, jsFileContent);
-            List<Exception> exceptionsFromEval = new ArrayList<>();
-            Thread evalThread = new Thread(()-> {
-                try {
-                    jse.eval(jsString);
-                } catch (Exception e) {
-                    exceptionsFromEval.add(e);
-                }
-            });
-            evalThread.start();
-            if (scriptParameters.timeLimitMillis == 0) {
-                evalThread.join();
-            } else {
-                try {
-                    evalThread.join(scriptParameters.timeLimitMillis);
-                    if (evalThread.isAlive())
-                        throw new InterruptedException("error: client javascript time limit is up (limit=" + scriptParameters.timeLimitMillis + "ms)");
-                } catch (InterruptedException e) {
-                    throw new InterruptedException("error: client javascript was interrupted (limit=" + scriptParameters.timeLimitMillis + "ms)");
-                }
-            }
-            if (exceptionsFromEval.size() > 0) {
-                Exception e = exceptionsFromEval.get(0);
-                throw e;
-            }
-            return jse.get("result");
-        } else {
-            throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
-        }
-    }
+//    public static Object execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
+//            byte[] jsFileContent, Contract currentContract, String... params)
+//            throws Exception {
+//        HashId jsFileHashId = HashId.of(jsFileContent);
+//        Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
+//        if (scriptBinder == null)
+//            scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
+//        if (scriptBinder != null) {
+//            JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
+//            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
+//            jse.put("jsApi", new JSApi(currentContract, execOptions, scriptParameters));
+//            String[] stringParams = new String[params.length];
+//            for (int i = 0; i < params.length; ++i)
+//                stringParams[i] = params[i].toString();
+//            jse.put("jsApiParams", stringParams);
+//            String jsString = unpackJSString(scriptBinder, jsFileContent);
+//            List<Exception> exceptionsFromEval = new ArrayList<>();
+//            Thread evalThread = new Thread(()-> {
+//                try {
+//                    jse.eval(jsString);
+//                } catch (Exception e) {
+//                    exceptionsFromEval.add(e);
+//                }
+//            });
+//            evalThread.start();
+//            if (scriptParameters.timeLimitMillis == 0) {
+//                evalThread.join();
+//            } else {
+//                try {
+//                    evalThread.join(scriptParameters.timeLimitMillis);
+//                    if (evalThread.isAlive())
+//                        throw new InterruptedException("error: client javascript time limit is up (limit=" + scriptParameters.timeLimitMillis + "ms)");
+//                } catch (InterruptedException e) {
+//                    throw new InterruptedException("error: client javascript was interrupted (limit=" + scriptParameters.timeLimitMillis + "ms)");
+//                }
+//            }
+//            if (exceptionsFromEval.size() > 0) {
+//                Exception e = exceptionsFromEval.get(0);
+//                throw e;
+//            }
+//            return jse.get("result");
+//        } else {
+//            throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
+//        }
+//    }
 
     public static Object jo2Object(ScriptObjectMirror jo) {
         Object res;
