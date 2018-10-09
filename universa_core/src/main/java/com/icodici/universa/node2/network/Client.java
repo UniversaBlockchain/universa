@@ -837,4 +837,17 @@ public class Client {
                 return null;
         });
     }
+
+    /**
+     * Get current network rate for operating FOLLOWER1 contracts
+     * @return origins-days per U rate
+     * @throws ClientError
+     */
+    public Decimal followerGetRate() throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("followerGetRate");
+            Double U = result.getDouble("U");
+            return new Decimal(BigDecimal.valueOf(U));
+        });
+    }
 }

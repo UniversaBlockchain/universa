@@ -200,9 +200,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("unsRate", this::unsRate);
         addSecureEndpoint("queryNameRecord", this::queryNameRecord);
         addSecureEndpoint("queryNameContract", this::queryNameContract);
-
         addSecureEndpoint("getBody", this::getBody);
         addSecureEndpoint("getContract", this::getContract);
+
+        addSecureEndpoint("followerGetRate", this::followerGetRate);
 
     }
 
@@ -338,6 +339,18 @@ public class ClientHTTPServer extends BasicHttpServer {
             res.put("contractIds", keeping);
 
         return res;
+    }
+
+    private Binder followerGetRate(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Double rate = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
+        String str = rate.toString();
+        Binder b = new Binder();
+        b.put("U", str);
+
+        return b;
     }
 
     private ItemResult itemResultOfError(Errors error, String object, String message) {

@@ -2246,6 +2246,71 @@ public class MainTest {
     }
 
     @Test
+    public void testFollowerApi() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        // register callback
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Decimal originsAndDaysPerU = client.followerGetRate();
+        System.out.println("followerGetRate: " + originsAndDaysPerU);
+        assertEquals(main.config.getRate("FOLLOWER1"), originsAndDaysPerU.doubleValue(), 0.000001);
+
+        Contract simpleContract = new Contract(TestKeys.privateKey(1));
+        simpleContract.seal();
+        ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))), nodeInfoProvider);
+        followerContract.setNodeInfoProvider(nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey.getPublicKey());
+
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+
+       /* Binder followerInfo = client.queryFollowerInfo(followerContract.getId());
+        System.out.println("follower info is null: " + (followerInfo == null));
+        assertNull(followerInfo);
+
+        byte[] simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        client.registerParcel(parcel.pack(), 5000);
+        itemResult = client.getState(followerContract.getId());
+        System.out.println("follower : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        slotInfo = client.querySlotInfo(slotContract.getId());
+        System.out.println("slot info size: " + slotInfo.size());
+        assertNotNull(slotInfo);
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
     public void testRevocationContractsApi() throws Exception {
 
         List<Main> mm = new ArrayList<>();
