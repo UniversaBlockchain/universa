@@ -8265,6 +8265,41 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
 
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            ZonedDateTime now;
+
+            double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+            double hours = days * 24;
+            long seconds = (long) (days * 24 * 3600);
+            ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        System.out.println(foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+
+            // check if we store environment
+            assertNotNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+        }
 
         // check if we store same contract as want
 
@@ -8342,6 +8377,33 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        System.out.println(foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+
+            assertEquals(ItemState.REVOKED, networkNode.waitItem(slotContract.getId(), 8000).state);
+
+            assertNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+
+            assertNotNull(networkNode.getLedger().getEnvironment(refilledSlotContract.getId()));
+        }
+
+
         envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
@@ -8408,6 +8470,33 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        System.out.println(foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+
+            assertEquals(ItemState.REVOKED, networkNode.waitItem(slotContract.getId(), 8000).state);
+            assertNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+
+            assertNull(networkNode.getLedger().getEnvironment(refilledSlotContract.getId()));
+
+            assertNotNull(networkNode.getLedger().getEnvironment(refilledSlotContract2.getId()));
+        }
+
         envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
@@ -8440,6 +8529,24 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
         assertEquals(ItemState.REVOKED, itemResult.state);
 
+        Thread.sleep(10000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we remove stored contract from storage
+
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNull(restoredPackedData);
+
+            // check if we remove subscriptions
+
+            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            assertEquals(envs.size(),0);
+            // check if we remove environment
+
+            assertNull(networkNode.getLedger().getEnvironment(refilledSlotContract2.getId()));
+        }
         // check if we remove stored contract from storage
 
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9353,6 +9460,25 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("seconds " + seconds2);
         System.out.println("reg time " + timeReg2);
         System.out.println("totalLength " + totalLength2);
+
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+
+            envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
+                    NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        System.out.println(foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+        }
 
         envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
         if(envs.size() > 0) {
@@ -14251,6 +14377,41 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        // additional check for all network nodes
+
+       /* for (Node networkNode: nodes) {
+
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            ZonedDateTime now;
+
+            double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+            double hours = days * 24;
+            long seconds = (long) (days * 24 * 3600);
+            ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        System.out.println(foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+
+            // check if we store environment
+            assertNotNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+        }*/
 
         // contract2 for follow
         Contract simpleContract2 = new Contract(key2);
@@ -14268,7 +14429,7 @@ public class BaseNetworkTest extends TestCase {
         newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http:\\\\localhost:7777\\follow.callbackTwo", callbackKey.getPublicKey());
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
 
-        newRevFollowerContract.seal();
+        //newRevFollowerContract.seal();
         newRevFollowerContract.check();
         newRevFollowerContract.traceErrors();
         assertTrue(newRevFollowerContract.isOk());
@@ -14278,13 +14439,13 @@ public class BaseNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), paymentContract,
                 1, 200, stepaPrivateKeys, false);
 
-        followerContract.check();
-        followerContract.traceErrors();
-        assertTrue(followerContract.isOk());
+        newRevFollowerContract.check();
+        newRevFollowerContract.traceErrors();
+        assertTrue(newRevFollowerContract.isOk());
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
+        assertEquals(400 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
                 newRevFollowerContract.getPrepaidOriginsForDays(), 0.1);
 
         node.registerParcel(payingParcel);
@@ -14297,6 +14458,9 @@ public class BaseNetworkTest extends TestCase {
         node.waitParcel(payingParcel.getId(), 8000);
 
         // check payment and payload contracts
+        //assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        //assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        //assertEquals(ItemState.APPROVED, node.waitItem(newRevFollowerContract.getNew().get(0).getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(newRevFollowerContract.getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(newRevFollowerContract.getNew().get(0).getId(), 8000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
