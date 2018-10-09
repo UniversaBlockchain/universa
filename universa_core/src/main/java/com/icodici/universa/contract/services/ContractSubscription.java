@@ -62,6 +62,14 @@ public interface ContractSubscription {
         ImmutableEnvironment getEnvironment();
     }
 
+    interface CompletedEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
+    interface FailedEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
     /**
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
      * NContract#onContractSubscriptionEvent(Event)}

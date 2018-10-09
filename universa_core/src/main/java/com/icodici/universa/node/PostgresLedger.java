@@ -1495,7 +1495,7 @@ public class PostgresLedger implements Ledger {
             HashSet<Long> environmentIds = new HashSet<>();
             long now = ZonedDateTime.now().toEpochSecond();
 
-            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM follower_subscription WHERE origin=? AND muted_at<?", origin.getDigest(), now))) {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM follower_subscription WHERE origin = ? AND muted_at > ?", origin.getDigest(), now))) {
                 if (rs == null)
                     return new HashSet<>();
                 do {

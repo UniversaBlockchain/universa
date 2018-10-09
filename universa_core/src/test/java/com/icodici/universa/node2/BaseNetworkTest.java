@@ -14132,6 +14132,30 @@ public class BaseNetworkTest extends TestCase {
         // check if we store environment
         assertNotNull(node.getLedger().getEnvironment(followerContract.getId()));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected:" + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we store environment
+            assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+        }
+
+        Thread.sleep(15000);
+
         // refill slot contract with U (means add following days or number of sended callbacks).
 
         FollowerContract refilledFollowerContract = (FollowerContract) followerContract.createRevision(key);
@@ -14170,7 +14194,7 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = (double) (100 + 300 - spentDays) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        days = (200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -14191,6 +14215,31 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
         assertNull(node.getLedger().getEnvironment(followerContract.getId()));
         assertNotNull(node.getLedger().getEnvironment(refilledFollowerContract.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected:" + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+            assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+            assertNotNull(networkNode.getLedger().getEnvironment(refilledFollowerContract.getId()));
+        }
+
+        Thread.sleep(15000);
 
         assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
 
@@ -14231,9 +14280,9 @@ public class BaseNetworkTest extends TestCase {
         spentSeconds = (timeReg3.toEpochSecond() - timeReg1.toEpochSecond());
         spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = (double) (200 + 300 + 300 - spentDays) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        days = (200 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
         seconds = (long) (days * 24 * 3600);
-        calculateExpires = timeReg2.plusSeconds(seconds);
+        calculateExpires = timeReg3.plusSeconds(seconds);
 
         envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
         if(envs.size() > 0) {
@@ -14254,6 +14303,30 @@ public class BaseNetworkTest extends TestCase {
         assertNull(node.getLedger().getEnvironment(refilledFollowerContract.getId()));
         assertNotNull(node.getLedger().getEnvironment(refilledFollowerContract2.getId()));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected:" + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+            assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+            assertNull(networkNode.getLedger().getEnvironment(refilledFollowerContract.getId()));
+            assertNotNull(networkNode.getLedger().getEnvironment(refilledFollowerContract2.getId()));
+        }
+
         assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
 
         // revoke slot contract, means remove stored contract from storage
@@ -14271,6 +14344,18 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove environment
         assertNull(node.getLedger().getEnvironment(refilledFollowerContract2.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            // check if we remove subscriptions
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            assertEquals(envs.size(), 0);
+
+            // check if we remove environment
+            assertNull(networkNode.getLedger().getEnvironment(refilledFollowerContract2.getId()));
+        }
     }
 
     @Test
@@ -14347,6 +14432,50 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        // check subscription
+        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    System.out.println("expected:" + calculateExpires);
+                    System.out.println("found: " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("FollowerSubscription was not found");
+        }
+
+        // check if we store environment
+        assertNotNull(node.getLedger().getEnvironment(followerContract.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected:" + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we store environment
+            assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+        }
+
         // contract2 for follow
         Contract simpleContract2 = new Contract(key2);
         simpleContract2.seal();
@@ -14379,7 +14508,7 @@ public class BaseNetworkTest extends TestCase {
                 newRevFollowerContract.getPrepaidOriginsForDays(), 0.1);
 
         node.registerParcel(payingParcel);
-        timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
                 ZoneId.systemDefault());
         synchronized (uContractLock) {
             uContract = payingParcel.getPayloadContract().getNew().get(0);
@@ -14409,5 +14538,54 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http:\\\\localhost:7777\\follow.callbackTwo");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract2.getOrigin()));
         assertTrue(newRevFollowerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callbackTwo"));
+
+        // check subscription
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+
+        days = ((200 + 200) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays) / 2;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    System.out.println("expected:" + calculateExpires);
+                    System.out.println("found: " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("FollowerSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+        assertNull(node.getLedger().getEnvironment(followerContract.getId()));
+        assertNotNull(node.getLedger().getEnvironment(newRevFollowerContract.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected:" + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+            assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+            assertNotNull(networkNode.getLedger().getEnvironment(newRevFollowerContract.getId()));
+        }
     }
 }

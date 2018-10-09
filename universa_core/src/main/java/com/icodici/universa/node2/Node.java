@@ -94,6 +94,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<HashId, CallbackProcessor> callbackProcessors = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
     private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
@@ -2795,6 +2796,8 @@ public class Node {
 
                         NContractFollowerSubscription finalSubscription = subscription;
                         if (subscription != null) {
+
+                            // started callback
                             contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
                                 @Override
                                 public Contract getNewRevision() {
@@ -4077,5 +4080,17 @@ public class Node {
         IS_COMMITTING,
         COMMIT_SUCCESSFUL,
         COMMIT_FAILED
+    }
+
+
+    private class CallbackProcessor {
+        private HashId itemId;
+        private byte[] packedItem;
+        private NContractFollowerSubscription subscription;
+        private ZonedDateTime callbackTime;
+        private String callbackURL;
+        private PublicKey callbackKey;
+
+
     }
 }

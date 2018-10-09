@@ -375,7 +375,7 @@ public class FollowerContract extends NSmartContract {
     @Override
     public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
-        if(event instanceof ContractSubscription.ApprovedEvent) {
+        if (event instanceof ContractSubscription.ApprovedEvent) {
             MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
 
             ContractSubscription sub = event.getSubscription();
@@ -383,6 +383,29 @@ public class FollowerContract extends NSmartContract {
 
             // decrease muted period of all follower subscription in environment of contract
             double deltaDays = -callbackRate / trackingOrigins.size();
+            int deltaSeconds = (int) (deltaDays * 24 * 3600);
+
+            me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
+        } else if (event instanceof ContractSubscription.CompletedEvent) {
+            MutableEnvironment me = ((ContractSubscription.CompletedEvent) event).getEnvironment();
+
+            ContractSubscription sub = event.getSubscription();
+            me.decreaseStartedCallbacks(sub);
+            me.increaseCallbacksSpent(sub, callbackRate);
+
+            // decrease expires period of all follower subscription in environment of contract
+            double deltaDays = callbackRate / trackingOrigins.size();
+            int deltaSeconds = (int) (deltaDays * 24 * 3600);
+
+            me.followerSubscriptions().forEach(fsub -> me.decreaseSubscriptionExpiresAt(fsub, deltaSeconds));
+        } else if (event instanceof ContractSubscription.FailedEvent) {
+            MutableEnvironment me = ((ContractSubscription.FailedEvent) event).getEnvironment();
+
+            ContractSubscription sub = event.getSubscription();
+            me.decreaseStartedCallbacks(sub);
+
+            // increase muted period of all follower subscription in environment of contract
+            double deltaDays = callbackRate / trackingOrigins.size();
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
             me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
