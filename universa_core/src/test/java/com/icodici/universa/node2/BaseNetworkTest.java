@@ -5482,7 +5482,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 90000)
     public void declineReferenceForChangeOwner() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -9367,6 +9367,49 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            ZonedDateTime calculateExpires;
+
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                        double hours = days * 24;
+                        long seconds = (long) (days * 24 * 3600);
+                        calculateExpires = timeReg1.plusSeconds(seconds);
+
+                        System.out.println("days " + days);
+                        System.out.println("hours " + hours);
+                        System.out.println("seconds " + seconds);
+                        System.out.println("reg time " + timeReg1);
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("ContractStorageSubscription was not found");
+            }
+
+            // check if we store environment
+
+            assertNotNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9418,6 +9461,29 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(simpleContract2);
 
         System.err.println("check " + simpleContract.getId());
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check root stored contract
+
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNull(restoredPackedData);
+
+            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            assertEquals(0, envs.size());
+
+            // check revision of stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract2.getId(), restoredContract.getId());
+
+        }
+
         // check root stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
@@ -9456,15 +9522,16 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("reg time " + timeReg2);
         System.out.println("totalLength " + totalLength2);
 
+        Thread.sleep(5000);
 
         // additional check for all network nodes
 
         for (Node networkNode: nodes) {
 
-            envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
-                    NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -9547,6 +9614,21 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+
+            // check if we store same contract as want
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        }
 
         // check if we store same contract as want
 
@@ -9643,6 +9725,20 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9697,6 +9793,27 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+
+            // check root stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            // check revision of stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract2.getId(), restoredContract.getId());
+        }
 
         // check root stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9769,6 +9886,20 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+
+            // check if we store same contract as want
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9805,6 +9936,22 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            NImmutableEnvironment ime = new NImmutableEnvironment(newSlotContract, networkNode.getLedger());
+            ime.setNameCache(new NameCache(Duration.ofMinutes(1)));
+            // imitating check process on the node
+            newSlotContract.beforeUpdate(ime);
+            newSlotContract.check();
+            newSlotContract.traceErrors();
+
+            // check error of adding other contract (not revision of old tracking contract)
+            assertFalse(newSlotContract.isOk());
+        }
 
         NImmutableEnvironment ime = new NImmutableEnvironment(newSlotContract, node.getLedger());
         ime.setNameCache(new NameCache(Duration.ofMinutes(1)));
@@ -9902,6 +10049,20 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -9974,6 +10135,26 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check root stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            // check revision of stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract2.getId(), restoredContract.getId());
+        }
+
         // check root stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNotNull(restoredPackedData);
@@ -9996,6 +10177,37 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals(ItemState.REVOKED, itemResult.state);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we remove stored contract from storage
+
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNull(restoredPackedData);
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
+            assertNull(restoredPackedData);
+            restoredPackedData = networkNode.getLedger().getContractInStorage(slotContract.getId());
+            assertNull(restoredPackedData);
+            restoredPackedData = networkNode.getLedger().getContractInStorage(refilledSlotContract.getId());
+            assertNull(restoredPackedData);
+
+            // check if we remove subscriptions
+
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(slotContract.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(refilledSlotContract.getId()).size());
+
+            // check if we remove environment
+
+            assertNull(networkNode.getLedger().getEnvironment(simpleContract.getId()));
+            assertNull(networkNode.getLedger().getEnvironment(simpleContract2.getId()));
+            assertNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
+            assertNull(networkNode.getLedger().getEnvironment(refilledSlotContract.getId()));
+        }
 
         // check if we remove stored contract from storage
 
@@ -10163,6 +10375,20 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -10306,6 +10532,20 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check if we store same contract as want
+
+            byte[] restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+        }
+
         // check if we store same contract as want
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -10374,6 +10614,26 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            // check root stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract.getId(), restoredContract.getId());
+
+            // check revision of stored contract
+            restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
+            assertNotNull(restoredPackedData);
+            restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+            assertNotNull(restoredContract);
+            assertEquals(simpleContract2.getId(), restoredContract.getId());
+        }
 
         // check root stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
@@ -10470,6 +10730,11 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2));
+
         assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2);
     }
 
@@ -10538,6 +10803,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        Thread.sleep(5000);
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
+
         assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         Thread.sleep(11000);
@@ -10562,12 +10832,16 @@ public class BaseNetworkTest extends TestCase {
 
         Thread.sleep(11000);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertNull(n.getLedger().getNameRecord(name)));
+
         nr = ledger.getNameRecord(name);
         assertNull(nr);
 
-
         paymentContract = getApprovedUContract();
-
 
         payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
@@ -10582,7 +10856,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
-
 
         config.setRate(NSmartContract.SmartContractType.UNS1.name(),oldValue);
     }
@@ -10642,6 +10915,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
+
         assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
 
 
@@ -10665,6 +10943,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(uns.getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertNull(n.getLedger().getNameRecord(name)));
+
         assertNull(ledger.getNameRecord(name));
 
         //REGISTER UNS2
@@ -10681,6 +10964,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
 
         assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
     }
@@ -10788,6 +11076,12 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1));
+
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1);
 
@@ -10842,6 +11136,13 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1));
+        nodes.forEach(n -> assertNull(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName())));
 
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1);
@@ -10908,6 +11209,11 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
+
         assertEquals(1, ledger.getNameRecord(reducedName).getEntries().size());
 
         Set<PrivateKey> keys = new HashSet<>();
@@ -10953,6 +11259,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
+
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
 
         uns = (UnsContract) unsOriginal.createRevision(keys);
@@ -10979,6 +11290,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
         assertEquals("ok", ir.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
 
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
     }
@@ -11645,6 +11961,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2));
+
         assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2);
 
         // check calculation expiration time
@@ -11703,6 +12024,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(refilledUnsContract.getNew().get(0).getId(), 8000).state);
 
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(), 2));
+
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(), 2);
         assertEquals(refilledUnsContract.getUnsName(reducedName).getRecordsCount(), 2);
 
@@ -11713,6 +12039,20 @@ public class BaseNetworkTest extends TestCase {
         days = (double) (2470 - spentNDs) * config.getRate(NSmartContract.SmartContractType.UNS1.name()) / refilledUnsContract.getUnsName(reducedName).getRecordsCount();
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+
+        for (Node networkNode: nodes) {
+            nrModel = networkNode.getLedger().getNameRecord(reducedName);
+            if(nrModel != null) {
+                System.out.println(nrModel.expiresAt());
+                assertAlmostSame(calculateExpires, nrModel.expiresAt(), 5);
+            } else {
+                fail("NameRecordModel was not found");
+            }
+        }
 
         nrModel = node.getLedger().getNameRecord(reducedName);
         if(nrModel != null) {
