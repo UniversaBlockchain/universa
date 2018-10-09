@@ -11961,11 +11961,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2));
-
         assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2);
 
         // check calculation expiration time
@@ -12024,11 +12019,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(refilledUnsContract.getNew().get(0).getId(), 8000).state);
 
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(), 2));
-
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(), 2);
         assertEquals(refilledUnsContract.getUnsName(reducedName).getRecordsCount(), 2);
 
@@ -12040,19 +12030,6 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-
-        for (Node networkNode: nodes) {
-            nrModel = networkNode.getLedger().getNameRecord(reducedName);
-            if(nrModel != null) {
-                System.out.println(nrModel.expiresAt());
-                assertAlmostSame(calculateExpires, nrModel.expiresAt(), 5);
-            } else {
-                fail("NameRecordModel was not found");
-            }
-        }
 
         nrModel = node.getLedger().getNameRecord(reducedName);
         if(nrModel != null) {
