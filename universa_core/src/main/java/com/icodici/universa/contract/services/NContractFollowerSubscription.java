@@ -57,9 +57,7 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
         return mutedAt;
     }
 
-    public void setExpiresAt(ZonedDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+    public void setExpiresAt(ZonedDateTime expiresAt) { this.expiresAt = expiresAt; }
     public void setMutedAt(ZonedDateTime mutedAt) {
         this.mutedAt = mutedAt;
     }

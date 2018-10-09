@@ -117,9 +117,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     @Override
-    public Iterable<ContractSubscription> followerSubscriptions() {
-        return followerSubscriptionsSet;
-    }
+    public Iterable<ContractSubscription> followerSubscriptions() { return followerSubscriptionsSet; }
 
     @Override
     public Iterable<NameRecord> nameRecords() {

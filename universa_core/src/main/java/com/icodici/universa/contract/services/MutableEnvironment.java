@@ -66,6 +66,7 @@ public interface MutableEnvironment extends ImmutableEnvironment {
                                               @NonNull ZonedDateTime expiresAt);
 
     void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt);
+    void setSubscriptionExpiresAtAndMutedAt(ContractSubscription subscription, ZonedDateTime expiresAt, ZonedDateTime mutedAt);
 
     void destroySubscription(ContractSubscription subscription);
 
@@ -75,8 +76,8 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void destroyNameRecord(NameRecord nameRecord);
 
 
-    double getSubscriptionCallbacksSpentODs(ContractSubscription subscription);
-    int getSubscriptionStartedCallbacks(ContractSubscription subscription);
+    double getSubscriptionsCallbacksSpentODs();
+    int getSubscriptionsStartedCallbacks();
 
     void decreaseSubscriptionExpiresAt(ContractSubscription subscription, int decreaseSeconds);
     void changeSubscriptionMutedAt(ContractSubscription subscription, int deltaSeconds);

@@ -383,6 +383,10 @@ public class TransactionPack implements BiSerializable {
                 case UNS1:
                     c = new UnsContract(b.toArray(), this);
                     break;
+
+                case FOLLOWER1:
+                    c = new FollowerContract(b.toArray(), this);
+                    break;
             }
         } else {
             c = new Contract(b.toArray(), this);

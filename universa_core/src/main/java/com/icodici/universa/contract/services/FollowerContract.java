@@ -333,23 +333,23 @@ public class FollowerContract extends NSmartContract {
         calculatePrepaidOriginDays(false);
 
         // recalculate time that will be added to now as new expiring time
-        // it is difference of all prepaid OD (origins*days) and already spent divided to new number of tracking origins.
-        double days = (prepaidOriginDays - spentODs) / trackingOrigins.size();
+        // it is difference of all prepaid ODs (origins*days) and already spent divided to new number of tracking origins.
+        double days = (prepaidOriginDays - spentODs - me.getSubscriptionsCallbacksSpentODs()) / trackingOrigins.size();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
                 .plusSeconds(seconds);
 
         // recalculate muted period of follower contract subscription
-        ZonedDateTime newMuted = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
-                .plusSeconds(seconds);
-        //startedCallbacks
+        days = (me.getSubscriptionsStartedCallbacks() + 1) * callbackRate / trackingOrigins.size();
+        seconds = (long) (days * 24 * 3600);
+        ZonedDateTime newMuted = newExpires.minusSeconds(seconds);
 
-        Set<HashId> newOrigins = trackingOrigins.keySet();
+        Set<HashId> newOrigins = new HashSet<>(trackingOrigins.keySet());
 
         me.followerSubscriptions().forEach(sub -> {
             HashId origin = sub.getOrigin();
             if (newOrigins.contains(origin)) {
-                me.setSubscriptionExpiresAt(sub, newExpires);
+                me.setSubscriptionExpiresAtAndMutedAt(sub, newExpires, newMuted);
                 newOrigins.remove(origin);
             } else
                 me.destroySubscription(sub);
@@ -357,8 +357,8 @@ public class FollowerContract extends NSmartContract {
 
         for (HashId origin: newOrigins) {
             try {
-                ContractSubscription css = me.createFollowerSubscription(origin, newExpires, newMuted);
-                css.receiveEvents(true);
+                ContractSubscription sub = me.createFollowerSubscription(origin, newExpires, newMuted);
+                sub.receiveEvents(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -378,17 +378,14 @@ public class FollowerContract extends NSmartContract {
         if(event instanceof ContractSubscription.ApprovedEvent) {
             MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
 
-            //startedCallbacks++;
-            //decrease muted
+            ContractSubscription sub = event.getSubscription();
+            me.increaseStartedCallbacks(sub);
 
-            // recreate subscription:
-            //Contract newStoredItem = ((ContractSubscription.ApprovedEvent)event).getNewRevision();
+            // decrease muted period of all follower subscription in environment of contract
+            double deltaDays = -callbackRate / trackingOrigins.size();
+            int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
-            //putTrackingContract(newStoredItem);
-            //saveTrackingContractsToState();
-
-            // and save new
-            updateSubscriptions(me);
+            me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
         }
     }
 

@@ -84,6 +84,19 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
+    public void setSubscriptionExpiresAtAndMutedAt(ContractSubscription subscription, ZonedDateTime expiresAt, ZonedDateTime mutedAt) {
+        if (subscription instanceof NContractFollowerSubscription) {
+            NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
+            sub.setExpiresAt(expiresAt);
+            sub.setMutedAt(mutedAt);
+
+            //existing subscription
+            if(sub.getId() != 0)
+                subscriptionsFollowerToSave.add(sub);
+        }
+    }
+
+    @Override
     public void destroySubscription(ContractSubscription subscription) {
         if (subscription instanceof NContractStorageSubscription)
             subscriptionsToDestroy.add((NContractStorageSubscription) subscription);
@@ -115,21 +128,25 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     @Override
-    public double getSubscriptionCallbacksSpentODs(ContractSubscription subscription) {
-        if (!(subscription instanceof NContractFollowerSubscription))
-            return 0;
+    public double getSubscriptionsCallbacksSpentODs() {
+        double callbacksSpentODs = 0;
 
-        NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
-        return sub.getCallbacksSpent();
+        for (ContractSubscription sub: followerSubscriptions())
+            if (sub instanceof NContractFollowerSubscription)
+                callbacksSpentODs += ((NContractFollowerSubscription) sub).getCallbacksSpent();
+
+        return callbacksSpentODs;
     }
 
     @Override
-    public int getSubscriptionStartedCallbacks(ContractSubscription subscription) {
-        if (!(subscription instanceof NContractFollowerSubscription))
-            return 0;
+    public int getSubscriptionsStartedCallbacks() {
+        int startedCallbacks = 0;
 
-        NContractFollowerSubscription sub = (NContractFollowerSubscription) subscription;
-        return sub.getStartedCallbacks();
+        for (ContractSubscription sub: followerSubscriptions())
+            if (sub instanceof NContractFollowerSubscription)
+                startedCallbacks += ((NContractFollowerSubscription) sub).getStartedCallbacks();
+
+        return startedCallbacks;
     }
 
     @Override
