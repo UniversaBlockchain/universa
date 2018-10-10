@@ -12890,7 +12890,7 @@ public class BaseNetworkTest extends TestCase {
 
         for (Node n : nodes) {
             // check environments table
-            assertNotNull(n.getLedger().getSlotContractBySlotId(uns.getId()));
+            assertNotNull(n.getLedger().getSmartContractById(uns.getId()));
             // check name_storage table
             assertNotNull(n.getLedger().getNameRecord(name));
             // check name_entry table
@@ -12907,7 +12907,7 @@ public class BaseNetworkTest extends TestCase {
             n.getLedger().removeEnvironment(uns.getId());
 
             // check environments table
-            assertNull(n.getLedger().getSlotContractBySlotId(uns.getId()));
+            assertNull(n.getLedger().getSmartContractById(uns.getId()));
             // check name_storage table
             assertNull(n.getLedger().getNameRecord(name));
             // check name_entry table
@@ -12953,7 +12953,7 @@ public class BaseNetworkTest extends TestCase {
         for (Node n : nodes) {
             NImmutableEnvironment env  = n.getLedger().getEnvironment(slotContract.getId());
             // check environments table
-            assertNotNull(n.getLedger().getSlotContractBySlotId(slotContract.getId()));
+            assertNotNull(n.getLedger().getSmartContractById(slotContract.getId()));
             // check contract_storage table
             assertNotNull(n.getLedger().getContractInStorage(trackingContract.getId()));
             // check contract_subscription table
@@ -12968,7 +12968,7 @@ public class BaseNetworkTest extends TestCase {
             n.getLedger().removeEnvironment(slotContract.getId());
 
             // check environments table
-            assertNull(n.getLedger().getSlotContractBySlotId(slotContract.getId()));
+            assertNull(n.getLedger().getSmartContractById(slotContract.getId()));
             // check contract_storage table
             assertNull(n.getLedger().getContractInStorage(trackingContract.getId()));
             // check contract_subscription table

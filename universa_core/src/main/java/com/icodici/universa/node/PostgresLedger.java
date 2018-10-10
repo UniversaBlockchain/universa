@@ -1513,11 +1513,11 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public byte[] getSlotContractBySlotId(HashId slotId) {
+    public byte[] getSmartContractById(HashId smartContractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
                     "SELECT transaction_pack FROM environments " +
-                    "WHERE ncontract_hash_id=?", slotId.getDigest()))) {
+                    "WHERE ncontract_hash_id=?", smartContractId.getDigest()))) {
                 if (rs == null)
                     return null;
                 return rs.getBytes(1);

@@ -222,7 +222,7 @@ public interface Ledger {
 
     void clearExpiredStorageContracts();
 
-    byte[] getSlotContractBySlotId(HashId slotId);
+    byte[] getSmartContractById(HashId smartContractId);
     byte[] getContractInStorage(HashId contractId);
     byte[] getContractInStorage(HashId slotId, HashId contractId);
     List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId);

@@ -657,7 +657,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         Binder res = new Binder();
         res.set("slot_state", null);
         byte[] slot_id = params.getBinary("slot_id");
-        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        byte[] slotBin = node.getLedger().getSmartContractById(HashId.withDigest(slot_id));
         if (slotBin != null) {
             SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
             res.set("slot_state", slotContract.getStateData());
@@ -678,7 +678,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             throw new IOException("invalid arguments (both origin_id and contract_id are null)");
         if ((origin_id != null) && (contract_id != null))
             throw new IOException("invalid arguments (only one origin_id or contract_id is allowed)");
-        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        byte[] slotBin = node.getLedger().getSmartContractById(HashId.withDigest(slot_id));
         if (slotBin != null) {
             SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
             if (contract_id != null) {
@@ -725,7 +725,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         Binder res = new Binder();
         res.set("follower_state", null);
         byte[] follower_id = params.getBinary("follower_id");
-        byte[] followerBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(follower_id));
+        byte[] followerBin = node.getLedger().getSmartContractById(HashId.withDigest(follower_id));
 
         if (followerBin != null) {
             FollowerContract followerContract = (FollowerContract) Contract.fromPackedTransaction(followerBin);

@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 /**
- * Implements {@link MutableEnvironment} interface for slot contract.
+ * Implements {@link MutableEnvironment} interface for smart contracts.
  */
 public class NMutableEnvironment extends NImmutableEnvironment implements MutableEnvironment {
 
