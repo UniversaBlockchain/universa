@@ -32,6 +32,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -2796,6 +2798,13 @@ public class Node {
 
                         NContractFollowerSubscription finalSubscription = subscription;
                         if (subscription != null) {
+                            CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract,
+                                    me, finalSubscription, config, myInfo, network.allNodes());
+
+                            int delay = callback.getDelay();
+                            callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), delay, delay, TimeUnit.MILLISECONDS));
+
+                            callbackProcessors.put(callback.getId(), callback);
 
                             // started callback
                             contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
@@ -4084,13 +4093,97 @@ public class Node {
 
 
     private class CallbackProcessor {
+        private HashId id;
         private HashId itemId;
         private byte[] packedItem;
+        FollowerContract follower;
+        NMutableEnvironment environment;
         private NContractFollowerSubscription subscription;
-        private ZonedDateTime callbackTime;
+        private ZonedDateTime expiresAt;
+        private int delay = 1;
         private String callbackURL;
         private PublicKey callbackKey;
+        private ScheduledFuture<?> executor;
 
+        public CallbackProcessor(Contract item, FollowerContract follower, NMutableEnvironment me,
+                                 NContractFollowerSubscription subscription, Config config, NodeInfo myInfo, List<NodeInfo> allNodes) {
+            // save item, environment and subscription
+            itemId = item.getId();
+            packedItem = item.getPackedTransaction();
+            environment = me;
+            this.follower = follower;
+            this.subscription = subscription;
 
+            // save callback information
+            callbackURL = follower.getTrackingOrigins().get(item.getOrigin());
+            callbackKey = follower.getCallbackKeys().get(callbackURL);
+
+            // calculate callback hash
+            byte[] digest = itemId.getDigest();
+            byte[] URL = callbackURL.getBytes(StandardCharsets.UTF_8);
+            byte[] concat = new byte[digest.length + URL.length];
+            System.arraycopy(digest, 0, concat, 0, digest.length);
+            System.arraycopy(URL, 0, concat, digest.length, URL.length);
+            id = HashId.of(concat);
+
+            // calculate expiration time
+            expiresAt = ZonedDateTime.now().plus(config.getFollowerCallbackExpiration());
+
+            // calculate node callback delay
+            SortedSet<byte[]> nodeDigests = new TreeSet();
+            byte[] callbackDigest = id.getDigest();
+            byte[] myDigest = null;
+            for (NodeInfo n: allNodes) {
+                byte[] nodeDigest = HashId.of(ByteBuffer.allocate(4).putInt(n.getNumber()).array()).getDigest();
+                nodeDigests.add(nodeDigest);
+                if (n.getNumber() == myInfo.getNumber())
+                    myDigest = nodeDigest;
+            }
+            nodeDigests.add(callbackDigest);
+
+            int skipNodes;
+            if (nodeDigests.tailSet(myDigest).contains(callbackDigest))
+                skipNodes = nodeDigests.subSet(myDigest, callbackDigest).size() - 1;
+            else
+                skipNodes = nodeDigests.size() - nodeDigests.subSet(callbackDigest, myDigest).size() - 1;
+
+            delay += skipNodes * config.getFollowerCallbackDelay().toMillis();
+            if (allNodes.size() % 2 == 1)
+                delay += config.getFollowerCallbackDelay().toMillis() / 3;
+        }
+
+        public HashId getId() { return id; }
+
+        public int getDelay() { return delay; }
+
+        public void setExecutor(ScheduledFuture<?> executor) { this.executor = executor; }
+
+        public void stop() { executor.cancel(true); }
+
+        public void call() {
+            if (ZonedDateTime.now().isAfter(expiresAt)) {
+                // callback failed
+                callbackProcessors.remove(id);
+
+                follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
+                    @Override
+                    public MutableEnvironment getEnvironment() {
+                        return environment;
+                    }
+
+                    @Override
+                    public ContractSubscription getSubscription() {
+                        return subscription;
+                    }
+                });
+                environment.save();
+
+                stop();
+            } else {
+
+                stop();
+            }
+
+        }
     }
 }

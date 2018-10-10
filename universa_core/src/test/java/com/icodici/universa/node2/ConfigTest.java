@@ -57,6 +57,8 @@ public class ConfigTest extends TestCase {
         assertEquals(config.getUIssuerName(), copyConfig.getUIssuerName());
         assertEquals(config.getQueryContractsLimit(), copyConfig.getQueryContractsLimit());
         assertEquals(config.isPermanetMode(), copyConfig.isPermanetMode());
+        assertEquals(config.getFollowerCallbackExpiration(), copyConfig.getFollowerCallbackExpiration());
+        assertEquals(config.getFollowerCallbackDelay(), copyConfig.getFollowerCallbackDelay());
     }
 
     @Test

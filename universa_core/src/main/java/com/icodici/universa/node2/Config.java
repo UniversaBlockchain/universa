@@ -92,6 +92,8 @@ public class Config {
         config.rate = new HashMap<>(rate);
         config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
         config.queryContractsLimit = queryContractsLimit;
+        config.followerCallbackExpiration = followerCallbackExpiration;
+        config.followerCallbackDelay = followerCallbackDelay;
         return config;
     }
 
@@ -193,6 +195,8 @@ public class Config {
     private Duration holdDuration = Duration.ofDays(30);
     private int paymentQuantaLimit = 200;
     private int queryContractsLimit = 100;
+    private Duration followerCallbackExpiration = Duration.ofMinutes(10);
+    private Duration followerCallbackDelay = Duration.ofSeconds(10);
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -475,5 +479,21 @@ public class Config {
 
     public void setQueryContractsLimit(int queryContractsLimit) {
         this.queryContractsLimit = queryContractsLimit;
+    }
+
+    public Duration getFollowerCallbackExpiration() {
+        return followerCallbackExpiration;
+    }
+
+    public void setFollowerCallbackExpiration(Duration followerCallbackExpiration) {
+        this.followerCallbackExpiration = followerCallbackExpiration;
+    }
+
+    public Duration getFollowerCallbackDelay() {
+        return followerCallbackDelay;
+    }
+
+    public void setFollowerCallbackDelay(Duration followerCallbackDelay) {
+        this.followerCallbackDelay = followerCallbackDelay;
     }
 }

@@ -853,7 +853,7 @@ public class Client {
 
     /**
      * Look for state data of follower contract
-     * @param followerId slot contract id
+     * @param followerId follower contract id
      * @return state data of follower contract
      * @throws ClientError
      */
