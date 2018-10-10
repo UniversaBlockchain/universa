@@ -16,10 +16,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.services.NImmutableEnvironment;
-import com.icodici.universa.contract.services.NNameRecord;
-import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.StateRecord;
@@ -204,6 +201,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getContract", this::getContract);
 
         addSecureEndpoint("followerGetRate", this::followerGetRate);
+        addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
 
     }
 
@@ -339,18 +337,6 @@ public class ClientHTTPServer extends BasicHttpServer {
             res.put("contractIds", keeping);
 
         return res;
-    }
-
-    private Binder followerGetRate(Binder params, Session session) throws IOException {
-
-        checkNode(session, true);
-
-        Double rate = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
-        String str = rate.toString();
-        Binder b = new Binder();
-        b.put("U", str);
-
-        return b;
     }
 
     private ItemResult itemResultOfError(Errors error, String object, String message) {
@@ -716,6 +702,34 @@ public class ClientHTTPServer extends BasicHttpServer {
                     res.set("contract", latestContract);
                 }
             }
+        }
+        return res;
+    }
+
+    private Binder followerGetRate(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Double rate = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
+        String str = rate.toString();
+        Binder b = new Binder();
+        b.put("U", str);
+
+        return b;
+    }
+
+    private Binder queryFollowerInfo(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Binder res = new Binder();
+        res.set("follower_state", null);
+        byte[] follower_id = params.getBinary("follower_id");
+        byte[] followerBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(follower_id));
+
+        if (followerBin != null) {
+            FollowerContract followerContract = (FollowerContract) Contract.fromPackedTransaction(followerBin);
+            res.set("follower_state", followerContract.getStateData());
         }
         return res;
     }

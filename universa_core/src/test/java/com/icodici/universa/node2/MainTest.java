@@ -2275,36 +2275,27 @@ public class MainTest {
         System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
 
-       /* Binder followerInfo = client.queryFollowerInfo(followerContract.getId());
+        Binder followerInfo = client.queryFollowerInfo(followerContract.getId());
         System.out.println("follower info is null: " + (followerInfo == null));
         assertNull(followerInfo);
-
-        byte[] simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
-        System.out.println("simpleContractBytes (by contractId): " + simpleContractBytes);
-        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
-
-        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
-        System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
-        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
 
         client.registerParcel(parcel.pack(), 5000);
         itemResult = client.getState(followerContract.getId());
         System.out.println("follower : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        slotInfo = client.querySlotInfo(slotContract.getId());
-        System.out.println("slot info size: " + slotInfo.size());
-        assertNotNull(slotInfo);
+        followerInfo = client.queryFollowerInfo(followerContract.getId());
+        System.out.println("follower info size: " + followerInfo.size());
+        System.out.println("prepaid_OD: " + followerInfo.getString("prepaid_OD", ""));
+        System.out.println("callback_keys: " + followerInfo.getString("callback_keys", ""));
+        assertNotNull(followerInfo);
 
-        simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
-        System.out.println("simpleContractBytes (by contractId) length: " + simpleContractBytes.length);
-        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
-
-        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
-        System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
-        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+        assertEquals(followerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
+        assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(followerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
 
         mm.forEach(x -> x.shutdown());
 
