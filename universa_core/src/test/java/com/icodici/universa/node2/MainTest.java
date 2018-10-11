@@ -2287,10 +2287,29 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         followerInfo = client.queryFollowerInfo(followerContract.getId());
+
         System.out.println("follower info size: " + followerInfo.size());
+
+        System.out.println("paid_U: " + followerInfo.getString("paid_U", ""));
         System.out.println("prepaid_OD: " + followerInfo.getString("prepaid_OD", ""));
-        System.out.println("callback_keys: " + followerInfo.getString("callback_keys", ""));
+        System.out.println("prepaid_from: " + followerInfo.getString("prepaid_from", ""));
+        System.out.println("followed_origins: " + followerInfo.getString("followed_origins", ""));
+        System.out.println("spent_OD: " + followerInfo.getString("spent_OD", ""));
+        System.out.println("spent_OD_time: " + followerInfo.getString("spent_OD_time", ""));
+        System.out.println("callback_rate: " + followerInfo.getString("callback_rate", ""));
+
         assertNotNull(followerInfo);
+        assertEquals(followerInfo.size(),9);
+
+        assertEquals(followerInfo.getInt("paid_U", 0),followerContract.getStateData().get("paid_U"));
+        assertTrue(followerInfo.getDouble("prepaid_OD") ==  followerContract.getPrepaidOriginsForDays());
+        assertEquals(followerInfo.getLong("prepaid_from", 0), followerContract.getStateData().get("prepaid_from"));
+        assertEquals(followerInfo.getInt("followed_origins", 0), followerContract.getStateData().get("followed_origins"));
+        assertEquals(followerInfo.getDouble("spent_OD"), followerContract.getStateData().get("spent_OD"));
+        assertEquals(followerInfo.getLong("spent_OD_time", 0), followerContract.getStateData().get("spent_OD_time"));
+        assertEquals(followerInfo.getDouble("callback_rate"), followerContract.getStateData().get("callback_rate"));
+        assertEquals(followerInfo.getBinder("callback_keys").get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey().pack());
+        assertEquals(followerInfo.getBinder("tracking_origins").get(simpleContract.getOrigin().toBase64String()), "http:\\\\localhost:7777\\follow.callback");
 
         assertEquals(followerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey());
         assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
