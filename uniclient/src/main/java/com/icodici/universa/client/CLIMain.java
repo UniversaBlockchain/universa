@@ -2150,11 +2150,13 @@ public class CLIMain {
             try {
                 if (contract != null) {
                     report("pack contract from " + source);
+                    boolean sealRequired = false;
                     if (siblingItems != null) {
                         for (Object sibFile : siblingItems) {
                             Contract siblingContract = loadContract((String) sibFile, true);
                             report("add sibling from " + sibFile);
                             contract.addNewItems(siblingContract);
+                            sealRequired = true;
                         }
                     }
                     if (revokeItems != null) {
@@ -2162,12 +2164,13 @@ public class CLIMain {
                             Contract revokeContract = loadContract((String) revokeFile, true);
                             report("add revoke from " + revokeFile);
                             contract.addRevokingItems(revokeContract);
+                            sealRequired = true;
                         }
                     }
                     if (name == null) {
                         name = source;
                     }
-                    if (siblingItems != null || revokeItems != null) {
+                    if (sealRequired) {
                         contract.seal();
                     }
 

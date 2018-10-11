@@ -396,6 +396,9 @@ public class Client {
                     e.printStackTrace();
                 }
             }
+            if(result == null)
+                return false;
+
             return (boolean) result;
         }
 
