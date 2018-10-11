@@ -2257,9 +2257,14 @@ public class MainTest {
         // register callback
         PrivateKey callbackKey = new PrivateKey(2048);
 
-        Decimal originsAndDaysPerU = client.followerGetRate();
-        System.out.println("followerGetRate: " + originsAndDaysPerU);
-        assertEquals(main.config.getRate("FOLLOWER1"), originsAndDaysPerU.doubleValue(), 0.000001);
+        Binder followerRate = client.followerGetRate();
+
+        System.out.println("followerRate size: " + followerRate.size());
+        System.out.println("rateOriginDays: " + followerRate.get("rateOriginDays"));
+        System.out.println("rateCallback: " + followerRate.get("rateCallback"));
+
+        assertEquals(main.config.getRate("FOLLOWER1"), followerRate.getDouble("rateOriginDays"), 0.000001);
+        assertEquals((main.config.getRate("FOLLOWER1" + ":callback") / main.config.getRate("FOLLOWER1")), followerRate.getDouble("rateCallback"), 0.000001);
 
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();

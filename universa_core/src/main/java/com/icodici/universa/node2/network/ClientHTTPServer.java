@@ -710,10 +710,12 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session, true);
 
-        Double rate = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
-        String str = rate.toString();
+        Double rateOriginDays = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
+        Double rateCallback = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback") / rateOriginDays;
+
         Binder b = new Binder();
-        b.put("U", str);
+        b.put("rateOriginDays", rateOriginDays.toString());
+        b.put("rateCallback", rateCallback.toString());
 
         return b;
     }

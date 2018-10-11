@@ -843,13 +843,13 @@ public class Client {
      * @return origins-days per U rate
      * @throws ClientError
      */
-    public Decimal followerGetRate() throws ClientError {
+    public Binder followerGetRate() throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("followerGetRate");
-            Double U = result.getDouble("U");
-            return new Decimal(BigDecimal.valueOf(U));
+            return result;
         });
     }
+
 
     /**
      * Look for state data of follower contract
