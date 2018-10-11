@@ -428,7 +428,7 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public byte[] getSlotContractBySlotId(HashId slotId) {return null;}
+    public byte[] getSmartContractById(HashId smartContractId) {return null;}
 
 
 

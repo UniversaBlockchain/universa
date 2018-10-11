@@ -14686,6 +14686,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
         followerIssuerPublicKeys.add(key.getPublicKey());
 
+        Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
+        simpleIssuerPublicKeys.add(key2.getPublicKey());
+
         // contract for follow
         Contract simpleContract = new Contract(key);
         simpleContract.seal();
@@ -14793,8 +14796,12 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
         }
 
+        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
         // contract2 for follow
         Contract simpleContract2 = new Contract(key2);
+        simpleContract.addPermission(changeOwnerPerm);
         simpleContract2.seal();
         simpleContract2.check();
         simpleContract2.traceErrors();
@@ -14904,5 +14911,17 @@ public class BaseNetworkTest extends TestCase {
             assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
             assertNotNull(networkNode.getLedger().getEnvironment(newRevFollowerContract.getId()));
         }
+
+        // create revision of follow contract2
+        Contract simpleContractRevision = simpleContract2.createRevision(key2);
+        simpleContractRevision.setOwnerKeys(key);
+        simpleContractRevision.seal();
+        simpleContractRevision.check();
+        simpleContractRevision.traceErrors();
+        assertTrue(simpleContractRevision.isOk());
+
+        registerAndCheckApproved(simpleContractRevision);
+
+        //
     }
 }

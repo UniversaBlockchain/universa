@@ -2084,6 +2084,11 @@ public class Node {
 
                         synchronized (mutex) {
                             try {
+                                if (record.getState() == ItemState.APPROVED) {
+                                    // item can be approved by network consensus while our node do checking
+                                    // stop checking in this case
+                                    return;
+                                }
                                 itemLock.synchronize(revokingItem.getId(), lock -> {
                                     StateRecord r = record.lockToRevoke(revokingItem.getId());
                                     if (r == null) {
@@ -4130,12 +4135,29 @@ public class Node {
             expiresAt = ZonedDateTime.now().plus(config.getFollowerCallbackExpiration());
 
             // calculate node callback delay
-            SortedSet<byte[]> nodeDigests = new TreeSet();
+            TreeSet<byte[]> nodeDigests = new TreeSet<>((byte[] left, byte[] right) -> {
+                    for (int i = 0, j = 0; i < left.length && j < right.length; i++, j++) {
+                        int a = (left[i] & 0xff);
+                        int b = (right[j] & 0xff);
+                        if (a != b)
+                            return a - b;
+                    }
+                    return left.length - right.length;
+                });
+
             byte[] callbackDigest = id.getDigest();
             byte[] myDigest = null;
             for (NodeInfo n: allNodes) {
-                byte[] nodeDigest = HashId.of(ByteBuffer.allocate(4).putInt(n.getNumber()).array()).getDigest();
+                ByteBuffer bb = ByteBuffer.allocate(4).putInt(n.getNumber());
+                byte[] nodeAndItemId = new byte[digest.length + 4];
+                System.arraycopy(digest, 0, nodeAndItemId, 0, digest.length);
+                System.arraycopy(bb.array(), 0, nodeAndItemId, digest.length, 4);
+
+                //System.out.println(myInfo.getName() +  ": calc node " + n.getNumber() + " hash: " + HashId.of(nodeAndItemId).toBase64String());
+
+                byte[] nodeDigest = HashId.of(nodeAndItemId).getDigest();
                 nodeDigests.add(nodeDigest);
+
                 if (n.getNumber() == myInfo.getNumber())
                     myDigest = nodeDigest;
             }
@@ -4150,6 +4172,10 @@ public class Node {
             delay += skipNodes * config.getFollowerCallbackDelay().toMillis();
             if (allNodes.size() % 2 == 1)
                 delay += config.getFollowerCallbackDelay().toMillis() / 3;
+
+            //System.out.println(myInfo.getName() +  ": calc callback hash: " + id.toBase64String());
+            //System.out.println(myInfo.getName() +  ": calc skipNodes: " + skipNodes);
+            //System.out.println(myInfo.getName() +  ": calc delay: " + delay);
         }
 
         public HashId getId() { return id; }
