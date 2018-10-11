@@ -59,11 +59,11 @@ definition:
           action:
           paid_U:
           prepaid_OD:
-          prepaid_from_time:
+          prepaid_from:
           followed_origins:
           spent_OD:
           spent_OD_time:
-          prepaid_callbacks:
+          callback_rate:
           tracking_origins:
           callback_keys:
 
