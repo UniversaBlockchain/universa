@@ -243,8 +243,7 @@ public class Capsule {
             return;
 
         for (Binder b : payload.getBinders("signers")) {
-            PublicKey k = new PublicKey();
-            k.unpack(b.getBinary("key"));
+            PublicKey k = new PublicKey(b.getBinary("key"));
 
             Binder result = new Binder();
             result.put("key", k);

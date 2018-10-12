@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class PublicKey extends AbstractKey {
     private final RSAOAEPPublicKey publicKey;
+    private final AtomicBoolean unpacked = new AtomicBoolean(false);
     private byte[] cachedHint;
     private boolean publicExponent;
 
@@ -46,17 +47,17 @@ public class PublicKey extends AbstractKey {
 
     public PublicKey(final byte[] bytes) throws EncryptionError {
         this.publicKey = new RSAOAEPPublicKey();
-        unpack(bytes);
+        setupKey(bytes,null);
     }
 
     public PublicKey(final byte[] bytes, KeyInfo info) throws EncryptionError {
         this.publicKey = new RSAOAEPPublicKey();
-        unpack(bytes, info);
+        setupKey(bytes, info);
     }
 
-    public void unpack(byte[] bytes) throws EncryptionError {
-        unpack(bytes, null);
-    }
+//    public void setupKey(byte[] bytes) throws EncryptionError {
+//        setupKey(bytes, null);
+//    }
 
     @Override
     public boolean isPublic() {
@@ -67,7 +68,11 @@ public class PublicKey extends AbstractKey {
         return publicKey.getBitStrength();
     }
 
-    public void unpack(byte[] bytes, KeyInfo info) throws EncryptionError {
+    private void setupKey(byte[] bytes, KeyInfo info) throws EncryptionError {
+        if(unpacked.getAndSet(true)) {
+            throw new IllegalStateException("public key is already set");
+        }
+
         List parts = Boss.load(bytes);
         if ((Integer) parts.get(0) != 1)
             throw new EncryptionError("invalid packed public key");
