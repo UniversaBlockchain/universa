@@ -80,7 +80,7 @@ public class JSApiHttpClient {
             for (String paramName : formParams.keySet()) {
                 Object paramValue = formParams.get(paramName);
                 os.writeBytes("--" + boundary + "\r\n");
-                os.writeBytes("Content-Disposition: form-data; name=" + paramName + "\r\n");
+                os.writeBytes("Content-Disposition: form-data; name=\"" + paramName + "\"\r\n");
                 os.writeBytes("\r\n");
                 os.writeBytes(paramValue.toString());
                 os.writeBytes("\r\n");
@@ -89,7 +89,7 @@ public class JSApiHttpClient {
             for (String paramName : files.keySet()) {
                 byte[] binData = files.get(paramName);
                 os.writeBytes("--" + boundary + "\r\n");
-                os.writeBytes("Content-Disposition: form-data; name=" + paramName + "; filename=file_" + fileCounter + "\r\n");
+                os.writeBytes("Content-Disposition: form-data; name=\"" + paramName + "\"; filename=\"file_" + fileCounter + "\"\r\n");
                 os.writeBytes("Content-Type: application/octet-stream" + "\r\n");
                 os.writeBytes("\r\n");
                 os.write(binData);

@@ -64,6 +64,10 @@ public class JSApiHttpServer {
         contractCheckerExecutor.scheduleWithFixedDelay(()->checkAllContracts(), SERVICE_PERIOD_SECONDS, SERVICE_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
+    public void stop() throws Exception {
+        service.close();
+    }
+
     private void initEndpoints(String... params) throws Exception {
         endpoints = new ConcurrentHashMap<>();
         ConcurrentLinkedQueue<Exception> exceptions = new ConcurrentLinkedQueue<>();

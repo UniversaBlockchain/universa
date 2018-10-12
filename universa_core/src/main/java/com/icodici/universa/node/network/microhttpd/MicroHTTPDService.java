@@ -9,6 +9,7 @@ package com.icodici.universa.node.network.microhttpd;
 
 import com.icodici.universa.node.network.BasicHTTPService;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.JsonTool;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -141,6 +142,25 @@ public class MicroHTTPDService implements BasicHTTPService {
             // Create a copy of map, to be modified.
             // The files from this map will substitute the same-named values from some keys.
             final Map<String, InMemoryTempFile> filesMap = new HashMap<>(this.filesMap);
+
+            // NanoHTTPD don't accepts application/json requests, so try to parse it here
+            try {
+                if ("application/json".equalsIgnoreCase(getHeaders().getString("content-type", ""))) {
+                    session.getInputStream().reset();
+                    if (session.getInputStream().available() > 2*1024*1024)
+                        throw new IOException("input data too large");
+                    byte[] buf = new byte[session.getInputStream().available()];
+                    session.getInputStream().read(buf, 0, buf.length);
+                    String body = new String(buf);
+                    body = body.substring(body.indexOf("\r\n\r\n") + 4);
+                    Object jsonParams = JsonTool.fromJson(body);
+                    Binder b = Binder.convertAllMapsToBinders(jsonParams);
+                    result.putAll(b);
+                }
+            } catch (Exception e) {
+                result.put("status", "error");
+                result.put("details", "[MicroHTTPDService] unable to parse application/json request: " + e);
+            }
 
             session.getParameters().forEach((key, values) -> {
                 if (values.size() > 1) {

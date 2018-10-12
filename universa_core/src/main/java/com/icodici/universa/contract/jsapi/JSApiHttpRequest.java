@@ -12,9 +12,14 @@ public class JSApiHttpRequest {
         this.request = request;
     }
 
-    public Map parseForm() {
+    public Map getParams() {
         Map jsObj = new HashMap();
-        request.getParams().forEach((k, v) -> jsObj.put(k, v));
+        request.getParams().forEach((k, v) -> {
+            if (v instanceof BasicHTTPService.FileUpload)
+                jsObj.put(k, ((BasicHTTPService.FileUpload)v).getBytes());
+            else
+                jsObj.put(k, v);
+        });
         return jsObj;
     }
 }

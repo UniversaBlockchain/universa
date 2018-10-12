@@ -1393,6 +1393,7 @@ public class ScriptEngineTest {
                 "  response.setBodyAsPlainText('answer plain text');" +
                 "};";
         js += "jsApiEvents.httpHandler_about = function(request, response){" +
+                "  print('httpHandler_about params: ' + request.getParams());" +
                 "  response.setBodyAsJson({status: 'ok', answer: 'some string value', jsApiParams: jsApiParams});" +
                 "};";
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
@@ -1406,10 +1407,10 @@ public class ScriptEngineTest {
         routes.setJsParams(new String[]{"prm1", "prm2"});
         routes.addNewRoute("/contract1", "httpHandler_index", contract, js.getBytes());
         routes.addNewRoute("/contract1/about", "httpHandler_about", contract, js.getBytes());
-        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), (hashId -> {
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
 //            System.out.println("is approved hashId="+hashId+"? returns true");
             return true;
-        }));
+        });
 
         // here can be any http client. JSApiHttpClient used just for easiness
         scriptParameters = new JSApiScriptParameters();
@@ -1422,7 +1423,7 @@ public class ScriptEngineTest {
         System.out.println("httpRes: " + httpRes);
         assertEquals(201, httpRes.get(0));
         assertEquals("answer plain text", httpRes.get(1));
-        httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/about", JSApiHttpClient.RESPTYPE_TEXT);
+        httpRes = httpClient.sendPostRequest("http://localhost:8880/contract1/about", JSApiHttpClient.RESPTYPE_TEXT, params, "form");
         System.out.println("httpRes: " + httpRes);
         assertEquals(200, httpRes.get(0));
         assertEquals(true, ((String)httpRes.get(1)).indexOf("\"answer\":\"some string value\"") != -1);
@@ -1433,6 +1434,116 @@ public class ScriptEngineTest {
         assertEquals(200, httpRes.get(0));
         assertEquals("some string value", ((HashMap)httpRes.get(1)).get("answer"));
         assertEquals("ok", ((HashMap)httpRes.get(1)).get("status"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that application/x-www-form-urlencoded request correctly parsed at server
+    public void httpServerTest2() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  response.setBodyAsJson({req_params: request.getParams()});" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, js.getBytes());
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        List httpRes = httpClient.sendPostRequest("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, "form");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("value1", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param1"));
+        assertEquals("42", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that application/json request correctly parsed at server
+    public void httpServerTest3() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  response.setBodyAsJson({req_params: request.getParams()});" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, js.getBytes());
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        List httpRes = httpClient.sendPostRequest("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, "json");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("value1", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param1"));
+        assertEquals(42l, ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that multipart/form-data request correctly parsed at server
+    public void httpServerTest4() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  print('[js] req.params: '+request.getParams());" +
+                "  response.setBodyAsJson({" +
+                "    filename: jsApi.bin2base64(request.getParams().get('filename'))," +
+                "    param1: request.getParams().get('param1')," +
+                "    param2: parseInt(request.getParams().get('param2'))" +
+                "  });" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, js.getBytes());
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        Map<String, byte[]> files = new HashMap<>();
+        byte[] fileData = Do.randomBytes(3200);
+        files.put("filename", fileData);
+        List httpRes = httpClient.sendPostRequestMultipart("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, files);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(Base64.encodeString(fileData), ((HashMap)httpRes.get(1)).get("filename"));
+        assertEquals("value1", ((HashMap)httpRes.get(1)).get("param1"));
+        assertEquals(42l, ((HashMap)httpRes.get(1)).get("param2"));
+
+        httpServer.stop();
     }
 
 }
