@@ -9,6 +9,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
@@ -42,6 +43,9 @@ public class FollowerContract extends NSmartContract {
     public static final String CALLBACK_RATE_FIELD_NAME = "callback_rate";
     public static final String TRACKING_ORIGINS_FIELD_NAME = "tracking_origins";
     public static final String CALLBACK_KEYS_FIELD_NAME = "callback_keys";
+
+    // in data (definition.data, state.data or transactional.data) of following contract
+    public static final String FOLLOWER_ROLES_FIELD_NAME = "follower_roles";
 
     private Map<HashId, String> trackingOrigins = new HashMap<>();
     private Map<String, PublicKey> callbackKeys = new HashMap<>();
@@ -254,6 +258,33 @@ public class FollowerContract extends NSmartContract {
         }
 
         return false;
+    }
+
+    /**
+     * @param contract for followable checking
+     * @return true if {@link Contract} can be follow by this {@link FollowerContract}
+     */
+    public boolean canFollowContract(Contract contract) {
+        // check for contract owner
+        Role owner = contract.getOwner();
+        if (owner.equals(getOwner()) || owner.isAllowedForKeys(getSealedByKeys()))
+            return true;
+
+        // check for roles from field data.follower_roles in all sections of contract
+        List<String> sections = Arrays.asList("definition", "state", "transactional");
+
+        return (sections.stream().anyMatch(section -> {
+            try {
+                Object followerRoles = contract.get("definition.data." + FOLLOWER_ROLES_FIELD_NAME);
+                if (((followerRoles != null) && followerRoles instanceof Collection) &&
+                        (((Collection)followerRoles).stream().anyMatch(
+                                r -> ((r instanceof Role) && (((Role) r).equals(getOwner()) || ((Role) r).isAllowedForKeys(getSealedByKeys())))
+                        )))
+                    return true;
+            } catch (IllegalArgumentException e) {} // no followable roles in <section>.data
+
+            return false;
+        }));
     }
 
     /**
@@ -479,9 +510,8 @@ public class FollowerContract extends NSmartContract {
 
         for (String URL: callbacksData.keySet()) {
             byte[] packedKey = callbacksData.getBinary(URL);
-            PublicKey key = new PublicKey();
             try {
-                key.unpack(packedKey);
+                PublicKey key = new PublicKey(packedKey);
                 callbackKeys.put(URL, key);
             } catch (EncryptionError encryptionError) {}
         }

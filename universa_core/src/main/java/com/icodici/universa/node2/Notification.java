@@ -155,6 +155,7 @@ abstract public class Notification {
         ItemNotification.init();
         ParcelNotification.init();
         ResyncNotification.init();
+        CallbackNotification.init();
     }
 
 }

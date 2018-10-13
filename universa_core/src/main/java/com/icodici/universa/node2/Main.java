@@ -208,7 +208,7 @@ public class Main {
         });
 
         network = new NetworkV2(netConfig, myInfo, nodeKey);
-        node = new Node(config, myInfo, ledger, network);
+        node = new Node(config, myInfo, ledger, network, nodeKey);
         cache = node.getCache();
         parcelCache = node.getParcelCache();
         envCache = node.getEnvCache();

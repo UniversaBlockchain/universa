@@ -1,40 +1,87 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.services.NImmutableEnvironment;
-import com.icodici.universa.contract.services.NNameRecord;
-import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.StateRecord;
-import com.icodici.universa.node.network.BasicHTTPService;
-import com.icodici.universa.node2.*;
-import com.icodici.universa.node2.network.BasicHttpServer;
-import net.sergeych.boss.Boss;
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.BufferedLogger;
-import net.sergeych.utils.Bytes;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.StringTokenizer;
 
-public class FollowerCallback extends BasicHttpServer {
+public class FollowerCallback {
+    private PrivateKey callbackKey;
+    private int port = 8080;
+    private Thread main;
 
-    private final BufferedLogger log;
+    public FollowerCallback(PrivateKey callbackKey) {
+        this.callbackKey = callbackKey;
+    }
 
-    FollowerCallback(PrivateKey key, int port, int maxTrheads, BufferedLogger logger) throws IOException {
-        super(key, port, maxTrheads, logger);
-        log = logger;
+    public FollowerCallback(PrivateKey callbackKey, int port) {
+        this(callbackKey);
+        this.port = port;
+    }
 
+    public void start() {
+        main = new Thread(() -> {
+            try {
+                ServerSocket serverSocket = new ServerSocket(port);
+                System.out.println("Follower callback server started.");
+
+                while (!Thread.interrupted()) {
+                    FollowerCallbackThread callback = new FollowerCallbackThread(serverSocket.accept());
+
+                    Thread thread = new Thread(callback);
+                    thread.start();
+                }
+
+            } catch (IOException e) {
+                System.err.println("Follower callback connection error: " + e.getMessage());
+            }
+        });
+        main.start();
+    }
+
+    public void stop() {
+        if (main.isAlive())
+            main.interrupt();
+    }
+
+    public class FollowerCallbackThread implements Runnable {
+        private Socket acceptedSocket;
+
+        public FollowerCallbackThread(Socket socket) {
+            acceptedSocket = socket;
+        }
+
+        public void run() {
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(acceptedSocket.getInputStream()));
+                PrintWriter out = new PrintWriter(acceptedSocket.getOutputStream());
+                BufferedOutputStream receiptOut = new BufferedOutputStream(acceptedSocket.getOutputStream());
+
+                String line = in.readLine();
+
+                StringTokenizer parse = new StringTokenizer(line);
+                String method = parse.nextToken().toUpperCase();
+                String resource = parse.nextToken();
+
+                System.out.println("FOLLOWER CALLBACK!!!");
+                System.out.println("Method: " + method);
+                System.out.println("Resource: " + resource);
+
+                // check nodes
+                // sign receipt
+
+                out.println("HTTP/1.1 200 OK");
+                out.flush();
+
+                in.close();
+                out.close();
+                receiptOut.close();
+                acceptedSocket.close();
+            } catch (IOException e) {
+                System.err.println("Follower callback running error: " + e.getMessage());
+            }
+        }
     }
 }

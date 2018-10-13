@@ -20,6 +20,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.network.FollowerCallback;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -3755,11 +3756,11 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         //int todayPaidAmount = node.nodeStats.todayPaidAmount;//        reuse payment for another contract
-        Contract contract = new Contract(TestKeys.privateKey(12));
-        contract.seal();
-        Parcel parcel2 = new Parcel(contract.getTransactionPack(), parcel.getPayment());
+        //Contract contract = new Contract(TestKeys.privateKey(12));
+        //contract.seal();
+        //Parcel parcel2 = new Parcel(contract.getTransactionPack(), parcel.getPayment());
         node.registerParcel(parcel);
-        node.registerParcel(parcel2);
+        //node.registerParcel(parcel2);
         node.waitParcel(parcel.getId(), 8000);
 
 //        node.nodeStats.collect(ledger,config);
@@ -8265,6 +8266,12 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
 
+        Thread.sleep(5000);
+
+        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
         // additional check for all network nodes
 
         for (Node networkNode: nodes) {
@@ -8276,10 +8283,6 @@ public class BaseNetworkTest extends TestCase {
             Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
             assertNotNull(restoredContract);
             assertEquals(simpleContract.getId(), restoredContract.getId());
-
-            double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
-            long seconds = (long) (days * 24 * 3600);
-            ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
             Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
             if(envs.size() > 0) {
@@ -8305,10 +8308,6 @@ public class BaseNetworkTest extends TestCase {
         Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
-
-        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
-        long seconds = (long) (days * 24 * 3600);
-        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
         Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
         if(envs.size() > 0) {
@@ -8370,6 +8369,7 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
+        Thread.sleep(5000);
 
         // additional check for all network nodes
 
@@ -8451,7 +8451,7 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
-        spentSeconds = (timeReg3.toEpochSecond() - timeReg1.toEpochSecond());
+        spentSeconds = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
         spentDays = (double) spentSeconds / (3600 * 24);
         spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
@@ -8459,6 +8459,7 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
+        Thread.sleep(5000);
 
         // additional check for all network nodes
 
@@ -8516,7 +8517,7 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
         assertEquals(ItemState.REVOKED, itemResult.state);
 
-        Thread.sleep(10000);
+        Thread.sleep(5000);
 
         // additional check for all network nodes
 
@@ -14385,7 +14386,7 @@ public class BaseNetworkTest extends TestCase {
 
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey.getPublicKey());
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for follow
@@ -14422,10 +14423,10 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
-        assertEquals(followerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         // check subscription
         double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
@@ -14704,7 +14705,7 @@ public class BaseNetworkTest extends TestCase {
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
                 followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback",
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback",
                 callbackKey.getPublicKey());
 
         // payment contract
@@ -14730,10 +14731,10 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(followerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -14813,7 +14814,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertTrue(newRevFollowerContract instanceof FollowerContract);
 
-        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http:\\\\localhost:7777\\follow.callbackTwo", callbackKey.getPublicKey());
+        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http://localhost:7777/follow.callbackTwo", callbackKey.getPublicKey());
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
 
         newRevFollowerContract.seal();
@@ -14853,15 +14854,15 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callbackTwo"),callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http:\\\\localhost:7777\\follow.callbackTwo");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callbackTwo"),callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http://localhost:7777/follow.callbackTwo");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract2.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callbackTwo"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callbackTwo"));
 
         // check subscription
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
@@ -14912,6 +14913,10 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(newRevFollowerContract.getId()));
         }
 
+        // init follower callback
+        FollowerCallback callback = new FollowerCallback(callbackKey, 7777);
+        callback.start();
+
         // create revision of follow contract2
         Contract simpleContractRevision = simpleContract2.createRevision(key2);
         simpleContractRevision.setOwnerKeys(key);
@@ -14922,6 +14927,6 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(simpleContractRevision);
 
-        //
+        Thread.sleep(50000);
     }
 }

@@ -7,10 +7,10 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.KeyAddress;
-import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -26,12 +26,18 @@ import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
+import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -85,6 +91,7 @@ public class Node {
     private final EnvCache envCache;
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
+    private final PrivateKey nodeKey;
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -159,12 +166,13 @@ public class Node {
         }
     });
 
-    public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
+    public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey) {
 
         this.config = config;
         this.myInfo = myInfo;
         this.ledger = ledger;
         this.network = network;
+        this.nodeKey = nodeKey;
         cache = new ItemCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
         envCache = new EnvCache(config.getMaxCacheAge());
@@ -526,6 +534,8 @@ public class Node {
             obtainResyncNotification((ResyncNotification) notification);
         } else if (notification instanceof ItemNotification) {
             obtainCommonNotification((ItemNotification) notification);
+        } else if (notification instanceof CallbackNotification) {
+            obtainCallbackNotification((CallbackNotification) notification);
         }
     }
 
@@ -2802,12 +2812,15 @@ public class Node {
                         }
 
                         NContractFollowerSubscription finalSubscription = subscription;
-                        if (subscription != null) {
+                        if ((subscription != null) && (contract instanceof FollowerContract) &&
+                           ((FollowerContract) contract).canFollowContract((Contract) updatingItem)) {
+
                             CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract,
                                     me, finalSubscription, config, myInfo, network.allNodes());
 
-                            int delay = callback.getDelay();
-                            callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), delay, delay, TimeUnit.MILLISECONDS));
+                            int startDelay = callback.getDelay();
+                            int repeatDelay = (int) config.getFollowerCallbackDelay().toMillis() * (network.getNodesCount() + 2);
+                            callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), startDelay, repeatDelay, TimeUnit.MILLISECONDS));
 
                             callbackProcessors.put(callback.getId(), callback);
 
@@ -4097,6 +4110,85 @@ public class Node {
     }
 
 
+    /**
+     * Request distant callback URL. Send new revision of following contract and signature (by node key).
+     * Receive answer and return it if HTTP response code equals 200.
+     *
+     * @param callbackURL callback URL
+     * @param packedItem packed new revision of following contract
+     *
+     * @return callback receipt (signed with callback key packedItem id) or null (if connection error)
+     *
+     */
+    public byte[] requestFollowerCallback(String callbackURL, byte[] packedItem) throws IOException {
+        synchronized (this) {
+            String charset = "UTF-8";
+
+            Binder call = Binder.fromKeysValues(
+                    "data", packedItem,
+                    "signature", nodeKey.sign(packedItem, HashType.SHA512)
+            );
+
+            byte[] data = Boss.pack(call);
+
+            String boundary = "==boundary==" + Ut.randomString(48);
+
+            String CRLF = "\r\n"; // Line separator required by multipart/form-data.
+
+            URLConnection connection = new URL(callbackURL).openConnection();
+
+            connection.setDoOutput(true);
+
+            connection.setConnectTimeout(2000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            connection.setRequestProperty("User-Agent", "Universa Node");
+
+            try (
+                    OutputStream output = connection.getOutputStream();
+                    PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, charset), true);
+            ) {
+                // Send binary file.
+                writer.append("--" + boundary).append(CRLF);
+                writer.append("Content-Disposition: form-data; name=\"callbackData\"; filename=\"callbackData.boss\"").append(CRLF);
+                writer.append("Content-Type: application/octet-stream").append(CRLF);
+                writer.append("Content-Transfer-Encoding: binary").append(CRLF);
+                writer.append(CRLF).flush();
+                output.write(data);
+                output.flush(); // Important before continuing with writer!
+                writer.append(CRLF).flush(); // CRLF is important! It indicates end of boundary.
+
+                // End of multipart/form-data.
+                writer.append("--" + boundary + "--").append(CRLF).flush();
+            }
+
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+            byte[] answer = null;
+
+            if (httpConnection.getResponseCode() == 200)
+                answer = Do.read(httpConnection.getInputStream());
+
+            httpConnection.disconnect();
+            return answer;
+        }
+    }
+
+    /**
+     * Obtain got callback notification: check signature of updated item id.
+     * if success, completed callback.
+     *
+     * @param notification callback notification
+     *
+     */
+    private final void obtainCallbackNotification(CallbackNotification notification) {
+        CallbackProcessor callback = callbackProcessors.get(notification.getId());
+        if (callback == null)
+            return;
+
+        if (callback.checkCallbackSignature(notification.getSignature()))
+            callback.complete();
+    }
+
     private class CallbackProcessor {
         private HashId id;
         private HashId itemId;
@@ -4184,32 +4276,72 @@ public class Node {
 
         public void setExecutor(ScheduledFuture<?> executor) { this.executor = executor; }
 
+        public boolean checkCallbackSignature(byte[] signature) {
+            try {
+                return callbackKey.verify(itemId.getDigest(), signature, HashType.SHA512);
+            } catch (EncryptionError e) {
+                return false;
+            }
+        }
+
+        public void complete() {
+            callbackProcessors.remove(id);
+
+            follower.onContractSubscriptionEvent(new ContractSubscription.CompletedEvent() {
+                @Override
+                public MutableEnvironment getEnvironment() {
+                    return environment;
+                }
+
+                @Override
+                public ContractSubscription getSubscription() {
+                    return subscription;
+                }
+            });
+            environment.save();
+
+            stop();
+        }
+
+        public void fail() {
+            callbackProcessors.remove(id);
+
+            follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
+                @Override
+                public MutableEnvironment getEnvironment() {
+                    return environment;
+                }
+
+                @Override
+                public ContractSubscription getSubscription() {
+                    return subscription;
+                }
+            });
+            environment.save();
+
+            stop();
+        }
+
         public void stop() { executor.cancel(true); }
 
         public void call() {
-            if (ZonedDateTime.now().isAfter(expiresAt)) {
-                // callback failed
-                callbackProcessors.remove(id);
+            if (ZonedDateTime.now().isAfter(expiresAt))
+                fail();     // callback failed (expired)
+            else {
+                // request HTTP follower callback
+                byte[] signature = null;
+                try {
+                    signature = requestFollowerCallback(callbackURL, packedItem);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.err.println("error request HTTP follower callback");
+                }
 
-                follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
-                    @Override
-                    public MutableEnvironment getEnvironment() {
-                        return environment;
-                    }
-
-                    @Override
-                    public ContractSubscription getSubscription() {
-                        return subscription;
-                    }
-                });
-                environment.save();
-
-                stop();
-            } else {
-
-                stop();
+                if ((signature != null) && checkCallbackSignature(signature)) {
+                    network.broadcast(myInfo, new CallbackNotification(myInfo, id, signature));
+                    complete();
+                }
             }
-
         }
     }
 }

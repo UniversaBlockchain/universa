@@ -51,7 +51,7 @@ public class BasicHttpServerTest extends TestCase {
     }
 
 
-    @Test
+    /*@Test
     public void testFollowerCallback() throws Exception {
         PrivateKey remoteServerKey = TestKeys.privateKey(1);
         PrivateKey nodeKey = TestKeys.privateKey(2);
@@ -71,7 +71,7 @@ public class BasicHttpServerTest extends TestCase {
         });
         res = c.command("getSessionInfo");
         s.shutdown();
-    }
+    }*/
 
 
     @Test
