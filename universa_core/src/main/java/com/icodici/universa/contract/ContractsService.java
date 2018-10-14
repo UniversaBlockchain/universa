@@ -1369,7 +1369,7 @@ public class ContractsService {
      *
      * @param issuerKeys       is issuer private keys.
      * @param ownerKeys        is owner public keys.
-     * @param nodeInfoProvider
+     * @param nodeInfoProvider is node provider info.
      * @return ready {@link FollowerContract}
      */
     public synchronized static FollowerContract createFollowerContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
