@@ -2273,7 +2273,7 @@ public class MainTest {
 
         FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))), nodeInfoProvider);
         followerContract.setNodeInfoProvider(nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey.getPublicKey());
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
 
         Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
         itemResult = client.register(stepaU.getPackedTransaction(), 5000);
@@ -2313,13 +2313,13 @@ public class MainTest {
         assertEquals(followerInfo.getDouble("spent_OD"), followerContract.getStateData().get("spent_OD"));
         assertEquals(followerInfo.getLong("spent_OD_time", 0), followerContract.getStateData().get("spent_OD_time"));
         assertEquals(followerInfo.getDouble("callback_rate"), followerContract.getStateData().get("callback_rate"));
-        assertEquals(followerInfo.getBinder("callback_keys").get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey().pack());
-        assertEquals(followerInfo.getBinder("tracking_origins").get(simpleContract.getOrigin().toBase64String()), "http:\\\\localhost:7777\\follow.callback");
+        assertEquals(followerInfo.getBinder("callback_keys").get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey().pack());
+        assertEquals(followerInfo.getBinder("tracking_origins").get(simpleContract.getOrigin().toBase64String()), "http://localhost:7777/follow.callback");
 
-        assertEquals(followerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http:\\\\localhost:7777\\follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         mm.forEach(x -> x.shutdown());
 

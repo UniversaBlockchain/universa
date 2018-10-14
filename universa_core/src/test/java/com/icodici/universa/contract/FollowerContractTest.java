@@ -52,7 +52,7 @@ public class FollowerContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof FollowerContract);
 
         ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
-        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey);
+        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey);
 
         smartContract.seal();
         smartContract.check();
@@ -67,11 +67,11 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"), callbackKey );
+        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey );
         assertEquals(((FollowerContract) smartContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(((FollowerContract) smartContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
     }
 
@@ -95,7 +95,7 @@ public class FollowerContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof FollowerContract);
 
         ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
-        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey);
+        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey);
 
         smartContract.seal();
         smartContract.check();
@@ -110,11 +110,11 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey );
+        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
         assertEquals(((FollowerContract) smartContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(((FollowerContract) smartContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
     }
 
@@ -189,13 +189,13 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        ((FollowerContract)desContract).putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey);
+        ((FollowerContract)desContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey);
 
-        assertEquals(((FollowerContract) desContract).getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey );
+        assertEquals(((FollowerContract) desContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
         assertEquals(((FollowerContract) desContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(((FollowerContract) desContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) desContract).isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(((FollowerContract) desContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
@@ -210,13 +210,13 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        ((FollowerContract)copiedContract).putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey);
+        ((FollowerContract)copiedContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey);
 
-        assertEquals(((FollowerContract) copiedContract).getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey );
+        assertEquals(((FollowerContract) copiedContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
         assertEquals(((FollowerContract) copiedContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(((FollowerContract) copiedContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) copiedContract).isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(((FollowerContract) copiedContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
    }
 
@@ -240,7 +240,7 @@ public class FollowerContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof FollowerContract);
 
         ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
-        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http:\\\\localhost:7777\\follow.callback", callbackKey);
+        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey);
 
         smartContract.seal();
         smartContract.check();
@@ -255,11 +255,11 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey );
+        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
         assertEquals(((FollowerContract) smartContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(((FollowerContract) smartContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         ////////////////////////
 
@@ -273,7 +273,7 @@ public class FollowerContractTest extends ContractTestBase {
 
         assertTrue(newRevFollowerContract instanceof FollowerContract);
 
-        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http:\\\\localhost:7777\\follow.callbackTwo", callbackKey);
+        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http://localhost:7777/follow.callbackTwo", callbackKey);
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
 
         newRevFollowerContract.seal();
@@ -289,17 +289,17 @@ public class FollowerContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callback"),callbackKey );
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
         assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callback");
+                "http://localhost:7777/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http:\\\\localhost:7777\\follow.callbackTwo"),callbackKey );
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callbackTwo"),callbackKey );
         assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()),
-                "http:\\\\localhost:7777\\follow.callbackTwo");
+                "http://localhost:7777/follow.callbackTwo");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract2.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http:\\\\localhost:7777\\follow.callbackTwo"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callbackTwo"));
 
     }
 
