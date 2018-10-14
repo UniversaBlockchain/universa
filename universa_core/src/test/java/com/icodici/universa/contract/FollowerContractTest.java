@@ -365,4 +365,57 @@ public class FollowerContractTest extends ContractTestBase {
 
     }
 
+    @Test
+    public void testCanFollowContract() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        final PrivateKey key2 = new PrivateKey(Do.read(rootPath + "test_network_whitekey.private.unikey"));
+
+        Contract simpleContract = new Contract(key2);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Contract smartContract = new FollowerContract(key);
+
+        assertTrue(smartContract instanceof FollowerContract);
+
+        ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
+       // ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+
+        //CanFollowContract
+
+        assertTrue(((FollowerContract) smartContract).canFollowContract(simpleContract));
+
+  /*       smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), smartContract.get("definition.extended_type"));
+
+        Multimap<String, Permission> permissions = smartContract.getPermissions();
+        Collection<Permission> mdp = permissions.get("modify_data");
+        assertNotNull(mdp);
+        assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
+
+        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
+        assertEquals(((FollowerContract) smartContract).getTrackingOrigins().get(simpleContract.getOrigin()),
+                "http://localhost:7777/follow.callback");
+        assertTrue(((FollowerContract) smartContract).isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));*/
+
+
+
+
+
+
+
+    }
+
 }
