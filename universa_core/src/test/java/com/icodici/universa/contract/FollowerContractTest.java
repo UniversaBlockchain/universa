@@ -76,7 +76,7 @@ public class FollowerContractTest extends ContractTestBase {
         //updateCallbackKey
 
         PrivateKey newCallbackKey = new PrivateKey(2048);
-        assertFalse(((FollowerContract) smartContract).updateCallbackKey("http://localhost:7776867867777/follow.callback", newCallbackKey.getPublicKey()));
+        assertFalse(((FollowerContract) smartContract).updateCallbackKey("http://localhost:8888/follow.callback", newCallbackKey.getPublicKey()));
         assertTrue(((FollowerContract) smartContract).updateCallbackKey("http://localhost:7777/follow.callback", newCallbackKey.getPublicKey()));
 
         assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"), newCallbackKey.getPublicKey());
@@ -330,7 +330,7 @@ public class FollowerContractTest extends ContractTestBase {
 
         PrivateKey newCallbackKey = new PrivateKey(2048);
 
-        assertFalse(((FollowerContract) smartContract).updateCallbackKey("http://localhost:7776867867777/follow.callback", newCallbackKey.getPublicKey()));
+        assertFalse(((FollowerContract) smartContract).updateCallbackKey("http://localhost:8888/follow.callback", newCallbackKey.getPublicKey()));
         assertTrue(((FollowerContract) smartContract).updateCallbackKey("http://localhost:7777/follow.callback", newCallbackKey.getPublicKey()));
 
         assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"), newCallbackKey.getPublicKey());
@@ -386,9 +386,10 @@ public class FollowerContractTest extends ContractTestBase {
         ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
        // ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
 
-        //CanFollowContract
+        // check canFollowContract
 
-        assertTrue(((FollowerContract) smartContract).canFollowContract(simpleContract));
+        // can not follow simpleContract (owner = key2) by smartContract (signed by key)
+        assertFalse(((FollowerContract) smartContract).canFollowContract(simpleContract));
 
   /*       smartContract.seal();
         smartContract.check();

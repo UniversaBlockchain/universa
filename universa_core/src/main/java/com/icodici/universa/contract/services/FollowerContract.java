@@ -267,7 +267,7 @@ public class FollowerContract extends NSmartContract {
     public boolean canFollowContract(Contract contract) {
         // check for contract owner
         Role owner = contract.getOwner();
-        if (owner.equals(getOwner()) || owner.isAllowedForKeys(getSealedByKeys()))
+        if (owner.isAllowedForKeys(getSealedByKeys()))
             return true;
 
         // check for roles from field data.follower_roles in all sections of contract
@@ -275,10 +275,10 @@ public class FollowerContract extends NSmartContract {
 
         return (sections.stream().anyMatch(section -> {
             try {
-                Object followerRoles = contract.get("definition.data." + FOLLOWER_ROLES_FIELD_NAME);
+                Object followerRoles = contract.get(section + ".data." + FOLLOWER_ROLES_FIELD_NAME);
                 if (((followerRoles != null) && followerRoles instanceof Collection) &&
                         (((Collection)followerRoles).stream().anyMatch(
-                                r -> ((r instanceof Role) && (((Role) r).equals(getOwner()) || ((Role) r).isAllowedForKeys(getSealedByKeys())))
+                                r -> ((r instanceof Role) && ((Role) r).isAllowedForKeys(getSealedByKeys()))
                         )))
                     return true;
             } catch (IllegalArgumentException e) {} // no followable roles in <section>.data
