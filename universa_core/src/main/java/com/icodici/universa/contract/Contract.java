@@ -3223,12 +3223,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         /**
          * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(JSApiExecOptions, byte[], String...)}
          */
-        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters, boolean putContentIntoContract) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters, putContentIntoContract);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
+        }
+
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+            setJS(jsFileContent, jsFileName, scriptParameters, false);
         }
 
     }
@@ -3343,13 +3347,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         /**
          * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(JSApiExecOptions, byte[], String...)}
+         * @param putContentIntoContract pass here true to save js body in contract, in this case it's not necessary to store attached
+         *                               js-files separately, needs only {@link HashId} of its.
          */
-        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters, boolean putContentIntoContract) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters, putContentIntoContract);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
+        }
+
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+            setJS(jsFileContent, jsFileName, scriptParameters, false);
         }
 
         /**
@@ -3746,6 +3756,49 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public Object execJS(byte[] jsFileContent, String... params) throws Exception {
         return execJS(new JSApiExecOptions(), jsFileContent, params);
+    }
+
+    /**
+     * Executes javascript, like {@link Contract#execJS(JSApiExecOptions, byte[], String...)},
+     * but searches script body in contract. It should be saved previously with {@link Definition#setJS(byte[], String, JSApiScriptParameters, boolean)}
+     * or {@link State#setJS(byte[], String, JSApiScriptParameters, boolean)} with putContentIntoContract == true.
+     * @param scriptHash is {@link HashId} from js-file content.
+     */
+    public Object execJSByScriptHash(JSApiExecOptions execOptions, HashId scriptHash, String... params) throws Exception {
+        JSApiEnvironment env = JSApiEnvironment.execJSByScriptHash(
+                getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                execOptions,
+                scriptHash,
+                this,
+                params
+        );
+        env.callEvent("main", true);
+        return env.getResult();
+    }
+
+    public Object execJSByScriptHash(HashId scriptHash, String... params) throws Exception {
+        return execJSByScriptHash(new JSApiExecOptions(), scriptHash, params);
+    }
+
+    /**
+     * Executes attached javascript if only one js is attached. Also, it should be attached with putContentIntoContract == true.
+     */
+    public Object execJSByName(JSApiExecOptions execOptions, String jsFileName, String... params) throws Exception {
+        JSApiEnvironment env = JSApiEnvironment.execJSByName(
+                getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                execOptions,
+                jsFileName,
+                this,
+                params
+        );
+        env.callEvent("main", true);
+        return env.getResult();
+    }
+
+    public Object execJSByName(String jsFileName, String... params) throws Exception {
+        return execJSByName(new JSApiExecOptions(), jsFileName, params);
     }
 
     static {

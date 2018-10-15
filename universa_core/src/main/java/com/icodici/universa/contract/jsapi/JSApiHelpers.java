@@ -31,13 +31,15 @@ public class JSApiHelpers {
         return String.join("_", nameParts2);
     }
 
-    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters, boolean putContentIntoContract) {
         BiSerializer biSerializer = new BiSerializer();
         HashId scriptHashId = HashId.of(jsFileContent);
         Binder scriptBinder = new Binder();
         scriptBinder.set("file_name", jsFileName);
         scriptBinder.set("__type", "file");
         scriptBinder.set("hash_id", biSerializer.serialize(scriptHashId));
+        if (putContentIntoContract)
+            scriptBinder.set("file_content", jsFileContent);
         scriptBinder.putAll(scriptParameters.toBinder());
         return scriptBinder;
     }
@@ -52,6 +54,22 @@ public class JSApiHelpers {
                 Binder vBinder = (Binder) v;
                 HashId hashId = biDeserializer.deserialize(vBinder.getOrDefault("hash_id", null));
                 if (hashIdToSearch.equals(hashId))
+                    res.add(vBinder);
+            }
+        });
+        return res.size()>0 ? res.get(0) : null;
+    }
+
+    public static Binder findScriptBinderByFileName(Binder data, String jsFileName) {
+        BiDeserializer biDeserializer = new BiDeserializer();
+        if (data == null)
+            return null;
+        List<Binder> res = new ArrayList<>();
+        data.forEach((k, v) -> {
+            if (v instanceof Binder) {
+                Binder vBinder = (Binder) v;
+                String fileName = vBinder.getString("file_name", null);
+                if (jsFileName.equals(fileName))
                     res.add(vBinder);
             }
         });

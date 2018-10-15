@@ -40,51 +40,84 @@ public class JSApiEnvironment {
     public static JSApiEnvironment execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
                                 byte[] jsFileContent, Contract currentContract, String... params)
             throws Exception {
-        JSApiEnvironment environment = new JSApiEnvironment();
-        environment.currentContract = currentContract;
         HashId jsFileHashId = HashId.of(jsFileContent);
         Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
         if (scriptBinder == null)
             scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
         if (scriptBinder != null) {
-            environment.scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
-            environment.scriptEngine = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            environment.jsApi = new JSApi(currentContract, execOptions, environment.scriptParameters);
-            environment.scriptEngine.put("jsApi", environment.jsApi);
-            String[] stringParams = new String[params.length];
-            for (int i = 0; i < params.length; ++i)
-                stringParams[i] = params[i].toString();
-            environment.scriptEngine.put("jsApiParams", stringParams);
-            String jsString = JSApiHelpers.unpackJSString(scriptBinder, jsFileContent);
-            List<Exception> exceptionsFromEval = new ArrayList<>();
-            Thread evalThread = new Thread(()-> {
-                try {
-                    environment.scriptEngine.eval(jsString);
-                } catch (Exception e) {
-                    exceptionsFromEval.add(e);
-                }
-            });
-            evalThread.start();
-            if (environment.scriptParameters.timeLimitMillis == 0) {
-                evalThread.join();
-            } else {
-                try {
-                    evalThread.join(environment.scriptParameters.timeLimitMillis);
-                    if (evalThread.isAlive())
-                        throw new InterruptedException("error: client javascript time limit is up (limit=" + environment.scriptParameters.timeLimitMillis + "ms)");
-                } catch (InterruptedException e) {
-                    throw new InterruptedException("error: client javascript was interrupted (limit=" + environment.scriptParameters.timeLimitMillis + "ms)");
-                }
-            }
-            if (exceptionsFromEval.size() > 0) {
-                Exception e = exceptionsFromEval.get(0);
-                throw e;
-            }
-            environment.result = environment.scriptEngine.get("result");
-            return environment;
+            return execJSImpl(execOptions, jsFileContent, currentContract, scriptBinder, params);
         } else {
             throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
         }
+    }
+
+    public static JSApiEnvironment execJSByScriptHash(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
+                                          HashId jsFileHashId, Contract currentContract, String... params)
+            throws Exception {
+        Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
+        if (scriptBinder == null)
+            scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
+        if (scriptBinder != null) {
+            byte[] jsFileContent = scriptBinder.getBinaryOrThrow("file_content");
+            return execJSImpl(execOptions, jsFileContent, currentContract, scriptBinder, params);
+        } else {
+            throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
+        }
+    }
+
+    public static JSApiEnvironment execJSByName(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
+                                                      String jsFileName, Contract currentContract, String... params)
+            throws Exception {
+        Binder scriptBinder = JSApiHelpers.findScriptBinderByFileName(definitionScripts, jsFileName);
+        if (scriptBinder == null)
+            scriptBinder = JSApiHelpers.findScriptBinderByFileName(stateScripts, jsFileName);
+        if (scriptBinder != null) {
+            byte[] jsFileContent = scriptBinder.getBinaryOrThrow("file_content");
+            return execJSImpl(execOptions, jsFileContent, currentContract, scriptBinder, params);
+        } else {
+            throw new IllegalArgumentException("error: cant exec javascript, script file_name not found in contract.");
+        }
+    }
+
+    private static JSApiEnvironment execJSImpl(JSApiExecOptions execOptions, byte[] jsFileContent, Contract currentContract,
+                                               Binder scriptBinder, String... params) throws Exception {
+        JSApiEnvironment environment = new JSApiEnvironment();
+        environment.currentContract = currentContract;
+        environment.scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
+        environment.scriptEngine = new NashornScriptEngineFactory().getScriptEngine(s -> false);
+        environment.jsApi = new JSApi(currentContract, execOptions, environment.scriptParameters);
+        environment.scriptEngine.put("jsApi", environment.jsApi);
+        String[] stringParams = new String[params.length];
+        for (int i = 0; i < params.length; ++i)
+            stringParams[i] = params[i].toString();
+        environment.scriptEngine.put("jsApiParams", stringParams);
+        String jsString = JSApiHelpers.unpackJSString(scriptBinder, jsFileContent);
+        List<Exception> exceptionsFromEval = new ArrayList<>();
+        Thread evalThread = new Thread(()-> {
+            try {
+                environment.scriptEngine.eval(jsString);
+            } catch (Exception e) {
+                exceptionsFromEval.add(e);
+            }
+        });
+        evalThread.start();
+        if (environment.scriptParameters.timeLimitMillis == 0) {
+            evalThread.join();
+        } else {
+            try {
+                evalThread.join(environment.scriptParameters.timeLimitMillis);
+                if (evalThread.isAlive())
+                    throw new InterruptedException("error: client javascript time limit is up (limit=" + environment.scriptParameters.timeLimitMillis + "ms)");
+            } catch (InterruptedException e) {
+                throw new InterruptedException("error: client javascript was interrupted (limit=" + environment.scriptParameters.timeLimitMillis + "ms)");
+            }
+        }
+        if (exceptionsFromEval.size() > 0) {
+            Exception e = exceptionsFromEval.get(0);
+            throw e;
+        }
+        environment.result = environment.scriptEngine.get("result");
+        return environment;
     }
 
     public void callEvent(String eventName, Boolean silently, Object... params) throws InterruptedException {
