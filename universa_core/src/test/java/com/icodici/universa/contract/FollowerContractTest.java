@@ -384,21 +384,22 @@ public class FollowerContractTest extends ContractTestBase {
 
         PrivateKey callbackKey = new PrivateKey(2048);
 
-        Contract smartContract = new FollowerContract(key);
+        FollowerContract smartContract = new FollowerContract(key);
 
         assertTrue(smartContract instanceof FollowerContract);
 
-        ((FollowerContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
-        ((FollowerContract)smartContract).putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+        smartContract.setNodeInfoProvider(nodeInfoProvider);
+        smartContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+        smartContract.seal();
 
         // check canFollowContract
 
         // can not follow simpleContract (owner = key2) by smartContract (signed by key)
-        assertFalse(((FollowerContract) smartContract).canFollowContract(simpleContract));
+        assertFalse(smartContract.canFollowContract(simpleContract));
 
         Contract.Definition cd = simpleContract.getDefinition();
 
-        List<Binder> newR = Do.listOf(smartContract.getRole("owner").serialize(new BiSerializer()));
+        List<Role> newR = Do.listOf(smartContract.getRole("owner").resolve());
 
         Binder data = new Binder();
         data.set(FOLLOWER_ROLES_FIELD_NAME, newR);
@@ -409,7 +410,7 @@ public class FollowerContractTest extends ContractTestBase {
         simpleContract.traceErrors();
         assertTrue(simpleContract.isOk());
 
-        assertTrue(((FollowerContract) smartContract).canFollowContract(simpleContract));
+        assertTrue(smartContract.canFollowContract(simpleContract));
 
   /*    smartContract.seal();
         smartContract.check();

@@ -10,7 +10,6 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -4126,19 +4125,18 @@ public class Node {
 
             Binder call = Binder.fromKeysValues(
                     "data", packedItem,
-                    "signature", nodeKey.sign(packedItem, HashType.SHA512)
+                    "signature", nodeKey.sign(packedItem, HashType.SHA512),
+                    "key", nodeKey.getPublicKey().pack()
             );
 
             byte[] data = Boss.pack(call);
 
+            final String CRLF = "\r\n"; // Line separator required by multipart/form-data.
             String boundary = "==boundary==" + Ut.randomString(48);
-
-            String CRLF = "\r\n"; // Line separator required by multipart/form-data.
 
             URLConnection connection = new URL(callbackURL).openConnection();
 
             connection.setDoOutput(true);
-
             connection.setConnectTimeout(2000);
             connection.setReadTimeout(5000);
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);

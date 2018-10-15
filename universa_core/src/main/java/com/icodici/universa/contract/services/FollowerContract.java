@@ -277,9 +277,20 @@ public class FollowerContract extends NSmartContract {
             try {
                 Object followerRoles = contract.get(section + ".data." + FOLLOWER_ROLES_FIELD_NAME);
                 if (((followerRoles != null) && followerRoles instanceof Collection) &&
-                        (((Collection)followerRoles).stream().anyMatch(
-                                r -> ((r instanceof Role) && ((Role) r).isAllowedForKeys(getSealedByKeys()))
-                        )))
+                        (((Collection)followerRoles).stream().anyMatch(r -> {
+                            Role role;
+                            if (r instanceof Binder)
+                                role = new BiDeserializer().deserialize((Binder) r);
+                            else if (r instanceof Role)
+                                role = (Role) r;
+                            else
+                                return false;
+
+                            if ((!(role instanceof Role)) || ((role instanceof RoleLink) && (role.getContract() == null)))
+                                return false;
+
+                            return role.isAllowedForKeys(getSealedByKeys());
+                        })))
                     return true;
             } catch (IllegalArgumentException e) {} // no followable roles in <section>.data
 
