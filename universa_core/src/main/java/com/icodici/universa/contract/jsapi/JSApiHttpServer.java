@@ -67,9 +67,9 @@ public class JSApiHttpServer {
             }
         });
 
-        service.start(routes.getPortToListen(), 32);
+        contractCheckerExecutor.scheduleWithFixedDelay(()->checkAllContracts(), 0, SERVICE_PERIOD_SECONDS, TimeUnit.SECONDS);
 
-        contractCheckerExecutor.scheduleWithFixedDelay(()->checkAllContracts(), SERVICE_PERIOD_SECONDS, SERVICE_PERIOD_SECONDS, TimeUnit.SECONDS);
+        service.start(routes.getPortToListen(), 32);
     }
 
     public void stop() throws Exception {
@@ -81,21 +81,17 @@ public class JSApiHttpServer {
         ConcurrentLinkedQueue<Exception> exceptions = new ConcurrentLinkedQueue<>();
         routes.forEach((endpoint, route) -> {
             try {
-                if (contractChecker.isApproved(route.contract.getId())) {
-                    JSApiEnvironment apiEnvironment = JSApiEnvironment.execJSByName(
-                            route.contract.getDefinition().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
-                            route.contract.getState().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
-                            execOptions,
-                            route.scriptName,
-                            route.contract,
-                            route.jsParams == null ? new String[0] : route.jsParams
-                    );
-                    apiEnvironment.setHandlerMethodName(route.handlerMethodName);
-                    apiEnvironment.setSlotId(route.slotId);
-                    endpoints.put(endpoint, apiEnvironment);
-                } else {
-                    System.err.println("JSApiHttpServer warning: contract id="+route.contract.getId()+" is not approved, skip " + endpoint);
-                }
+                JSApiEnvironment apiEnvironment = JSApiEnvironment.execJSByName(
+                        route.contract.getDefinition().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
+                        route.contract.getState().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
+                        execOptions,
+                        route.scriptName,
+                        route.contract,
+                        route.jsParams == null ? new String[0] : route.jsParams
+                );
+                apiEnvironment.setHandlerMethodName(route.handlerMethodName);
+                apiEnvironment.setSlotId(route.slotId);
+                endpoints.put(endpoint, apiEnvironment);
             } catch (Exception e) {
                 exceptions.add(e);
             }
