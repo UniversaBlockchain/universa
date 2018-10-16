@@ -1514,9 +1514,9 @@ public class ScriptEngineTest {
 
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
         routes.setPortToListen(8880);
-        routes.setJsParams(new String[]{"prm1", "prm2"});
-        routes.addNewRoute("/contract1", "httpHandler_index", contract, "client script.js");
-        routes.addNewRoute("/contract1/about", "httpHandler_about", contract, "client script.js");
+        String[] jsParams = new String[]{"prm1", "prm2"};
+        routes.addNewRoute("/contract1", "httpHandler_index", contract, "client script.js", jsParams);
+        routes.addNewRoute("/contract1/about", "httpHandler_about", contract, "client script.js", jsParams);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
 //            System.out.println("is approved hashId="+hashId+"? returns true");
             return true;
@@ -1562,7 +1562,7 @@ public class ScriptEngineTest {
         contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
         routes.setPortToListen(8880);
-        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js");
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
         // here can be any http client. JSApiHttpClient used just for easiness
@@ -1595,7 +1595,7 @@ public class ScriptEngineTest {
         contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
         routes.setPortToListen(8880);
-        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js");
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
         // here can be any http client. JSApiHttpClient used just for easiness
@@ -1633,7 +1633,7 @@ public class ScriptEngineTest {
         contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
         routes.setPortToListen(8880);
-        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js");
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
         // here can be any http client. JSApiHttpClient used just for easiness
@@ -1652,6 +1652,84 @@ public class ScriptEngineTest {
         assertEquals(Base64.encodeString(fileData), ((HashMap)httpRes.get(1)).get("filename"));
         assertEquals("value1", ((HashMap)httpRes.get(1)).get("param1"));
         assertEquals(42l, ((HashMap)httpRes.get(1)).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // server routes-config from json file, several server-contracts
+    public void httpServerTest5() throws Exception {
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        String strPathContract1 = tmpdir + "/" + "contract1.tp";
+        Files.deleteIfExists(Paths.get(strPathContract1));
+        new File(strPathContract1).createNewFile();
+        String strPathContract2 = tmpdir + "/" + "contract2.tp";
+        Files.deleteIfExists(Paths.get(strPathContract2));
+        new File(strPathContract2).createNewFile();
+
+        Contract contract1 = new Contract(TestKeys.privateKey(0));
+        String js1 = "";
+        js1 += "var jsApiEvents = new Object();";
+        js1 += "jsApiEvents.httpHandler_endpoint1 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint1');" +
+                "};";
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_endpoint2 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint2');" +
+                "};";
+        JSApiScriptParameters scriptParameters1 = new JSApiScriptParameters();
+        scriptParameters1.timeLimitMillis = 3000;
+        contract1.getState().setJS(js1.getBytes(), "script1.js", scriptParameters1, true);
+        contract1.getState().setJS(js2.getBytes(), "script2.js", scriptParameters1, true);
+        contract1.seal();
+        contract1 = Contract.fromPackedTransaction(contract1.getPackedTransaction());
+
+        Contract contract2 = new Contract(TestKeys.privateKey(0));
+        String js3 = "";
+        js3 += "var jsApiEvents = new Object();";
+        js3 += "jsApiEvents.httpHandler_endpoint3 = function(request, response){" +
+                "  response.setBodyAsPlainText(jsApiParams[0]+jsApiParams[1]+jsApiParams[2]);" +
+                "};";
+        JSApiScriptParameters scriptParameters2 = new JSApiScriptParameters();
+        scriptParameters2.timeLimitMillis = 3000;
+        contract2.getState().setJS(js3.getBytes(), "script3.js", scriptParameters2, true);
+        contract2.seal();
+        contract2 = Contract.fromPackedTransaction(contract2.getPackedTransaction());
+
+        String routesJsonString =
+                "{\n" +
+                "  \"listenPort\": \"8880\",\n" +
+                "  \"routes\": [\n" +
+                "    {\"endpoint\": \"/endpoint1\", \"handlerName\": \"httpHandler_endpoint1\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script1.js\"},\n" +
+                "    {\"endpoint\": \"/endpoint2\", \"handlerName\": \"httpHandler_endpoint2\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script2.js\"},\n" +
+                "    {\"endpoint\": \"/endpoint3\", \"handlerName\": \"httpHandler_endpoint3\", \"contractPath\": \""+strPathContract2+"\", \"scriptName\": \"script3.js\", \"jsApiParams\": [\"param1\", \"param2\", \"param3\"]}\n" +
+                "  ]\n" +
+                "}\n";
+
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint1", JSApiHttpClient.RESPTYPE_TEXT);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("endpoint1", httpRes.get(1));
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint2", JSApiHttpClient.RESPTYPE_TEXT);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("endpoint2", httpRes.get(1));
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint3", JSApiHttpClient.RESPTYPE_TEXT);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("param1param2param3", httpRes.get(1));
 
         httpServer.stop();
     }
@@ -1852,7 +1930,7 @@ public class ScriptEngineTest {
         // start http server
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
         routes.setPortToListen(8880);
-        routes.addNewRoute("/contract1/getVersion", "httpHandler_getVersion", contractServer, "client script.js", slotContract.getId());
+        routes.addNewRoute("/contract1/getVersion", "httpHandler_getVersion", contractServer, "client script.js", null, slotContract.getId());
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
             try {
                 return testSpace.client.getState(hashId).state == ItemState.APPROVED;

@@ -42,7 +42,7 @@ public class JSApiHttpServer {
         this.slot1Requestor = slot1Requestor;
         service = new MicroHTTPDService();
 
-        initEndpoints(routes.getJsParams());
+        initEndpoints();
         checkAllContracts();
 
         service.on("/", (request, response) -> {
@@ -76,7 +76,7 @@ public class JSApiHttpServer {
         service.close();
     }
 
-    private void initEndpoints(String... params) throws Exception {
+    private void initEndpoints() throws Exception {
         endpoints = new ConcurrentHashMap<>();
         ConcurrentLinkedQueue<Exception> exceptions = new ConcurrentLinkedQueue<>();
         routes.forEach((endpoint, route) -> {
@@ -88,7 +88,7 @@ public class JSApiHttpServer {
                             execOptions,
                             route.scriptName,
                             route.contract,
-                            params
+                            route.jsParams == null ? new String[0] : route.jsParams
                     );
                     apiEnvironment.setHandlerMethodName(route.handlerMethodName);
                     apiEnvironment.setSlotId(route.slotId);
