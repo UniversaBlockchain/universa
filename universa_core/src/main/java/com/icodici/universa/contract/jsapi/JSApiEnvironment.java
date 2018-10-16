@@ -10,6 +10,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class JSApiEnvironment {
 
@@ -149,24 +150,31 @@ public class JSApiEnvironment {
         this.result = env.result;
     }
 
-    public void callEvent(String eventName, Boolean silently, Object... params) throws InterruptedException {
+    public Object callEvent(String eventName, Boolean silently, Object... params) throws InterruptedException {
+        ConcurrentLinkedQueue<Object> mainResContainer = new ConcurrentLinkedQueue<>();
         Thread evalThread = new Thread(()-> {
             try {
                 Object jsApiEvents = scriptEngine.get("jsApiEvents");
                 if (jsApiEvents == null) {
                     if (!silently)
                         System.err.println("JSApiHttpServer error: jsApiEvents object not found in client javascript");
+                    if (result != null)
+                        mainResContainer.add(result);
                 } else {
                     Invocable invocable = (Invocable) scriptEngine;
-                    invocable.invokeMethod(
+                    Object mainRes = invocable.invokeMethod(
                             jsApiEvents,
                             eventName,
                             params
                     );
+                    if (mainRes != null)
+                        mainResContainer.add(mainRes);
                 }
             } catch (NoSuchMethodException e) {
                 if (!silently)
                     System.err.println("JSApiEnvironment error(NoSuchMethodException) -  " + eventName + ": " + e);
+                if (result != null)
+                    mainResContainer.add(result);
             } catch (ScriptException e) {
                 System.err.println("JSApiEnvironment error: " + e);
                 e.printStackTrace();
@@ -184,6 +192,9 @@ public class JSApiEnvironment {
                 throw new InterruptedException("error: client javascript (eventName:"+eventName+") was interrupted (limit=" + scriptParameters.timeLimitMillis + "ms)");
             }
         }
+        if (mainResContainer.isEmpty())
+            return null;
+        return mainResContainer.poll();
     }
 
 }

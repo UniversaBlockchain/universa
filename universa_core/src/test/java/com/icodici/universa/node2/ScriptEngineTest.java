@@ -1657,7 +1657,8 @@ public class ScriptEngineTest {
     }
 
     @Test
-    // server routes-config from json file, several server-contracts
+    // server routes-config from json file, several server-contracts,
+    // make requests from js-http-client to js-http-server, 'main' js event
     public void httpServerTest5() throws Exception {
         String tmpdir = System.getProperty("java.io.tmpdir");
         String strPathRoutes = tmpdir + "/" + "routes.json";
@@ -1717,19 +1718,31 @@ public class ScriptEngineTest {
         JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
-        // here can be any http client. JSApiHttpClient used just for easiness
+
+        Contract httpClientContract = new Contract(TestKeys.privateKey(1));
+        String js = "";
+        js += "print('httpServerTest5');";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.main = function() {";
+        js += "  var httpClient = jsApi.getHttpClient();";
+        js += "  var res0 = httpClient.sendGetRequest('http://localhost:8880/endpoint1', 'text');";
+        js += "  var res1 = httpClient.sendGetRequest('http://localhost:8880/endpoint2', 'text');";
+        js += "  var res2 = httpClient.sendGetRequest('http://localhost:8880/endpoint3', 'text');";
+        js += "  return [res0, res1, res2];";
+        js += "}";
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
         scriptParameters.domainMasks.add("localhost:*");
-        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
-        List httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint1", JSApiHttpClient.RESPTYPE_TEXT);
-        System.out.println("httpRes: " + httpRes);
-        assertEquals("endpoint1", httpRes.get(1));
-        httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint2", JSApiHttpClient.RESPTYPE_TEXT);
-        System.out.println("httpRes: " + httpRes);
-        assertEquals("endpoint2", httpRes.get(1));
-        httpRes = httpClient.sendGetRequest("http://localhost:8880/endpoint3", JSApiHttpClient.RESPTYPE_TEXT);
-        System.out.println("httpRes: " + httpRes);
-        assertEquals("param1param2param3", httpRes.get(1));
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        httpClientContract.getState().setJS(js.getBytes(), "client script.js", scriptParameters, true);
+        httpClientContract.seal();
+        httpClientContract = Contract.fromPackedTransaction(httpClientContract.getPackedTransaction());
+        ScriptObjectMirror res = (ScriptObjectMirror)httpClientContract.execJSByName("client script.js");
+        System.out.println("res0: " + res.get("0"));
+        System.out.println("res1: " + res.get("1"));
+        System.out.println("res2: " + res.get("2"));
+        assertEquals("endpoint1", ((List)res.get("0")).get(1));
+        assertEquals("endpoint2", ((List)res.get("1")).get(1));
+        assertEquals("param1param2param3", ((List)res.get("2")).get(1));
 
         httpServer.stop();
     }

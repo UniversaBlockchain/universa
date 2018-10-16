@@ -3773,8 +3773,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 this,
                 params
         );
-        env.callEvent("main", true);
-        return env.getResult();
+        return env.callEvent("main", true);
     }
 
     public Object execJSByScriptHash(HashId scriptHash, String... params) throws Exception {
@@ -3793,8 +3792,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 this,
                 params
         );
-        env.callEvent("main", true);
-        return env.getResult();
+        return env.callEvent("main", true);
     }
 
     public Object execJSByName(String jsFileName, String... params) throws Exception {
