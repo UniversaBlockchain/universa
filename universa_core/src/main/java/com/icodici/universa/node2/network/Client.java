@@ -850,7 +850,6 @@ public class Client {
         });
     }
 
-
     /**
      * Look for state data of follower contract
      * @param followerId follower contract id

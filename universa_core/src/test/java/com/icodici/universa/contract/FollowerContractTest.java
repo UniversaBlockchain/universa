@@ -7,6 +7,7 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.FollowerContract;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node2.Config;
@@ -382,10 +383,21 @@ public class FollowerContractTest extends ContractTestBase {
         simpleContract.traceErrors();
         assertTrue(simpleContract.isOk());
 
+        SimpleRole owner1 = new SimpleRole("owner", new KeyRecord(key.getPublicKey()));
+        SimpleRole owner2 = new SimpleRole("owner", new KeyRecord(key2.getPublicKey()));
+
+        ListRole ownerKeys = new ListRole("owner", ListRole.Mode.ANY,Do.listOf(owner1, owner2));
+        Contract simpleContract2 = new Contract(key2);
+        simpleContract2.registerRole(ownerKeys);
+        simpleContract2.seal();
+        simpleContract2.check();
+        simpleContract2.traceErrors();
+        assertTrue(simpleContract2.isOk());
+
+
         PrivateKey callbackKey = new PrivateKey(2048);
 
         FollowerContract smartContract = new FollowerContract(key);
-
         assertTrue(smartContract instanceof FollowerContract);
 
         smartContract.setNodeInfoProvider(nodeInfoProvider);
@@ -393,12 +405,12 @@ public class FollowerContractTest extends ContractTestBase {
         smartContract.seal();
 
         // check canFollowContract
+        assertTrue(smartContract.canFollowContract(simpleContract2));
 
         // can not follow simpleContract (owner = key2) by smartContract (signed by key)
         assertFalse(smartContract.canFollowContract(simpleContract));
 
         Contract.Definition cd = simpleContract.getDefinition();
-
         List<Role> newR = Do.listOf(smartContract.getRole("owner").resolve());
 
         Binder data = new Binder();
@@ -412,31 +424,52 @@ public class FollowerContractTest extends ContractTestBase {
 
         assertTrue(smartContract.canFollowContract(simpleContract));
 
-  /*    smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
+        data.remove(FOLLOWER_ROLES_FIELD_NAME);
 
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
 
-        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), smartContract.get("definition.extended_type"));
+        assertFalse(smartContract.canFollowContract(simpleContract));
 
-        Multimap<String, Permission> permissions = smartContract.getPermissions();
-        Collection<Permission> mdp = permissions.get("modify_data");
-        assertNotNull(mdp);
-        assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
+        //state
+        simpleContract.getStateData().set(FOLLOWER_ROLES_FIELD_NAME, newR);
 
-        assertEquals(((FollowerContract) smartContract).getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey );
-        assertEquals(((FollowerContract) smartContract).getTrackingOrigins().get(simpleContract.getOrigin()),
-                "http://localhost:7777/follow.callback");
-        assertTrue(((FollowerContract) smartContract).isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(((FollowerContract) smartContract).isCallbackURLUsed("http://localhost:7777/follow.callback"));*/
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
 
+        assertTrue(smartContract.canFollowContract(simpleContract));
 
+        simpleContract.getStateData().remove(FOLLOWER_ROLES_FIELD_NAME);
 
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
 
+        assertFalse(smartContract.canFollowContract(simpleContract));
 
+        //transactional
+        simpleContract.getTransactionalData().set(FOLLOWER_ROLES_FIELD_NAME, newR);
 
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertTrue(smartContract.canFollowContract(simpleContract));
+
+        simpleContract.getTransactionalData().remove(FOLLOWER_ROLES_FIELD_NAME);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertFalse(smartContract.canFollowContract(simpleContract));
 
     }
 
