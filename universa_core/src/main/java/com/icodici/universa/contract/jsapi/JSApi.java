@@ -83,4 +83,8 @@ public class JSApi {
         return new PublicKey(Base64.decodeLines(s));
     }
 
+    public String bin2base64(byte[] bin) {
+        return Base64.encodeString(bin);
+    }
+
 }

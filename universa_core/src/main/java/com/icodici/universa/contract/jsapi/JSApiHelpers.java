@@ -31,13 +31,15 @@ public class JSApiHelpers {
         return String.join("_", nameParts2);
     }
 
-    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters, boolean putContentIntoContract) {
         BiSerializer biSerializer = new BiSerializer();
         HashId scriptHashId = HashId.of(jsFileContent);
         Binder scriptBinder = new Binder();
         scriptBinder.set("file_name", jsFileName);
         scriptBinder.set("__type", "file");
         scriptBinder.set("hash_id", biSerializer.serialize(scriptHashId));
+        if (putContentIntoContract)
+            scriptBinder.set("file_content", jsFileContent);
         scriptBinder.putAll(scriptParameters.toBinder());
         return scriptBinder;
     }
@@ -58,7 +60,23 @@ public class JSApiHelpers {
         return res.size()>0 ? res.get(0) : null;
     }
 
-    private static String unpackJSString(Binder scriptBinder, byte[] jsFileContent) {
+    public static Binder findScriptBinderByFileName(Binder data, String jsFileName) {
+        BiDeserializer biDeserializer = new BiDeserializer();
+        if (data == null)
+            return null;
+        List<Binder> res = new ArrayList<>();
+        data.forEach((k, v) -> {
+            if (v instanceof Binder) {
+                Binder vBinder = (Binder) v;
+                String fileName = vBinder.getString("file_name", null);
+                if (jsFileName.equals(fileName))
+                    res.add(vBinder);
+            }
+        });
+        return res.size()>0 ? res.get(0) : null;
+    }
+
+    public static String unpackJSString(Binder scriptBinder, byte[] jsFileContent) {
         JSApiCompressionEnum compression = JSApiCompressionEnum.valueOf(scriptBinder.getStringOrThrow("compression"));
         switch (compression) {
             case RAW:
@@ -89,52 +107,6 @@ public class JSApiHelpers {
             throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("unable to unzip client javascript: " + e);
-        }
-    }
-
-    public static Object execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
-            byte[] jsFileContent, Contract currentContract, String... params)
-            throws Exception {
-        HashId jsFileHashId = HashId.of(jsFileContent);
-        Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
-        if (scriptBinder == null)
-            scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
-        if (scriptBinder != null) {
-            JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
-            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi(currentContract, execOptions, scriptParameters));
-            String[] stringParams = new String[params.length];
-            for (int i = 0; i < params.length; ++i)
-                stringParams[i] = params[i].toString();
-            jse.put("jsApiParams", stringParams);
-            String jsString = unpackJSString(scriptBinder, jsFileContent);
-            List<Exception> exceptionsFromEval = new ArrayList<>();
-            Thread evalThread = new Thread(()-> {
-                try {
-                    jse.eval(jsString);
-                } catch (Exception e) {
-                    exceptionsFromEval.add(e);
-                }
-            });
-            evalThread.start();
-            if (scriptParameters.timeLimitMillis == 0) {
-                evalThread.join();
-            } else {
-                try {
-                    evalThread.join(scriptParameters.timeLimitMillis);
-                    if (evalThread.isAlive())
-                        throw new InterruptedException("error: client javascript time limit is up (limit=" + scriptParameters.timeLimitMillis + "ms)");
-                } catch (InterruptedException e) {
-                    throw new InterruptedException("error: client javascript was interrupted (limit=" + scriptParameters.timeLimitMillis + "ms)");
-                }
-            }
-            if (exceptionsFromEval.size() > 0) {
-                Exception e = exceptionsFromEval.get(0);
-                throw e;
-            }
-            return jse.get("result");
-        } else {
-            throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
         }
     }
 
