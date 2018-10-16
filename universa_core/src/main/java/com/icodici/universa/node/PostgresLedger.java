@@ -1406,6 +1406,28 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT bin_data FROM environments " +
+                    "LEFT JOIN contract_subscription ON environments.id=contract_subscription.environment_id " +
+                    "LEFT JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
+                    "WHERE environments.ncontract_hash_id=? AND contract_storage.origin=?", slotId.getDigest(), originId.getDigest()))) {
+                List<byte[]> res = new ArrayList<>();
+                if (rs == null)
+                    return res;
+                do {
+                    res.add(rs.getBytes(1));
+                } while (rs.next());
+                return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
     public void removeEnvironmentSubscription(long subscriptionId) {
         try (PooledDb db = dbPool.db()) {
             try (

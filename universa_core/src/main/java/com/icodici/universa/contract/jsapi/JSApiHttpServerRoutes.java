@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.jsapi;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 
 import java.util.HashMap;
@@ -12,10 +13,14 @@ public class JSApiHttpServerRoutes {
     private String[] jsParams = new String[0];
     private Map<String, RouteModel> routes = new HashMap<>();
 
-    public void addNewRoute(String endpoint, String handlerMethodName, Contract contract, byte[] jsFileContent) {
-        RouteModel prev = routes.putIfAbsent(endpoint, new RouteModel(endpoint, handlerMethodName, contract, jsFileContent));
+    public void addNewRoute(String endpoint, String handlerMethodName, Contract contract, String scriptName, HashId slotId) {
+        RouteModel prev = routes.putIfAbsent(endpoint, new RouteModel(endpoint, handlerMethodName, contract, scriptName, slotId));
         if (prev != null)
             throw new IllegalArgumentException("JSApiHttpServerRoutes error: endpoint duplicates");
+    }
+
+    public void addNewRoute(String endpoint, String handlerMethodName, Contract contract, String scriptName) {
+        addNewRoute(endpoint, handlerMethodName, contract, scriptName, null);
     }
 
     public void setPortToListen(int newValue) {
@@ -42,12 +47,14 @@ public class JSApiHttpServerRoutes {
         public String endpoint;
         public String handlerMethodName;
         public Contract contract;
-        public byte[] jsFileContent;
-        public RouteModel(String endpoint, String handlerMethodName, Contract contract, byte[] jsFileContent) {
+        public String scriptName;
+        public HashId slotId;
+        public RouteModel(String endpoint, String handlerMethodName, Contract contract, String scriptName, HashId slotId) {
             this.endpoint = endpoint;
             this.handlerMethodName = handlerMethodName;
             this.contract = contract;
-            this.jsFileContent = jsFileContent;
+            this.scriptName = scriptName;
+            this.slotId = slotId;
         }
     }
 }

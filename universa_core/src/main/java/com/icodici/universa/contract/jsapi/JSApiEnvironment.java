@@ -8,7 +8,6 @@ import net.sergeych.tools.Binder;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +19,10 @@ public class JSApiEnvironment {
     private ScriptEngine scriptEngine;
     private Object result;
     private String handlerMethodName;
+    private HashId slotId;
+
+    private String jsFileName;
+    private String[] stringParams;
 
     public Object getResult() {
         return result;
@@ -35,6 +38,14 @@ public class JSApiEnvironment {
 
     public void setHandlerMethodName(String newValue) {
         handlerMethodName = newValue;
+    }
+
+    public HashId getSlotId() {
+        return slotId;
+    }
+
+    public void setSlotId(HashId newValue) {
+        slotId = newValue;
     }
 
     public static JSApiEnvironment execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
@@ -73,7 +84,9 @@ public class JSApiEnvironment {
             scriptBinder = JSApiHelpers.findScriptBinderByFileName(stateScripts, jsFileName);
         if (scriptBinder != null) {
             byte[] jsFileContent = scriptBinder.getBinaryOrThrow("file_content");
-            return execJSImpl(execOptions, jsFileContent, currentContract, scriptBinder, params);
+            JSApiEnvironment res = execJSImpl(execOptions, jsFileContent, currentContract, scriptBinder, params);
+            res.jsFileName = jsFileName;
+            return res;
         } else {
             throw new IllegalArgumentException("error: cant exec javascript, script file_name not found in contract.");
         }
@@ -91,6 +104,7 @@ public class JSApiEnvironment {
         for (int i = 0; i < params.length; ++i)
             stringParams[i] = params[i].toString();
         environment.scriptEngine.put("jsApiParams", stringParams);
+        environment.stringParams = stringParams;
         String jsString = JSApiHelpers.unpackJSString(scriptBinder, jsFileContent);
         List<Exception> exceptionsFromEval = new ArrayList<>();
         Thread evalThread = new Thread(()-> {
@@ -118,6 +132,21 @@ public class JSApiEnvironment {
         }
         environment.result = environment.scriptEngine.get("result");
         return environment;
+    }
+
+    public void updateThisEnvironmentByName(Contract newContract, JSApiExecOptions execOptions) throws Exception {
+        JSApiEnvironment env = execJSByName(
+                newContract.getDefinition().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
+                newContract.getState().getData().getBinder(Contract.JSAPI_SCRIPT_FIELD, null),
+                execOptions,
+                jsFileName,
+                newContract,
+                stringParams
+        );
+        this.jsApi = env.jsApi;
+        this.scriptEngine = env.scriptEngine;
+        this.currentContract = env.currentContract;
+        this.result = env.result;
     }
 
     public void callEvent(String eventName, Boolean silently, Object... params) throws InterruptedException {
