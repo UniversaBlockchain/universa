@@ -4167,7 +4167,16 @@ public class Node {
                 answer = Do.read(httpConnection.getInputStream());
 
             httpConnection.disconnect();
-            return answer;
+
+            // get receipt from answer
+            if (answer == null)
+                return null;
+
+            Binder res = Boss.unpack(answer);
+            if (!res.containsKey("receipt"))
+                return null;
+
+            return res.getBinary("receipt");
         }
     }
 

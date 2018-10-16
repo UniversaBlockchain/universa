@@ -1,179 +1,121 @@
 package com.icodici.universa.node2.network;
 
+import com.icodici.crypto.HashType;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.network.BasicHTTPService;
+import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.io.IOException;
 import java.util.Set;
-import java.util.StringTokenizer;
 
 /**
  * Simple example of follower callback server. Use only to receive follower callbacks from Universa nodes.
  */
 public class FollowerCallback {
-    private ServerSocket serverSocket;
     private PrivateKey callbackKey;
-    private int port = 8080;
-    private Thread main;
+    private int port;
+    private String callbackURL;
     private Set<PublicKey> nodeKeys;
 
-    public FollowerCallback(PrivateKey callbackKey) {
+    protected BasicHTTPService service;
+
+    public FollowerCallback(PrivateKey callbackKey, int port, String callbackURL) throws IOException {
         this.callbackKey = callbackKey;
+        this.port = port;
+        this.callbackURL = callbackURL;
+
+        service = new MicroHTTPDService();
+
+        addEndpoint(callbackURL, params -> onCallback(params));
+
+        service.start(port, 32);
+
+        System.out.println("Follower callback server started on port = " + port + " URL = " + callbackURL);
     }
 
-    public FollowerCallback(PrivateKey callbackKey, int port) {
-        this(callbackKey);
-        this.port = port;
+    public void on(String path, BasicHTTPService.Handler handler) {
+        service.on(path, handler);
+    }
+
+    public void addEndpoint(String path, Endpoint ep) {
+        on(path, (request, response) -> {
+            Binder result;
+            try {
+                Result epResult = new Result();
+                ep.execute(extractParams(request), epResult);
+                result = epResult;
+            } catch (Exception e) {
+                result = new Binder();
+            }
+            response.setBody(Boss.pack(result));
+        });
+    }
+
+    void addEndpoint(String path, SimpleEndpoint sep) {
+        addEndpoint(path, (params, result) -> {
+            result.putAll(sep.execute(params));
+        });
+    }
+
+    public Binder extractParams(BasicHTTPService.Request request) {
+        Binder rp = request.getParams();
+        BasicHTTPService.FileUpload rd = (BasicHTTPService.FileUpload) rp.get("callbackData");
+        if (rd != null) {
+            byte[] data = rd.getBytes();
+            return Boss.unpack(data);
+        }
+        return Binder.EMPTY;
+    }
+
+    class Result extends Binder {
+        private int status = 200;
+
+        public void setStatus(int code) {
+            status = code;
+        }
+    }
+
+    public interface Endpoint {
+        public void execute(Binder params, Result result) throws Exception;
+    }
+
+    public interface SimpleEndpoint {
+        Binder execute(Binder params) throws Exception;
+    }
+
+    private Binder onCallback(Binder params) throws IOException {
+        byte[] packedItem = params.getBytesOrThrow("data").toArray();
+        Contract contract = Contract.fromPackedTransaction(packedItem);
+
+        System.out.println("Follower callback received. Contract: " + contract.getId().toString());
+
+        // check node key
+        if (nodeKeys != null) {
+            PublicKey nodeKey = new PublicKey(params.getBytesOrThrow("key").toArray());
+
+            byte[] signature = params.getBytesOrThrow("signature").toArray();
+
+            if (!nodeKey.verify(packedItem, signature, HashType.SHA512) || !nodeKeys.stream().anyMatch(n -> n.equals(nodeKey)))
+                return Binder.EMPTY;
+        }
+
+        // sign receipt
+        byte[] receipt = callbackKey.sign(contract.getId().getDigest(), HashType.SHA512);
+
+        return Binder.of("receipt", receipt);
     }
 
     public void setNetworkNodeKeys(Set<PublicKey> keys) { nodeKeys = keys; }
 
     public void clearNetworkNodeKeys() { nodeKeys = null; }
 
-    public void start() {
-        main = new Thread(() -> {
-            try {
-                serverSocket = new ServerSocket(port);
-                System.out.println("Follower callback server started.");
-
-                while (!Thread.interrupted()) {
-                    FollowerCallbackThread callback = new FollowerCallbackThread(serverSocket.accept());
-
-                    Thread thread = new Thread(callback);
-                    thread.start();
-                }
-
-            } catch (IOException e) {
-                System.err.println("Follower callback connection error: " + e.getMessage());
-            }
-        });
-        main.start();
-    }
-
-    public void stop() {
-        if (main.isAlive()) {
-            main.interrupt();
-            //serverSocket.close();
-        }
-    }
-
-    public class FollowerCallbackThread implements Runnable {
-        private Socket acceptedSocket;
-
-        public FollowerCallbackThread(Socket socket) {
-            acceptedSocket = socket;
-        }
-
-        // parsing constants
-        final String startContentType = "Content-Type: multipart/form-data; boundary=";
-        final String nodeUserAgent = "User-Agent: Universa Node";
-        final String contentLength = "Content-Length: ";
-        final String contentDisposition = "Content-Disposition: form-data; name=\"callbackData\"; filename=\"callbackData.boss\"";
-
-        private byte[] parseRequest(BufferedReader in, InputStream inStream) {
-            try {
-                String contentType = in.readLine();
-                String userAgent = in.readLine();
-                String boundary;
-                int length = 0;
-
-                if (contentType.startsWith(startContentType) && userAgent.equals(nodeUserAgent))
-                    boundary = contentType.substring(startContentType.length());
-                else
-                    return null;
-
-                String line = in.readLine();
-                while (line.length() > 0) {
-                    if (line.startsWith(contentLength))
-                        length = Integer.parseInt(line.substring(contentLength.length()));
-                    line = in.readLine();
-                }
-
-                line = in.readLine();
-                String disposition = in.readLine();
-                if ((length == 0) || !line.endsWith(boundary) || !disposition.equals(contentDisposition))
-                    return null;
-
-                while (line.length() > 0)
-                    line = in.readLine();
-
-                int av = inStream.available();
-                byte[] xdata = new byte[length];
-                inStream.read(xdata);
-
-                char[] chars = new char[length];
-                int readed = in.read(chars, 0, length);
-
-                String end = new String(Arrays.copyOfRange(chars, readed - boundary.length() - 8, readed));
-                if (!end.contains(boundary))
-                    return null;
-
-                inStream.reset();
-
-
-                inStream.read(xdata);
-
-                byte[] data = new String(Arrays.copyOfRange(chars, 0, readed - boundary.length() - 8)).getBytes(StandardCharsets.UTF_8);
-                return data;
-            } catch (IOException e) {
-                System.err.println("Follower callback parsing error: " + e.getMessage());
-            }
-
-            return null;
-        }
-
-        public void run() {
-            try {
-                BufferedReader in = new BufferedReader(new InputStreamReader(acceptedSocket.getInputStream()));
-                PrintWriter out = new PrintWriter(acceptedSocket.getOutputStream());
-                BufferedOutputStream receiptOut = new BufferedOutputStream(acceptedSocket.getOutputStream());
-
-                String request = in.readLine();
-
-                StringTokenizer parse = new StringTokenizer(request);
-                String method = parse.nextToken().toUpperCase();
-                String resource = parse.nextToken();
-
-                byte[] data;
-
-                if (!method.equals("POST") || ((data = parseRequest(in, acceptedSocket.getInputStream())) == null)) {
-                    out.println("HTTP/1.1 500 Error parsing follower callback");
-                    out.flush();
-
-                    in.close();
-                    out.close();
-                    receiptOut.close();
-                    acceptedSocket.close();
-                    return;
-                }
-
-                System.out.println("Follower callback received. Path: " + resource);
-
-                Binder b = Boss.unpack(data);
-
-                // check node key
-                if (nodeKeys != null) {
-
-                }
-
-                // sign receipt
-
-                out.println("HTTP/1.1 200 OK");
-                out.flush();
-
-                in.close();
-                out.close();
-                receiptOut.close();
-                acceptedSocket.close();
-            } catch (IOException e) {
-                System.err.println("Follower callback running error: " + e.getMessage());
-            }
-        }
+    public void shutdown() {
+        try {
+            service.close();
+        } catch (Exception e) {}
     }
 }

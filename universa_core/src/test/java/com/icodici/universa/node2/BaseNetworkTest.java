@@ -14914,8 +14914,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // init follower callback
-        FollowerCallback callback = new FollowerCallback(callbackKey, 7777);
-        callback.start();
+        FollowerCallback callback = new FollowerCallback(callbackKey, 7777, "/follow.callbackTwo");
 
         // create revision of follow contract2
         Contract simpleContractRevision = simpleContract2.createRevision(key2);
@@ -14928,5 +14927,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(simpleContractRevision);
 
         Thread.sleep(50000);
+
+        callback.shutdown();
     }
 }
