@@ -116,6 +116,8 @@ public class FollowerCallback {
     public void shutdown() {
         try {
             service.close();
+
+            System.out.println("Follower callback server stopped on port = " + port + " URL = " + callbackURL);
         } catch (Exception e) {}
     }
 }

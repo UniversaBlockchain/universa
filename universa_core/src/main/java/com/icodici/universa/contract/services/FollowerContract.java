@@ -292,7 +292,7 @@ public class FollowerContract extends NSmartContract {
                             return role.isAllowedForKeys(getSealedByKeys());
                         })))
                     return true;
-            } catch (IllegalArgumentException e) {} // no followable roles in <section>.data
+            } catch (Exception e) {} // no followable roles in <section>.data
 
             return false;
         }));
