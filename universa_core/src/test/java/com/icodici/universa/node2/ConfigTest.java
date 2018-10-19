@@ -59,6 +59,7 @@ public class ConfigTest extends TestCase {
         assertEquals(config.isPermanetMode(), copyConfig.isPermanetMode());
         assertEquals(config.getFollowerCallbackExpiration(), copyConfig.getFollowerCallbackExpiration());
         assertEquals(config.getFollowerCallbackDelay(), copyConfig.getFollowerCallbackDelay());
+        assertEquals(config.getRateNodesSendFollowerCallbackToComplete(), copyConfig.getRateNodesSendFollowerCallbackToComplete(), 0.001);
     }
 
     @Test

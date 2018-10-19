@@ -2814,8 +2814,7 @@ public class Node {
                         if ((subscription != null) && (contract instanceof FollowerContract) &&
                            ((FollowerContract) contract).canFollowContract((Contract) updatingItem)) {
 
-                            CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract,
-                                    me, finalSubscription, config, myInfo, network.allNodes());
+                            CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract, me, finalSubscription);
 
                             int startDelay = callback.getDelay();
                             int repeatDelay = (int) config.getFollowerCallbackDelay().toMillis() * (network.getNodesCount() + 2);
@@ -4113,13 +4112,14 @@ public class Node {
      * Request distant callback URL. Send new revision of following contract and signature (by node key).
      * Receive answer and return it if HTTP response code equals 200.
      *
-     * @param callbackURL callback URL
-     * @param packedItem packed new revision of following contract
+     * @param callback is callback processor
+     * @param callbackURL is callback URL
+     * @param packedItem is packed new revision of following contract
      *
      * @return callback receipt (signed with callback key packedItem id) or null (if connection error)
      *
      */
-    public byte[] requestFollowerCallback(String callbackURL, byte[] packedItem) throws IOException {
+    public byte[] requestFollowerCallback(CallbackProcessor callback, String callbackURL, byte[] packedItem) throws IOException {
         synchronized (this) {
             String charset = "UTF-8";
 
@@ -4160,6 +4160,8 @@ public class Node {
                 writer.append("--" + boundary + "--").append(CRLF).flush();
             }
 
+            callback.setItemSended();
+
             HttpURLConnection httpConnection = (HttpURLConnection) connection;
             byte[] answer = null;
 
@@ -4190,10 +4192,16 @@ public class Node {
     private final void obtainCallbackNotification(CallbackNotification notification) {
         CallbackProcessor callback = callbackProcessors.get(notification.getId());
         if (callback == null)
+            // syncronize action...
             return;
 
-        if (callback.checkCallbackSignature(notification.getSignature()))
-            callback.complete();
+        if (notification.getSignature().length > 0) {
+            if (callback.checkCallbackSignature(notification.getSignature()))
+                callback.complete();
+        } else {
+            callback.addNodeToSended(notification.getFrom().getNumber());
+            callback.checkForComplete();
+        }
     }
 
     private class CallbackProcessor {
@@ -4208,15 +4216,18 @@ public class Node {
         private String callbackURL;
         private PublicKey callbackKey;
         private ScheduledFuture<?> executor;
+        private boolean isItemSended;
+        private ConcurrentSkipListSet<Integer> nodesSendCallback = new ConcurrentSkipListSet<>();
 
-        public CallbackProcessor(Contract item, FollowerContract follower, NMutableEnvironment me,
-                                 NContractFollowerSubscription subscription, Config config, NodeInfo myInfo, List<NodeInfo> allNodes) {
+        public CallbackProcessor(Contract item, FollowerContract follower, NMutableEnvironment me, NContractFollowerSubscription subscription) {
             // save item, environment and subscription
             itemId = item.getId();
             packedItem = item.getPackedTransaction();
             environment = me;
             this.follower = follower;
             this.subscription = subscription;
+            List<NodeInfo> allNodes = network.allNodes();
+            isItemSended = false;
 
             // save callback information
             callbackURL = follower.getTrackingOrigins().get(item.getOrigin());
@@ -4283,6 +4294,17 @@ public class Node {
 
         public void setExecutor(ScheduledFuture<?> executor) { this.executor = executor; }
 
+        public void setItemSended() { isItemSended = true; }
+
+        public void addNodeToSended(int addedNodeNumber) { nodesSendCallback.add(addedNodeNumber); }
+
+        public void checkForComplete() {
+            // if some nodes (rate defined in config) also sended callback and received packed item (without answer)
+            // callback is deemed complete
+            if (nodesSendCallback.size() >= (int) Math.floor(network.allNodes().size() * config.getRateNodesSendFollowerCallbackToComplete()))
+                complete();
+        }
+
         public boolean checkCallbackSignature(byte[] signature) {
             try {
                 return callbackKey.verify(itemId.getDigest(), signature, HashType.SHA512);
@@ -4335,18 +4357,26 @@ public class Node {
             if (ZonedDateTime.now().isAfter(expiresAt))
                 fail();     // callback failed (expired)
             else {
-                // request HTTP follower callback
-                byte[] signature = null;
-                try {
-                    signature = requestFollowerCallback(callbackURL, packedItem);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    System.err.println("error request HTTP follower callback");
-                }
+                if (isItemSended) {       // callback has already been called and received packed item
+                    // send notification to other nodes
+                    network.broadcast(myInfo, new CallbackNotification(myInfo, id, new byte[0]));
 
-                if ((signature != null) && checkCallbackSignature(signature)) {
-                    network.broadcast(myInfo, new CallbackNotification(myInfo, id, signature));
-                    complete();
+                    addNodeToSended(myInfo.getNumber());
+                    checkForComplete();
+                } else {     // callback not previously called
+                    // request HTTP follower callback
+                    byte[] signature = null;
+                    try {
+                        signature = requestFollowerCallback(this, callbackURL, packedItem);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.err.println("error request HTTP follower callback");
+                    }
+
+                    if ((signature != null) && checkCallbackSignature(signature)) {
+                        network.broadcast(myInfo, new CallbackNotification(myInfo, id, signature));
+                        complete();
+                    }
                 }
             }
         }

@@ -106,6 +106,8 @@ public class FollowerCallback {
         // sign receipt
         byte[] receipt = callbackKey.sign(contract.getId().getDigest(), HashType.SHA512);
 
+        System.out.println("Follower callback processed. Contract: " + contract.getId().toString());
+
         return Binder.of("receipt", receipt);
     }
 
