@@ -2001,4 +2001,77 @@ public class ScriptEngineTest {
         testSpace.nodes.forEach(m -> m.shutdown());
     }
 
+    @Ignore
+    @Test
+    public void testSpaceForUniclient() throws Exception {
+        System.out.println("============= start nodes...");
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        System.out.println("============= start nodes done\n\n\n");
+
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        String strPathContract1 = tmpdir + "/" + "contract1.tp";
+        Files.deleteIfExists(Paths.get(strPathContract1));
+        new File(strPathContract1).createNewFile();
+        String strPathContract2 = tmpdir + "/" + "contract2.tp";
+        Files.deleteIfExists(Paths.get(strPathContract2));
+        new File(strPathContract2).createNewFile();
+
+        Contract contract1 = new Contract(TestKeys.privateKey(0));
+        String js1 = "";
+        js1 += "var jsApiEvents = new Object();";
+        js1 += "jsApiEvents.httpHandler_endpoint1 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint1');" +
+                "};";
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_endpoint2 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint2');" +
+                "};";
+        JSApiScriptParameters scriptParameters1 = new JSApiScriptParameters();
+        scriptParameters1.timeLimitMillis = 3000;
+        contract1.getState().setJS(js1.getBytes(), "script1.js", scriptParameters1, true);
+        contract1.getState().setJS(js2.getBytes(), "script2.js", scriptParameters1, true);
+        contract1.seal();
+        contract1 = Contract.fromPackedTransaction(contract1.getPackedTransaction());
+
+        Contract contract2 = new Contract(TestKeys.privateKey(0));
+        String js3 = "";
+        js3 += "var jsApiEvents = new Object();";
+        js3 += "jsApiEvents.httpHandler_endpoint3 = function(request, response){" +
+                "  response.setBodyAsPlainText(jsApiParams[0]+jsApiParams[1]+jsApiParams[2]);" +
+                "};";
+        JSApiScriptParameters scriptParameters2 = new JSApiScriptParameters();
+        scriptParameters2.timeLimitMillis = 3000;
+        contract2.getState().setJS(js3.getBytes(), "script3.js", scriptParameters2, true);
+        contract2.seal();
+        contract2 = Contract.fromPackedTransaction(contract2.getPackedTransaction());
+
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/endpoint1\", \"handlerName\": \"httpHandler_endpoint1\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script1.js\"},\n" +
+                        "    {\"endpoint\": \"/endpoint2\", \"handlerName\": \"httpHandler_endpoint2\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script2.js\"},\n" +
+                        "    {\"endpoint\": \"/endpoint3\", \"handlerName\": \"httpHandler_endpoint3\", \"contractPath\": \""+strPathContract2+"\", \"scriptName\": \"script3.js\", \"jsApiParams\": [\"param1\", \"param2\", \"param3\"]}\n" +
+                        "  ]\n" +
+                        "}\n";
+
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        testSpace.client.register(contract1.getPackedTransaction(), 5000);
+        testSpace.client.register(contract2.getPackedTransaction(), 5000);
+
+        System.out.println("sleep...");
+        Thread.sleep(1000000000);
+
+        System.out.println("\n\n\n============= shutdown...");
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
 }

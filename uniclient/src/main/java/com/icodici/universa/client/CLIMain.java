@@ -95,6 +95,7 @@ public class CLIMain {
     private static Map<String, PrivateKey> keyFiles;
     private static List<String> keyFileNamesContract = new ArrayList<>();
     private static Map<String, PrivateKey> keyFilesContract;
+    private static CliServices cliServices = new CliServices();
 
     public static final String AMOUNT_FIELD_NAME = "amount";
     private static int nodeNumber = -1;
@@ -525,6 +526,11 @@ public class CLIMain {
                         .describedAs("address");
                 accepts("id", "extract ID from a packed contract").withRequiredArg().ofType(String.class).describedAs("packed contract");
                 accepts("hash", "get HashId of a file").withRequiredArg().ofType(String.class).describedAs("file");
+                accepts("start-http-server",
+                        "Starts http server, whose endpoints are implemented in contracts.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("routes-file");
 
 //                acceptsAll(asList("ie"), "Test - delete.")
 //                        .withRequiredArg().ofType(String.class)
@@ -702,6 +708,9 @@ public class CLIMain {
             }
             if (options.has("folder-match")) {
                 doSelectKeyInFolder((String) options.valueOf("folder-match"), (String) options.valueOf("addr"));
+            }
+            if (options.has("start-http-server")) {
+                doStartHttpServer((String) options.valueOf("start-http-server"));
             }
             usage(null);
 
@@ -2418,6 +2427,34 @@ public class CLIMain {
         finish();
     }
 
+    private static void doStartHttpServer(String routeFilePath) throws IOException {
+        try {
+            cliServices.startJsApiHttpServer(
+                    routeFilePath,
+                    hashId -> {
+                        try {
+                            return getClientNetwork().check(hashId).state == ItemState.APPROVED;
+                        } catch (IOException e) {
+                            report("error while checking contract for approve: " + e);
+                            return false;
+                        }
+                    },
+                    (slotId, originId) -> {
+                        try {
+                            if (slotId == null)
+                                return null;
+                            return getClientNetwork().client.queryContract(slotId, originId, null);
+                        } catch (IOException e) {
+                            report("error while querying contract from slot1: " + e);
+                            return null;
+                        }
+                    });
+        } catch (Exception e) {
+            report("http server error: " + e);
+        }
+        finish();
+    }
+
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
         List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
@@ -3763,6 +3800,7 @@ public class CLIMain {
 
 
     private static void finish(int status) {
+        cliServices.waitForUserInput();
         // print reports if need
         try {
             if(!options.has("no-cache")) {
