@@ -1715,7 +1715,7 @@ public class ScriptEngineTest {
         Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
-        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes);
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes, (slotId, originId) -> null);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
 
@@ -1961,6 +1961,120 @@ public class ScriptEngineTest {
                 return null;
             }
         });
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        // http access to contractServer rev1
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(1l, ((HashMap)httpRes.get(1)).get("version"));
+
+        // create and register contractServer rev2
+        Contract contractServer2 = contractServer.createRevision();
+        contractServer2.addSignerKey(TestKeys.privateKey(0));
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 2" +
+                "  });" +
+                "};";
+        contractServer2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer2.seal();
+        contractServer2 = Contract.fromPackedTransaction(contractServer2.getPackedTransaction());
+        ItemResult itemResult2 = testSpace.client.register(contractServer2.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult2.state);
+        assertEquals(ItemState.REVOKED, testSpace.client.getState(contractServer.getId()).state);
+
+        // force update server contracts from slot1
+        httpServer.checkAllContracts();
+
+        // http access to contractServer rev2
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(2l, ((HashMap)httpRes.get(1)).get("version"));
+
+        System.out.println("\n\n\n============= shutdown...");
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void initHttpRoutesFromSlot1() throws Exception {
+        System.out.println("============= start nodes...");
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        System.out.println("============= start nodes done\n\n\n");
+
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 1" +
+                "  });" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        RoleLink issuerLink = new RoleLink("issuer_link", "issuer");
+        contractServer.registerRole(issuerLink);
+        Permission perm = new ModifyDataPermission(issuerLink, Binder.of("fields", Binder.of("scripts", null)));
+        contractServer.addPermission(perm);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+
+        ItemResult itemResult = testSpace.client.register(contractServer.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // put contractServer rev1 into slot1
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        slotContract.putTrackingContract(contractServer);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(0))));
+        itemResult = testSpace.client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), false);
+        testSpace.client.registerParcel(parcel.pack(), 5000);
+        itemResult = testSpace.client.getState(slotContract.getId());
+        System.out.println("slot : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        JSApiHttpServer.ISlot1Requestor slot1Requestor = (slotId, originId) -> {
+            try {
+                Binder slotInfo = testSpace.client.querySlotInfo(slotId);
+                return testSpace.client.queryContract(slotId, originId, null);
+            } catch (ClientError e) {
+                e.printStackTrace();
+                return null;
+            }
+        };
+
+        // start http server
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/contract1/getVersion\", \"handlerName\": \"httpHandler_getVersion\", \"scriptName\": \"client script.js\", \"slotId\":\""+slotContract.getId().toBase64String()+"\", \"originId\":\""+contractServer.getOrigin().toBase64String()+"\"}\n" +
+                        "  ]\n" +
+                        "}\n";
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes, slot1Requestor);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
+                    try {
+                        return testSpace.client.getState(hashId).state == ItemState.APPROVED;
+                    } catch (ClientError e) {
+                        e.printStackTrace();
+                        return false;
+                    }
+                },
+                slot1Requestor
+        );
 
         // here can be any http client. JSApiHttpClient used just for easiness
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();

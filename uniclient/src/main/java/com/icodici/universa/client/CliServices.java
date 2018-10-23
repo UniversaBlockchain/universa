@@ -19,7 +19,7 @@ public class CliServices {
             JSApiHttpServer.IContractChecker contractChecker,
             JSApiHttpServer.ISlot1Requestor slot1Requestor
     ) throws Exception {
-        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(routesFilePath);
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(routesFilePath, slot1Requestor);
         jsApiHttpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), contractChecker, slot1Requestor);
     }
 
