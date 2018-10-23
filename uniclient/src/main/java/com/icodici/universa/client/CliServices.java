@@ -10,6 +10,10 @@ public class CliServices {
 
     private JSApiHttpServer jsApiHttpServer = null;
 
+    public boolean isAnythingStarted() {
+        return jsApiHttpServer != null;
+    }
+
     public void startJsApiHttpServer(
             String routesFilePath,
             JSApiHttpServer.IContractChecker contractChecker,

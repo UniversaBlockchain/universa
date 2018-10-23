@@ -3800,7 +3800,8 @@ public class CLIMain {
 
 
     private static void finish(int status) {
-        cliServices.waitForUserInput();
+        if (cliServices.isAnythingStarted())
+            cliServices.waitForUserInput();
         // print reports if need
         try {
             if(!options.has("no-cache")) {
