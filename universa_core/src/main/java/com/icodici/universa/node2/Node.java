@@ -4108,6 +4108,14 @@ public class Node {
     }
 
 
+    public enum FollowerCallbackState {
+        UNDEFINED,
+        STARTED,
+        EXPIRED,    // not commited failed
+        COMPLETED,
+        FAILED
+    }
+
     /**
      * Request distant callback URL. Send new revision of following contract and signature (by node key).
      * Receive answer and return it if HTTP response code equals 200.
@@ -4379,6 +4387,22 @@ public class Node {
                     }
                 }
             }
+        }
+    }
+
+    public class CallbackResync {
+        private HashId id;
+        long environmentId;
+        FollowerCallbackState state;
+
+        public void CallbackResync(HashId id, long environmentId, FollowerCallbackState state) {
+            this.id = id;
+            this.environmentId = environmentId;
+            this.state = state;
+        }
+
+        public void resyncState() {
+
         }
     }
 }

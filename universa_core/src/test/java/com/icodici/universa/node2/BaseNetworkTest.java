@@ -14769,6 +14769,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
+        Thread.sleep(5000);
+
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             if (originNoCallback != null) {
@@ -15168,7 +15170,7 @@ public class BaseNetworkTest extends TestCase {
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
                 followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback",
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7778/follow.callback",
                 callbackKey.getPublicKey());
 
         // payment contract
@@ -15194,10 +15196,10 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7778/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7778/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7778/follow.callback"));
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -15252,6 +15254,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
+        Thread.sleep(5000);
+
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
@@ -15286,7 +15290,7 @@ public class BaseNetworkTest extends TestCase {
         nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(3)));
 
         // init follower callback (with wrong key)
-        FollowerCallback callback = new FollowerCallback(wrongCallbackKey, 7777, "/follow.callback");
+        FollowerCallback callback = new FollowerCallback(wrongCallbackKey, 7778, "/follow.callback");
 
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
@@ -15436,6 +15440,9 @@ public class BaseNetworkTest extends TestCase {
             }
         }
 
+        // return configuration
+        nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(10)));
+
         callback.shutdown();
     }
 
@@ -15555,6 +15562,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
+        Thread.sleep(5000);
+
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
@@ -15672,7 +15681,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // intercept System.out
-        output = ConsoleInterceptor.copyOut(() -> Thread.sleep(45000));
+        output = ConsoleInterceptor.copyOut(() -> Thread.sleep(60000));
         System.out.println(output);
 
         // check call follower callback
@@ -15737,6 +15746,12 @@ public class BaseNetworkTest extends TestCase {
             }
         }
 
+        // return configuration
+        nodes.forEach(n -> {
+            n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(10));
+            n.getConfig().setFollowerCallbackExpiration(Duration.ofMinutes(10));
+        });
+
         callback.shutdown();
     }
 
@@ -15773,7 +15788,7 @@ public class BaseNetworkTest extends TestCase {
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
                 followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback",
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7779/follow.callback",
                 callbackKey.getPublicKey());
 
         // payment contract
@@ -15799,10 +15814,10 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7779/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7779/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7779/follow.callback"));
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -15857,6 +15872,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
+        Thread.sleep(5000);
+
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
@@ -15891,7 +15908,7 @@ public class BaseNetworkTest extends TestCase {
         nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(3)));
 
         // init follower callback
-        FollowerCallback callback = new FollowerCallback(callbackKey, 7777, "/follow.callback");
+        FollowerCallback callback = new FollowerCallback(callbackKey, 7779, "/follow.callback");
 
         // check with normal network nodes keys
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
@@ -16060,6 +16077,9 @@ public class BaseNetworkTest extends TestCase {
                 fail("FollowerSubscription was not found");
             }
         }
+
+        // return configuration
+        nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(10)));
 
         callback.shutdown();
     }

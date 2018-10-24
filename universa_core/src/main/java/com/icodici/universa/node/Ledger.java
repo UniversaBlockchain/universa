@@ -13,6 +13,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Duration;
@@ -216,6 +217,8 @@ public interface Ledger {
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
     Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);
+
+    Node.FollowerCallbackState getFollowerCallbackStateById(HashId id);
 
     List<Long> clearExpiredStorageSubscriptions();
     void clearExpiredFollowerSubscriptions();

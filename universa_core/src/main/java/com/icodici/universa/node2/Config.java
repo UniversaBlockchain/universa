@@ -94,6 +94,7 @@ public class Config {
         config.queryContractsLimit = queryContractsLimit;
         config.followerCallbackExpiration = followerCallbackExpiration;
         config.followerCallbackDelay = followerCallbackDelay;
+        config.followerCallbackStateStoreTime = followerCallbackStateStoreTime;
         config.rateNodesSendFollowerCallbackToComplete = rateNodesSendFollowerCallbackToComplete;
         return config;
     }
@@ -198,6 +199,7 @@ public class Config {
     private int queryContractsLimit = 100;
     private Duration followerCallbackExpiration = Duration.ofMinutes(10);
     private Duration followerCallbackDelay = Duration.ofSeconds(10);
+    private Duration followerCallbackStateStoreTime = Duration.ofDays(10);
     private double rateNodesSendFollowerCallbackToComplete = 0.3;
 
     private Boolean permanetMode = null;
@@ -497,6 +499,14 @@ public class Config {
 
     public void setFollowerCallbackDelay(Duration followerCallbackDelay) {
         this.followerCallbackDelay = followerCallbackDelay;
+    }
+
+    public Duration getFollowerCallbackStateStoreTime() {
+        return followerCallbackStateStoreTime;
+    }
+
+    public void setFollowerCallbackStateStoreTime(Duration followerCallbackStateStoreTime) {
+        this.followerCallbackStateStoreTime = followerCallbackStateStoreTime;
     }
 
     public double getRateNodesSendFollowerCallbackToComplete() { return rateNodesSendFollowerCallbackToComplete; }

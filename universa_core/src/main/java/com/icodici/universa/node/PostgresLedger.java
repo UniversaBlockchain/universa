@@ -17,6 +17,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -769,6 +770,8 @@ public class PostgresLedger implements Ledger {
             sqlText = "delete from items where keepTill < ?;";
             db.update(sqlText, now);
 
+            sqlText = "delete from follower_callbacks where stored_until < ?;";
+            db.update(sqlText, now);
 
         } catch (SQLException se) {
             se.printStackTrace();
@@ -1511,6 +1514,27 @@ public class PostgresLedger implements Ledger {
         });
     }
 
+
+    @Override
+    public Node.FollowerCallbackState getFollowerCallbackStateById(HashId id) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT state FROM follower_callbacks WHERE id = ?", id.getDigest()))) {
+                if (rs == null)
+                    return Node.FollowerCallbackState.UNDEFINED;
+
+                return Node.FollowerCallbackState.values()[rs.getInt(1)];
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    //getFollowerCallbacksToResyncByEnvId(long environmentId)
+    //getFollowerCallbacksToResync
+
+    //addFollowerCallback(HashId id, long environmentId)
+    //updateFollowerCallback(HashId id, Node.FollowerCallbackState state)
 
     @Override
     public byte[] getSmartContractById(HashId smartContractId) {
