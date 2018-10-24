@@ -2344,12 +2344,30 @@ public class CLIMain {
         finish();
     }
 
+    private static PublicKey readKeyAndGetPublic(String keyFilePath) throws IOException {
+        PublicKey key;
+
+        if (keyFilePath.endsWith(".private.unikey"))
+            key = new PrivateKey(Do.read(keyFilePath)).getPublicKey();
+        else if (keyFilePath.endsWith(".public.unikey"))
+            key = new PublicKey(Do.read(keyFilePath));
+        else {
+            try {
+                key = new PrivateKey(Do.read(keyFilePath)).getPublicKey();
+            } catch (PrivateKey.PasswordProtectedException e) {
+                key = new PublicKey(Do.read(keyFilePath));
+            }
+        }
+
+        return key;
+    }
+
     private static void doCreateAddress(String keyFilePath, boolean bShort) throws IOException {
 
         report("Generate " + (bShort ? "short" : "long") + " address from key: " + keyFilePath);
 
-        PrivateKey key = new PrivateKey(Do.read(keyFilePath));
-        KeyAddress address = new KeyAddress(key.getPublicKey(), 0, !bShort);
+        PublicKey key = readKeyAndGetPublic(keyFilePath);
+        KeyAddress address = new KeyAddress(key, 0, !bShort);
 
         report("Address: " + address.toString());
 
@@ -2361,11 +2379,11 @@ public class CLIMain {
         boolean bResult = false;
 
         try {
-            PrivateKey key = new PrivateKey(Do.read(keyFilePath));
+            PublicKey key = readKeyAndGetPublic(keyFilePath);
 
             KeyAddress keyAddress = new KeyAddress(address);
 
-            bResult = keyAddress.isMatchingKey(key.getPublicKey());
+            bResult = keyAddress.isMatchingKey(key);
         }
         catch (Exception e) {};
 
@@ -2396,8 +2414,8 @@ public class CLIMain {
                     boolean bResult = false;
 
                     try {
-                        PrivateKey key = new PrivateKey(Do.read(keysPath + file.getName()));
-                        bResult = keyAddress.isMatchingKey(key.getPublicKey());
+                        PublicKey key = readKeyAndGetPublic(keysPath + file.getName());
+                        bResult = keyAddress.isMatchingKey(key);
                     } catch (Exception e) {
                         bResult = false;
                     }
