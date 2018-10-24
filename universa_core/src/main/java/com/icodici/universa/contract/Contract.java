@@ -1880,16 +1880,38 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
-        List<byte[]> signatures = data.getListOrThrow("signatures");
         for (PrivateKey key : privateKeys) {
             byte[] signature = ExtendedSignature.sign(key, contractBytes);
-            signatures.add(signature);
-            data.put("signatures", signatures);
+            addSignatureToSeal(signature,key.getPublicKey());
+        }
+    }
 
-            ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, contractBytes);
-            if (es != null) {
-                sealedByKeys.put(key.getPublicKey(), es);
-            }
+
+    /**
+     * Add signature to sealed (before) contract. Do not deserializing or changing contract bytes,
+     * but will change sealed and hashId.
+     *
+     * Useful if you got contracts from third-party (another computer) and need to sign it.
+     * F.e. contracts that should be sign with two persons.
+     *
+     * @param signature - signature to add
+     * @param publicKey - key signed with
+     */
+    public void addSignatureToSeal(byte[] signature, PublicKey publicKey) {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to add signature: sealed binary does not exist");
+
+        Binder data = Boss.unpack(sealedBinary);
+
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+        List<byte[]> signatures = data.getListOrThrow("signatures");
+
+        signatures.add(signature);
+        data.put("signatures", signatures);
+
+        ExtendedSignature es = ExtendedSignature.verify(publicKey, signature, contractBytes);
+        if (es != null) {
+            sealedByKeys.put(publicKey, es);
         }
 
         setOwnBinary(data);

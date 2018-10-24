@@ -71,24 +71,39 @@ public class ExtendedSignature {
      */
     static public byte[] sign(PrivateKey key, byte[] data, boolean savePublicKey) {
         try {
-            Binder targetSignatureBinder = Binder.fromKeysValues(
-                    "key", keyId(key),
-                    "sha512", new Sha512().digest(data),
-                    "sha3_384", new Sha3_384().digest(data),
-                    "created_at", ZonedDateTime.now()
-            );
-            if (savePublicKey)
-                targetSignatureBinder.put("pub_key", key.getPublicKey().pack());
-            byte[] targetSignature = Boss.pack(targetSignatureBinder);
-            Binder result = Binder.fromKeysValues(
-                    "exts", targetSignature,
-                    "sign", key.sign(targetSignature, HashType.SHA512),
-                    "sign2", key.sign(targetSignature, HashType.SHA3_384)
-            );
-            return Boss.pack(result);
+            byte[] targetSignature = ExtendedSignature.createTargetSignature(key.getPublicKey(),data,savePublicKey);
+
+            return ExtendedSignature.of(targetSignature,
+                    key.sign(targetSignature, HashType.SHA512),
+                    key.sign(targetSignature, HashType.SHA3_384));
+
         } catch (EncryptionError e) {
             throw new RuntimeException("signature failed", e);
         }
+    }
+
+
+
+    static public byte[] createTargetSignature(PublicKey publicKey, byte[] data, boolean savePublicKey) {
+        Binder targetSignatureBinder = Binder.fromKeysValues(
+                "key", keyId(publicKey),
+                "sha512", new Sha512().digest(data),
+                "sha3_384", new Sha3_384().digest(data),
+                "created_at", ZonedDateTime.now()
+        );
+        if (savePublicKey)
+            targetSignatureBinder.put("pub_key", publicKey.pack());
+        byte[] targetSignature = Boss.pack(targetSignatureBinder);
+        return targetSignature;
+    }
+
+    static public byte[] of(byte[] targetSignature, byte[] sign, byte[] sign2) {
+        Binder result = Binder.fromKeysValues(
+                "exts", targetSignature,
+                "sign", sign,
+                "sign2", sign2
+        );
+        return Boss.pack(result);
     }
 
     /**
