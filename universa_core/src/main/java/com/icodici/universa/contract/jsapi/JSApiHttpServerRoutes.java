@@ -21,7 +21,7 @@ public class JSApiHttpServerRoutes {
     public JSApiHttpServerRoutes() {
     }
 
-    public JSApiHttpServerRoutes(String routesJsonFilePath) throws IOException {
+    public JSApiHttpServerRoutes(String routesJsonFilePath, JSApiHttpServer.ISlot1Requestor slot1Requestor) throws IOException {
         byte[] routeBytes = Files.readAllBytes(Paths.get(routesJsonFilePath));
         HashMap mapRoutesConfig = JsonTool.fromJson(new String(routeBytes));
         portToListen = Integer.parseInt((String)mapRoutesConfig.get("listenPort"));
@@ -34,9 +34,17 @@ public class JSApiHttpServerRoutes {
             String scriptName = (String)route.get("scriptName");
             String slotIdStr = (String)route.get("slotId");
             HashId slotId = slotIdStr==null ? null : HashId.withDigest(slotIdStr);
+            String originIdStr = (String)route.get("originId");
+            HashId originId = originIdStr==null ? null : HashId.withDigest(originIdStr);
             ArrayList<String> jsApiParamsList = (ArrayList<String>)route.get("jsApiParams");
             String[] jsApiParams = jsApiParamsList == null ? null : jsApiParamsList.toArray(new String[0]);
-            Contract contract = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractPath)));
+            Contract contract = null;
+            if (contractPath != null)
+                contract = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractPath)));
+            else if (slotIdStr != null && originIdStr != null)
+                contract = Contract.fromPackedTransaction(slot1Requestor.queryContract(slotId, originId));
+            if (contract == null)
+                throw new IllegalArgumentException("JSApiHttpServerRoutes error: you must specify either contractPath or slotId+originId");
             addNewRoute(endpoint, handlerName, contract, scriptName, jsApiParams, slotId);
         }
     }

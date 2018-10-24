@@ -64,7 +64,7 @@ task fatJar(type: Jar) {
     exclude 'META-INF/nanohttpd/**', 'META-INF/LICENSE',
             'META-INF/maven/org.postgresql/**', 'META-INF/maven/org.postgresql/**',
             'META-INF/maven/com.ongres.scram/**', 'META-INF/maven/org.xerial/**'
-    exclude 'org/nanohttpd/**', 'org/postgresql/**', 'org/sqlite/**', 'org/checkerframework/**'
+    exclude 'org/postgresql/**', 'org/sqlite/**', 'org/checkerframework/**'
     // Remove GMP native code optimization for SunOS; can be reenabled if there are any users.
     exclude 'sunos-x86-64/**'
     // Prevent duplicates

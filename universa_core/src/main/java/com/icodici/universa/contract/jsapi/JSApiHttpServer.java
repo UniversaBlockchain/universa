@@ -5,16 +5,11 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
 
-import javax.script.Invocable;
-import javax.script.ScriptException;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class JSApiHttpServer {
 
@@ -74,6 +69,10 @@ public class JSApiHttpServer {
 
     public void stop() throws Exception {
         service.close();
+    }
+
+    public int getListenPort() {
+        return routes.getPortToListen();
     }
 
     private void initEndpoints() throws Exception {
