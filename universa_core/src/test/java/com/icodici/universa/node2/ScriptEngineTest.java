@@ -141,6 +141,11 @@ public class ScriptEngineTest {
         for (int i = 0; i < 4; i++)
             testSpace.clients.add(new Client(testSpace.myKey, testSpace.nodes.get(i).myInfo, null));
 
+        for (Main m : testSpace.nodes) {
+            while (m.node.isSanitating())
+                Thread.sleep(100);
+        }
+
         return testSpace;
     }
 
