@@ -2869,6 +2869,54 @@ public class CLIMainTest {
         assertTrue (output.indexOf("Matching result: true") >= 0);
     }
 
+    @Test
+    public void createShortAddressFromPrivateAndPublicKeysTest() throws Exception {
+
+        callMain("-address", rootPath + "keys/marty_mcfly.public.unikey", "-short");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/keys/marty_mcfly.public.unikey") >= 0);
+        assertTrue (output.indexOf("Address: ZkQv1Dw3LniMLvT3jKqYVQEdLAJbsKs3eeDLM2UyQTJagTKKGc") >= 0);
+
+        callMain("-address-match", "ZkQv1Dw3LniMLvT3jKqYVQEdLAJbsKs3eeDLM2UyQTJagTKKGc",
+                "-keyfile", rootPath + "keys/marty_mcfly.public.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+
+        callMain("-address", rootPath + "keys/marty_mcfly.private.unikey", "-short");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/keys/marty_mcfly.private.unikey") >= 0);
+        assertTrue (output.indexOf("Address: ZkQv1Dw3LniMLvT3jKqYVQEdLAJbsKs3eeDLM2UyQTJagTKKGc") >= 0);
+
+        callMain("-address-match", "ZkQv1Dw3LniMLvT3jKqYVQEdLAJbsKs3eeDLM2UyQTJagTKKGc",
+                "-keyfile", rootPath + "keys/marty_mcfly.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+    }
+
+    @Test
+    public void createLongAddressFromPrivateAndPublicKeysTest() throws Exception {
+
+        callMain("-address", rootPath + "keys/marty_mcfly.public.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/keys/marty_mcfly.public.unikey") >= 0);
+        assertTrue (output.indexOf("Address: J2jM85Jh6qC8L2TJkdznnE3xmGuTBE2nEngbs8yD75fQqFtzGMGExhYEw8A1LWU7aHTK3HeA") >= 0);
+
+        callMain("-address-match", "J2jM85Jh6qC8L2TJkdznnE3xmGuTBE2nEngbs8yD75fQqFtzGMGExhYEw8A1LWU7aHTK3HeA",
+                "-keyfile", rootPath + "keys/marty_mcfly.public.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+
+        callMain("-address", rootPath + "keys/marty_mcfly.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/keys/marty_mcfly.private.unikey") >= 0);
+        assertTrue (output.indexOf("Address: J2jM85Jh6qC8L2TJkdznnE3xmGuTBE2nEngbs8yD75fQqFtzGMGExhYEw8A1LWU7aHTK3HeA") >= 0);
+
+        callMain("-address-match", "J2jM85Jh6qC8L2TJkdznnE3xmGuTBE2nEngbs8yD75fQqFtzGMGExhYEw8A1LWU7aHTK3HeA",
+                "-keyfile", rootPath + "keys/marty_mcfly.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+    }
+
     @Ignore
     @Test
     public void printWallets() throws Exception {

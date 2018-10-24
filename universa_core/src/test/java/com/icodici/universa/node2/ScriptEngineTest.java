@@ -1,16 +1,28 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.KeyAddress;
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.InnerContractsService;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
 import com.icodici.universa.contract.jsapi.storage.JSApiStorage;
 import com.icodici.universa.contract.permissions.*;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
@@ -74,6 +86,110 @@ public class ScriptEngineTest {
             return false;
         }
     }
+
+    Main createMain(String name, String postfix, boolean nolog) throws InterruptedException {
+        String path = new File("src/test_node_config_v2" + postfix + "/" + name).getAbsolutePath();
+        System.out.println(path);
+        String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
+
+        List<Main> mm = new ArrayList<>();
+
+        Thread thread = new Thread(() -> {
+            try {
+                Main m = new Main(args);
+                try {
+                    m.config.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
+                } catch (KeyAddress.IllegalAddressException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    //m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
+                    m.config.getAddressesWhiteList().add(new KeyAddress(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")), 0, true));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
+                m.waitReady();
+                mm.add(m);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        thread.setName("Node Server: " + name);
+        thread.start();
+
+        while (mm.size() == 0) {
+            Thread.sleep(100);
+        }
+        return mm.get(0);
+    }
+
+    private TestSpace prepareTestSpace(PrivateKey key) throws Exception {
+        TestSpace testSpace = new TestSpace();
+        testSpace.nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            testSpace.nodes.add(createMain("node" + (i + 1), "", false));
+        testSpace.node = testSpace.nodes.get(0);
+        assertEquals("http://localhost:8080", testSpace.node.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
+        testSpace.myKey = key;
+        testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
+
+        testSpace.clients = new ArrayList();
+        for (int i = 0; i < 4; i++)
+            testSpace.clients.add(new Client(testSpace.myKey, testSpace.nodes.get(i).myInfo, null));
+
+        for (Main m : testSpace.nodes) {
+            while (m.node.isSanitating())
+                Thread.sleep(100);
+        }
+
+        return testSpace;
+    }
+
+    private class TestSpace {
+        public List<Main> nodes = null;
+        public Main node = null;
+        PrivateKey myKey = null;
+        Client client = null;
+        Object uContractLock = new Object();
+        Contract uContract = null;
+        public ArrayList<Client> clients;
+    }
+
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
+        Config config = new Config();
+        @Override
+        public Set<KeyAddress> getUIssuerKeys() {
+            return config.getUIssuerKeys();
+        }
+
+        @Override
+        public String getUIssuerName() {
+            return config.getUIssuerName();
+        }
+
+        @Override
+        public int getMinPayment(String extendedType) {
+            return config.getMinPayment(extendedType);
+        }
+
+        @Override
+        public double getRate(String extendedType) {
+            return config.getRate(extendedType);
+        }
+
+        @Override
+        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
+            Set<PublicKey> set = new HashSet<>();
+            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+                set.add(config.getAuthorizedNameServiceCenterKey());
+            }
+            return set;
+        }
+    };
 
     @Test
     public void putJavaObjectIntoJS() throws Exception {
@@ -1380,6 +1496,706 @@ public class ScriptEngineTest {
         contract.seal();
         batchContract.seal();
         assertFalse(batchContract.check());
+    }
+
+    @Test
+    // simple http server creation
+    public void httpServerTest1() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_index = function(request, response){" +
+                "  response.setResponseCode(201);" +
+                "  response.setBodyAsPlainText('answer plain text');" +
+                "};";
+        js += "jsApiEvents.httpHandler_about = function(request, response){" +
+                "  print('httpHandler_about params: ' + request.getParams());" +
+                "  response.setBodyAsJson({status: 'ok', answer: 'some string value', jsApiParams: jsApiParams});" +
+                "};";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.timeLimitMillis = 3000;
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters, true);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        String[] jsParams = new String[]{"prm1", "prm2"};
+        routes.addNewRoute("/contract1", "httpHandler_index", contract, "client script.js", jsParams);
+        routes.addNewRoute("/contract1/about", "httpHandler_about", contract, "client script.js", jsParams);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
+//            System.out.println("is approved hashId="+hashId+"? returns true");
+            return true;
+        }, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42);
+        List httpRes = httpClient.sendPostRequest("http://localhost:8880/contract1", JSApiHttpClient.RESPTYPE_TEXT, params, "form");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(201, httpRes.get(0));
+        assertEquals("answer plain text", httpRes.get(1));
+        httpRes = httpClient.sendPostRequest("http://localhost:8880/contract1/about", JSApiHttpClient.RESPTYPE_TEXT, params, "form");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(200, httpRes.get(0));
+        assertEquals(true, ((String)httpRes.get(1)).indexOf("\"answer\":\"some string value\"") != -1);
+        assertEquals(true, ((String)httpRes.get(1)).indexOf("\"status\":\"ok\"") != -1);
+        assertEquals(true, ((String)httpRes.get(1)).indexOf("\"jsApiParams\":[\"prm1\",\"prm2\"]") != -1);
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/about", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(200, httpRes.get(0));
+        assertEquals("some string value", ((HashMap)httpRes.get(1)).get("answer"));
+        assertEquals("ok", ((HashMap)httpRes.get(1)).get("status"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that application/x-www-form-urlencoded request correctly parsed at server
+    public void httpServerTest2() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  response.setBodyAsJson({req_params: request.getParams()});" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        List httpRes = httpClient.sendPostRequest("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, "form");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("value1", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param1"));
+        assertEquals("42", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that application/json request correctly parsed at server
+    public void httpServerTest3() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  response.setBodyAsJson({req_params: request.getParams()});" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        List httpRes = httpClient.sendPostRequest("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, "json");
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("value1", ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param1"));
+        assertEquals(42l, ((HashMap)((HashMap)httpRes.get(1)).get("req_params")).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // checks that multipart/form-data request correctly parsed at server
+    public void httpServerTest4() throws Exception {
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_test = function(request, response){" +
+                "  print('[js] req.params: '+request.getParams());" +
+                "  response.setBodyAsJson({" +
+                "    filename: jsApi.bin2base64(request.getParams().get('filename'))," +
+                "    param1: request.getParams().get('param1')," +
+                "    param2: parseInt(request.getParams().get('param2'))" +
+                "  });" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/test", "httpHandler_test", contractServer, "client script.js", null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("param1", "value1");
+        params.put("param2", 42l);
+        Map<String, byte[]> files = new HashMap<>();
+        byte[] fileData = Do.randomBytes(3200);
+        files.put("filename", fileData);
+        List httpRes = httpClient.sendPostRequestMultipart("http://localhost:8880/test", JSApiHttpClient.RESPTYPE_JSON, params, files);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(Base64.encodeString(fileData), ((HashMap)httpRes.get(1)).get("filename"));
+        assertEquals("value1", ((HashMap)httpRes.get(1)).get("param1"));
+        assertEquals(42l, ((HashMap)httpRes.get(1)).get("param2"));
+
+        httpServer.stop();
+    }
+
+    @Test
+    // server routes-config from json file, several server-contracts,
+    // make requests from js-http-client to js-http-server, 'main' js event
+    public void httpServerTest5() throws Exception {
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        String strPathContract1 = tmpdir + "/" + "contract1.tp";
+        Files.deleteIfExists(Paths.get(strPathContract1));
+        new File(strPathContract1).createNewFile();
+        String strPathContract2 = tmpdir + "/" + "contract2.tp";
+        Files.deleteIfExists(Paths.get(strPathContract2));
+        new File(strPathContract2).createNewFile();
+
+        Contract contract1 = new Contract(TestKeys.privateKey(0));
+        String js1 = "";
+        js1 += "var jsApiEvents = new Object();";
+        js1 += "jsApiEvents.httpHandler_endpoint1 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint1');" +
+                "};";
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_endpoint2 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint2');" +
+                "};";
+        JSApiScriptParameters scriptParameters1 = new JSApiScriptParameters();
+        scriptParameters1.timeLimitMillis = 3000;
+        contract1.getState().setJS(js1.getBytes(), "script1.js", scriptParameters1, true);
+        contract1.getState().setJS(js2.getBytes(), "script2.js", scriptParameters1, true);
+        contract1.seal();
+        contract1 = Contract.fromPackedTransaction(contract1.getPackedTransaction());
+
+        Contract contract2 = new Contract(TestKeys.privateKey(0));
+        String js3 = "";
+        js3 += "var jsApiEvents = new Object();";
+        js3 += "jsApiEvents.httpHandler_endpoint3 = function(request, response){" +
+                "  response.setBodyAsPlainText(jsApiParams[0]+jsApiParams[1]+jsApiParams[2]);" +
+                "};";
+        JSApiScriptParameters scriptParameters2 = new JSApiScriptParameters();
+        scriptParameters2.timeLimitMillis = 3000;
+        contract2.getState().setJS(js3.getBytes(), "script3.js", scriptParameters2, true);
+        contract2.seal();
+        contract2 = Contract.fromPackedTransaction(contract2.getPackedTransaction());
+
+        String routesJsonString =
+                "{\n" +
+                "  \"listenPort\": \"8880\",\n" +
+                "  \"routes\": [\n" +
+                "    {\"endpoint\": \"/endpoint1\", \"handlerName\": \"httpHandler_endpoint1\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script1.js\"},\n" +
+                "    {\"endpoint\": \"/endpoint2\", \"handlerName\": \"httpHandler_endpoint2\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script2.js\"},\n" +
+                "    {\"endpoint\": \"/endpoint3\", \"handlerName\": \"httpHandler_endpoint3\", \"contractPath\": \""+strPathContract2+"\", \"scriptName\": \"script3.js\", \"jsApiParams\": [\"param1\", \"param2\", \"param3\"]}\n" +
+                "  ]\n" +
+                "}\n";
+
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes, (slotId, originId) -> null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+
+        Contract httpClientContract = new Contract(TestKeys.privateKey(1));
+        String js = "";
+        js += "print('httpServerTest5');";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.main = function() {";
+        js += "  var httpClient = jsApi.getHttpClient();";
+        js += "  var res0 = httpClient.sendGetRequest('http://localhost:8880/endpoint1', 'text');";
+        js += "  var res1 = httpClient.sendGetRequest('http://localhost:8880/endpoint2', 'text');";
+        js += "  var res2 = httpClient.sendGetRequest('http://localhost:8880/endpoint3', 'text');";
+        js += "  return [res0, res1, res2];";
+        js += "}";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        httpClientContract.getState().setJS(js.getBytes(), "client script.js", scriptParameters, true);
+        httpClientContract.seal();
+        httpClientContract = Contract.fromPackedTransaction(httpClientContract.getPackedTransaction());
+        ScriptObjectMirror res = (ScriptObjectMirror)httpClientContract.execJSByName("client script.js");
+        System.out.println("res0: " + res.get("0"));
+        System.out.println("res1: " + res.get("1"));
+        System.out.println("res2: " + res.get("2"));
+        assertEquals("endpoint1", ((List)res.get("0")).get(1));
+        assertEquals("endpoint2", ((List)res.get("1")).get(1));
+        assertEquals("param1param2param3", ((List)res.get("2")).get(1));
+
+        httpServer.stop();
+    }
+
+    @Test
+    public void jsFileContentInContract() throws Exception {
+        String fileName = "somescript.js";
+        String scriptDump = "cHJpbnQoJ2hlbGxvIHdvcmxkJyk7DQp2YXIgY3VycmVudENvbnRyYWN0ID0ganNBcGkuZ2V0Q3VycmVudENvbnRyYWN0KCk7DQpwcmludCgnY3VycmVudENvbnRyYWN0LmdldElkKCk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0SWQoKSk7DQpwcmludCgnY3VycmVudENvbnRyYWN0LmdldFJldmlzaW9uKCk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0UmV2aXNpb24oKSk7DQpwcmludCgnY3VycmVudENvbnRyYWN0LmdldENyZWF0ZWRBdCgpOiAnICsgY3VycmVudENvbnRyYWN0LmdldENyZWF0ZWRBdCgpKTsNCnByaW50KCdjdXJyZW50Q29udHJhY3QuZ2V0T3JpZ2luKCk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0T3JpZ2luKCkpOw0KcHJpbnQoJ2N1cnJlbnRDb250cmFjdC5nZXRQYXJlbnQoKTogJyArIGN1cnJlbnRDb250cmFjdC5nZXRQYXJlbnQoKSk7DQpwcmludCgnY3VycmVudENvbnRyYWN0LmdldFN0YXRlRGF0YUZpZWxkKHNvbWVfdmFsdWUpOiAnICsgY3VycmVudENvbnRyYWN0LmdldFN0YXRlRGF0YUZpZWxkKCdzb21lX3ZhbHVlJykpOw0KcHJpbnQoJ2N1cnJlbnRDb250cmFjdC5nZXRTdGF0ZURhdGFGaWVsZChzb21lX2hhc2hfaWQpOiAnICsgY3VycmVudENvbnRyYWN0LmdldFN0YXRlRGF0YUZpZWxkKCdzb21lX2hhc2hfaWQnKSk7DQpwcmludCgnY3VycmVudENvbnRyYWN0LmdldERlZmluaXRpb25EYXRhRmllbGQoc2NyaXB0cyk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0RGVmaW5pdGlvbkRhdGFGaWVsZCgnc2NyaXB0cycpKTsNCnByaW50KCdjdXJyZW50Q29udHJhY3QuZ2V0SXNzdWVyKCk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0SXNzdWVyKCkpOw0KcHJpbnQoJ2N1cnJlbnRDb250cmFjdC5nZXRPd25lcigpOiAnICsgY3VycmVudENvbnRyYWN0LmdldE93bmVyKCkpOw0KcHJpbnQoJ2N1cnJlbnRDb250cmFjdC5nZXRDcmVhdG9yKCk6ICcgKyBjdXJyZW50Q29udHJhY3QuZ2V0Q3JlYXRvcigpKTsNCnByaW50KCdjYWxsIGN1cnJlbnRDb250cmFjdC5zZXRPd25lcigpLi4uJyk7DQpjdXJyZW50Q29udHJhY3Quc2V0T3duZXIoWydaYXN0V3BXTlBNcXZWSkFNb2NzTVVUSmc0NWk4TG9DNU1zbXI3THQ5RWFKSlJ3VjJ4VicsICdhMXN4aGpkdEdoTmVqaThTV0pOUGt3VjVtNmRnV2ZyUUJuaGlBeGJRd1pUNlk1RnNYRCddKTsNCnByaW50KCdjdXJyZW50Q29udHJhY3QuZ2V0T3duZXIoKTogJyArIGN1cnJlbnRDb250cmFjdC5nZXRPd25lcigpKTsNCnJlc3VsdCA9IGpzQXBpUGFyYW1zWzBdICsganNBcGlQYXJhbXNbMV07DQo=";
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getStateData().set("some_value", HashId.createRandom().toBase64String());
+        contract.getStateData().set("some_hash_id", HashId.createRandom());
+        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, new JSApiScriptParameters(), true);
+        contract.seal();
+        HashId scriptHash = HashId.of(Base64.decodeLines(scriptDump));
+        String res = (String)contract.execJSByScriptHash(scriptHash, "3", "6");
+        System.out.println("res: " + res);
+        assertEquals("36", res);
+        String compression = contract.getDefinition().getData().getOrThrow("scripts", JSApiHelpers.fileName2fileKey(fileName), "compression");
+        System.out.println("compression: " + compression);
+        assertEquals(JSApiCompressionEnum.RAW, JSApiCompressionEnum.valueOf(compression));
+    }
+
+    @Test
+    public void jsFileContentInContract_byFilename() throws Exception {
+        String fileName = "somescript.zip";
+        String scriptDump = "UEsDBBQAAgAIAEGVA02XbF8YbAEAAPoEAAANAAAAc29tZXNjcmlwdC5qc62UXU+DMBSG7038D9yVRUOckTk1XkzmzMiY+xJ0y7JU6KATKLYF9vNlyj6cUtR42/O+z3vSntOI4pDLwEO+T6SUUN8BlavDgwRSyY4pRSHXSMgptLl0LS1YI8KKi7j2uSSvLNEHac+1UrcduXIpAelIKiiK7QOUYIZJKIBsJWKURhHkyGlwAWtHI4bdU+xiUVdrgRjTg6sTAWYtEGOGPOu6CTlsYeQ7MiMBmiXQj1ExeM8Cth7whzAPMm+GnV/G5a6ywCaa4xDz7Il3Um2KI86KA78zgdxVFthmLEZUNLe5oGRG0lBIyes/mFpCy2aW7IGg73/Rsk2koijvm16omIAxZNyKrG7PeE1MvWEQmxkPI909U3G9QzTVYAE97/CLW6jrg9Q8XZrgWAKwypbewuF3XhctcH1o6d3eS2qqQc1xrTnt34Qebiyf++l4VHtSW+yxCab/dokUsdjffFXZ5sCATU6mmW/3oDrNpG9QSwECFAAUAAIACABBlQNNl2xfGGwBAAD6BAAADQAAAAAAAAAAACAAAAAAAAAAc29tZXNjcmlwdC5qc1BLBQYAAAAAAQABADsAAACXAQAAAAA=";
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getStateData().set("some_value", HashId.createRandom().toBase64String());
+        contract.getStateData().set("some_hash_id", HashId.createRandom());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.isCompressed = true;
+        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, scriptParameters, true);
+        contract.seal();
+        String res = (String)contract.execJSByName("somescript.zip", "3", "6");
+        System.out.println("res: " + res);
+        assertEquals("36", res);
+        String compression = contract.getDefinition().getData().getOrThrow("scripts", JSApiHelpers.fileName2fileKey(fileName), "compression");
+        System.out.println("compression: " + compression);
+        assertEquals(JSApiCompressionEnum.ZIP, JSApiCompressionEnum.valueOf(compression));
+    }
+
+    @Test
+    public void jsDemo1() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        ModifyDataPermission perm = new ModifyDataPermission(contract.getOwner(), new Binder());
+        perm.addField("test_value", Arrays.asList("0", "1"));
+        contract.addPermission(perm);
+        contract.getStateData().set("test_value", "0");
+        String js = "";
+        js += "print('demo1');";
+        js += "print('  create new revision...');";
+        js += "rev = jsApi.getCurrentContract().createRevision();";
+        js += "print('  new revision: ' + rev.getRevision());";
+        js += "var oldValue = rev.getStateDataField('test_value');";
+        js += "var newValue = oldValue=='0' ? '1' : '0';";
+        js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
+        js += "rev.setStateDataField('test_value', newValue);";
+        js += "result = rev";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        assertTrue(contract.check());
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        for (int i = 0; i < 10; ++i) {
+            contract = ((JSApiContract) contract.execJS(js.getBytes())).extractContract(new JSApiAccessor());
+            contract.addSignerKey(TestKeys.privateKey(1));
+            contract.seal();
+            assertEquals(i%2==0 ? "1" : "0", contract.getStateData().getStringOrThrow("test_value"));
+            ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+            assertEquals(ItemState.APPROVED, ir.state);
+        }
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void jsDemo2() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        Binder permParams = new Binder();
+        permParams.set("min_value", 1);
+        permParams.set("min_step", 1);
+        permParams.set("max_step", 1);
+        permParams.set("field_name", "test_value");
+        ChangeNumberPermission perm = new ChangeNumberPermission(contract.getOwner(), permParams);
+        contract.addPermission(perm);
+        contract.getStateData().set("test_value", 11);
+        String js = "";
+        js += "print('demo2');";
+        js += "print('  create new revision...');";
+        js += "rev = jsApi.getCurrentContract().createRevision();";
+        js += "print('  new revision: ' + rev.getRevision());";
+        js += "var oldValue = parseInt(rev.getStateDataField('test_value'));";
+        js += "var newValue = (oldValue + 1) >> 0;"; // '>> 0' converts js-number to int
+        js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
+        js += "rev.setStateDataField('test_value', newValue);";
+        js += "result = rev";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        assertTrue(contract.check());
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        for (int i = 0; i < 10; ++i) {
+            contract = ((JSApiContract) contract.execJS(js.getBytes())).extractContract(new JSApiAccessor());
+            contract.addSignerKey(TestKeys.privateKey(1));
+            contract.seal();
+            assertEquals(i+12, contract.getStateData().getIntOrThrow("test_value"));
+            ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+            assertEquals(ItemState.APPROVED, ir.state);
+        }
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void jsAddPermission() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getStateData().set("testval", 3);
+        String js = "";
+        js += "print('addPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var changeNumberPermission = jsApi.getPermissionBuilder().createChangeNumberPermission(simpleRole, " +
+                "{field_name: 'testval', min_value: 3, max_value: 80, min_step: 1, max_step: 3}" +
+                ");";
+        js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.execJS(js.getBytes());
+        contract.seal();
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        Contract newRev = contract.createRevision();
+        newRev.addSignerKey(TestKeys.privateKey(0));
+        newRev.getStateData().set("testval", 5);
+        newRev.seal();
+
+        ir = testSpace.client.register(newRev.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void latestHttpContractFromSlot1() throws Exception {
+        System.out.println("============= start nodes...");
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        System.out.println("============= start nodes done\n\n\n");
+
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 1" +
+                "  });" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        RoleLink issuerLink = new RoleLink("issuer_link", "issuer");
+        contractServer.registerRole(issuerLink);
+        Permission perm = new ModifyDataPermission(issuerLink, Binder.of("fields", Binder.of("scripts", null)));
+        contractServer.addPermission(perm);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+
+        ItemResult itemResult = testSpace.client.register(contractServer.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // put contractServer rev1 into slot1
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        slotContract.putTrackingContract(contractServer);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(0))));
+        itemResult = testSpace.client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), false);
+        testSpace.client.registerParcel(parcel.pack(), 5000);
+        itemResult = testSpace.client.getState(slotContract.getId());
+        System.out.println("slot : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // start http server
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes();
+        routes.setPortToListen(8880);
+        routes.addNewRoute("/contract1/getVersion", "httpHandler_getVersion", contractServer, "client script.js", null, slotContract.getId());
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
+            try {
+                return testSpace.client.getState(hashId).state == ItemState.APPROVED;
+            } catch (ClientError e) {
+                e.printStackTrace();
+                return false;
+            }
+        },
+        (slotId, originId) -> {
+            try {
+                Binder slotInfo = testSpace.client.querySlotInfo(slotId);
+                return testSpace.client.queryContract(slotId, originId, null);
+            } catch (ClientError e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        // http access to contractServer rev1
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(1l, ((HashMap)httpRes.get(1)).get("version"));
+
+        // create and register contractServer rev2
+        Contract contractServer2 = contractServer.createRevision();
+        contractServer2.addSignerKey(TestKeys.privateKey(0));
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 2" +
+                "  });" +
+                "};";
+        contractServer2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer2.seal();
+        contractServer2 = Contract.fromPackedTransaction(contractServer2.getPackedTransaction());
+        ItemResult itemResult2 = testSpace.client.register(contractServer2.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult2.state);
+        assertEquals(ItemState.REVOKED, testSpace.client.getState(contractServer.getId()).state);
+
+        // force update server contracts from slot1
+        httpServer.checkAllContracts();
+
+        // http access to contractServer rev2
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(2l, ((HashMap)httpRes.get(1)).get("version"));
+
+        System.out.println("\n\n\n============= shutdown...");
+        testSpace.nodes.forEach(m -> m.shutdown());
+
+        httpServer.stop();
+    }
+
+    @Test
+    public void initHttpRoutesFromSlot1() throws Exception {
+        System.out.println("============= start nodes...");
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        System.out.println("============= start nodes done\n\n\n");
+
+        Contract contractServer = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 1" +
+                "  });" +
+                "};";
+        contractServer.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        RoleLink issuerLink = new RoleLink("issuer_link", "issuer");
+        contractServer.registerRole(issuerLink);
+        Permission perm = new ModifyDataPermission(issuerLink, Binder.of("fields", Binder.of("scripts", null)));
+        contractServer.addPermission(perm);
+        contractServer.seal();
+        contractServer = Contract.fromPackedTransaction(contractServer.getPackedTransaction());
+
+        ItemResult itemResult = testSpace.client.register(contractServer.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // put contractServer rev1 into slot1
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        slotContract.putTrackingContract(contractServer);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(0))));
+        itemResult = testSpace.client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), false);
+        testSpace.client.registerParcel(parcel.pack(), 5000);
+        itemResult = testSpace.client.getState(slotContract.getId());
+        System.out.println("slot : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        JSApiHttpServer.ISlot1Requestor slot1Requestor = (slotId, originId) -> {
+            try {
+                Binder slotInfo = testSpace.client.querySlotInfo(slotId);
+                return testSpace.client.queryContract(slotId, originId, null);
+            } catch (ClientError e) {
+                e.printStackTrace();
+                return null;
+            }
+        };
+
+        // start http server
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/contract1/getVersion\", \"handlerName\": \"httpHandler_getVersion\", \"scriptName\": \"client script.js\", \"slotId\":\""+slotContract.getId().toBase64String()+"\", \"originId\":\""+contractServer.getOrigin().toBase64String()+"\"}\n" +
+                        "  ]\n" +
+                        "}\n";
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes, slot1Requestor);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> {
+                    try {
+                        return testSpace.client.getState(hashId).state == ItemState.APPROVED;
+                    } catch (ClientError e) {
+                        e.printStackTrace();
+                        return false;
+                    }
+                },
+                slot1Requestor
+        );
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParameters);
+
+        // http access to contractServer rev1
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(1l, ((HashMap)httpRes.get(1)).get("version"));
+
+        // create and register contractServer rev2
+        Contract contractServer2 = contractServer.createRevision();
+        contractServer2.addSignerKey(TestKeys.privateKey(0));
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_getVersion = function(request, response){" +
+                "  response.setBodyAsJson({" +
+                "    version: 2" +
+                "  });" +
+                "};";
+        contractServer2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters(), true);
+        contractServer2.seal();
+        contractServer2 = Contract.fromPackedTransaction(contractServer2.getPackedTransaction());
+        ItemResult itemResult2 = testSpace.client.register(contractServer2.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult2.state);
+        assertEquals(ItemState.REVOKED, testSpace.client.getState(contractServer.getId()).state);
+
+        // force update server contracts from slot1
+        httpServer.checkAllContracts();
+
+        // http access to contractServer rev2
+        httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1/getVersion", JSApiHttpClient.RESPTYPE_JSON);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals(2l, ((HashMap)httpRes.get(1)).get("version"));
+
+        System.out.println("\n\n\n============= shutdown...");
+        testSpace.nodes.forEach(m -> m.shutdown());
+
+        httpServer.stop();
+    }
+
+    @Ignore
+    @Test
+    public void testSpaceForUniclient() throws Exception {
+        System.out.println("============= start nodes...");
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        System.out.println("============= start nodes done\n\n\n");
+
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathRoutes = tmpdir + "/" + "routes.json";
+        Files.deleteIfExists(Paths.get(strPathRoutes));
+        new File(strPathRoutes).createNewFile();
+        String strPathContract1 = tmpdir + "/" + "contract1.tp";
+        Files.deleteIfExists(Paths.get(strPathContract1));
+        new File(strPathContract1).createNewFile();
+        String strPathContract2 = tmpdir + "/" + "contract2.tp";
+        Files.deleteIfExists(Paths.get(strPathContract2));
+        new File(strPathContract2).createNewFile();
+
+        Contract contract1 = new Contract(TestKeys.privateKey(0));
+        String js1 = "";
+        js1 += "var jsApiEvents = new Object();";
+        js1 += "jsApiEvents.httpHandler_endpoint1 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint1');" +
+                "};";
+        String js2 = "";
+        js2 += "var jsApiEvents = new Object();";
+        js2 += "jsApiEvents.httpHandler_endpoint2 = function(request, response){" +
+                "  response.setBodyAsPlainText('endpoint2');" +
+                "};";
+        JSApiScriptParameters scriptParameters1 = new JSApiScriptParameters();
+        scriptParameters1.timeLimitMillis = 3000;
+        contract1.getState().setJS(js1.getBytes(), "script1.js", scriptParameters1, true);
+        contract1.getState().setJS(js2.getBytes(), "script2.js", scriptParameters1, true);
+        contract1.seal();
+        contract1 = Contract.fromPackedTransaction(contract1.getPackedTransaction());
+
+        Contract contract2 = new Contract(TestKeys.privateKey(0));
+        String js3 = "";
+        js3 += "var jsApiEvents = new Object();";
+        js3 += "jsApiEvents.httpHandler_endpoint3 = function(request, response){" +
+                "  response.setBodyAsPlainText(jsApiParams[0]+jsApiParams[1]+jsApiParams[2]);" +
+                "};";
+        JSApiScriptParameters scriptParameters2 = new JSApiScriptParameters();
+        scriptParameters2.timeLimitMillis = 3000;
+        contract2.getState().setJS(js3.getBytes(), "script3.js", scriptParameters2, true);
+        contract2.seal();
+        contract2 = Contract.fromPackedTransaction(contract2.getPackedTransaction());
+
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/endpoint1\", \"handlerName\": \"httpHandler_endpoint1\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script1.js\"},\n" +
+                        "    {\"endpoint\": \"/endpoint2\", \"handlerName\": \"httpHandler_endpoint2\", \"contractPath\": \""+strPathContract1+"\", \"scriptName\": \"script2.js\"},\n" +
+                        "    {\"endpoint\": \"/endpoint3\", \"handlerName\": \"httpHandler_endpoint3\", \"contractPath\": \""+strPathContract2+"\", \"scriptName\": \"script3.js\", \"jsApiParams\": [\"param1\", \"param2\", \"param3\"]}\n" +
+                        "  ]\n" +
+                        "}\n";
+
+        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        testSpace.client.register(contract1.getPackedTransaction(), 5000);
+        testSpace.client.register(contract2.getPackedTransaction(), 5000);
+
+        System.out.println("sleep...");
+        Thread.sleep(1000000000);
+
+        System.out.println("\n\n\n============= shutdown...");
+        testSpace.nodes.forEach(m -> m.shutdown());
     }
 
 }

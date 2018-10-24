@@ -389,6 +389,10 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}
+
+    @Override
+    public List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId) {return null;}
+
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {}
 

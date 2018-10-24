@@ -688,11 +688,20 @@ public class ClientHTTPServer extends BasicHttpServer {
                     res.set("contract", node.getLedger().getContractInStorage(contractHashId));
             } else if (origin_id != null) {
                 HashId originHashId = HashId.withDigest(origin_id);
-                for (Contract contract : slotContract.getTrackingContracts()) {
-                    if (contract.getOrigin().equals(originHashId)) {
-                        res.set("contract", node.getLedger().getContractInStorage(contract.getId()));
-                        break;
+                List<byte[]> storedRevisions = node.getLedger().getContractsInStorageByOrigin(slotContract.getId(), originHashId);
+                if (storedRevisions.size() == 1) {
+                    res.set("contract", storedRevisions.get(0));
+                } else if (storedRevisions.size() > 1) {
+                    byte[] latestContract = null;
+                    int latestRevision = 0;
+                    for (byte[] bin : storedRevisions) {
+                        Contract c = Contract.fromPackedTransaction(bin);
+                        if (latestRevision < c.getRevision()) {
+                            latestRevision = c.getRevision();
+                            latestContract = bin;
+                        }
                     }
+                    res.set("contract", latestContract);
                 }
             }
         }
