@@ -44,10 +44,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * @return filled Map instance
      */
     static public Binder fromKeysValues(Object... args) {
-        Binder map = new Binder();
-        for (int i = 0; i < args.length; i += 2)
-            map.put(args[i].toString(), args[i + 1]);
-        return map;
+        return new Binder(args);
     }
 
     public Binder(Map copyFrom) {
@@ -67,7 +64,13 @@ public class Binder extends HashMap<String, Object> implements Serializable {
     }
 
     public Binder(Object... keyValuePairs) {
-        putAll(keyValuePairs);
+        if(keyValuePairs.length > 0) {
+
+            if ((keyValuePairs.length & 1) == 1)
+                throw new IllegalArgumentException("keyValuePairs should be even sized array");
+
+            putAll((String) keyValuePairs[0], keyValuePairs[1], Arrays.copyOfRange(keyValuePairs, 2, keyValuePairs.length));
+        }
     }
 
     public Double getDouble(String key) {
@@ -416,15 +419,16 @@ public class Binder extends HashMap<String, Object> implements Serializable {
     /**
      * Put several keys and values from array varargs. Sample: <code>setKeysValues("foo", 1, "bar", 2);</code>
      *
-     * @param keyValueParis
+     * @param keyValuePairs
      * @return self
      */
-    public Binder putAll(Object... keyValueParis) {
-        if ((keyValueParis.length & 1) == 1)
+    public Binder putAll(String key, Object value, Object... keyValuePairs) {
+        if ((keyValuePairs.length & 1) == 1)
             throw new IllegalArgumentException("keyValuePairs should be even sized array");
-        for (int i = 0; i < keyValueParis.length; i += 2) {
-            String key = keyValueParis[i].toString();
-            put(key, keyValueParis[i + 1]);
+        put(key, value);
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            String k = keyValuePairs[i].toString();
+            put(k, keyValuePairs[i + 1]);
         }
         return this;
     }
