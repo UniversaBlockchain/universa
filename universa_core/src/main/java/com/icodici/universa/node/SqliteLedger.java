@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
@@ -403,6 +404,22 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public Node.FollowerCallbackState getFollowerCallbackStateById(HashId id) { return Node.FollowerCallbackState.UNDEFINED; }
+
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId) {
+        return null;
+    }
+
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResync() {
+        return null;
+    }
+
+    @Override
+    public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {}
+
+    @Override
+    public void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state) {}
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}

@@ -12,6 +12,7 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
@@ -219,6 +220,10 @@ public interface Ledger {
     Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);
 
     Node.FollowerCallbackState getFollowerCallbackStateById(HashId id);
+    Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId);
+    Collection<CallbackRecord> getFollowerCallbacksToResync();
+    void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
+    void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state);
 
     List<Long> clearExpiredStorageSubscriptions();
     void clearExpiredFollowerSubscriptions();

@@ -16,6 +16,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
@@ -1530,11 +1531,122 @@ public class PostgresLedger implements Ledger {
         });
     }
 
-    //getFollowerCallbacksToResyncByEnvId(long environmentId)
-    //getFollowerCallbacksToResync
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "SELECT id, state, expires_at, stored_until FROM follower_callbacks WHERE environment_id = ?"
+                    )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getFollowerCallbacksToResyncByEnvId failed: returning null");
+                List<CallbackRecord> res = new ArrayList<>();
+                while (rs.next()) {
+                    CallbackRecord callback = new CallbackRecord(
+                            HashId.withDigest(rs.getBytes(1)),
+                            environmentId,
+                            Node.FollowerCallbackState.values()[rs.getInt(2)],
+                            StateRecord.getTime(rs.getLong(3)),
+                            StateRecord.getTime(rs.getLong(4)));
+                    res.add(callback);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getFollowerCallbacksToResyncByEnvId failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getFollowerCallbacksToResyncByEnvId failed: " + e);
+        }
+    }
 
-    //addFollowerCallback(HashId id, long environmentId)
-    //updateFollowerCallback(HashId id, Node.FollowerCallbackState state)
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResync() {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "SELECT id, state, environment_id, expires_at, stored_until FROM follower_callbacks"
+                    )
+            ) {
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getFollowerCallbacksToResync failed: returning null");
+                List<CallbackRecord> res = new ArrayList<>();
+                while (rs.next()) {
+                    CallbackRecord callback = new CallbackRecord(
+                            HashId.withDigest(rs.getBytes(1)),
+                            rs.getLong(3),
+                            Node.FollowerCallbackState.values()[rs.getInt(2)],
+                            StateRecord.getTime(rs.getLong(4)),
+                            StateRecord.getTime(rs.getLong(5)));
+                    res.add(callback);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getFollowerCallbacksToResync failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getFollowerCallbacksToResync failed: " + e);
+        }
+    }
+
+    @Override
+    public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "INSERT INTO follower_callbacks (id, state, environment_id, expires_at, stored_until) VALUES (?,?,?,?,?)"
+                    )
+            ) {
+                statement.setBytes(1, id.getDigest());
+                statement.setInt(2, Node.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(3, environmentId);
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                statement.setLong(5, StateRecord.unixTime(storedUntil));
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("follower callback save failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "UPDATE follower_callbacks SET state = ? WHERE id = ?"
+                    )
+            ) {
+                statement.setInt(1, state.ordinal());
+                statement.setBytes(2, id.getDigest());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("follower callback update failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public byte[] getSmartContractById(HashId smartContractId) {

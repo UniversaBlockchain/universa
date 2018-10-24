@@ -103,6 +103,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
     private ConcurrentHashMap<HashId, CallbackProcessor> callbackProcessors = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<HashId, CallbackNotification> deferredCallbackNotifications = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
     private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
@@ -2820,8 +2821,6 @@ public class Node {
                             int repeatDelay = (int) config.getFollowerCallbackDelay().toMillis() * (network.getNodesCount() + 2);
                             callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), startDelay, repeatDelay, TimeUnit.MILLISECONDS));
 
-                            callbackProcessors.put(callback.getId(), callback);
-
                             // started callback
                             contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
                                 @Override
@@ -2845,6 +2844,22 @@ public class Node {
                                 }
                             });
                             me.save();
+
+                            synchronized (this) {
+                                callbackProcessors.put(callback.getId(), callback);
+
+                                CallbackNotification deferredNotification = deferredCallbackNotifications.get(callback.getId());
+                                if (deferredNotification != null) {
+                                    // do deferred notification
+                                    callback.obtainNotification(deferredNotification);
+
+                                    deferredCallbackNotifications.remove(callback.getId());
+                                    // syncronize action... remove not commited complete from ledger
+                                }
+                            }
+
+                            // add callback record to DB
+                            CallbackRecord.addCallbackRecordToLedger(callback.getId(), me.getId(), config, network.getNodesCount(), ledger);
                         }
                     }
                 }
@@ -4198,26 +4213,39 @@ public class Node {
      *
      */
     private final void obtainCallbackNotification(CallbackNotification notification) {
-        CallbackProcessor callback = callbackProcessors.get(notification.getId());
-        if (callback == null)
-            // syncronize action...
-            return;
+        CallbackProcessor callback;
 
-        if (notification.getSignature().length > 0) {
-            if (callback.checkCallbackSignature(notification.getSignature()))
-                callback.complete();
-        } else {
-            callback.addNodeToSended(notification.getFrom().getNumber());
-            callback.checkForComplete();
+        synchronized (this) {
+            callback = callbackProcessors.get(notification.getId());
+            if (callback == null) {
+                System.out.println(myInfo.getName() +  ": not found callback " + notification.getId().toBase64String());
+
+                deferredCallbackNotifications.put(notification.getId(), notification);
+                // syncronize action... not commited complete to ledger
+
+                return;
+            }
         }
+
+        callback.obtainNotification(notification);
+    }
+
+    /**
+     * Check if there are deferred follower callback notifications.
+     *
+     * @return true if there are deferred follower callback notifications
+     *
+     */
+    public boolean hasDeferredNotifications() {
+        return deferredCallbackNotifications.size() > 0;
     }
 
     private class CallbackProcessor {
         private HashId id;
         private HashId itemId;
         private byte[] packedItem;
-        FollowerContract follower;
-        NMutableEnvironment environment;
+        private FollowerContract follower;
+        private NMutableEnvironment environment;
         private NContractFollowerSubscription subscription;
         private ZonedDateTime expiresAt;
         private int delay = 1;
@@ -4294,6 +4322,8 @@ public class Node {
             //System.out.println(myInfo.getName() +  ": calc callback hash: " + id.toBase64String());
             //System.out.println(myInfo.getName() +  ": calc skipNodes: " + skipNodes);
             //System.out.println(myInfo.getName() +  ": calc delay: " + delay);
+
+            System.out.println(myInfo.getName() +  ": started callback " + id.toBase64String());
         }
 
         public HashId getId() { return id; }
@@ -4304,16 +4334,16 @@ public class Node {
 
         public void setItemSended() { isItemSended = true; }
 
-        public void addNodeToSended(int addedNodeNumber) { nodesSendCallback.add(addedNodeNumber); }
+        private void addNodeToSended(int addedNodeNumber) { nodesSendCallback.add(addedNodeNumber); }
 
-        public void checkForComplete() {
+        private void checkForComplete() {
             // if some nodes (rate defined in config) also sended callback and received packed item (without answer)
             // callback is deemed complete
             if (nodesSendCallback.size() >= (int) Math.floor(network.allNodes().size() * config.getRateNodesSendFollowerCallbackToComplete()))
                 complete();
         }
 
-        public boolean checkCallbackSignature(byte[] signature) {
+        private boolean checkCallbackSignature(byte[] signature) {
             try {
                 return callbackKey.verify(itemId.getDigest(), signature, HashType.SHA512);
             } catch (EncryptionError e) {
@@ -4321,7 +4351,19 @@ public class Node {
             }
         }
 
-        public void complete() {
+        public void obtainNotification(CallbackNotification notification) {
+            System.out.println(myInfo.getName() +  ": notify callback " + notification.getId().toBase64String() + " from node " + notification.getFrom().getName() + " signature len = " + notification.getSignature().length);
+
+            if (notification.getSignature().length > 0) {
+                if (checkCallbackSignature(notification.getSignature()))
+                    complete();
+            } else {
+                addNodeToSended(notification.getFrom().getNumber());
+                checkForComplete();
+            }
+        }
+
+        private void complete() {
             callbackProcessors.remove(id);
 
             follower.onContractSubscriptionEvent(new ContractSubscription.CompletedEvent() {
@@ -4337,10 +4379,15 @@ public class Node {
             });
             environment.save();
 
+            // save new callback state in DB record
+            ledger.updateFollowerCallbackState(id, FollowerCallbackState.COMPLETED);
+
+            System.out.println(myInfo.getName() +  ": complete callback " + id.toBase64String());
+
             stop();
         }
 
-        public void fail() {
+        private void fail() {
             callbackProcessors.remove(id);
 
             follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
@@ -4356,10 +4403,15 @@ public class Node {
             });
             environment.save();
 
+            // save new callback state in DB record
+            ledger.updateFollowerCallbackState(id, FollowerCallbackState.EXPIRED);
+
+            System.out.println(myInfo.getName() +  ": fail callback " + id.toBase64String());
+
             stop();
         }
 
-        public void stop() { executor.cancel(true); }
+        private void stop() { executor.cancel(true); }
 
         public void call() {
             if (ZonedDateTime.now().isAfter(expiresAt))
@@ -4387,22 +4439,6 @@ public class Node {
                     }
                 }
             }
-        }
-    }
-
-    public class CallbackResync {
-        private HashId id;
-        long environmentId;
-        FollowerCallbackState state;
-
-        public void CallbackResync(HashId id, long environmentId, FollowerCallbackState state) {
-            this.id = id;
-            this.environmentId = environmentId;
-            this.state = state;
-        }
-
-        public void resyncState() {
-
         }
     }
 }

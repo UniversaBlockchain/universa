@@ -15135,6 +15135,8 @@ public class BaseNetworkTest extends TestCase {
                 newRevFollowerContract.getTrackingOrigins().size(), false, false);
 
         callback.shutdown();
+
+        nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
     }
 
     @Test
@@ -15444,6 +15446,8 @@ public class BaseNetworkTest extends TestCase {
         nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(10)));
 
         callback.shutdown();
+
+        nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
     }
 
     @Test
@@ -15478,7 +15482,7 @@ public class BaseNetworkTest extends TestCase {
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
                 followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback",
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7780/follow.callback",
                 callbackKey.getPublicKey());
 
         // payment contract
@@ -15504,10 +15508,10 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7780/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7780/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7780/follow.callback"));
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -15680,8 +15684,10 @@ public class BaseNetworkTest extends TestCase {
             }
         }
 
+        System.out.println("wait callback expiration time...");
+
         // intercept System.out
-        output = ConsoleInterceptor.copyOut(() -> Thread.sleep(60000));
+        output = ConsoleInterceptor.copyOut(() -> Thread.sleep(50000));
         System.out.println(output);
 
         // check call follower callback
@@ -15753,6 +15759,8 @@ public class BaseNetworkTest extends TestCase {
         });
 
         callback.shutdown();
+
+        nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
     }
 
     @Test
@@ -16082,10 +16090,13 @@ public class BaseNetworkTest extends TestCase {
         nodes.forEach(n -> n.getConfig().setFollowerCallbackDelay(Duration.ofSeconds(10)));
 
         callback.shutdown();
+
+        nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
     }
 
     //Follower tests:
     //check refilling after callback
+    //check refilling if callback started
     //new item tests (as Slot) for Follower
     //check if following is new item
     //check few callback servers and few following origins
