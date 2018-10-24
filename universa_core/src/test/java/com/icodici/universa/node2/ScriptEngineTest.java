@@ -140,6 +140,7 @@ public class ScriptEngineTest {
         testSpace.clients = new ArrayList();
         for (int i = 0; i < 4; i++)
             testSpace.clients.add(new Client(testSpace.myKey, testSpace.nodes.get(i).myInfo, null));
+
         return testSpace;
     }
 
@@ -1999,6 +2000,8 @@ public class ScriptEngineTest {
 
         System.out.println("\n\n\n============= shutdown...");
         testSpace.nodes.forEach(m -> m.shutdown());
+
+        httpServer.stop();
     }
 
     @Test
@@ -2113,6 +2116,8 @@ public class ScriptEngineTest {
 
         System.out.println("\n\n\n============= shutdown...");
         testSpace.nodes.forEach(m -> m.shutdown());
+
+        httpServer.stop();
     }
 
     @Ignore
