@@ -234,7 +234,7 @@ public class BufferedLogger implements AutoCloseable {
     /**
      * Return most recent record up to specified number of entries.
      *
-     * @param maxEntries must be > 0. If current number of records is less than specified, returns all.
+     * @param maxEntries must be &gt; 0. If current number of records is less than specified, returns all.
      *
      * @return List
      */
@@ -255,8 +255,8 @@ public class BufferedLogger implements AutoCloseable {
      * the returned List size.
      *
      * @param id         of the record to start with
-     * @param maxEntries and the direction, positive means newest than id (entry.id > id), negative for older (entry.id
-     *                   < id).
+     * @param maxEntries and the direction, positive means newest than id (entry.id &gt; id), negative for older (entry.id
+     *                   &lt; id).
      *
      * @return possibly empty list of entries matching the criteria.
      */

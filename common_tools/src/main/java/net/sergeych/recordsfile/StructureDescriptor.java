@@ -182,7 +182,7 @@ public class StructureDescriptor {
 
     /**
      * Add string field to be packed usgin system default encoding (utf-8 mainly) into a fixed-size bytes slot. Maximum
-     * size in bytes is either (fieldSize - 1) bytes (fieldSize <= 256, or fieldSize - 2 bytes otherwise except for
+     * size in bytes is either (fieldSize - 1) bytes (fieldSize &lt;= 256, or fieldSize - 2 bytes otherwise except for
      * extremely long fields, longer than 64Kb, in which case it be fieldSize - 3. Note that string length in characters
      * could be any depending on the characters used.
      *
