@@ -1915,6 +1915,22 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Get contract bytes from sealed (before) contract.
+     *
+     * Useful if you want to prepare extended signature and add it with {@link #addSignatureToSeal(byte[], PublicKey)}.
+     *
+     * @return contract bytes to be passed to {@link ExtendedSignature#createTargetSignature(PublicKey, byte[], boolean)}
+     */
+    public byte[] getContractBytes() {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to retreive contract bytes. Seal contract.");
+
+        Binder data = Boss.unpack(sealedBinary);
+        return data.getBinaryOrThrow("data");
+    }
+
+
+    /**
      * Remove all signatures from sealed binary
      */
     public void removeAllSignatures() {
