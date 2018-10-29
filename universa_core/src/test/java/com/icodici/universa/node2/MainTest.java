@@ -4307,9 +4307,8 @@ public class MainTest {
         assertTrue(testContract.isOk());
 
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(), 15000);
+        ItemResult itemResult = client.registerParcel(parcel.pack(), 15000);
 
-        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println(">> state: " + itemResult);
 
         assertEquals (ItemState.APPROVED, itemResult.state);

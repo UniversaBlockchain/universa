@@ -99,7 +99,7 @@ public class ClientNetwork {
      * @throws ClientError
      */
     public boolean registerParcel(byte[] packedParcel, long millisToWait) throws ClientError {
-        return client.registerParcel(packedParcel, millisToWait);
+        return client.registerParcelEx(packedParcel, millisToWait);
     }
 
     public ItemResult resync(String base64Id) throws ClientError {

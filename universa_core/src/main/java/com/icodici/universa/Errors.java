@@ -49,5 +49,6 @@ public enum Errors {
     UNKNOWN_COMMAND,
     NOT_READY,
     NOT_FOUND,
-    COMMAND_FAILED
+    COMMAND_FAILED,
+    COMMAND_PENDING
 }

@@ -10,10 +10,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.Decimal;
-import com.icodici.universa.ErrorRecord;
-import com.icodici.universa.HashId;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
@@ -349,22 +346,49 @@ public class Client {
      * @throws ClientError
      */
     public boolean registerParcel(byte[] packed) throws ClientError {
-        return registerParcel(packed, 0);
+        try {
+            registerParcel(packed, 0);
+            return true;
+        } catch (ClientError e) {
+            if (e.getErrorRecord().getError() == Errors.COMMAND_PENDING)
+                return true;
+            else
+                return false;
+        }
+    }
+
+    /**
+     * Register contract on the network with parcel (includes payment)
+     * @param packed {@link Parcel} binary
+     * @param millisToWait maximum time to wait for final {@link ItemState}
+     * @return result of registration
+     * @throws ClientError
+     */
+    public boolean registerParcelEx(byte[] packed, long millisToWait) throws ClientError {
+        try {
+            registerParcel(packed, millisToWait);
+            return true;
+        } catch (ClientError e) {
+            if (e.getErrorRecord().getError() == Errors.COMMAND_PENDING)
+                return true;
+            else
+                return false;
+        }
     }
 
     /**
      * Register contract on the network with parcel (includes payment) and wait for some of the final {@link ItemState}
      * @param packed {@link Parcel} binary
      * @param millisToWait maximum time to wait for final {@link ItemState}
-     * @return result of registration
+     * @return final result of registration process
      * @throws ClientError
      */
-
-    public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
+    public ItemResult registerParcel(byte[] packed, long millisToWait) throws ClientError {
         Object result = protect(() -> httpClient.command("approveParcel", "packedItem", packed)
                 .get("result"));
         if(result instanceof String) {
             System.out.println(">> registerParcel " + result);
+            throw new ClientError(Errors.FAILURE, "registerParcel", "approveParcel returns: " + result);
         } else {
             if (millisToWait > 0) {
                 Instant end = Instant.now().plusMillis(millisToWait);
@@ -375,34 +399,33 @@ public class Client {
                     while (Instant.now().isBefore(end) && pState.isProcessing()) {
                         System.out.println("parcel state is: " + pState);
                         Thread.currentThread().sleep(interval);
-                        if (interval > 300)
-                            interval -= 350;
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
                         pState = getParcelProcessingState(parcel.getId());
                     }
                     System.out.println("parcel state is: " + pState);
                     ItemResult lastResult = getState(parcel.getPayloadContract().getId());
                     while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
                         Thread.currentThread().sleep(interval);
-                        if (interval > 300)
-                            interval -= 350;
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
                         lastResult = getState(parcel.getPayloadContract().getId());
                         System.out.println("test: " + lastResult);
                     }
+                    return lastResult;
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    throw new ClientError(e);
                 } catch (Quantiser.QuantiserException e) {
                     throw new ClientError(e);
                 } catch (IOException e) {
                     e.printStackTrace();
+                    throw new ClientError(e);
                 }
+            } else {
+                throw new ClientError(Errors.COMMAND_PENDING, "registerParcel", "waiting time is up, please update payload state later");
             }
-            if(result == null)
-                return false;
-
-            return (boolean) result;
         }
-
-        return false;
     }
 
 
