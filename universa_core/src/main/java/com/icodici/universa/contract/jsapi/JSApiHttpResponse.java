@@ -17,9 +17,11 @@ public class JSApiHttpResponse {
 
     public void setBodyAsPlainText(String answer) {
         response.setBody(answer);
+        response.getHeaders().set("Content-type", "text/html");
     }
 
     public void setBodyAsJson(ScriptObjectMirror bodyAsJson) {
         response.setBody(JsonTool.toJsonString(bodyAsJson));
+        response.getHeaders().set("Content-type", "application/json");
     }
 }

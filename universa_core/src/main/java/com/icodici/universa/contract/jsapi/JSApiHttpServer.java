@@ -38,7 +38,6 @@ public class JSApiHttpServer {
         service = new MicroHTTPDService();
 
         initEndpoints();
-        checkAllContracts();
 
         service.on("/", (request, response) -> {
             JSApiEnvironment environment = endpoints.get(request.getPath());
