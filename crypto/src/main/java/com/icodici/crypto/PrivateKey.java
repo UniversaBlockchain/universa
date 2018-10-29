@@ -46,6 +46,17 @@ public class PrivateKey extends AbstractKey {
 //        this.keyInfo = info;
     }
 
+    @Override
+    public boolean canSign() {
+        return true;
+    }
+
+    @Override
+    public boolean isPrivate() {
+        return true;
+    }
+
+
     public PrivateKey(byte[] packedBinaryKey) throws EncryptionError {
         List parts = Boss.load(packedBinaryKey);
         if ((Integer) parts.get(0) == 0) {
