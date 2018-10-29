@@ -347,7 +347,7 @@ public class Client {
      */
     public boolean registerParcel(byte[] packed) throws ClientError {
         try {
-            registerParcel(packed, 0);
+            registerParcelWithState(packed, 0);
             return true;
         } catch (ClientError e) {
             if (e.getErrorRecord().getError() == Errors.COMMAND_PENDING)
@@ -364,7 +364,8 @@ public class Client {
      * @return result of registration
      * @throws ClientError
      */
-    public boolean registerParcelEx(byte[] packed, long millisToWait) throws ClientError {
+    @Deprecated
+    public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
         try {
             registerParcel(packed, millisToWait);
             return true;
@@ -383,7 +384,7 @@ public class Client {
      * @return final result of registration process
      * @throws ClientError
      */
-    public ItemResult registerParcel(byte[] packed, long millisToWait) throws ClientError {
+    public ItemResult registerParcelWithState(byte[] packed, long millisToWait) throws ClientError {
         Object result = protect(() -> httpClient.command("approveParcel", "packedItem", packed)
                 .get("result"));
         if(result instanceof String) {

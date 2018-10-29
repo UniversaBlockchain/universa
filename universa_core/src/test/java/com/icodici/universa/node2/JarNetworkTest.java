@@ -213,7 +213,7 @@ public class JarNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
 
         Parcel parcel = ContractsService.createParcel(contractToRegister, paymentContract, 1, Stream.of(paymentContractPrivKey).collect(Collectors.toSet()), true);
-        normalClient.registerParcel(parcel.pack(), 5000);
+        normalClient.registerParcelWithState(parcel.pack(), 5000);
         itemResult = normalClient.getState(parcel.getPaymentContract().getId());
         if (itemResult.state == ItemState.APPROVED)
             paymentContract = parcel.getPaymentContract();
@@ -238,7 +238,7 @@ public class JarNetworkTest extends TestCase {
             assertEquals(ItemState.UNDEFINED, itemResult.state);
 
             Parcel parcel = ContractsService.createParcel(contractToRegister, paymentContract, 1, Stream.of(paymentContractPrivKey).collect(Collectors.toSet()), true);
-            normalClient.registerParcel(parcel.pack(), 5000);
+            normalClient.registerParcelWithState(parcel.pack(), 5000);
             itemResult = normalClient.getState(parcel.getPaymentContract().getId());
             if (itemResult.state == ItemState.APPROVED)
                 paymentContract = parcel.getPaymentContract();
@@ -322,7 +322,7 @@ public class JarNetworkTest extends TestCase {
         Parcel parcel = createParcelWithClassU(c, stepaPrivateKeys);
         System.out.println("register  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
 
-        normalClient.registerParcel(parcel.pack(),8000);
+        normalClient.registerParcelWithState(parcel.pack(),8000);
         synchronized (uContractLock) {
             uContract = parcel.getPaymentContract();
         }
@@ -338,7 +338,7 @@ public class JarNetworkTest extends TestCase {
         // stepaPrivateKeys - is also U keys
         Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
         System.out.println("-------------");
-        normalClient.registerParcel(parcel.pack(),8000);
+        normalClient.registerParcelWithState(parcel.pack(),8000);
         synchronized (uContractLock) {
             uContract = parcel.getPaymentContract();
         }

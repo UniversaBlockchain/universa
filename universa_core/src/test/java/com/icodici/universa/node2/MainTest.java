@@ -108,7 +108,7 @@ public class MainTest {
             testContract.seal();
             assertTrue(testContract.isOk());
             Parcel parcel = createParcelWithFreshU(ts.client, testContract, Do.listOf(ts.myKey));
-            ts.client.registerParcel(parcel.pack(), 18000);
+            ts.client.registerParcelWithState(parcel.pack(), 18000);
 
             Contract testContract2 = new Contract(ts.myKey);
             testContract2.seal();
@@ -499,7 +499,7 @@ public class MainTest {
                     Contract contract = contracts.get(finalI);
                     Client client = clients.get(finalI);
                     System.out.println("Register item " + contract.getId().toBase64String() + " @ node #" + clientNodes.get(finalI));
-                    client.registerParcel(parcels.get(finalI).pack(), 15000);
+                    client.registerParcelWithState(parcels.get(finalI).pack(), 15000);
                     ItemResult rr;
                     while (true) {
                         rr = client.getState(contract.getId());
@@ -610,7 +610,7 @@ public class MainTest {
         Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
 
         Parcel parcel = createParcelWithFreshU(client, configContract,Do.listOf(issuerKey));
-        client.registerParcel(parcel.pack(),15000);
+        client.registerParcelWithState(parcel.pack(),15000);
 
         ItemResult rr;
         while (true) {
@@ -625,7 +625,7 @@ public class MainTest {
         configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
 
         parcel = createParcelWithFreshU(client, configContract,nodeKeys);
-        client.registerParcel(parcel.pack(),15000);
+        client.registerParcelWithState(parcel.pack(),15000);
         while (true) {
 
             rr = client.getState(configContract.getId());
@@ -641,7 +641,7 @@ public class MainTest {
         configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
 
         parcel = createParcelWithFreshU(client, configContract,nodeKeys);
-        client.registerParcel(parcel.pack(),15000);
+        client.registerParcelWithState(parcel.pack(),15000);
         while (true) {
 
             rr = client.getState(configContract.getId());
@@ -736,7 +736,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(), 1000);
+        client.registerParcelWithState(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
         main.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -746,7 +746,7 @@ public class MainTest {
         testContract2.seal();
         assertTrue(testContract2.isOk());
         Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
-        client.registerParcel(parcel2.pack(), 1000);
+        client.registerParcelWithState(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getVerboseLevel());
@@ -759,7 +759,7 @@ public class MainTest {
         testContract3.seal();
         assertTrue(testContract3.isOk());
         Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
-        client.registerParcel(parcel3.pack(), 1000);
+        client.registerParcelWithState(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
@@ -792,7 +792,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(), 1000);
+        client.registerParcelWithState(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
         main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -802,7 +802,7 @@ public class MainTest {
         testContract2.seal();
         assertTrue(testContract2.isOk());
         Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
-        client.registerParcel(parcel2.pack(), 1000);
+        client.registerParcelWithState(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getUDPVerboseLevel());
@@ -816,7 +816,7 @@ public class MainTest {
         testContract4.seal();
         assertTrue(testContract4.isOk());
         Parcel parcel4 = createParcelWithFreshU(client, testContract4,Do.listOf(myKey));
-        client.registerParcel(parcel4.pack(), 1000);
+        client.registerParcelWithState(parcel4.pack(), 1000);
         ItemResult itemResult4 = client.getState(parcel4.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.DETAILED, main.network.getUDPVerboseLevel());
@@ -828,7 +828,7 @@ public class MainTest {
         testContract3.seal();
         assertTrue(testContract3.isOk());
         Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
-        client.registerParcel(parcel3.pack(), 1000);
+        client.registerParcelWithState(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
@@ -861,7 +861,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(), 5000);
+        client.registerParcelWithState(parcel.pack(), 5000);
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
 
@@ -1197,7 +1197,7 @@ public class MainTest {
         contract.seal();
 
         Parcel parcel = createParcelWithFreshU(client,contract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(),60000);
+        client.registerParcelWithState(parcel.pack(),60000);
         ItemResult rr;
         while(true) {
             rr = client.getState(contract.getId());
@@ -2106,7 +2106,7 @@ public class MainTest {
         System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
         assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
 
-        client.registerParcel(parcel.pack(), 5000);
+        client.registerParcelWithState(parcel.pack(), 5000);
         itemResult = client.getState(slotContract.getId());
         System.out.println("slot : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2176,7 +2176,7 @@ public class MainTest {
         System.out.println("unsContractBytes: " + unsContractBytes);
         assertEquals(false, Arrays.equals(unsContract.getPackedTransaction(), unsContractBytes));
 
-        testSpace.client.registerParcel(payingParcel.pack(), 8000);
+        testSpace.client.registerParcelWithState(payingParcel.pack(), 8000);
         itemResult = testSpace.client.getState(unsContract.getId());
         System.out.println("Uns : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2220,7 +2220,7 @@ public class MainTest {
         System.out.println("unsContractBytes: " + unsContractBytes);
         assertEquals(false, Arrays.equals(unsContract2.getPackedTransaction(), unsContractBytes));
 
-        testSpace.client.registerParcel(payingParcel.pack(), 8000);
+        testSpace.client.registerParcelWithState(payingParcel.pack(), 8000);
         itemResult = testSpace.client.getState(unsContract2.getId());
         System.out.println("Uns : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2571,7 +2571,7 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(false);
 
         Parcel parcel = ContractsService.createParcel(simpleContract, stepaU, 1, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
-        client.registerParcel(parcel.pack(), 5000);
+        client.registerParcelWithState(parcel.pack(), 5000);
         assertEquals(ItemState.APPROVED, client.getState(simpleContract.getId()).state);
 
         mm.forEach(x -> x.shutdown());
@@ -3881,7 +3881,7 @@ public class MainTest {
         Contract sampleContract = new Contract(userKey);
         sampleContract.seal();
         Parcel parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcel(parcel.pack(),5000);
+        testSpace.client.registerParcelWithState(parcel.pack(),5000);
         do {
             Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
@@ -3910,7 +3910,7 @@ public class MainTest {
         sampleContract = new Contract(userKey);
         sampleContract.seal();
         parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcel(parcel.pack(),5000);
+        testSpace.client.registerParcelWithState(parcel.pack(),5000);
         do {
             Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
@@ -4307,7 +4307,7 @@ public class MainTest {
         assertTrue(testContract.isOk());
 
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        ItemResult itemResult = client.registerParcel(parcel.pack(), 15000);
+        ItemResult itemResult = client.registerParcelWithState(parcel.pack(), 15000);
 
         System.out.println(">> state: " + itemResult);
 
@@ -4372,7 +4372,7 @@ public class MainTest {
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
         Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
-        client.registerParcel(parcel.pack(), 15000);
+        client.registerParcelWithState(parcel.pack(), 15000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println(">> state: " + itemResult);
@@ -4439,7 +4439,7 @@ public class MainTest {
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
         Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
-        client.registerParcel(parcel.pack(), 15000);
+        client.registerParcelWithState(parcel.pack(), 15000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println(">> state: " + itemResult);
@@ -6244,7 +6244,7 @@ public class MainTest {
         parcelContract.traceErrors();
 
         Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("root : " + itemResult);
@@ -6269,7 +6269,7 @@ public class MainTest {
         revisionContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revision : " + itemResult);
@@ -6299,7 +6299,7 @@ public class MainTest {
         revokeContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revokeContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revocation : " + itemResult);
@@ -6418,7 +6418,7 @@ public class MainTest {
         parcelContract.traceErrors();
 
         Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("root : " + itemResult);
@@ -6441,7 +6441,7 @@ public class MainTest {
         revisionContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revision : " + itemResult);
@@ -6469,7 +6469,7 @@ public class MainTest {
         revokeContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revokeContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revocation : " + itemResult);
@@ -6599,7 +6599,7 @@ public class MainTest {
         parcelContract.traceErrors();
 
         Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("root : " + itemResult);
@@ -6637,7 +6637,7 @@ public class MainTest {
         revisionContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revision : " + itemResult);
@@ -6713,7 +6713,7 @@ public class MainTest {
         parcelContract.traceErrors();
 
         Parcel parcel = createParcelWithFreshU(client, parcelContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("root : " + itemResult);
@@ -6739,7 +6739,7 @@ public class MainTest {
         revisionContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revisionContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revision : " + itemResult);
@@ -6769,7 +6769,7 @@ public class MainTest {
         revokeContract.traceErrors();
 
         parcel = createParcelWithFreshU(client, revokeContract, privateKeys);
-        client.registerParcel(parcel.pack(), 8000);
+        client.registerParcelWithState(parcel.pack(), 8000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
         System.out.println("revocation : " + itemResult);

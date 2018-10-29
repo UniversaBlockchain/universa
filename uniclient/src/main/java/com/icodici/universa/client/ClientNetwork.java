@@ -99,7 +99,15 @@ public class ClientNetwork {
      * @throws ClientError
      */
     public boolean registerParcel(byte[] packedParcel, long millisToWait) throws ClientError {
-        return client.registerParcelEx(packedParcel, millisToWait);
+        try {
+            client.registerParcelWithState(packedParcel, millisToWait);
+            return true;
+        } catch (ClientError e) {
+            if (e.getErrorRecord().getError() == Errors.COMMAND_PENDING)
+                return true;
+            else
+                return false;
+        }
     }
 
     public ItemResult resync(String base64Id) throws ClientError {

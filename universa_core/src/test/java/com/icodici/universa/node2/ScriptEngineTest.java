@@ -1941,7 +1941,7 @@ public class ScriptEngineTest {
         System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
         Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), false);
-        testSpace.client.registerParcel(parcel.pack(), 5000);
+        testSpace.client.registerParcelWithState(parcel.pack(), 5000);
         itemResult = testSpace.client.getState(slotContract.getId());
         System.out.println("slot : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2044,7 +2044,7 @@ public class ScriptEngineTest {
         System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
         Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), false);
-        testSpace.client.registerParcel(parcel.pack(), 5000);
+        testSpace.client.registerParcelWithState(parcel.pack(), 5000);
         itemResult = testSpace.client.getState(slotContract.getId());
         System.out.println("slot : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
