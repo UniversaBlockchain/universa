@@ -222,8 +222,9 @@ public interface Ledger {
     Node.FollowerCallbackState getFollowerCallbackStateById(HashId id);
     Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId);
     Collection<CallbackRecord> getFollowerCallbacksToResync();
-    void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
+    void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
     void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state);
+    void removeFollowerCallback(HashId id);
 
     List<Long> clearExpiredStorageSubscriptions();
     void clearExpiredFollowerSubscriptions();

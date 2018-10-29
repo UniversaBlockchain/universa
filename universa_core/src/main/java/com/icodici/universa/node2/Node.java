@@ -104,6 +104,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
     private ConcurrentHashMap<HashId, CallbackProcessor> callbackProcessors = new ConcurrentHashMap<>();
     private ConcurrentHashMap<HashId, CallbackNotification> deferredCallbackNotifications = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<HashId, CallbackRecord> callbacksToSynchronize = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
     private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
@@ -198,8 +199,10 @@ public class Node {
             dbSanitationFinished();
         }
 
-        pulseStartCleanup();
+        lowPrioExecutorService.scheduleWithFixedDelay(() -> synchronizeFollowerCallbacks(), 60,
+                config.getFollowerCallbackSynchronizationInterval().getSeconds(), TimeUnit.SECONDS);
 
+        pulseStartCleanup();
     }
 
     private void pulseStartCleanup() {
@@ -2517,6 +2520,8 @@ public class Node {
                                             newExtraResult.set("onCreatedResult", ((NSmartContract) newItem).onCreated(me));
                                         } else {
                                             newExtraResult.set("onUpdateResult", ((NSmartContract) newItem).onUpdated(me));
+
+                                            lowPrioExecutorService.schedule(() -> synchronizeFollowerCallbacks(me.getId()), 1, TimeUnit.SECONDS);
                                         }
 
                                         me.save();
@@ -2637,6 +2642,8 @@ public class Node {
                                     extraResult.set("onCreatedResult", ((NSmartContract) item).onCreated(me));
                                 } else {
                                     extraResult.set("onUpdateResult", ((NSmartContract) item).onUpdated(me));
+
+                                    lowPrioExecutorService.schedule(() -> synchronizeFollowerCallbacks(me.getId()), 1, TimeUnit.SECONDS);
                                 }
 
                                 me.save();
@@ -2815,11 +2822,7 @@ public class Node {
                         if ((subscription != null) && (contract instanceof FollowerContract) &&
                            ((FollowerContract) contract).canFollowContract((Contract) updatingItem)) {
 
-                            CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract, me, finalSubscription);
-
-                            int startDelay = callback.getDelay();
-                            int repeatDelay = (int) config.getFollowerCallbackDelay().toMillis() * (network.getNodesCount() + 2);
-                            callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), startDelay, repeatDelay, TimeUnit.MILLISECONDS));
+                            CallbackProcessor callback = new CallbackProcessor((Contract) updatingItem, (FollowerContract) contract, me.getId(), finalSubscription.getId());
 
                             // started callback
                             contract.onContractSubscriptionEvent(new ContractSubscription.ApprovedEvent() {
@@ -2845,8 +2848,24 @@ public class Node {
                             });
                             me.save();
 
-                            synchronized (this) {
+                            report(getLabel(), () -> concatReportMessage("notifyFollowerSubscribers: save subscription ",
+                                    finalSubscription.getId(), " expires: ", finalSubscription.expiresAt(), " muted: ",
+                                    finalSubscription.mutedAt(), " started callbacks: ", finalSubscription.getStartedCallbacks()),
+                                    DatagramAdapter.VerboseLevel.DETAILED);
+
+                            // add callback record to DB
+                            CallbackRecord.addCallbackRecordToLedger(callback.getId(), me.getId(), finalSubscription.getId(), config, network.getNodesCount(), ledger);
+
+                            // run callback processor
+                            int startDelay = callback.getDelay();
+                            int repeatDelay = (int) config.getFollowerCallbackDelay().toMillis() * (network.getNodesCount() + 2);
+                            callback.setExecutor(executorService.scheduleWithFixedDelay(() -> callback.call(), startDelay, repeatDelay, TimeUnit.MILLISECONDS));
+
+                            synchronized (callbackProcessors) {
                                 callbackProcessors.put(callback.getId(), callback);
+
+                                report(getLabel(), () -> concatReportMessage("notifyFollowerSubscribers: put callback ", callback.getId().toBase64String()),
+                                        DatagramAdapter.VerboseLevel.DETAILED);
 
                                 CallbackNotification deferredNotification = deferredCallbackNotifications.get(callback.getId());
                                 if (deferredNotification != null) {
@@ -2854,12 +2873,11 @@ public class Node {
                                     callback.obtainNotification(deferredNotification);
 
                                     deferredCallbackNotifications.remove(callback.getId());
-                                    // syncronize action... remove not commited complete from ledger
+
+                                    report(getLabel(), () -> concatReportMessage("notifyFollowerSubscribers: remove deferred notification for callback ",
+                                            callback.getId().toBase64String()), DatagramAdapter.VerboseLevel.DETAILED);
                                 }
                             }
-
-                            // add callback record to DB
-                            CallbackRecord.addCallbackRecordToLedger(callback.getId(), me.getId(), config, network.getNodesCount(), ledger);
                         }
                     }
                 }
@@ -4131,6 +4149,87 @@ public class Node {
         FAILED
     }
 
+    private void synchronizeFollowerCallbacks() {
+        int nodesCount = network.getNodesCount();
+        if (nodesCount < 2)
+            return;
+
+        Collection<CallbackRecord> callbackRecords = ledger.getFollowerCallbacksToResync();
+        if (callbackRecords.isEmpty())
+            return;
+
+        startSynchronizeFollowerCallbacks(callbackRecords, nodesCount);
+    }
+
+    private void synchronizeFollowerCallbacks(long environmentId) {
+        int nodesCount = network.getNodesCount();
+        if (nodesCount < 2)
+            return;
+
+        Collection<CallbackRecord> callbackRecords = ledger.getFollowerCallbacksToResyncByEnvId(environmentId);
+        if (callbackRecords.isEmpty())
+            return;
+
+        startSynchronizeFollowerCallbacks(callbackRecords, nodesCount);
+    }
+
+    private synchronized void startSynchronizeFollowerCallbacks(Collection<CallbackRecord> callbackRecords, int nodesCount) {
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(20);
+
+        callbackRecords.forEach(r -> {
+            if (!callbacksToSynchronize.containsKey(r.getId())) {
+                // init record to synchronization
+                r.setExpiresAt(expiresAt);
+                r.setConsensusAndLimit(nodesCount);
+                callbacksToSynchronize.put(r.getId(), r);
+
+                // request callback state from all nodes
+                network.broadcast(myInfo, new CallbackNotification(myInfo, r.getId(),
+                        CallbackNotification.CallbackNotificationType.GET_STATE, null));
+            }
+        });
+
+        lowPrioExecutorService.schedule(() -> endSynchronizeFollowerCallbacks(), 20, TimeUnit.SECONDS);
+    }
+
+    private synchronized void endSynchronizeFollowerCallbacks() {
+        for (CallbackRecord record: callbacksToSynchronize.values()) {
+            if (record.endSynchronize(ledger, this))
+                callbacksToSynchronize.remove(record.getId());
+        }
+    }
+
+    // *
+
+    public Binder getFullEnvironment(long environmentId, long subscriptionId) {
+        NImmutableEnvironment ime = getEnvironment(environmentId);
+        ime.setNameCache(nameCache);
+        FollowerContract contract = ime.getContract();
+        contract.setNodeInfoProvider(nodeInfoProvider);
+        NMutableEnvironment me = ime.getMutable();
+        NContractFollowerSubscription subscription = null;
+        for (ContractSubscription sub: ime.followerSubscriptions()) {
+            if ((sub instanceof NContractFollowerSubscription) &&
+                (((NContractFollowerSubscription) sub).getId() == subscriptionId)) {
+                subscription = (NContractFollowerSubscription) sub;
+                break;
+            }
+        }
+
+        NContractFollowerSubscription finalSubscription = subscription;
+        if ((me == null) || (finalSubscription == null))
+            return Binder.EMPTY;
+
+        report(getLabel(), () -> concatReportMessage("getFullEnvironment: subscription ",
+                finalSubscription.getId(), " expires: ", finalSubscription.expiresAt(), " muted: ",
+                finalSubscription.mutedAt(), " started callbacks: ", finalSubscription.getStartedCallbacks()),
+                DatagramAdapter.VerboseLevel.DETAILED);
+
+        return Binder.of("follower", contract,
+                         "environment", me,
+                         "subscription", finalSubscription);
+    }
+
     /**
      * Request distant callback URL. Send new revision of following contract and signature (by node key).
      * Receive answer and return it if HTTP response code equals 200.
@@ -4212,22 +4311,41 @@ public class Node {
      * @param notification callback notification
      *
      */
-    private final void obtainCallbackNotification(CallbackNotification notification) {
+    private void obtainCallbackNotification(CallbackNotification notification) {
         CallbackProcessor callback;
 
-        synchronized (this) {
-            callback = callbackProcessors.get(notification.getId());
-            if (callback == null) {
-                System.out.println(myInfo.getName() +  ": not found callback " + notification.getId().toBase64String());
+        report(getLabel(), () -> concatReportMessage("obtainCallbackNotification: callback ",
+                notification.getId().toBase64String(), " type ", notification.getType().name()),
+                DatagramAdapter.VerboseLevel.DETAILED);
 
-                deferredCallbackNotifications.put(notification.getId(), notification);
-                // syncronize action... not commited complete to ledger
+        if (notification.getType() == CallbackNotification.CallbackNotificationType.GET_STATE) {
+            network.deliver(notification.getFrom(), new CallbackNotification(myInfo, notification.getId(),
+                            CallbackNotification.CallbackNotificationType.RETURN_STATE, null,
+                            ledger.getFollowerCallbackStateById(notification.getId())));
+        } else if (notification.getType() == CallbackNotification.CallbackNotificationType.RETURN_STATE) {
+            CallbackRecord record = callbacksToSynchronize.get(notification.getId());
 
-                return;
+            if ((record != null) && record.synchronizeState(notification.getState(), ledger, this)) {
+                callbacksToSynchronize.remove(notification.getId());
+
+                report(getLabel(), () -> concatReportMessage("obtainCallbackNotification: callback ",
+                        notification.getId().toBase64String(), " synchronized with state ", notification.getState().name()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             }
-        }
+        } else {
+            synchronized (callbackProcessors) {
+                callback = callbackProcessors.get(notification.getId());
+                if (callback == null) {
+                    report(getLabel(), () -> concatReportMessage("obtainCallbackNotification not found callback ",
+                            notification.getId().toBase64String()), DatagramAdapter.VerboseLevel.BASE);
 
-        callback.obtainNotification(notification);
+                    deferredCallbackNotifications.put(notification.getId(), notification);
+                    return;
+                }
+            }
+
+            callback.obtainNotification(notification);
+        }
     }
 
     /**
@@ -4244,9 +4362,8 @@ public class Node {
         private HashId id;
         private HashId itemId;
         private byte[] packedItem;
-        private FollowerContract follower;
-        private NMutableEnvironment environment;
-        private NContractFollowerSubscription subscription;
+        private long environmentId;
+        private long subscriptionId;
         private ZonedDateTime expiresAt;
         private int delay = 1;
         private String callbackURL;
@@ -4255,13 +4372,12 @@ public class Node {
         private boolean isItemSended;
         private ConcurrentSkipListSet<Integer> nodesSendCallback = new ConcurrentSkipListSet<>();
 
-        public CallbackProcessor(Contract item, FollowerContract follower, NMutableEnvironment me, NContractFollowerSubscription subscription) {
+        public CallbackProcessor(Contract item, FollowerContract follower, long environmentId, long subscriptionId) {
             // save item, environment and subscription
             itemId = item.getId();
             packedItem = item.getPackedTransaction();
-            environment = me;
-            this.follower = follower;
-            this.subscription = subscription;
+            this.environmentId = environmentId;
+            this.subscriptionId = subscriptionId;
             List<NodeInfo> allNodes = network.allNodes();
             isItemSended = false;
 
@@ -4299,7 +4415,8 @@ public class Node {
                 System.arraycopy(digest, 0, nodeAndItemId, 0, digest.length);
                 System.arraycopy(bb.array(), 0, nodeAndItemId, digest.length, 4);
 
-                //System.out.println(myInfo.getName() +  ": calc node " + n.getNumber() + " hash: " + HashId.of(nodeAndItemId).toBase64String());
+                report(getLabel(), () -> concatReportMessage("CallbackProcessor calculate node ", n.getNumber(), " hash: ",
+                        HashId.of(nodeAndItemId).toBase64String()), DatagramAdapter.VerboseLevel.DETAILED);
 
                 byte[] nodeDigest = HashId.of(nodeAndItemId).getDigest();
                 nodeDigests.add(nodeDigest);
@@ -4319,11 +4436,14 @@ public class Node {
             if (allNodes.size() % 2 == 1)
                 delay += config.getFollowerCallbackDelay().toMillis() / 3;
 
-            //System.out.println(myInfo.getName() +  ": calc callback hash: " + id.toBase64String());
-            //System.out.println(myInfo.getName() +  ": calc skipNodes: " + skipNodes);
-            //System.out.println(myInfo.getName() +  ": calc delay: " + delay);
-
-            System.out.println(myInfo.getName() +  ": started callback " + id.toBase64String());
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor calculate callback hash ", id.toBase64String()),
+                    DatagramAdapter.VerboseLevel.DETAILED);
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor calculate skipped nodes ", skipNodes),
+                    DatagramAdapter.VerboseLevel.DETAILED);
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor calculate delay before callback ", delay),
+                    DatagramAdapter.VerboseLevel.DETAILED);
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor started callback ", id.toBase64String()),
+                    DatagramAdapter.VerboseLevel.BASE);
         }
 
         public HashId getId() { return id; }
@@ -4352,19 +4472,30 @@ public class Node {
         }
 
         public void obtainNotification(CallbackNotification notification) {
-            System.out.println(myInfo.getName() +  ": notify callback " + notification.getId().toBase64String() + " from node " + notification.getFrom().getName() + " signature len = " + notification.getSignature().length);
+            report(getLabel(), () -> concatReportMessage("Notify callback ", notification.getId().toBase64String(),
+                   " type ", notification.getType().name(), " from node ", notification.getFrom().getName()),
+                  DatagramAdapter.VerboseLevel.DETAILED);
 
-            if (notification.getSignature().length > 0) {
+            if (notification.getType() == CallbackNotification.CallbackNotificationType.COMPLETED) {
                 if (checkCallbackSignature(notification.getSignature()))
                     complete();
-            } else {
+            } else if (notification.getType() == CallbackNotification.CallbackNotificationType.NOT_RESPONDING) {
                 addNodeToSended(notification.getFrom().getNumber());
                 checkForComplete();
             }
         }
 
         private void complete() {
+            // full environment
+            Binder fullEnvironment = getFullEnvironment(environmentId, subscriptionId);
+            FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
+            NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
+            NContractFollowerSubscription subscription = (NContractFollowerSubscription) fullEnvironment.get("subscription");
+
             callbackProcessors.remove(id);
+
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor.complete: Removed callback ", id.toBase64String()),
+                    DatagramAdapter.VerboseLevel.DETAILED);
 
             follower.onContractSubscriptionEvent(new ContractSubscription.CompletedEvent() {
                 @Override
@@ -4379,16 +4510,30 @@ public class Node {
             });
             environment.save();
 
+            report(getLabel(), () -> concatReportMessage("saveCallbackEnvironment: subscription ",
+                    subscription.getId(), " expires: ", subscription.expiresAt(), " muted: ",
+                    subscription.mutedAt(), " started callbacks: ", subscription.getStartedCallbacks()),
+                    DatagramAdapter.VerboseLevel.DETAILED);
+
             // save new callback state in DB record
             ledger.updateFollowerCallbackState(id, FollowerCallbackState.COMPLETED);
 
-            System.out.println(myInfo.getName() +  ": complete callback " + id.toBase64String());
+            report(getLabel(), () -> concatReportMessage("Completed callback ", id.toBase64String()), DatagramAdapter.VerboseLevel.BASE);
 
             stop();
         }
 
         private void fail() {
+            // full environment
+            Binder fullEnvironment = getFullEnvironment(environmentId, subscriptionId);
+            FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
+            NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
+            NContractFollowerSubscription subscription = (NContractFollowerSubscription) fullEnvironment.get("subscription");
+
             callbackProcessors.remove(id);
+
+            report(getLabel(), () -> concatReportMessage("CallbackProcessor.fail: Removed callback ", id.toBase64String()),
+                    DatagramAdapter.VerboseLevel.DETAILED);
 
             follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
                 @Override
@@ -4403,15 +4548,23 @@ public class Node {
             });
             environment.save();
 
+            report(getLabel(), () -> concatReportMessage("saveCallbackEnvironment: subscription ",
+                    subscription.getId(), " expires: ", subscription.expiresAt(), " muted: ",
+                    subscription.mutedAt(), " started callbacks: ", subscription.getStartedCallbacks()),
+                    DatagramAdapter.VerboseLevel.DETAILED);
+
             // save new callback state in DB record
             ledger.updateFollowerCallbackState(id, FollowerCallbackState.EXPIRED);
 
-            System.out.println(myInfo.getName() +  ": fail callback " + id.toBase64String());
+            report(getLabel(), () -> concatReportMessage("Failed callback ", id.toBase64String()), DatagramAdapter.VerboseLevel.BASE);
 
             stop();
         }
 
-        private void stop() { executor.cancel(true); }
+        private void stop() {
+            if (executor != null)
+                executor.cancel(true);
+        }
 
         public void call() {
             if (ZonedDateTime.now().isAfter(expiresAt))
@@ -4419,7 +4572,8 @@ public class Node {
             else {
                 if (isItemSended) {       // callback has already been called and received packed item
                     // send notification to other nodes
-                    network.broadcast(myInfo, new CallbackNotification(myInfo, id, new byte[0]));
+                    network.broadcast(myInfo, new CallbackNotification(myInfo, id,
+                            CallbackNotification.CallbackNotificationType.NOT_RESPONDING, null));
 
                     addNodeToSended(myInfo.getNumber());
                     checkForComplete();
@@ -4434,7 +4588,8 @@ public class Node {
                     }
 
                     if ((signature != null) && checkCallbackSignature(signature)) {
-                        network.broadcast(myInfo, new CallbackNotification(myInfo, id, signature));
+                        network.broadcast(myInfo, new CallbackNotification(myInfo, id,
+                                CallbackNotification.CallbackNotificationType.COMPLETED, signature));
                         complete();
                     }
                 }

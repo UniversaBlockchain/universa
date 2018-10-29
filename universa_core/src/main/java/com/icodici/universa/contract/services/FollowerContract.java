@@ -451,6 +451,20 @@ public class FollowerContract extends NSmartContract {
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
             me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
+        } else if (event instanceof ContractSubscription.SpentEvent) {
+            MutableEnvironment me = ((ContractSubscription.SpentEvent) event).getEnvironment();
+
+            ContractSubscription sub = event.getSubscription();
+            me.increaseCallbacksSpent(sub, callbackRate);
+
+            double deltaDays = callbackRate / trackingOrigins.size();
+            int deltaSeconds = (int) (deltaDays * 24 * 3600);
+
+            // decrease muted and expires period of all follower subscription in environment of contract
+            me.followerSubscriptions().forEach(fsub -> {
+                me.changeSubscriptionMutedAt(fsub, -deltaSeconds);
+                me.decreaseSubscriptionExpiresAt(fsub, deltaSeconds);
+            });
         }
     }
 

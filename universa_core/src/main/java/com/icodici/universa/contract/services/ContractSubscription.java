@@ -70,6 +70,10 @@ public interface ContractSubscription {
         MutableEnvironment getEnvironment();
     }
 
+    interface SpentEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
     /**
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
      * NContract#onContractSubscriptionEvent(Event)}

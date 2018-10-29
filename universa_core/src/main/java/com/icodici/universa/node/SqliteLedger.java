@@ -416,10 +416,13 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {}
+    public void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {}
 
     @Override
     public void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state) {}
+
+    @Override
+    public void removeFollowerCallback(HashId id) {}
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}

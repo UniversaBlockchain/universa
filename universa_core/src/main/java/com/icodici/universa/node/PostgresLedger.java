@@ -1534,14 +1534,18 @@ public class PostgresLedger implements Ledger {
     @Override
     public Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
-            ZonedDateTime now = ZonedDateTime.now();
+            long now = ZonedDateTime.now().toEpochSecond();
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "SELECT id, state, expires_at, stored_until FROM follower_callbacks WHERE environment_id = ?"
+                        "SELECT id, subscription_id, state FROM follower_callbacks WHERE environment_id = ? " +
+                        "AND expires_at < ? AND (state = ? OR state = ?)"
                     )
             ) {
                 statement.setLong(1, environmentId);
+                statement.setLong(2, now);
+                statement.setLong(3, Node.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(4, Node.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1551,9 +1555,8 @@ public class PostgresLedger implements Ledger {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
                             environmentId,
-                            Node.FollowerCallbackState.values()[rs.getInt(2)],
-                            StateRecord.getTime(rs.getLong(3)),
-                            StateRecord.getTime(rs.getLong(4)));
+                            rs.getLong(2),
+                            Node.FollowerCallbackState.values()[rs.getInt(3)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1571,12 +1574,17 @@ public class PostgresLedger implements Ledger {
     @Override
     public Collection<CallbackRecord> getFollowerCallbacksToResync() {
         try (PooledDb db = dbPool.db()) {
+            long now = ZonedDateTime.now().toEpochSecond();
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "SELECT id, state, environment_id, expires_at, stored_until FROM follower_callbacks"
+                        "SELECT id, state, subscription_id, environment_id FROM follower_callbacks " +
+                        "WHERE expires_at < ? AND (state = ? OR state = ?)"
                     )
             ) {
+                statement.setLong(1, now);
+                statement.setLong(2, Node.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(3, Node.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1585,10 +1593,9 @@ public class PostgresLedger implements Ledger {
                 while (rs.next()) {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
+                            rs.getLong(4),
                             rs.getLong(3),
-                            Node.FollowerCallbackState.values()[rs.getInt(2)],
-                            StateRecord.getTime(rs.getLong(4)),
-                            StateRecord.getTime(rs.getLong(5)));
+                            Node.FollowerCallbackState.values()[rs.getInt(2)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1604,19 +1611,20 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {
+    public void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "INSERT INTO follower_callbacks (id, state, environment_id, expires_at, stored_until) VALUES (?,?,?,?,?)"
+                        "INSERT INTO follower_callbacks (id, state, environment_id, subscription_id, expires_at, stored_until) VALUES (?,?,?,?,?,?)"
                     )
             ) {
                 statement.setBytes(1, id.getDigest());
                 statement.setInt(2, Node.FollowerCallbackState.STARTED.ordinal());
                 statement.setLong(3, environmentId);
-                statement.setLong(4, StateRecord.unixTime(expiresAt));
-                statement.setLong(5, StateRecord.unixTime(storedUntil));
+                statement.setLong(4, subscriptionId);
+                statement.setLong(5, StateRecord.unixTime(expiresAt));
+                statement.setLong(6, StateRecord.unixTime(storedUntil));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1643,6 +1651,26 @@ public class PostgresLedger implements Ledger {
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("follower callback update failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void removeFollowerCallback(HashId id) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "DELETE FROM follower_callbacks WHERE id = ?"
+                    )
+            ) {
+                statement.setBytes(1, id.getDigest());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("follower callback delete failed:" + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
