@@ -74,8 +74,17 @@ public class PublicKey extends AbstractKey {
         }
 
         List parts = Boss.load(bytes);
-        if ((Integer) parts.get(0) != 1)
-            throw new EncryptionError("invalid packed public key");
+        switch ((Integer) parts.get(0)) {
+            case 0:
+            case 2:
+                throw new EncryptionError("the key is private, not public");
+            case 1:
+                break;
+            default:
+                throw new EncryptionError("invalid packed public key");
+        }
+
+
         try {
             // e, n
             Binder pp = new Binder("e", ((Bytes) parts.get(1)).toArray(),

@@ -60,6 +60,8 @@ public class PrivateKey extends AbstractKey {
                 throw new EncryptionError("failed to parse private key", error);
             }
         } else if ((Integer) parts.get(0) == 1) {
+            throw new EncryptionError("the key is public, not private");
+        } else if ((Integer) parts.get(0) == 2) {
             throw new PasswordProtectedException("key is password protected");
         } else {
             throw new EncryptionError("Bad or unknown private key type");
@@ -212,7 +214,7 @@ public class PrivateKey extends AbstractKey {
         byte[] packedEncryptedKey = key.encrypt(packedKey);
 
         return Boss.dumpToArray(new Object[]{
-                1,
+                2,
                 rounds,
                 salt,
                 function.name(),
@@ -226,6 +228,8 @@ public class PrivateKey extends AbstractKey {
         if ((Integer) params.get(0) == 0) {
             return new PrivateKey(packedBinary);
         } else if ((Integer) params.get(0) == 1) {
+            throw new EncryptionError("the key is public, not private");
+        } else if ((Integer) params.get(0) == 2) {
             try {
                 int rounds = (int) params.get(1);
                 Bytes salt = (Bytes) params.get(2);
