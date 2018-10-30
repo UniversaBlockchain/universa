@@ -684,8 +684,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
             if (contract_id != null) {
                 HashId contractHashId = HashId.withDigest(contract_id);
-                if (slotContract.isContractTracking(contractHashId))
-                    res.set("contract", node.getLedger().getContractInStorage(contractHashId));
+                res.set("contract", node.getLedger().getContractInStorage(contractHashId));
             } else if (origin_id != null) {
                 HashId originHashId = HashId.withDigest(origin_id);
                 List<byte[]> storedRevisions = node.getLedger().getContractsInStorageByOrigin(slotContract.getId(), originHashId);
