@@ -2555,7 +2555,8 @@ public class CLIMain {
         contract.addSignerKeys(privateKeys);
         contract.getState().setJS(jsFileBytes, jsFile, new JSApiScriptParameters(), true);
         contract.seal();
-        FileTool.writeFileContentsWithRenaming(outputFile, contract.getPackedTransaction());
+        String createdFileName = FileTool.writeFileContentsWithRenaming(outputFile, contract.getPackedTransaction());
+        report("file " + createdFileName + " saved");
         finish();
     }
 
