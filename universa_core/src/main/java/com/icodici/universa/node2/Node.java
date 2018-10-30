@@ -2530,7 +2530,6 @@ public class Node {
 
                                 // update new item's smart contracts link to
                                 notifyStorageSubscribers(newItem, r.getState());
-                                System.out.println("-------D&CSiO:" + newItem.getId().toString() + "origin:" + ((Contract)newItem).getOrigin());
                                 notifyFollowerSubscribers(newItem);
 
                                 synchronized (cache) {
@@ -2661,7 +2660,6 @@ public class Node {
 
                         // update item's smart contracts link to
                         notifyStorageSubscribers(item, getState());
-                        System.out.println("-------D&C:" + item.getId().toString() + "origin:" + ((Contract)item).getOrigin());
                         notifyFollowerSubscribers(item);
 
                     } catch (Exception ex) {
@@ -2813,8 +2811,8 @@ public class Node {
                         contract.setNodeInfoProvider(nodeInfoProvider);
                         NMutableEnvironment me = ime.getMutable();
                         NContractFollowerSubscription subscription = null;
-                        for(ContractSubscription sub : ime.followerSubscriptions() ) {
-                            if(sub.getOrigin().equals(origin)) {
+                        for (ContractSubscription sub : ime.followerSubscriptions()) {
+                            if (sub.getOrigin().equals(origin)) {
                                 subscription = (NContractFollowerSubscription) sub;
                                 break;
                             }
@@ -4377,6 +4375,7 @@ public class Node {
         public CallbackProcessor(Contract item, FollowerContract follower, long environmentId, long subscriptionId) {
             // save item, environment and subscription
             itemId = item.getId();
+            item.setTransactionPack(null);      // send only updated item without TransactionPack
             packedItem = item.getPackedTransaction();
             this.environmentId = environmentId;
             this.subscriptionId = subscriptionId;
