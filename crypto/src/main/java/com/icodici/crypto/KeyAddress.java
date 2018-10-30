@@ -229,6 +229,11 @@ public class KeyAddress implements KeyMatcher {
     }
 
     @Override
+    public int hashCode() {
+        return toString().hashCode();
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof KeyAddress) {
             KeyAddress ka = (KeyAddress) obj;
