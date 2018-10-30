@@ -1,0 +1,10 @@
+.idea
+out
+target
+*.iml
+*.private.unikey
+project/META-INF
+project/target
+.DS_Store
+
+files/

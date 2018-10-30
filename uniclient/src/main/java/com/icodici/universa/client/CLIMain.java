@@ -2553,7 +2553,11 @@ public class CLIMain {
         roleLink.setContract(contract);
         contract.addPermission(new ChangeOwnerPermission(roleLink));
         contract.addSignerKeys(privateKeys);
-        contract.getState().setJS(jsFileBytes, jsFile, new JSApiScriptParameters(), true);
+        String filename = Paths.get(jsFile).getFileName().toString();
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        contract.getState().setJS(jsFileBytes, filename, scriptParameters, true);
         contract.seal();
         String createdFileName = FileTool.writeFileContentsWithRenaming(outputFile, contract.getPackedTransaction());
         report("file " + createdFileName + " saved");
