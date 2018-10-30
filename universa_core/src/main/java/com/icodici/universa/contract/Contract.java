@@ -1103,7 +1103,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
         for (PublicKey publicKey : getIssuer().getKeys())
             thisIssuerAddresses.add(publicKey.getShortAddress());
-        if (!Collections.disjoint(issuerKeys, thisIssuerAddresses)) {
+        if (Collections.disjoint(issuerKeys, thisIssuerAddresses)) {
             res = false;
             addError(Errors.BAD_VALUE, "issuerKeys is not valid");
         }
@@ -3666,7 +3666,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
         for (PublicKey publicKey : getIssuer().getKeys())
             thisIssuerAddresses.add(publicKey.getShortAddress());
-        if (!Collections.disjoint(issuerKeys, thisIssuerAddresses))
+        if (Collections.disjoint(issuerKeys, thisIssuerAddresses))
             return false;
         if ( !issuerName.equals(getDefinition().getData().get("issuerName")))
             return false;
