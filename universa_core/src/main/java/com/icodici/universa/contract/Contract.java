@@ -3837,6 +3837,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return execJSByName(new JSApiExecOptions(), jsFileName, params);
     }
 
+    public List<String> extractJSNames() {
+        List<String> res = new ArrayList<>();
+        Binder scriptBinder = getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null);
+        if (scriptBinder == null)
+            scriptBinder = getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null);
+        if (scriptBinder != null)
+            res.addAll(JSApiHelpers.getFileNamesFromScriptBinder(scriptBinder));
+        return res;
+    }
+
     static {
         Config.forceInit(ItemResult.class);
         Config.forceInit(HashId.class);

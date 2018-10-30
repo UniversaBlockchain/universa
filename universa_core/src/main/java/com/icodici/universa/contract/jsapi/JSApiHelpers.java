@@ -76,6 +76,18 @@ public class JSApiHelpers {
         return res.size()>0 ? res.get(0) : null;
     }
 
+    public static List<String> getFileNamesFromScriptBinder(Binder data) {
+        List<String> res = new ArrayList<>();
+        data.forEach((k, v) -> {
+            if (v instanceof Binder) {
+                Binder vBinder = (Binder) v;
+                String fileName = vBinder.getString("file_name", null);
+                res.add(fileName);
+            }
+        });
+        return res;
+    }
+
     public static String unpackJSString(Binder scriptBinder, byte[] jsFileContent) {
         JSApiCompressionEnum compression = JSApiCompressionEnum.valueOf(scriptBinder.getStringOrThrow("compression"));
         switch (compression) {
