@@ -1717,11 +1717,10 @@ public class ScriptEngineTest {
                 "  ]\n" +
                 "}\n";
 
-        Files.write(Paths.get(strPathRoutes), routesJsonString.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         Files.write(Paths.get(strPathContract1), contract1.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         Files.write(Paths.get(strPathContract2), contract2.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
-        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(strPathRoutes, (slotId, originId) -> null);
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(routesJsonString.getBytes(), (slotId, originId) -> null);
         JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
 
 
