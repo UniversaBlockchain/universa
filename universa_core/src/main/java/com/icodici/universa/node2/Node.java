@@ -2530,6 +2530,7 @@ public class Node {
 
                                 // update new item's smart contracts link to
                                 notifyStorageSubscribers(newItem, r.getState());
+                                System.out.println("-------D&CSiO:" + newItem.getId().toString() + "origin:" + ((Contract)newItem).getOrigin());
                                 notifyFollowerSubscribers(newItem);
 
                                 synchronized (cache) {
@@ -2660,6 +2661,7 @@ public class Node {
 
                         // update item's smart contracts link to
                         notifyStorageSubscribers(item, getState());
+                        System.out.println("-------D&C:" + item.getId().toString() + "origin:" + ((Contract)item).getOrigin());
                         notifyFollowerSubscribers(item);
 
                     } catch (Exception ex) {

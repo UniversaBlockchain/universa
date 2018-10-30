@@ -14408,9 +14408,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
         assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
 
-//        for(Node n : nodes) {
-//            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-//        }
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (uContractLock) {
@@ -14476,9 +14473,7 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
         }
 
-        Thread.sleep(15000);
-
-        // refill slot contract with U (means add following days or number of sended callbacks).
+        // refill follower contract with U (means add following days or number of sended callbacks).
 
         FollowerContract refilledFollowerContract = (FollowerContract) followerContract.createRevision(key);
         refilledFollowerContract.setNodeInfoProvider(nodeInfoProvider);
@@ -14561,11 +14556,9 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(refilledFollowerContract.getId()));
         }
 
-        Thread.sleep(15000);
-
         assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
 
-        // refill slot contract with U again (means add following days or number of sended callbacks). The oldest revision should removed
+        // refill follower contract with U again (means add following days or number of sended callbacks). The oldest revision should removed
 
         FollowerContract refilledFollowerContract2 = (FollowerContract) refilledFollowerContract.createRevision(key);
         refilledFollowerContract2.setNodeInfoProvider(nodeInfoProvider);
@@ -14649,9 +14642,9 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(refilledFollowerContract2.getId()));
         }
 
-        assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(refilledFollowerContract.getId(), 8000).state);
 
-        // revoke slot contract, means remove stored contract from storage
+        // revoke follower contract, means remove stored contract from storage
 
         Contract revokingFollowerContract = ContractsService.createRevocation(refilledFollowerContract2, key);
 
@@ -16580,6 +16573,8 @@ public class BaseNetworkTest extends TestCase {
 
         // intercept System.out
         String output = ConsoleInterceptor.copyOut(() -> {
+            if (nodes.size() == 1)
+                Thread.sleep(20000);    // delay after nodes round
             Thread.sleep(15000);
         });
         System.out.println(output);
@@ -16669,9 +16664,631 @@ public class BaseNetworkTest extends TestCase {
         nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
     }
 
+    @Test
+    public void registerFollowerContractInNewItem() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        final PrivateKey key2 = new PrivateKey(Do.read(ROOT_PATH + "test_network_whitekey.private.unikey"));
+
+        Set<PrivateKey> followerIssuerPrivateKeys = new HashSet<>();
+        followerIssuerPrivateKeys.add(key);
+        Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
+        followerIssuerPublicKeys.add(key.getPublicKey());
+
+        Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
+        simpleIssuerPublicKeys.add(key2.getPublicKey());
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        // contract for follow
+        Contract simpleContract = new Contract(key2);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // callback key
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Contract baseContract = new Contract(key);
+
+        // follower contract
+        FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7781/follow.callback", callbackKey.getPublicKey());
+
+        baseContract.addNewItems(followerContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 200, stepaPrivateKeys, false);
+        for (Contract c: baseContract.getNew())
+            if (!c.equals(followerContract)) {
+                baseContract.getNewItems().remove(c);
+                followerContract.addNewItems(c);
+                followerContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        followerContract.check();
+        followerContract.traceErrors();
+        assertTrue(followerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
+        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = followerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7781/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7781/follow.callback");
+        assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7781/follow.callback"));
+
+        // check subscription
+        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    System.out.println("expected: " + calculateExpires);
+                    System.out.println("found: " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("FollowerSubscription was not found");
+        }
+
+        // check if we store environment
+        assertNotNull(node.getLedger().getEnvironment(followerContract.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected: " + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we store environment
+            assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+        }
+
+        Contract baseContract2 = new Contract(key);
+
+        // refill follower contract with U (means add following days or number of sended callbacks).
+
+        FollowerContract refilledFollowerContract = (FollowerContract) followerContract.createRevision(key);
+        refilledFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+
+        baseContract2.addNewItems(refilledFollowerContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for following
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+        for (Contract c: baseContract2.getNew())
+            if (!c.equals(refilledFollowerContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledFollowerContract.addNewItems(c);
+                refilledFollowerContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        refilledFollowerContract.check();
+        refilledFollowerContract.traceErrors();
+        assertTrue(refilledFollowerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
+        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = refilledFollowerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledFollowerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledFollowerContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledFollowerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        // check subscription
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+
+        days = (200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    System.out.println("expected: " + calculateExpires);
+                    System.out.println("found: " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("FollowerSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+        assertNull(node.getLedger().getEnvironment(followerContract.getId()));
+        assertNotNull(node.getLedger().getEnvironment(refilledFollowerContract.getId()));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        System.out.println("expected: " + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            // check if we updated environment and subscriptions (remove old, create new)
+            assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
+            assertNotNull(networkNode.getLedger().getEnvironment(refilledFollowerContract.getId()));
+        }
+
+        assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
+
+        // init follower callback
+        FollowerCallback callback = new FollowerCallback(callbackKey, 7781, "/follow.callback");
+
+        callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
+
+        Contract simpleContractRevision = checkFollowerContractRevision(simpleContract, key2, key, 1, calculateExpires,
+                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), true, true);
+        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 1, calculateExpires,
+                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), false, true);
+
+        // check following is new item
+        simpleContractRevision = simpleContractRevision.createRevision(key2);
+        simpleContractRevision.setOwnerKeys(key);
+        simpleContractRevision.seal();
+        simpleContractRevision.check();
+        simpleContractRevision.traceErrors();
+        assertTrue(simpleContractRevision.isOk());
+
+        Contract baseContract3 = new Contract(key);
+        baseContract3.addNewItems(simpleContractRevision);
+        baseContract3.seal();
+        baseContract3.check();
+        baseContract3.traceErrors();
+        assertTrue(baseContract3.isOk());
+
+        // intercept System.out
+        String output = ConsoleInterceptor.copyOut(() -> {
+            registerAndCheckApproved(baseContract3);
+            Thread.sleep(5000);
+        });
+        System.out.println(output);
+
+        System.out.println("simpleContractRevision: " + simpleContractRevision.getId().toString());
+        System.out.println("BASE3: " + baseContract3.getId().toString());
+
+        // find call follower callback (logged id of main contract in TransactionPack)
+        assertTrue(output.indexOf("Follower callback received. Contract: " + baseContract3.getId().toString()) >= 0);
+        assertTrue(output.indexOf("Follower callback processed. Contract: " + baseContract3.getId().toString()) >= 0);
+
+        callback.shutdown();
+
+        nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
+    }
+
+    @Test
+    public void registerFollowerContractInNewItemBadCreate() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> followerIssuerPrivateKeys = new HashSet<>();
+        followerIssuerPrivateKeys.add(key);
+        Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
+        followerIssuerPublicKeys.add(key.getPublicKey());
+
+        SimpleRole ownerRole = new SimpleRole("owner", followerIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        // contract for follow
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // callback key
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Contract baseContract = new Contract(key);
+
+        // follower contract
+        FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7781/follow.callback", callbackKey.getPublicKey());
+
+        baseContract.addNewItems(followerContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        // provoke error FAILED_CHECK, "Payment for follower contract is below minimum level of " + nodeConfig.getMinSlotPayment() + "U");
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(followerContract.getExtendedType()) - 1, stepaPrivateKeys, false);
+        for (Contract c : baseContract.getNew())
+            if (!c.equals(followerContract)) {
+                baseContract.getNewItems().remove(c);
+                followerContract.addNewItems(c);
+                followerContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        followerContract.check();
+        followerContract.traceErrors();
+        assertTrue(followerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
+
+        node.registerParcel(payingParcel);
+        synchronized (uContractLock) {
+            uContract = followerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        payingParcel.getPayload().getContract().traceErrors();
+
+        // check declined payload contract
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Test
+    public void registerFollowerContractInNewItemBadUpdate() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> followerIssuerPrivateKeys = new HashSet<>();
+        followerIssuerPrivateKeys.add(key);
+        Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
+        followerIssuerPublicKeys.add(key.getPublicKey());
+
+        SimpleRole ownerRole = new SimpleRole("owner", followerIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        // contract for follow
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // callback key
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Contract baseContract = new Contract(key);
+
+        // follower contract
+        FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7781/follow.callback", callbackKey.getPublicKey());
+
+        baseContract.addNewItems(followerContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 200, stepaPrivateKeys, false);
+        for (Contract c : baseContract.getNew())
+            if (!c.equals(followerContract)) {
+                baseContract.getNewItems().remove(c);
+                followerContract.addNewItems(c);
+                followerContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        followerContract.check();
+        followerContract.traceErrors();
+        assertTrue(followerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
+        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+
+        node.registerParcel(payingParcel);
+        synchronized (uContractLock) {
+            uContract = followerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7781/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7781/follow.callback");
+        assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7781/follow.callback"));
+
+        Contract baseContract2 = new Contract(key);
+
+        // refill follower contract with U (means add following days or number of sended callbacks).
+
+        FollowerContract refilledFollowerContract = (FollowerContract) followerContract.createRevision(key);
+        refilledFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+
+        // provoke error FAILED_CHECK, "Tracking origin is missed"
+        refilledFollowerContract.removeTrackingOrigin(simpleContract.getOrigin());
+
+        refilledFollowerContract.seal();
+        refilledFollowerContract.check();
+        refilledFollowerContract.traceErrors();
+        assertTrue(refilledFollowerContract.isOk());
+
+        baseContract2.addNewItems(refilledFollowerContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+        for (Contract c : baseContract2.getNew())
+            if (!c.equals(refilledFollowerContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledFollowerContract.addNewItems(c);
+                refilledFollowerContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
+        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        synchronized (uContractLock) {
+            uContract = refilledFollowerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        // check declined payload contract
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Test
+    public void registerFollowerContractInNewItemBadRevoke() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> followerIssuerPrivateKeys = new HashSet<>();
+        followerIssuerPrivateKeys.add(key);
+        Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
+        followerIssuerPublicKeys.add(key.getPublicKey());
+
+        SimpleRole ownerRole = new SimpleRole("owner", followerIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        // contract for follow
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // callback key
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Contract baseContract = new Contract(key);
+
+        // follower contract
+        FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys, followerIssuerPublicKeys, nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7781/follow.callback", callbackKey.getPublicKey());
+
+        baseContract.addNewItems(followerContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 200, stepaPrivateKeys, false);
+        for (Contract c : baseContract.getNew())
+            if (!c.equals(followerContract)) {
+                baseContract.getNewItems().remove(c);
+                followerContract.addNewItems(c);
+                followerContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        followerContract.check();
+        followerContract.traceErrors();
+        assertTrue(followerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
+        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = followerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(followerContract.getNew().get(0).getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(followerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7781/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7781/follow.callback");
+        assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7781/follow.callback"));
+
+        Contract baseContract2 = new Contract(key);
+
+        // refill follower contract with U (means add following days or number of sended callbacks).
+
+        FollowerContract refilledFollowerContract = (FollowerContract) followerContract.createRevision(key);
+        refilledFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+
+        baseContract2.addNewItems(refilledFollowerContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+        for (Contract c : baseContract2.getNew())
+            if (!c.equals(refilledFollowerContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledFollowerContract.addNewItems(c);
+                refilledFollowerContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        refilledFollowerContract.check();
+        refilledFollowerContract.traceErrors();
+        assertTrue(refilledFollowerContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
+        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = refilledFollowerContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledFollowerContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledFollowerContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledFollowerContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        assertEquals(ItemState.REVOKED, node.waitItem(followerContract.getId(), 8000).state);
+
+
+    }
+
     //Follower tests:
-    //new item tests (as Slot) for Follower
-    //check if following is new item
     //check few callback servers and few following origins
     //check canFollow (can not and can as follow_roles)
 
