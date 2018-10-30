@@ -18,6 +18,7 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Base64u;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
@@ -261,16 +262,19 @@ public class SimpleRole extends Role {
         }
 
 
-
-        if(serializedRole.containsKey("addresses")) {
-            List<Binder> list = serializedRole.getListOrThrow("addresses");
-            for(Object address : list) {
-                keyAddresses.add(new KeyAddress(Binder.of(address)));
+        try {
+            if (serializedRole.containsKey("addresses")) {
+                List<Binder> list = serializedRole.getListOrThrow("addresses");
+                for (Object address : list) {
+                    keyAddresses.add(new KeyAddress((String) ((Map)address).get("uaddress")));
+                }
+            } else if (serializedRole.containsKey("uaddress")) {
+                keyAddresses.add(new KeyAddress(serializedRole.getString("uaddress")));
+            } else {
+                addressesFound = false;
             }
-        } else if(serializedRole.containsKey("uaddress")) {
-            keyAddresses.add(new KeyAddress(serializedRole));
-        } else {
-            addressesFound = false;
+        }catch (KeyAddress.IllegalAddressException e) {
+            e.printStackTrace();
         }
 
         if(serializedRole.containsKey("anonIds")) {
