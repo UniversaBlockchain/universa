@@ -131,6 +131,11 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
+    @Override
+    public int hashCode() {
+        return toString().hashCode();
+    }
+
     //Operators
     final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_a "," is_inherit ","inherits ","inherit "};
 
