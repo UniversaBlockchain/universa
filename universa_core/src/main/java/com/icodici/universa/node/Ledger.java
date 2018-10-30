@@ -220,6 +220,7 @@ public interface Ledger {
 
     byte[] getSlotContractBySlotId(HashId slotId);
     byte[] getContractInStorage(HashId contractId);
+    byte[] getContractInStorage(HashId slotId, HashId contractId);
     List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId);
 
     void removeEnvironmentSubscription(long subscriptionId);

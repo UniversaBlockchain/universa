@@ -22,7 +22,10 @@ public class JSApiHttpServerRoutes {
     }
 
     public JSApiHttpServerRoutes(String routesJsonFilePath, JSApiHttpServer.ISlot1Requestor slot1Requestor) throws IOException {
-        byte[] routeBytes = Files.readAllBytes(Paths.get(routesJsonFilePath));
+        this(Files.readAllBytes(Paths.get(routesJsonFilePath)), slot1Requestor);
+    }
+
+    public JSApiHttpServerRoutes(byte[] routeBytes, JSApiHttpServer.ISlot1Requestor slot1Requestor) throws IOException {
         HashMap mapRoutesConfig = JsonTool.fromJson(new String(routeBytes));
         portToListen = Integer.parseInt((String)mapRoutesConfig.get("listenPort"));
         List listRoutes = (List)mapRoutesConfig.get("routes");
