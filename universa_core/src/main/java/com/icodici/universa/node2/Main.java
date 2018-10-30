@@ -83,10 +83,15 @@ public class Main {
                         .describedAs("level");
                 accepts("restart-socket", "restarts UDPAdapter: shutdown it and create new");
                 accepts("shutdown", "delicate shutdown with rollback current processing contracts");
+                accepts("version");
             }
         };
         try {
             options = parser.parse(args);
+            if(options.has("version")) {
+                System.out.println("Version "+NODE_VERSION);
+                System.exit(0);
+            }
             if (options.has("nolog")) {
                 logger.interceptStdOut();
             } else
