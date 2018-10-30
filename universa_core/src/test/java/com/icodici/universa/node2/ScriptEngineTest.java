@@ -30,6 +30,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -159,8 +160,10 @@ public class ScriptEngineTest {
         public ArrayList<Client> clients;
     }
 
+    private Config configForProvider = new Config();
+
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-        Config config = new Config();
+        Config config = configForProvider;
         @Override
         public Set<KeyAddress> getUIssuerKeys() {
             return config.getUIssuerKeys();
@@ -190,6 +193,12 @@ public class ScriptEngineTest {
             return set;
         }
     };
+
+    @Before
+    public void beforeScriptEngineTest() throws Exception {
+        // add U issuer test key
+        configForProvider.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
+    }
 
     @Test
     public void putJavaObjectIntoJS() throws Exception {

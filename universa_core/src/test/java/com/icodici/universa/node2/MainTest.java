@@ -144,7 +144,8 @@ public class MainTest {
         }
     }
     @Before
-    public void clearLedgers() throws Exception {
+    public void beforeMainTest() throws Exception {
+        // clearLedgers
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
@@ -160,6 +161,9 @@ public class MainTest {
                 e.printStackTrace();
             }
         });
+
+        // add U issuer test key
+        configForProvider.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
     }
 
     @After
@@ -2624,8 +2628,10 @@ public class MainTest {
         }
     }
 
+    private Config configForProvider = new Config();
+
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-        Config config = new Config();
+        Config config = configForProvider;
         @Override
         public Set<KeyAddress> getUIssuerKeys() {
             return config.getUIssuerKeys();
