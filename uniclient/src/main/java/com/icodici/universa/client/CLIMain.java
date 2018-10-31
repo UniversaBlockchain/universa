@@ -22,6 +22,7 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.*;
 import com.icodici.universa.wallet.Wallet;
@@ -216,6 +217,9 @@ public class CLIMain {
         // when we run untit tests, it is important:
 //        args = new String[]{"-c", "/Users/sergeych/dev/new_universa/uniclient-testcreate/simple_root_contract.yml"};
 
+        Config.forceInit(Contract.class);
+        Config.forceInit(Parcel.class);
+
         reporter.clear();
         // it could be called more than once from tests
         keyFiles = null;
@@ -274,7 +278,7 @@ public class CLIMain {
 
 
 
-                accepts("u-for-utn", "buy U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify amount of U to buy")
+                accepts("u-for-utn", "reserve U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify amount of U to reserve")
                         .withRequiredArg()
                         .ofType(String.class).
                         describedAs("utn.unicon");
@@ -344,6 +348,10 @@ public class CLIMain {
                         "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_file");
+                acceptsAll(asList("password"), "List of comma-separated passwords " +
+                        "to generate or unpack password protected keys. Use with -g or -k")
+                        .withRequiredArg().ofType(String.class)
+                        .withValuesSeparatedBy(",").describedAs("key_password");
                 acceptsAll(asList("k-contract", "keys-contract"), "Use with -register by paying parcel. " +
                         "List of comma-separated private key files to" +
                         "use to sign contract in paying parcel, if appropriated.")
@@ -632,7 +640,7 @@ public class CLIMain {
 
 
             if (options.has("u-for-utn")) {
-                doBuyUforUTN();
+                doReserveUforUTN();
             }
 
             if (options.has("create-parcel")) {
@@ -869,20 +877,20 @@ public class CLIMain {
         finish();
     }
 
-    private static void doBuyUforUTN() throws IOException {
+    private static void doReserveUforUTN() throws IOException {
         String utnPath = (String) options.valueOf("u-for-utn");
 
         List<String> names = (List) options.valuesOf("output");
 
         int amount = (int) options.valueOf("amount");
-        String uPath = buyUforUTN(utnPath,names.size() > 0 ? names.get(0) : null,amount);
+        String uPath = reserveUforUTN(utnPath,names.size() > 0 ? names.get(0) : null,amount);
         if(uPath != null) {
             System.out.println(amount + "U successfully purchased! Path to U contract is : " + uPath);
         }
         finish();
     }
 
-    private static String buyUforUTN(String utnPath, String output, int amount) throws IOException {
+    private static String reserveUforUTN(String utnPath, String output, int amount) throws IOException {
         Contract utnContract = loadContract(utnPath);
         if(utnContract != null) {
             String utnBase64 = Base64u.encodeString(utnContract.getLastSealedBinary());
@@ -1028,8 +1036,8 @@ public class CLIMain {
         BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
         BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/info");
         System.out.println("Current U per UTN rate is " + answer.data.getBinder("rates").getString("U_UTN"));
-        System.out.println("Minimum U to buy " + answer.data.getBinder("limits").getBinder("U").getString("min"));
-        System.out.println("Maximum U to buy " + answer.data.getBinder("limits").getBinder("U").getString("max"));
+        System.out.println("Minimum U to reserve " + answer.data.getBinder("limits").getBinder("U").getString("min"));
+        System.out.println("Maximum U to reserve " + answer.data.getBinder("limits").getBinder("U").getString("max"));
         finish();
     }
 
@@ -1475,7 +1483,7 @@ public class CLIMain {
         return getUFromWallet(wallet, amount, isTest);
     }
 
-    private static UUTNWallet loadWallet(String walletPath, boolean buyMoreIfNeeded) throws IOException {
+    private static UUTNWallet loadWallet(String walletPath, boolean reserveMoreIfNeeded) throws IOException {
         File walletDir = new File(walletPath);
         File walletConfig = new File(walletDir, DEFAULT_WALLET_CONFIG);
         if (!walletConfig.exists()) {
@@ -1557,11 +1565,11 @@ public class CLIMain {
 
         wallet.utnBalance = untBalance[0];
 
-        if(buyMoreIfNeeded) {
+        if(reserveMoreIfNeeded) {
             System.out.println("Loaded wallet '" + walletPath + "' Balance is: U " + uBalance +" UTN " + untBalance[0]);
             int minBalance = config.getBinder("auto_payment").getInt("min_balance", -1);
             if (minBalance > 0 && uBalance.get() < minBalance) {
-                System.out.println("U balance is less than threshold of " + minBalance + ". Trying to buy more Us");
+                System.out.println("U balance is less than threshold of " + minBalance + ". Trying to get more Us");
 
                 BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
                 BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/info");
@@ -1597,7 +1605,7 @@ public class CLIMain {
                         //TODO: JOIN utns to prepare signle contract
                         System.out.println("WARNING: Auto purchase can not be completed as all UTN contracts have less amount than required " + utnReqired + ". Join manually or wait for auto-joinig support in future versions. You can also add another UTN contract to the wallet");
                     } else {
-                        String newUContract = buyUforUTN(walletPath + File.separator + utn, null, amount);
+                        String newUContract = reserveUforUTN(walletPath + File.separator + utn, null, amount);
                         if (newUContract != null) {
                             System.out.println("Auto purchase completed. New U contract is: " + newUContract);
                             uContracts.add(new FilenameTool(newUContract).getFilename());
@@ -1607,7 +1615,7 @@ public class CLIMain {
                         }
                     }
                 } else {
-                    System.out.println("WARNING: UTN balance is less than required to buy more Us (" + utnReqired + "). Put more UTN to wallet to enable U auto purchases.");
+                    System.out.println("WARNING: UTN balance is less than required to reserve more Us (" + utnReqired + "). Put more UTN to wallet to enable U auto purchases.");
                 }
             }
         }
@@ -1616,7 +1624,7 @@ public class CLIMain {
             config.put("utncontracts",utnContracts);
             config.put("ucontracts",uContracts);
             Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
-            return loadWallet(walletPath,buyMoreIfNeeded);
+            return loadWallet(walletPath,reserveMoreIfNeeded);
         } else {
             return wallet;
         }
@@ -1942,7 +1950,11 @@ public class CLIMain {
     private static void doGenerateKeyPair() throws IOException {
         PrivateKey k = new PrivateKey((Integer) options.valueOf("s"));
         String name = (String) options.valueOf("g");
-        new FileOutputStream(name + ".private.unikey").write(k.pack());
+        if(options.has("password")) {
+            new FileOutputStream(name + ".private.unikey").write(k.packWithPassword((String) options.valueOf("password")));
+        } else {
+            new FileOutputStream(name + ".private.unikey").write(k.pack());
+        }
         new FileOutputStream(name + ".public.unikey").write(k.getPublicKey().pack());
         if (options.has("base64")) {
             new FileOutputStream(name + ".public.unikey.txt")
@@ -3965,16 +3977,58 @@ public class CLIMain {
     public static synchronized Map<String, PrivateKey> keysMap() throws IOException {
         if (keyFiles == null) {
             keyFiles = new HashMap<>();
+            boolean failed = false;
             for (String fileName : keyFileNames) {
-//                PrivateKey pk = new PrivateKey(Do.read(fileName));
-//                keyFiles.put(fileName, pk);
+
                 try {
-                    PrivateKey pk = PrivateKey.fromPath(Paths.get(fileName));
-                    keyFiles.put(fileName, pk);
+                    PrivateKey pk = null;
+
+                    byte[] keyBytes = Do.read(fileName);
+                    List<String> passwords = (List<String>) options.valuesOf("password");
+
+                    try {
+                        pk = new PrivateKey(keyBytes);
+                    } catch (PrivateKey.PasswordProtectedException e) {
+                        for(String password : passwords) {
+                            try {
+                                pk = PrivateKey.unpackWithPassword(keyBytes,password);
+                                break;
+                            } catch (PrivateKey.PasswordProtectedException e1) {
+
+                            }
+                        }
+                    }
+                    if(pk == null) {
+                        if(passwords.isEmpty()) {
+                            while(true) {
+                                System.console().printf("Enter key password " + (keyFileNames.size() > 1 ? "(" + fileName + ")":"") + ": ");
+                                String password = new String(System.console().readPassword());
+                                if(password.isEmpty())
+                                    break;
+                                try {
+                                    pk = PrivateKey.unpackWithPassword(keyBytes, password);
+                                    break;
+                                } catch (PrivateKey.PasswordProtectedException e1) {
+                                    System.console().printf("Wrong password!\n");
+                                }
+                            }
+                        }
+                    }
+
+                    if(pk == null) {
+                        addError(Errors.FAILURE.name(),fileName,"Wrong key password");
+                        failed = true;
+                    } else {
+                        keyFiles.put(fileName, pk);
+                    }
+
                 } catch (IOException e) {
                     addError(Errors.NOT_FOUND.name(), fileName.toString(), "failed to load key file: " + e.getMessage());
+                    failed = true;
                 }
             }
+            if(failed)
+                finish();
         }
         return keyFiles;
     }
