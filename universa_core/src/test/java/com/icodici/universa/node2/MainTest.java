@@ -2286,7 +2286,9 @@ public class MainTest {
         System.out.println("follower info is null: " + (followerInfo == null));
         assertNull(followerInfo);
 
-        client.registerParcel(parcel.pack(), 5000);
+        client.registerParcel(parcel.pack());
+        Thread.sleep(5000);
+
         itemResult = client.getState(followerContract.getId());
         System.out.println("follower : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
