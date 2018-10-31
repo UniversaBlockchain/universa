@@ -89,7 +89,7 @@ public class JSApiEnvironment {
             res.jsFileName = jsFileName;
             return res;
         } else {
-            throw new IllegalArgumentException("error: cant exec javascript, script file_name not found in contract.");
+            throw new IllegalArgumentException("error: cant exec javascript, script '"+jsFileName+"' not found in contract.");
         }
     }
 

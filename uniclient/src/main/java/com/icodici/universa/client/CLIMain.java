@@ -16,9 +16,12 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -538,7 +541,22 @@ public class CLIMain {
                         "Starts http server, whose endpoints are implemented in contracts.")
                         .withRequiredArg()
                         .ofType(String.class)
-                        .describedAs("routes-file");
+                        .describedAs("routes_file");
+                accepts("exec-js",
+                        "Executes javascript attached to contract. If your contract have many scripts attached, specify concrete script with --script-name.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("packed_contract");
+                accepts("script-name",
+                        "Use with -exec-js. Set the script filename that would be executed.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("script_filename");
+                accepts("create-contract-with-js",
+                        "Creates new contract with given javascript attached. Use -o to set output filename; -k to set issuer and owner.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("javascript_file");
 
 //                acceptsAll(asList("ie"), "Test - delete.")
 //                        .withRequiredArg().ofType(String.class)
@@ -719,6 +737,12 @@ public class CLIMain {
             }
             if (options.has("start-http-server")) {
                 doStartHttpServer((String) options.valueOf("start-http-server"));
+            }
+            if (options.has("exec-js")) {
+                doExecJs();
+            }
+            if (options.has("create-contract-with-js")) {
+                doCreateContractWithJs();
             }
             usage(null);
 
@@ -2482,6 +2506,73 @@ public class CLIMain {
         } catch (Exception e) {
             report("http server error: " + e);
         }
+        finish();
+    }
+
+    private static void doExecJs() throws Exception {
+        String contractFile = (String) options.valueOf("exec-js");
+        String scriptName = null;
+        if (options.has("script-name"))
+            scriptName = (String)options.valueOf("script-name");
+        Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
+        if(c != null) {
+            ItemResult itemResult = getClientNetwork().client.getState(c.getId(), reporter);
+            if (itemResult.state == ItemState.APPROVED) {
+                if (scriptName != null) {
+                    c.execJSByName(scriptName);
+                }
+                else {
+                    List<String> scriptNames = c.extractJSNames();
+                    if (scriptNames.size() == 1)
+                        c.execJSByName(scriptNames.get(0));
+                    else if (scriptNames.size() > 1)
+                        report("error: contract has " + scriptNames.size() + " scripts attached, specify script filename please");
+                    else
+                        report("error: contract has no scripts attached");
+                }
+            } else {
+                report("error: contract should be approved");
+            }
+        }
+        finish();
+    }
+
+    private static void doCreateContractWithJs() throws Exception {
+        String jsFile = (String) options.valueOf("create-contract-with-js");
+        byte[] jsFileBytes = Files.readAllBytes(Paths.get(jsFile));
+        List<String> names = (List) options.valuesOf("o");
+        List<String> keys = (List) options.valuesOf("k");
+        if (names.size() == 0) {
+            report("error: output file not specified, use -o option");
+            finish();
+        }
+        if (keys.size() == 0) {
+            report("error: key file(s) not specified, use -k option");
+            finish();
+        }
+        String outputFile = names.get(0);
+        Contract contract = new Contract();
+        Set<PrivateKey> privateKeys = new HashSet<>();
+        for (String keyPath : keys) {
+            PrivateKey privateKey = PrivateKey.fromPath(Paths.get(keyPath));
+            privateKeys.add(privateKey);
+        }
+        contract.setIssuerKeys(privateKeys);
+        contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
+        contract.registerRole(new RoleLink("owner", "issuer"));
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        RoleLink roleLink = new RoleLink("@change_owner_role","owner");
+        roleLink.setContract(contract);
+        contract.addPermission(new ChangeOwnerPermission(roleLink));
+        contract.addSignerKeys(privateKeys);
+        String filename = Paths.get(jsFile).getFileName().toString();
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("localhost:*");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        contract.getState().setJS(jsFileBytes, filename, scriptParameters, true);
+        contract.seal();
+        String createdFileName = FileTool.writeFileContentsWithRenaming(outputFile, contract.getPackedTransaction());
+        report("file " + createdFileName + " saved");
         finish();
     }
 
