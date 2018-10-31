@@ -9,11 +9,7 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.icodici.crypto.KeyInfo;
-import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
-import com.icodici.crypto.SymmetricKey;
-import com.icodici.crypto.KeyAddress;
+import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
@@ -2399,7 +2395,7 @@ public class CLIMain {
         else {
             try {
                 key = new PrivateKey(Do.read(keyFilePath)).getPublicKey();
-            } catch (PrivateKey.PasswordProtectedException e) {
+            } catch (EncryptionError e) {
                 key = new PublicKey(Do.read(keyFilePath));
             }
         }
