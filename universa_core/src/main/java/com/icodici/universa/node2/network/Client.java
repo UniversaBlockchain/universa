@@ -837,4 +837,31 @@ public class Client {
                 return null;
         });
     }
+
+    /**
+     * Get current network rate for operating FOLLOWER1 contracts
+     * @return origins-days per U rate
+     * @throws ClientError
+     */
+    public Binder followerGetRate() throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("followerGetRate");
+            return result;
+        });
+    }
+
+    /**
+     * Look for state data of follower contract
+     * @param followerId follower contract id
+     * @return state data of follower contract
+     * @throws ClientError
+     */
+
+    public Binder queryFollowerInfo(HashId followerId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryFollowerInfo", "follower_id", followerId.getDigest());
+            Binder binder = result.getBinder("follower_state", null);
+            return binder;
+        });
+    }
 }

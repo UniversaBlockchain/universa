@@ -12,7 +12,9 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Duration;
@@ -158,6 +160,7 @@ public interface Ledger {
     boolean isTestnet(HashId itemId);
 
     void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
+    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks);
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 
@@ -211,19 +214,30 @@ public interface Ledger {
 
 
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
-
+    long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId);
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
+    Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);
+
+    Node.FollowerCallbackState getFollowerCallbackStateById(HashId id);
+    Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId);
+    Collection<CallbackRecord> getFollowerCallbacksToResync();
+    void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
+    void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state);
+    void removeFollowerCallback(HashId id);
 
     List<Long> clearExpiredStorageSubscriptions();
+    void clearExpiredFollowerSubscriptions();
+
     void clearExpiredStorageContracts();
 
-    byte[] getSlotContractBySlotId(HashId slotId);
+    byte[] getSmartContractById(HashId smartContractId);
     byte[] getContractInStorage(HashId contractId);
     byte[] getContractInStorage(HashId slotId, HashId contractId);
     List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId);
 
     void removeEnvironmentSubscription(long subscriptionId);
+    void removeEnvironmentFollowerSubscription(long subscriptionId);
     long removeEnvironment(HashId ncontractHashId);
     void removeExpiredStorageSubscriptionsCascade();
 

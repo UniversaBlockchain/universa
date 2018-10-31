@@ -77,8 +77,7 @@ public class UnsContract extends NSmartContract {
     }
 
     /**
-     * Create a default empty new contract using a provided key as issuer and owner and sealer. Default expiration is
-     * set to 5 years.
+     * Create a default empty new contract using a provided key as issuer and owner and sealer.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
@@ -166,6 +165,10 @@ public class UnsContract extends NSmartContract {
 
         spentNDsTime = now;
 
+        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTime.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        spentNDs = spentEarlyNDs + spentDays * (storedEarlyEntries / 1024);
+
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
 
@@ -191,10 +194,6 @@ public class UnsContract extends NSmartContract {
                 }
             }
             getStateData().set(STORED_ENTRIES_FIELD_NAME, storingEntries);
-
-            long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTime.toEpochSecond());
-            double spentDays = (double) spentSeconds / (3600 * 24);
-            spentNDs = spentEarlyNDs + spentDays * (storedEarlyEntries / 1024);
 
             getStateData().set(SPENT_ND_FIELD_NAME, spentNDs);
             getStateData().set(SPENT_ND_TIME_FIELD_NAME, spentNDsTime.toEpochSecond());

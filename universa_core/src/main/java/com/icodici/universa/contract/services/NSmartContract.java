@@ -179,7 +179,7 @@ public class NSmartContract extends Contract implements NContract {
     }
 
     @Override
-    public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+    public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
     }
 
@@ -214,7 +214,8 @@ public class NSmartContract extends Contract implements NContract {
     public enum SmartContractType {
         N_SMART_CONTRACT,
         SLOT1,
-        UNS1
+        UNS1,
+        FOLLOWER1
     }
     protected int getMinPayment() {
         return nodeInfoProvider.getMinPayment(getExtendedType());
@@ -268,6 +269,10 @@ public class NSmartContract extends Contract implements NContract {
 
     protected double getRate() {
         return nodeInfoProvider.getRate(getExtendedType());
+    }
+
+    protected double getRate(String key) {
+        return nodeInfoProvider.getRate(getExtendedType() + ":" + key);
     }
 
     protected Collection<PublicKey> getAdditionalKeysToSignWith() {

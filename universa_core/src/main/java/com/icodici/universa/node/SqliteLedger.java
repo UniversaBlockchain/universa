@@ -14,7 +14,9 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteOpenMode;
@@ -192,6 +194,9 @@ public class SqliteLedger implements Ledger {
     public void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt) {
 
     }
+
+    @Override
+    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {}
 
     @Override
     public void updateNameRecord(long id, ZonedDateTime expiresAt) {
@@ -372,6 +377,9 @@ public class SqliteLedger implements Ledger {
     public List<Long> clearExpiredStorageSubscriptions() {return null;}
 
     @Override
+    public void clearExpiredFollowerSubscriptions() {}
+
+    @Override
     public void clearExpiredStorageContracts() {}
 
 
@@ -382,13 +390,43 @@ public class SqliteLedger implements Ledger {
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
+    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId) {return 0;}
+
+    @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
         return null;
     }
 
+    @Override
+    public Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin) {
+        return null;
+    }
+
+    @Override
+    public Node.FollowerCallbackState getFollowerCallbackStateById(HashId id) { return Node.FollowerCallbackState.UNDEFINED; }
+
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId) {
+        return null;
+    }
+
+    @Override
+    public Collection<CallbackRecord> getFollowerCallbacksToResync() {
+        return null;
+    }
+
+    @Override
+    public void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {}
+
+    @Override
+    public void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state) {}
+
+    @Override
+    public void removeFollowerCallback(HashId id) {}
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}
+
 
     @Override
     public byte[] getContractInStorage(HashId slotId, HashId contractId) {return null;}
@@ -398,6 +436,8 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {}
+    @Override
+    public void removeEnvironmentFollowerSubscription(long subscriptionId) {}
 
     @Override
     public long removeEnvironment(HashId ncontractHashId) {return 0;}
@@ -412,7 +452,7 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public byte[] getSlotContractBySlotId(HashId slotId) {return null;}
+    public byte[] getSmartContractById(HashId smartContractId) {return null;}
 
 
 

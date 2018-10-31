@@ -2246,6 +2246,88 @@ public class MainTest {
     }
 
     @Test
+    public void testFollowerApi() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        // register callback
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        Binder followerRate = client.followerGetRate();
+
+        System.out.println("followerRate size: " + followerRate.size());
+        System.out.println("rateOriginDays: " + followerRate.get("rateOriginDays"));
+        System.out.println("rateCallback: " + followerRate.get("rateCallback"));
+
+        assertEquals(main.config.getRate("FOLLOWER1"), followerRate.getDouble("rateOriginDays"), 0.000001);
+        assertEquals((main.config.getRate("FOLLOWER1" + ":callback") / main.config.getRate("FOLLOWER1")), followerRate.getDouble("rateCallback"), 0.000001);
+
+        Contract simpleContract = new Contract(TestKeys.privateKey(1));
+        simpleContract.seal();
+        ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))), nodeInfoProvider);
+        followerContract.setNodeInfoProvider(nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+
+        Binder followerInfo = client.queryFollowerInfo(followerContract.getId());
+        System.out.println("follower info is null: " + (followerInfo == null));
+        assertNull(followerInfo);
+
+        client.registerParcel(parcel.pack());
+        Thread.sleep(5000);
+
+        itemResult = client.getState(followerContract.getId());
+        System.out.println("follower : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        followerInfo = client.queryFollowerInfo(followerContract.getId());
+
+        System.out.println("follower info size: " + followerInfo.size());
+
+        System.out.println("paid_U: " + followerInfo.getString("paid_U", ""));
+        System.out.println("prepaid_OD: " + followerInfo.getString("prepaid_OD", ""));
+        System.out.println("prepaid_from: " + followerInfo.getString("prepaid_from", ""));
+        System.out.println("followed_origins: " + followerInfo.getString("followed_origins", ""));
+        System.out.println("spent_OD: " + followerInfo.getString("spent_OD", ""));
+        System.out.println("spent_OD_time: " + followerInfo.getString("spent_OD_time", ""));
+        System.out.println("callback_rate: " + followerInfo.getString("callback_rate", ""));
+
+        assertNotNull(followerInfo);
+        assertEquals(followerInfo.size(),9);
+
+        assertEquals(followerInfo.getInt("paid_U", 0),followerContract.getStateData().get("paid_U"));
+        assertTrue(followerInfo.getDouble("prepaid_OD") ==  followerContract.getPrepaidOriginsForDays());
+        assertEquals(followerInfo.getLong("prepaid_from", 0), followerContract.getStateData().get("prepaid_from"));
+        assertEquals(followerInfo.getInt("followed_origins", 0), followerContract.getStateData().get("followed_origins"));
+        assertEquals(followerInfo.getDouble("spent_OD"), followerContract.getStateData().get("spent_OD"));
+        assertEquals(followerInfo.getLong("spent_OD_time", 0), followerContract.getStateData().get("spent_OD_time"));
+        assertEquals(followerInfo.getDouble("callback_rate"), followerContract.getStateData().get("callback_rate"));
+        assertEquals(followerInfo.getBinder("callback_keys").get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey().pack());
+        assertEquals(followerInfo.getBinder("tracking_origins").get(simpleContract.getOrigin().toBase64String()), "http://localhost:7777/follow.callback");
+
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
     public void testRevocationContractsApi() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -3281,9 +3363,16 @@ public class MainTest {
         assertTrue(sub.getContract().getId().equals(contract.getId()));
         assertEquals(sub.expiresAt().toEpochSecond(),now.toEpochSecond());
 
+        NContractFollowerSubscription subf = Boss.load(Boss.pack(new NContractFollowerSubscription(contract.getOrigin(), now, now)));
+        assertTrue(subf.getOrigin().equals(contract.getOrigin()));
+        assertEquals(subf.expiresAt().toEpochSecond(), now.toEpochSecond());
+        assertEquals(subf.mutedAt().toEpochSecond(), now.toEpochSecond());
+        assertTrue(subf.getCallbacksSpent() == 0);
+        assertTrue(subf.getStartedCallbacks() == 0);
+
         Binder kvStore = new Binder();
         kvStore.put("test","test1");
-        NImmutableEnvironment environment = new NImmutableEnvironment(smartContract,kvStore,Do.listOf(sub),Do.listOf(nnr2),null);
+        NImmutableEnvironment environment = new NImmutableEnvironment(smartContract,kvStore,Do.listOf(sub),Do.listOf(subf),Do.listOf(nnr2),null);
 
         environment = Boss.load(Boss.pack(environment));
         assertEquals(environment.get("test",null),"test1");
@@ -4261,10 +4350,10 @@ public class MainTest {
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
-        //put some envorinment for rev1
+        //put some environment for rev1
         Ledger ledger = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger();
         assertNull(ledger.getEnvironment(rev1.getId()));
-        NImmutableEnvironment environment = new NImmutableEnvironment(rev1,new Binder(),Do.listOf(),Do.listOf(),null);
+        NImmutableEnvironment environment = new NImmutableEnvironment(rev1,new Binder(),Do.listOf(),Do.listOf(),Do.listOf(),null);
         ledger.saveEnvironment(environment);
         assertNotNull(ledger.getEnvironment(rev1.getId()));
 

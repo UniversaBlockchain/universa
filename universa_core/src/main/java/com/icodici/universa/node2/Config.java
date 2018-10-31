@@ -46,9 +46,13 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
         rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 0.2);
 
-        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(),100);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", 10.0);
+
+        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
+        minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 200);
     }
 
     public Config copy() {
@@ -88,6 +92,11 @@ public class Config {
         config.rate = new HashMap<>(rate);
         config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
         config.queryContractsLimit = queryContractsLimit;
+        config.followerCallbackExpiration = followerCallbackExpiration;
+        config.followerCallbackDelay = followerCallbackDelay;
+        config.followerCallbackStateStoreTime = followerCallbackStateStoreTime;
+        config.followerCallbackSynchronizationInterval = followerCallbackSynchronizationInterval;
+        config.rateNodesSendFollowerCallbackToComplete = rateNodesSendFollowerCallbackToComplete;
         return config;
     }
 
@@ -189,6 +198,11 @@ public class Config {
     private Duration holdDuration = Duration.ofDays(30);
     private int paymentQuantaLimit = 200;
     private int queryContractsLimit = 100;
+    private Duration followerCallbackExpiration = Duration.ofMinutes(10);
+    private Duration followerCallbackDelay = Duration.ofSeconds(10);
+    private Duration followerCallbackStateStoreTime = Duration.ofDays(3);
+    private Duration followerCallbackSynchronizationInterval = Duration.ofHours(12);
+    private double rateNodesSendFollowerCallbackToComplete = 0.3;
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -471,5 +485,43 @@ public class Config {
 
     public void setQueryContractsLimit(int queryContractsLimit) {
         this.queryContractsLimit = queryContractsLimit;
+    }
+
+    public Duration getFollowerCallbackExpiration() {
+        return followerCallbackExpiration;
+    }
+
+    public void setFollowerCallbackExpiration(Duration followerCallbackExpiration) {
+        this.followerCallbackExpiration = followerCallbackExpiration;
+    }
+
+    public Duration getFollowerCallbackDelay() {
+        return followerCallbackDelay;
+    }
+
+    public void setFollowerCallbackDelay(Duration followerCallbackDelay) {
+        this.followerCallbackDelay = followerCallbackDelay;
+    }
+
+    public Duration getFollowerCallbackStateStoreTime() {
+        return followerCallbackStateStoreTime;
+    }
+
+    public void setFollowerCallbackStateStoreTime(Duration followerCallbackStateStoreTime) {
+        this.followerCallbackStateStoreTime = followerCallbackStateStoreTime;
+    }
+
+    public Duration getFollowerCallbackSynchronizationInterval() {
+        return followerCallbackSynchronizationInterval;
+    }
+
+    public void setFollowerCallbackSynchronizationInterval(Duration followerCallbackSynchronizationInterval) {
+        this.followerCallbackSynchronizationInterval = followerCallbackSynchronizationInterval;
+    }
+
+    public double getRateNodesSendFollowerCallbackToComplete() { return rateNodesSendFollowerCallbackToComplete; }
+
+    public void setRateNodesSendFollowerCallbackToComplete(double rateNodesSendFollowerCallbackToComplete) {
+        this.rateNodesSendFollowerCallbackToComplete = rateNodesSendFollowerCallbackToComplete;
     }
 }

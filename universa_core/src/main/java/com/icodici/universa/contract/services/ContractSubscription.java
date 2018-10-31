@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 
 import java.time.ZonedDateTime;
@@ -15,7 +16,7 @@ import java.time.ZonedDateTime;
  * revoked, all its subscriptions must be destroyed.
  */
 
-public interface ContractStorageSubscription {
+public interface ContractSubscription {
 
     ZonedDateTime expiresAt();
 
@@ -30,11 +31,16 @@ public interface ContractStorageSubscription {
     byte[] getPackedContract();
 
     /**
+     * @return the origin of contracts chain of subscription.
+     */
+    HashId getOrigin();
+
+    /**
      * The subscription event base interface. Real events are either {@link ApprovedEvent} or {@link RevokedEvent}
      * implementations.
      */
     interface Event {
-        ContractStorageSubscription getSubscription();
+        ContractSubscription getSubscription();
     }
 
     interface ApprovedEvent extends Event {
@@ -56,9 +62,21 @@ public interface ContractStorageSubscription {
         ImmutableEnvironment getEnvironment();
     }
 
+    interface CompletedEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
+    interface FailedEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
+    interface SpentEvent extends Event {
+        MutableEnvironment getEnvironment();
+    }
+
     /**
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
-     * NContract#onContractStorageSubscriptionEvent(Event)}
+     * NContract#onContractSubscriptionEvent(Event)}
      *
      * @param doReceive true to receive events, false to stop
      */

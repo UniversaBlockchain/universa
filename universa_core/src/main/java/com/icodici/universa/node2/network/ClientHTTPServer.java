@@ -16,10 +16,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.services.NImmutableEnvironment;
-import com.icodici.universa.contract.services.NNameRecord;
-import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.StateRecord;
@@ -200,9 +197,11 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("unsRate", this::unsRate);
         addSecureEndpoint("queryNameRecord", this::queryNameRecord);
         addSecureEndpoint("queryNameContract", this::queryNameContract);
-
         addSecureEndpoint("getBody", this::getBody);
         addSecureEndpoint("getContract", this::getContract);
+
+        addSecureEndpoint("followerGetRate", this::followerGetRate);
+        addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
 
     }
 
@@ -658,7 +657,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         Binder res = new Binder();
         res.set("slot_state", null);
         byte[] slot_id = params.getBinary("slot_id");
-        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        byte[] slotBin = node.getLedger().getSmartContractById(HashId.withDigest(slot_id));
         if (slotBin != null) {
             SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
             res.set("slot_state", slotContract.getStateData());
@@ -679,7 +678,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             throw new IOException("invalid arguments (both origin_id and contract_id are null)");
         if ((origin_id != null) && (contract_id != null))
             throw new IOException("invalid arguments (only one origin_id or contract_id is allowed)");
-        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        byte[] slotBin = node.getLedger().getSmartContractById(HashId.withDigest(slot_id));
         if (slotBin != null) {
             SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
             if (contract_id != null) {
@@ -703,6 +702,36 @@ public class ClientHTTPServer extends BasicHttpServer {
                     res.set("contract", latestContract);
                 }
             }
+        }
+        return res;
+    }
+
+    private Binder followerGetRate(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Double rateOriginDays = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
+        Double rateCallback = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback") / rateOriginDays;
+
+        Binder b = new Binder();
+        b.put("rateOriginDays", rateOriginDays.toString());
+        b.put("rateCallback", rateCallback.toString());
+
+        return b;
+    }
+
+    private Binder queryFollowerInfo(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Binder res = new Binder();
+        res.set("follower_state", null);
+        byte[] follower_id = params.getBinary("follower_id");
+        byte[] followerBin = node.getLedger().getSmartContractById(HashId.withDigest(follower_id));
+
+        if (followerBin != null) {
+            FollowerContract followerContract = (FollowerContract) Contract.fromPackedTransaction(followerBin);
+            res.set("follower_state", followerContract.getStateData());
         }
         return res;
     }

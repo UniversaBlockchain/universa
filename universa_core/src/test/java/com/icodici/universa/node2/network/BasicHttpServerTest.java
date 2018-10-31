@@ -50,6 +50,30 @@ public class BasicHttpServerTest extends TestCase {
         s.shutdown();
     }
 
+
+    /*@Test
+    public void testFollowerCallback() throws Exception {
+        PrivateKey remoteServerKey = TestKeys.privateKey(1);
+        PrivateKey nodeKey = TestKeys.privateKey(2);
+        FollowerCallback s = new FollowerCallback(remoteServerKey, 14600, 32, log);
+
+        BasicHttpClient c = new BasicHttpClient("http://localhost:14600");
+        c.start(nodeKey, remoteServerKey.getPublicKey(), null);
+
+        Binder res = c.command("sping");
+
+        assertEquals("spong", res.getStringOrThrow("sping"));
+
+        s.addSecureEndpoint("getSessionInfo", (params,session)-> {
+            System.out.println("in sec, "+session);
+            System.out.println("\t "+session.getPublicKey());
+            return Binder.of("publicKey", session.getPublicKey().info().toString());
+        });
+        res = c.command("getSessionInfo");
+        s.shutdown();
+    }*/
+
+
     @Test
     public void testError() throws Exception {
         PrivateKey nodeKey = TestKeys.privateKey(1);

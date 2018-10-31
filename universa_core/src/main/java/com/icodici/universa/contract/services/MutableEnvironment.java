@@ -35,17 +35,18 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void rollback();
 
     /**
-     * Create subscription to the existing (stored) contract
+     * Create subscription to the chain of contracts
      *
-     * @param contractId
-     *         stored revision
+     * @param origin
+     *         origin of contracts chain
      * @param expiresAt
      *         time to expiration
+     * @param mutedAt
+     *         time to muted (not send callbacks due to insufficient payments)
      *
      * @return subscription or null if this contract is not known to the storage service
      */
-    @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId contractId,
-                                                                    @NonNull ZonedDateTime expiresAt);
+    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt, @NonNull ZonedDateTime mutedAt);
 
     /**
      * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.
@@ -57,16 +58,17 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return susbscription.
      */
-    @NonNull ContractStorageSubscription createStorageSubscription(byte[] packedTransaction,
+    @NonNull ContractSubscription createStorageSubscription(byte[] packedTransaction,
                                                                    @NonNull ZonedDateTime expiresAt);
 
 
     @NonNull NameRecord createNameRecord(@NonNull UnsName unsName,
                                               @NonNull ZonedDateTime expiresAt);
 
-    void setSubscriptionExpiresAt(ContractStorageSubscription subscription, ZonedDateTime expiresAt);
+    void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt);
+    void setSubscriptionExpiresAtAndMutedAt(ContractSubscription subscription, ZonedDateTime expiresAt, ZonedDateTime mutedAt);
 
-    void destroySubscription(ContractStorageSubscription subscription);
+    void destroySubscription(ContractSubscription subscription);
 
 
     void setNameRecordExpiresAt(NameRecord nameRecord, ZonedDateTime expiresAt);
@@ -74,4 +76,14 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void destroyNameRecord(NameRecord nameRecord);
 
 
+    double getSubscriptionsCallbacksSpentODs();
+    int getSubscriptionsStartedCallbacks();
+
+    void decreaseSubscriptionExpiresAt(ContractSubscription subscription, int decreaseSeconds);
+    void changeSubscriptionMutedAt(ContractSubscription subscription, int deltaSeconds);
+
+    void increaseCallbacksSpent(ContractSubscription subscription, double addSpent);
+
+    void increaseStartedCallbacks(ContractSubscription subscription);
+    void decreaseStartedCallbacks(ContractSubscription subscription);
 }

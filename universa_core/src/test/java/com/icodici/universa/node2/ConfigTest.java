@@ -55,6 +55,13 @@ public class ConfigTest extends TestCase {
         assertEquals(config.getNetworkAdminKeyAddress(), copyConfig.getNetworkAdminKeyAddress());
         assertEquals(config.getAuthorizedNameServiceCenterKey(), copyConfig.getAuthorizedNameServiceCenterKey());
         assertEquals(config.getUIssuerName(), copyConfig.getUIssuerName());
+        assertEquals(config.getQueryContractsLimit(), copyConfig.getQueryContractsLimit());
+        assertEquals(config.isPermanetMode(), copyConfig.isPermanetMode());
+        assertEquals(config.getFollowerCallbackExpiration(), copyConfig.getFollowerCallbackExpiration());
+        assertEquals(config.getFollowerCallbackDelay(), copyConfig.getFollowerCallbackDelay());
+        assertEquals(config.getFollowerCallbackStateStoreTime(), copyConfig.getFollowerCallbackStateStoreTime());
+        assertEquals(config.getFollowerCallbackSynchronizationInterval(), copyConfig.getFollowerCallbackSynchronizationInterval());
+        assertEquals(config.getRateNodesSendFollowerCallbackToComplete(), copyConfig.getRateNodesSendFollowerCallbackToComplete(), 0.001);
     }
 
     @Test

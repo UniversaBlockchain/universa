@@ -1077,6 +1077,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link SlotContract} contract with need permissions and values. {@link SlotContract} is
      * used for control and for payment for store some contracts in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link SlotContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special slot
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link SlotContract#putTrackingContract(Contract)}
@@ -1140,6 +1141,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link UnsContract#addUnsName(UnsName)}
@@ -1203,6 +1205,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
@@ -1280,6 +1283,7 @@ public class ContractsService {
     /**
      * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
      * used for control and for payment for register some names in the distributed store.
+     * Default expiration is set to 5 years.
      * <br><br>
      * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
@@ -1351,6 +1355,70 @@ public class ContractsService {
         UnsContract.addSignatureToSeal(issuerKeys);
 
         return UnsContract;
+    }
+
+    /**
+     * Create and return ready {@link FollowerContract} contract with need permissions and values. {@link FollowerContract} is
+     * used for control and for payment for follow new revisions from some contract chains by origin.
+     * Default expiration is set to 5 years.
+     * <br><br>
+     * Created {@link FollowerContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special follower
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link FollowerContract#putTrackingOrigin(HashId, String, PublicKey)}
+     * for putting follow chain by origin with callback URL and public key.
+     * <br><br>
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
+     * @param nodeInfoProvider is node provider info.
+     * @return ready {@link FollowerContract}
+     */
+    public synchronized static FollowerContract createFollowerContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
+        FollowerContract followerContract = new FollowerContract();
+        followerContract.setNodeInfoProvider(nodeInfoProvider);
+        followerContract.setApiLevel(3);
+
+        Contract.Definition cd = followerContract.getDefinition();
+        cd.setExpiresAt(followerContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default follower");
+        data.set("description", "Default follower description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        followerContract.registerRole(issuerRole);
+        followerContract.createRole("issuer", issuerRole);
+        followerContract.createRole("creator", issuerRole);
+
+        followerContract.registerRole(ownerRole);
+        followerContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        followerContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        followerContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        followerContract.addPermission(revokePerm2);
+
+        followerContract.addFollowerSpecific();
+
+        followerContract.seal();
+        followerContract.addSignatureToSeal(issuerKeys);
+
+        return followerContract;
     }
 
     /**

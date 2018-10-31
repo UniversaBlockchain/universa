@@ -28,7 +28,7 @@ import java.sql.SQLException;
  * The complete data about Universa node. This class should provide enough information to connect to a remote node and
  * create local services and should be used everywhere instead of host-port parameters and.
  * <p>
- * The preferred method of idenrifying the node is its integer id, see {@link #getNumber()}.
+ * The preferred method of identifying the node is its integer id, see {@link #getNumber()}.
  */
 public class NodeInfo implements BiSerializable {
     private PublicKey publicKey;

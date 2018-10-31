@@ -66,7 +66,7 @@ public class SlotContract extends NSmartContract {
     private double spentEarlyKDs = 0;
     // Time of spent KD's calculation for previous revision
     private ZonedDateTime spentEarlyKDsTime = null;
-    // Spent KDs for current revious revision
+    // Spent KDs for current revision
     private double spentKDs = 0;
     // Time of spent KD's calculation for current revision
     private ZonedDateTime spentKDsTime = null;
@@ -89,7 +89,6 @@ public class SlotContract extends NSmartContract {
      * <br><br>
      * Create a default empty new slot contract using a provided key as issuer and owner and sealer. Will set slot's specific
      * permissions and values.
-     * Default expiration is set to 5 years.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
@@ -318,24 +317,23 @@ public class SlotContract extends NSmartContract {
 
         spentKDsTime = now;
 
+        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
+
         // if true we save it to stat.data
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
 
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
-            if(getRevision() == 1) {
+            if(getRevision() == 1)
                 getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
-            }
 
             int storingBytes = 0;
-            for(byte[] p : packedTrackingContracts) {
+            for(byte[] p : packedTrackingContracts)
                 storingBytes += p.length;
-            }
-            getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
-            long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
-            double spentDays = (double) spentSeconds / (3600 * 24);
-            spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
+            getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
             getStateData().set(SPENT_KD_FIELD_NAME, spentKDs);
             getStateData().set(SPENT_KD_TIME_FIELD_NAME, spentKDsTime.toEpochSecond());
@@ -346,7 +344,7 @@ public class SlotContract extends NSmartContract {
 
     /**
      * Own private slot's method for saving subscription. It calls
-     * from {@link SlotContract#onContractStorageSubscriptionEvent(ContractStorageSubscription.Event)} (when tracking
+     * from {@link SlotContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking
      * contract have registered new revision, from {@link SlotContract#onCreated(MutableEnvironment)} and
      * from {@link SlotContract#onUpdated(MutableEnvironment)} (both when this slot contract have registered new revision).
      * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
@@ -364,7 +362,7 @@ public class SlotContract extends NSmartContract {
 
         // calculate time that will be added to now as new expiring time
         // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
-        double days = (prepaidKilobytesForDays - spentKDs) * getRate() * 1024 / storingBytes;
+        double days = (prepaidKilobytesForDays - spentKDs) * 1024 / storingBytes;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
                 .plusSeconds(seconds);
@@ -384,7 +382,7 @@ public class SlotContract extends NSmartContract {
 
         for(Contract tc : newContracts.values()) {
             try {
-                ContractStorageSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
+                ContractSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
                 css.receiveEvents(true);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -400,13 +398,13 @@ public class SlotContract extends NSmartContract {
     }
 
     @Override
-    public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+    public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
 
-        if(event instanceof ContractStorageSubscription.ApprovedEvent) {
-            MutableEnvironment me = ((ContractStorageSubscription.ApprovedEvent) event).getEnvironment();
+        if(event instanceof ContractSubscription.ApprovedEvent) {
+            MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
             // recreate subscription:
-            Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
+            Contract newStoredItem = ((ContractSubscription.ApprovedEvent)event).getNewRevision();
 
             putTrackingContract(newStoredItem);
             saveTrackingContractsToState();
@@ -414,7 +412,7 @@ public class SlotContract extends NSmartContract {
             // and save new
             updateSubscriptions(me);
 
-        } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
+        } else if(event instanceof ContractSubscription.RevokedEvent) {
 
         }
 
@@ -587,7 +585,7 @@ public class SlotContract extends NSmartContract {
         }
 
         // check for tracking contract existing
-        checkResult = trackingContracts.size() == 0 || getTrackingContract() != null;
+        checkResult = getTrackingContract() != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Tracking contract is missed");
             return checkResult;

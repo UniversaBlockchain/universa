@@ -29,11 +29,15 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     private long id = 0;
     protected NameCache nameCache;
     protected Ledger ledger;
-    // slot contract this environment belongs to
+    // smart contract this environment belongs to
     protected NSmartContract contract;
     protected ZonedDateTime createdAt;
+
     // set of subscriptions holds by slot contract
-    protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
+    protected Set<ContractSubscription> storageSubscriptionsSet = new HashSet<>();
+    // set of subscriptions holds by follower contract
+    protected Set<ContractSubscription> followerSubscriptionsSet = new HashSet<>();
+
     protected Set<NameRecord> nameRecordsSet = new HashSet<>();
     protected Binder kvStore = new Binder();
 
@@ -64,7 +68,8 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
      * @param kvBinder map stored in the ledger
      */
     public NImmutableEnvironment(NSmartContract contract, Binder kvBinder,
-                                 Collection<ContractStorageSubscription> subscriptions,
+                                 Collection<ContractSubscription> storageSubscriptions,
+                                 Collection<ContractSubscription> followerSubscriptions,
                                  Collection<NameRecord> nameRecords, Ledger ledger) {
         this(contract,ledger);
 
@@ -74,7 +79,16 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
             }
         }
 
-        storageSubscriptionsSet.addAll(subscriptions);
+        storageSubscriptions.forEach(sub -> {
+            if (sub instanceof NContractStorageSubscription)
+                storageSubscriptionsSet.add(sub);
+        });
+
+        followerSubscriptions.forEach(sub -> {
+            if (sub instanceof NContractFollowerSubscription)
+                followerSubscriptionsSet.add(sub);
+        });
+
         nameRecordsSet.addAll(nameRecords);
     }
 
@@ -98,9 +112,12 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     @Override
-    public Iterable<ContractStorageSubscription> storageSubscriptions() {
+    public Iterable<ContractSubscription> storageSubscriptions() {
         return storageSubscriptionsSet;
     }
+
+    @Override
+    public Iterable<ContractSubscription> followerSubscriptions() { return followerSubscriptionsSet; }
 
     @Override
     public Iterable<NameRecord> nameRecords() {
@@ -206,6 +223,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         data.set("contract", contract.getPackedTransaction());
         data.set("createdAt", serializer.serialize(createdAt));
         data.set("subscriptions", serializer.serialize(Do.list(storageSubscriptionsSet)));
+        data.set("followerSubscriptions", serializer.serialize(Do.list(followerSubscriptionsSet)));
         data.set("nameRecords", serializer.serialize(Do.list(nameRecordsSet)));
         data.set("kvStore", serializer.serialize(kvStore));
 
@@ -216,6 +234,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
         createdAt = deserializer.deserialize(data.getZonedDateTimeOrThrow("createdAt"));
         storageSubscriptionsSet.addAll(deserializer.deserialize(data.getListOrThrow("subscriptions")));
+        followerSubscriptionsSet.addAll(deserializer.deserialize(data.getListOrThrow("followerSubscriptions")));
         nameRecordsSet.addAll(deserializer.deserialize(data.getListOrThrow("nameRecords")));
         contract = (NSmartContract) Contract.fromPackedTransaction(data.getBinary("contract"));
         kvStore = deserializer.deserialize(data.getBinderOrThrow("kvStore"));
@@ -226,10 +245,12 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         Config.forceInit(NNameRecord.class);
         Config.forceInit(NNameRecordEntry.class);
         Config.forceInit(NContractStorageSubscription.class);
+        Config.forceInit(NContractFollowerSubscription.class);
         DefaultBiMapper.registerClass(NImmutableEnvironment.class);
         DefaultBiMapper.registerClass(NNameRecord.class);
         DefaultBiMapper.registerClass(NNameRecordEntry.class);
         DefaultBiMapper.registerClass(NContractStorageSubscription.class);
+        DefaultBiMapper.registerClass(NContractFollowerSubscription.class);
     }
 
     public void setContract(NSmartContract smartContract) {

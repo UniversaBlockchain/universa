@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -7,12 +8,14 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Implements {@link ContractStorageSubscription} interface for slot contract.
+ * Implements {@link ContractSubscription} interface for slot contract.
  */
-public class NContractStorageSubscription implements ContractStorageSubscription,BiSerializable {
+public class NContractStorageSubscription implements ContractSubscription, BiSerializable {
 
     private long id = 0;
 
@@ -78,6 +81,10 @@ public class NContractStorageSubscription implements ContractStorageSubscription
     @Override
     public byte[] getPackedContract() {
         return packedContract;
+    }
+    @Override
+    public HashId getOrigin() {
+        return null;
     }
 
 
