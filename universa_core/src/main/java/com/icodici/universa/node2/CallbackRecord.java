@@ -8,8 +8,16 @@ import net.sergeych.tools.Binder;
 import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// *
-
+/**
+ * The success notification for follower callback, carries callback identifier and signature of updated item id
+ * request.
+ * For success notification: sending node notifies receiving node that follower callback is success.
+ * And send signature of updated item id.
+ *
+ * Also may contain a notification that callback is not responding to the node request.
+ * In this case send a notification without signature. If some nodes (rate defined in config) also sended callback
+ * and received packed item (without answer) callback is deemed complete.
+ */
 public class CallbackRecord {
     private HashId id;
     private long environmentId;
@@ -33,8 +41,16 @@ public class CallbackRecord {
         this.state = state;
     }
 
-    // *
-
+    /**
+     * Save callback record to ledger for possible synchronization.
+     *
+     * @param id is callback identifier
+     * @param environmentId is environment identifier
+     * @param subscriptionId is follower subscription identifier
+     * @param config is node configuration
+     * @param networkNodesCount is count of nodes in Universa network
+     * @param ledger is node ledger
+     */
     public static void addCallbackRecordToLedger(HashId id, long environmentId, long subscriptionId, Config config, int networkNodesCount, Ledger ledger) {
         ZonedDateTime now = ZonedDateTime.now();
         ZonedDateTime expiresAt = now.plus(config.getFollowerCallbackExpiration()).plusSeconds(config.getFollowerCallbackDelay().getSeconds() * (networkNodesCount + 3));
