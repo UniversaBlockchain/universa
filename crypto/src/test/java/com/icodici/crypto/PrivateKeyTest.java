@@ -8,9 +8,11 @@
 package com.icodici.crypto;
 
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -102,6 +104,22 @@ public class PrivateKeyTest {
     }
 
     @Test
+    public void passwordProtectedJsCompatibilityTest() throws Exception {
+        byte[] encrypted = Base64.decodeCompactString("NhDIoIYBvB1jb20uaWNvZGljaS5jcnlwdG8uUHJpdmF0ZUtleVtITUFDX1NIQTI1NsQaAe01NLf/Ffcye5nVmAOsYV5uy/Q/OXqbVfH4baSo5rgdtYl3xmTrkwfHEerHVjyB/raQcJ6b96k3oVIHu6I/wDtZ3TMkQ8gpjzlEnzOs6LQ+0OzObrjxFfpiXZdPMLzu4XPMSJINSZtkPkSOeBEqItCf2C2CfPgdI1MniiDAN9qmuWMuGkD4o6UgaGfCjy0WGv8vY0rgkkQUanf8ctcIEgbLCcpu2irJY+OUhh1qC+Dwm3uSDFarXC/94i/YWpSbo2Apyxjq6ynpXVyc2aQiOmOf13iHulq5t9eyoqP4uSXL4xHff23onQRnvvc4OC+vbQvHType64zPTxVCFDpw6rlUhT/bEJ6IOh8XhX+LHZeTEuaTy0LXE055xiT1P375");
+        byte[] packed = Base64.decodeCompactString("JgAcAQABvIEA96FWTEq/Wjmd7kYbx04I/Ax3OQV+6e4YWu7xBr8k/SexvYvFEE3c9dRsZSsEj7KzYrNpIXezCsxO+j1sHADmeojwuveDdQQM6M6fbvygHq/mxKGllDoJTpzX/CnkuXDwC+lpRkkMTIF48GaYDM525951HYW1pAIYaVr+V5ctVQW8gQDGM71OC1yBLv6n23dEuu9Vqna2lvDpEWNO7MgKY0Ri9vUPwp+F+dUiKsRTbjnukDFqiYiNj+jkcWgiXqnjqdAGf9LUWHfF80W1PwUhkFw7torLJfaAr6bZ6FRzGcxTMad0x7Rz+5lkBjliKqOt8AUAIvMVe45G0c0StJSoqdqc4Q==");
+        PrivateKey pk1 = PrivateKey.unpackWithPassword(encrypted,"some-password");
+        PrivateKey pk2 = new PrivateKey(packed);
+        assertEquals(pk1,pk2);
+        try {
+            PrivateKey.unpackWithPassword(encrypted,"some-password1");
+            fail("should throw");
+        } catch (PrivateKey.PasswordProtectedException e) {
+
+        }
+
+    }
+
+        @Test
     public void concurrencyTest() throws Exception {
         PrivateKey privateKey = new PrivateKey(2048);
         PublicKey publicKey = privateKey.getPublicKey();
