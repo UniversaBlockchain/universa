@@ -14766,7 +14766,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
-        Thread.sleep(5000);
+        if (waitCallback)
+            Thread.sleep(5000);
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {

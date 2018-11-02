@@ -28,6 +28,14 @@ public class CallbackNotification extends Notification {
 
     private static final int CODE_CALLBACK_NOTIFICATION = 4;
 
+    /**
+     * Callback notification type
+     *
+     * COMPLETED - to notify other Universa nodes about the completion of the callback
+     * NOT_RESPONDING - to notify other Universa nodes that follower callback server received a callback but did not respond
+     * GET_STATE - to query the state of callback
+     * RETURN_STATE - to return the state of callback
+     */
     public enum CallbackNotificationType {
         COMPLETED,
         NOT_RESPONDING,
@@ -53,6 +61,17 @@ public class CallbackNotification extends Notification {
     private Node.FollowerCallbackState state;
     public Node.FollowerCallbackState getState() { return state; }
 
+    /**
+     * Create callback notification.
+     * For type COMPLETED callback notification should be contain signature.
+     * For type RETURN_STATE callback notification should be contain state.
+     *
+     * @param from is {@link NodeInfo} of node that sent the callback notification
+     * @param id is callback identifier
+     * @param type of callback notification
+     * @param signature is receipt signed by follower callback server (required if type == COMPLETED)
+     * @param state is callback state (required if type == RETURN_STATE)
+     */
     public CallbackNotification(NodeInfo from, HashId id, CallbackNotificationType type, byte[] signature, Node.FollowerCallbackState state) {
         super(from);
         this.id = id;

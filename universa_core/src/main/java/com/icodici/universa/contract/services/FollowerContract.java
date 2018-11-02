@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @BiType(name = "FollowerContract")
 /**
  * Follower contract is one of several types of smarts contracts that can be run on the node. Follower contract provides
- * ....
+ * paid of sending callbacks when registering a new contract (revision) in the chain.
  */
 public class FollowerContract extends NSmartContract {
 
@@ -69,17 +69,13 @@ public class FollowerContract extends NSmartContract {
     // Current revision callback rate
     private double callbackRate = 0;
 
-    /**
-     * Follower contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
-     * .....
-     */
     public FollowerContract() {
         super();
     }
 
     /**
-     * Follower contract is one of several types of smarts contracts that can be run on the node. Follower contract provides
-     * ....
+     * Follower contract is one of several types of smarts contracts that can be run on the node. Follower contract
+     * provides paid of sending callbacks when registering a new contract (revision) in the chain.
      * <br><br>
      * Create a default empty new follower contract using a provided key as issuer and owner and sealer. Will set
      * follower's specific permissions and values.
@@ -97,8 +93,8 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
-     * Follower contract is one of several types of smarts contracts that can be run on the node. Follower contract provides
-     * ....
+     * Follower contract is one of several types of smarts contracts that can be run on the node. Follower contract
+     * provides paid of sending callbacks when registering a new contract (revision) in the chain.
      * <br><br>
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If
      * the transaction pack fails to resolve a link, no error will be reported - not sure it's a good idea. If need, the
@@ -165,6 +161,7 @@ public class FollowerContract extends NSmartContract {
 
     /**
      * Method calls from {@link FollowerContract#fromDslFile(String)} and initialize contract from given binder.
+     *
      * @param root id binder with initialized data
      * @return created and ready {@link FollowerContract} contract.
      * @throws EncryptionError if something went wrong
@@ -176,6 +173,7 @@ public class FollowerContract extends NSmartContract {
 
     /**
      * Method creates {@link FollowerContract} contract from dsl file where contract is described.
+     *
      * @param fileName is path to dsl file with yaml structure of data for contract.
      * @return created and ready {@link FollowerContract} contract.
      * @throws IOException if something went wrong
@@ -197,8 +195,10 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
+     * Check whether the origin is tracked in the follower contract
+     *
      * @param origin to check
-     * @return true if origin is present in tracking revisions
+     * @return true if origin is tracking
      */
     public boolean isOriginTracking(HashId origin) {
         if (trackingOrigins != null)
@@ -211,9 +211,10 @@ public class FollowerContract extends NSmartContract {
      * Put new tracking origin and his callback data (URL and callback public key) to the follower contract.
      * If origin already contained in follower contract, old callback data is replaced.
      * If callback URL already contained in follower contract, old callback key is replaced.
+     *
      * @param origin for tracking {@link HashId}.
      * @param URL for callback if registered new revision with tracking origin
-     * @param key for checking receipt from callback by network
+     * @param key for checking receipt from callback by Universa network
      */
     public void putTrackingOrigin(HashId origin, String URL, PublicKey key) {
         trackingOrigins.put(origin, URL);
@@ -221,7 +222,8 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
-     * Remove tracking origin from the follower contract.
+     * Removes tracking origin from the follower contract.
+     *
      * @param origin for remove {@link HashId}.
      */
     public void removeTrackingOrigin(HashId origin) {
@@ -236,6 +238,8 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
+     * Check whether the callback URL is used in tracking origins of follower contract
+     *
      * @param URL to check
      * @return true if callback URL is used in tracking origins
      */
@@ -247,8 +251,10 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
+     * Updates the callback key by callback URL
+     *
      * @param URL is updated callback URL
-     * @param key is public check of callback for update on callback URL
+     * @param key is new {@link PublicKey} for update by callback URL
      * @return true if callback URL was updated
      */
     public boolean updateCallbackKey(String URL, PublicKey key) {
@@ -261,7 +267,14 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
-     * @param contract for followable checking
+     * Checks the contract for traceability by this follower contract. In order for the contract to be followed by
+     * this follower contract, it is necessary that one of the conditions be fulfilled:
+     * 1) Owner role of the contract is allowed for keys that signed this follower contract;
+     * 2) One of the roles in the field data.follower_roles (in the sections definition, state or transactional) of
+     *    the contract is allowed for keys that signed this follower contract.
+     *
+     * @param contract id {@link Contract} for traceability checking
+     *
      * @return true if {@link Contract} can be follow by this {@link FollowerContract}
      */
     public boolean canFollowContract(Contract contract) {
@@ -300,12 +313,14 @@ public class FollowerContract extends NSmartContract {
 
     /**
      * It is private method that looking for U contract in the new items of this follower contract. Then calculates
-     * new payment, looking for already paid, summize it and calculate new prepaid period for storing, that sets to
+     * new payment, looking for already paid, summize it and calculate new prepaid period for following, that sets to
      * {@link FollowerContract#prepaidOriginDays}. This field is measured in the origins*days, means how many origins
      * can follow for how many days.
-     * But if withSaveToState param is false, calculated value
-     * do not saving to state. It is useful for checking set state.data values.
-     * @param withSaveToState if true, calculated values is saving to  state.data
+     * But if withSaveToState param is false, calculated value do not saving to state.
+     * It is useful for checking set state.data values.
+     *
+     * @param withSaveToState if true, calculated values is saving to state.data
+     *
      * @return calculated {@link FollowerContract#calculatePrepaidOriginDays}.
      */
     private double calculatePrepaidOriginDays(boolean withSaveToState) {
@@ -362,11 +377,12 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
-     * Own private slot's method for saving subscription. It calls
-     * from {@link FollowerContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking
-     * contract have registered new revision, from {@link FollowerContract#onCreated(MutableEnvironment)} and
-     * from {@link FollowerContract#onUpdated(MutableEnvironment)} (both when this slot contract have registered new revision).
-     * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
+     * Own private follower's method for saving subscription. It calls from
+     * {@link FollowerContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking contract chain
+     * have registered new revision, from {@link FollowerContract#onCreated(MutableEnvironment)} and from
+     * {@link FollowerContract#onUpdated(MutableEnvironment)} (both when this follower contract have registered new revision).
+     * It recalculate params of follower contract and update expiring and muting times for each subscription at the ledger.
+     *
      * @param me is {@link MutableEnvironment} object with some data.
      */
     private void updateSubscriptions(MutableEnvironment me) {
@@ -408,6 +424,8 @@ public class FollowerContract extends NSmartContract {
     }
 
     /**
+     * Get calculated prepaid origins*days for this follower contract
+     *
      * @return calculated prepaid origins*days for all time, from first revision
      */
     public double getPrepaidOriginsForDays() {
