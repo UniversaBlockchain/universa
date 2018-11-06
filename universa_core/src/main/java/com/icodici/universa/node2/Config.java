@@ -46,13 +46,13 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
         rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
-        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 0.2);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 1.0);
 
-        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", 10.0);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", 1.0);
 
         minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
-        minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 200);
+        minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 100);
     }
 
     public Config copy() {
