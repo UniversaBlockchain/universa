@@ -2679,7 +2679,7 @@ public class Node {
                     report(getLabel(), () -> concatReportMessage("timeout ",
                             itemId, " from parcel: ", parcelId,
                             " :: downloadAndCommit timeoutException, state ", processingState, " itemState: ", getState()),
-                            DatagramAdapter.VerboseLevel.BASE);
+                            DatagramAdapter.VerboseLevel.NOTHING);
                     e.printStackTrace();
                     setState(ItemState.UNDEFINED);
                     try {
@@ -3008,6 +3008,12 @@ public class Node {
 
                 synchronized (mutex) {
                     if (isConsensusReceivedExpired()) {
+
+                        report(getLabel(), () -> concatReportMessage("consensus received expired ",
+                                itemId, " from parcel: ", parcelId,
+                                " :: sendNewConsensusNotification isConsensusReceivedExpired, state ", processingState, " itemState: ", getState()),
+                                DatagramAdapter.VerboseLevel.NOTHING);
+
                         // cancel by timeout expired
                         processingState = ItemProcessingState.FINISHED;
                         stopConsensusReceivedChecker();
