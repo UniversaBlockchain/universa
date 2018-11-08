@@ -678,7 +678,7 @@ public class Client {
     /**
      * Look for state data of slot contract
      * @param slotId slot contract id
-     * @return state data of slot contract
+     * @return {@link Binder} containing state data of slot contract
      * @throws ClientError
      */
 
@@ -730,7 +730,7 @@ public class Client {
     /**
      * Look for the name assosiated with a given origin
      * @param origin to look for
-     * @return binder containing name, description and url associated with origin or null
+     * @return {@link Binder} containing name, description and url associated with origin or null
      * @throws ClientError
      */
     public Binder queryNameRecord(HashId origin) throws ClientError {
@@ -743,7 +743,7 @@ public class Client {
     /**
      * Look for the name assosiated with a given address
      * @param address to look for
-     * @return binder containing name, description and url associated with address or null
+     * @return {@link Binder} containing name, description and url associated with address or null
      * @throws ClientError
      */
     public Binder queryNameRecord(String address) throws ClientError {
@@ -795,7 +795,7 @@ public class Client {
      * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
      * @param limit of list items
-     * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
     public Binder getContract(HashId origin, int limit) throws ClientError {
@@ -819,7 +819,7 @@ public class Client {
      * or list of IDs active contracts (if there are more than one).
      * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
-     * @return binder containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
     public Binder getContract(HashId origin) throws ClientError {
@@ -840,7 +840,7 @@ public class Client {
 
     /**
      * Get current network rate for operating FOLLOWER1 contracts
-     * @return origins-days per U rate
+     * @return {@link Binder} containing origins-days per U rate and callback price in U
      * @throws ClientError
      */
     public Binder followerGetRate() throws ClientError {
@@ -853,7 +853,7 @@ public class Client {
     /**
      * Look for state data of follower contract
      * @param followerId follower contract id
-     * @return state data of follower contract
+     * @return {@link Binder} containing state data of follower contract
      * @throws ClientError
      */
 

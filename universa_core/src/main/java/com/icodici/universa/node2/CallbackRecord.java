@@ -8,8 +8,13 @@ import net.sergeych.tools.Binder;
 import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// *
-
+/**
+ * Callback record for synchronize state of expired callbacks.
+ * Callback records are subject to synchronization if callback state == STARTED or EXPIRED and time to send callback expired.
+ * To synchronize the callback, it is necessary that more than half of the Universa network nodes confirm the status
+ * of the callback (COMPLETED or FAILED). To synchronize the callback was considered impossible it is necessary that 80%
+ * network nodes (excluding the node performing synchronization) respond, but the state of the callback cannot be synchronized.
+ */
 public class CallbackRecord {
     private HashId id;
     private long environmentId;
@@ -26,6 +31,14 @@ public class CallbackRecord {
     private int consensus = 1;
     private int limit = 1;
 
+    /**
+     * Create callback record.
+     *
+     * @param id is callback identifier
+     * @param environmentId is environment subscription
+     * @param subscriptionId is follower subscription identifier
+     * @param state is callback state
+     */
     public CallbackRecord(HashId id, long environmentId, long subscriptionId, Node.FollowerCallbackState state) {
         this.id = id;
         this.environmentId = environmentId;
@@ -33,8 +46,16 @@ public class CallbackRecord {
         this.state = state;
     }
 
-    // *
-
+    /**
+     * Save callback record to ledger for possible synchronization.
+     *
+     * @param id is callback identifier
+     * @param environmentId is environment identifier
+     * @param subscriptionId is follower subscription identifier
+     * @param config is node configuration
+     * @param networkNodesCount is count of nodes in Universa network
+     * @param ledger is node ledger
+     */
     public static void addCallbackRecordToLedger(HashId id, long environmentId, long subscriptionId, Config config, int networkNodesCount, Ledger ledger) {
         ZonedDateTime now = ZonedDateTime.now();
         ZonedDateTime expiresAt = now.plus(config.getFollowerCallbackExpiration()).plusSeconds(config.getFollowerCallbackDelay().getSeconds() * (networkNodesCount + 3));
@@ -132,15 +153,28 @@ public class CallbackRecord {
         environment.save();
     }
 
-    // *
-
+    /**
+     * Set network consensus needed for synchronize callback state. And set limit of network nodes count needed for
+     * delete callback record (if 80% network nodes respond, but the state of the callback cannot be synchronized).
+     *
+     * @param nodesCount is count of nodes in Universa network
+     */
     public void setConsensusAndLimit(int nodesCount) {
         consensus = (int) Math.ceil((nodesCount - 1) * 0.51);
         limit = (int) Math.floor(nodesCount * 0.8);
     }
 
-    // *
-
+    /**
+     * Increases callback state counters according new state received from notification. Callback state will be
+     * synchronized if the number of notifications from Universa nodes with states COMPLETED or FAILED reached
+     * a given consensus.
+     *
+     * @param newState is callback state received from notification
+     * @param ledger is node ledger
+     * @param node is Universa node
+     *
+     * @return true if callback state is synchronized
+     */
     public boolean synchronizeState(Node.FollowerCallbackState newState, Ledger ledger, Node node) {
         if (newState == Node.FollowerCallbackState.COMPLETED) {
             if (incrementCompletedNodes() >= consensus) {
@@ -166,8 +200,20 @@ public class CallbackRecord {
         return false;
     }
 
-    // *
-
+    /**
+     * Final checkout of the callback state counters if the time to synchronize callback expired. Callback state
+     * will be synchronized if the number of notifications from Universa nodes with states COMPLETED or FAILED reached
+     * a given consensus.
+     *
+     * If reached the callback synchronization consensus, updates state of the callback in ledger.
+     * If reached the nodes limit for ending synchronization (but the state of the callback cannot be synchronized),
+     * callback record removes from ledger.
+     *
+     * @param ledger is node ledger
+     * @param node is Universa node
+     *
+     * @return true if callback synchronization is ended
+     */
     public boolean endSynchronize(Ledger ledger, Node node) {
         if (ZonedDateTime.now().isBefore(expiresAt))
             return false;

@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.util.Set;
 
 /**
- * Simple example of follower callback server. Use only to receive follower callbacks from Universa nodes.
+ * Simple example of follower callback server. Use only to receive follower callbacks from Universa network.
+ * Follower callback server receives follower callback from Universa nodes, checks signature according to the key set of
+ * public keys of Universa nodes (optional), and sends a receipt to the node with a signed callback key.
  */
 public class FollowerCallback {
     private PrivateKey callbackKey;
@@ -23,6 +25,13 @@ public class FollowerCallback {
 
     protected BasicHTTPService service;
 
+    /**
+     * Initialize and start follower callback server.
+     *
+     * @param callbackKey is {@link PrivateKey} on which the follower callback server signs the response node
+     * @param port for listening by follower callback server
+     * @param callbackURL is URL to where callbacks are sent from node
+     */
     public FollowerCallback(PrivateKey callbackKey, int port, String callbackURL) throws IOException {
         this.callbackKey = callbackKey;
         this.port = port;
@@ -37,11 +46,11 @@ public class FollowerCallback {
         System.out.println("Follower callback server started on port = " + port + " URL = " + callbackURL);
     }
 
-    public void on(String path, BasicHTTPService.Handler handler) {
+    private void on(String path, BasicHTTPService.Handler handler) {
         service.on(path, handler);
     }
 
-    public void addEndpoint(String path, Endpoint ep) {
+    private void addEndpoint(String path, Endpoint ep) {
         on(path, (request, response) -> {
             Binder result;
             try {
@@ -61,7 +70,7 @@ public class FollowerCallback {
         });
     }
 
-    public Binder extractParams(BasicHTTPService.Request request) {
+    private Binder extractParams(BasicHTTPService.Request request) {
         Binder rp = request.getParams();
         BasicHTTPService.FileUpload rd = (BasicHTTPService.FileUpload) rp.get("callbackData");
         if (rd != null) {
@@ -71,16 +80,8 @@ public class FollowerCallback {
         return Binder.EMPTY;
     }
 
-    class Result extends Binder {
-        private int status = 200;
-
-        public void setStatus(int code) {
-            status = code;
-        }
-    }
-
     public interface Endpoint {
-        public void execute(Binder params, Result result) throws Exception;
+        void execute(Binder params, Result result) throws Exception;
     }
 
     public interface SimpleEndpoint {
@@ -111,15 +112,38 @@ public class FollowerCallback {
         return Binder.of("receipt", receipt);
     }
 
+    /**
+     * Set public keys of Universa nodes for checking callback on follower callback server.
+     * If checking is successful, follower callback server sends a receipt to the node with a signed callback key.
+     *
+     * This checking is optional, and may be passed if Universa nodes keys not set or reset by
+     * {@link FollowerCallback#clearNetworkNodeKeys}.
+     *
+     * @param keys is set of {@link PublicKey} Universa nodes
+     */
     public void setNetworkNodeKeys(Set<PublicKey> keys) { nodeKeys = keys; }
 
+    /**
+     * Reset public keys of Universa nodes for disable checking callback on follower callback server.
+     */
     public void clearNetworkNodeKeys() { nodeKeys = null; }
 
+    /**
+     * Shutdown the follower callback server.
+     */
     public void shutdown() {
         try {
             service.close();
 
             System.out.println("Follower callback server stopped on port = " + port + " URL = " + callbackURL);
         } catch (Exception e) {}
+    }
+
+    class Result extends Binder {
+        private int status = 200;
+
+        public void setStatus(int code) {
+            status = code;
+        }
     }
 }

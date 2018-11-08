@@ -2790,7 +2790,9 @@ public class Node {
         }
 
         /**
-         * Method looking for item's follower subscriptions and if it exist fire events
+         * Method looking for item's follower subscriptions and if it exist initialize {@link CallbackProcessor}, fire event,
+         * save callback information to ledger, start callback executor and obtain deferred callback notification.
+         *
          * @param updatingItem is item that processing
          */
         private void notifyFollowerSubscribers(Approvable updatingItem) {
@@ -4205,8 +4207,15 @@ public class Node {
         }
     }
 
-    // *
-
+    /**
+     * Get environment, subscription and follower contract by environment and subscription identifiers.
+     *
+     * @param environmentId is environment subscription
+     * @param subscriptionId is follower subscription identifier
+     *
+     * @return {@link Binder} with environment, subscription and follower contract
+     *
+     */
     public Binder getFullEnvironment(long environmentId, long subscriptionId) {
         NImmutableEnvironment ime = getEnvironment(environmentId);
         ime.setNameCache(nameCache);
@@ -4311,8 +4320,10 @@ public class Node {
     }
 
     /**
-     * Obtain got callback notification: check signature of updated item id.
-     * if success, completed callback.
+     * Obtain got callback notification. Depending on the type of notification, it sends the state of the requested
+     * callback, accepts and process the requested state, or sends the notification to the method of obtaining
+     * notifications of the corresponding callback. If a notification has been received for a specific callback,
+     * but it has not yet been initialized, then the notification is saved to deferred notifications.
      *
      * @param notification callback notification
      *
@@ -4364,6 +4375,15 @@ public class Node {
         return deferredCallbackNotifications.size() > 0;
     }
 
+
+    /**
+     * CallbackProcessor performs callback processing sent by the network to a specific URL.
+     * When the processor is initialized at the node, callback delay is calculated (for successive attempts to run
+     * it on all the nodes of the network). Also callback expiration time is calculated and save callback information.
+     *
+     * CallbackProcessor contains methods for checking callback signature, checking callback for completable, obtaining
+     * notifications, calling callback, completion callback, fail callback, stopping callback executor.     *
+     */
     private class CallbackProcessor {
         private HashId id;
         private HashId itemId;

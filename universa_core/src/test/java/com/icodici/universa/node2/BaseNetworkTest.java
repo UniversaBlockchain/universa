@@ -14766,7 +14766,8 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
-        Thread.sleep(5000);
+        if (waitCallback)
+            Thread.sleep(5000);
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
@@ -15106,9 +15107,9 @@ public class BaseNetworkTest extends TestCase {
 
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
-        // register revisions (14, 7 with callback) of following contract until spent all payments
+        // register 6 revisions (3 with callback) of following contract
         Contract simpleContractRevision = simpleContract2;
-        for (int i = 1; i < 7; i++) {
+        for (int i = 1; i < 4; i++) {
             simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, i,
                     calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
                     newRevFollowerContract.getTrackingOrigins().size(), true, true);
@@ -15118,7 +15119,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // subscriptions already muted (after 7 callback)
-        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 7,
+        /*simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 7,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
                 newRevFollowerContract.getTrackingOrigins().size(), true, false);
         simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 7,
@@ -15131,7 +15132,7 @@ public class BaseNetworkTest extends TestCase {
                 newRevFollowerContract.getTrackingOrigins().size(), false, false);
         checkFollowerContractRevision(simpleContractRevision, key, key2, 8,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                newRevFollowerContract.getTrackingOrigins().size(), false, false);
+                newRevFollowerContract.getTrackingOrigins().size(), false, false);*/
 
         callback.shutdown();
 
@@ -17546,18 +17547,21 @@ public class BaseNetworkTest extends TestCase {
 
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
+        // register 3 revisions with callbacks
         List<Contract> revisions = checkFollowerContractRevisionsParallel(simpleContract, simpleContract2, key, key2, 1, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
         revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key2, key, 2, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
+        revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key, key2, 3, calculateExpires, calculateExpires2,
+                simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
 
         // subscriptions already muted
-        revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key, key2, 3, calculateExpires, calculateExpires2,
+        /*revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key, key2, 3, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, false);
 
         // remaining payments are not enough to pay callback
         checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key2, key, 4, calculateExpires, calculateExpires2,
-                simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, false, false);
+                simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, false, false);*/
 
         callback.shutdown();
 

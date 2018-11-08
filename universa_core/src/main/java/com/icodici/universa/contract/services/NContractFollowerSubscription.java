@@ -13,7 +13,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Implements {@link NContractFollowerSubscription} interface for follower contract.
+ * Implements {@link ContractSubscription} interface for follower contract.
  */
 public class NContractFollowerSubscription implements ContractSubscription, BiSerializable {
 
