@@ -8368,7 +8368,7 @@ public class BaseNetworkTest extends TestCase {
         double spentDays = (double) spentSeconds / (3600 * 24);
         double spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = (double) (100 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        days = ((double) (100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -8458,7 +8458,7 @@ public class BaseNetworkTest extends TestCase {
         spentDays = (double) spentSeconds / (3600 * 24);
         spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = (double) (100 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        days = ((double) (100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -8764,10 +8764,10 @@ public class BaseNetworkTest extends TestCase {
 
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
-        spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+        spentKDs = spentDays * simpleContract.getPackedTransaction().length / 1024;
 
         int totalLength = simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length;
-        double days = (double) (100 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength;
+        double days = (((double) (100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name())) - spentKDs) * 1024 / totalLength;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
@@ -8941,10 +8941,10 @@ public class BaseNetworkTest extends TestCase {
 
         long spentSeconds2 = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
         double spentDays2 = (double) spentSeconds2 / (3600 * 24);
-        spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024);
+        spentKDs += spentDays2 * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024;
 
         int totalLength2 = simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length;
-        double days2 = (double) (100 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength2;
+        double days2 =  (((double) (100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name())) - spentKDs) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds2);
@@ -9125,10 +9125,10 @@ public class BaseNetworkTest extends TestCase {
 
         long spentSeconds3 = (timeReg4.toEpochSecond() - timeReg3.toEpochSecond());
         double spentDays3 = (double) spentSeconds3 / (3600 * 24);
-        spentKDs += spentDays3 * ((simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length) / 1024);
+        spentKDs += spentDays3 * (simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length) / 1024;
 
         int totalLength3 = simpleContract3.getPackedTransaction().length;
-        double days3 = (double) (100 + 300 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength3;
+        double days3 = ((double) (100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / totalLength3;
         double hours3 = days3 * 24;
         long seconds3 = (long) (days3 * 24 * 3600);
         calculateExpires = timeReg4.plusSeconds(seconds3);
@@ -9511,7 +9511,7 @@ public class BaseNetworkTest extends TestCase {
         spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length) / 1024);
 
         int totalLength2 = simpleContract2.getPackedTransaction().length;
-        double days2 = (double) (100 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength2;
+        double days2 = ((double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds2);
