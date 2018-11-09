@@ -8383,7 +8383,7 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -8403,7 +8403,7 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -8473,7 +8473,7 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1+(long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -8494,7 +8494,7 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -8800,7 +8800,7 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1+(long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -8821,7 +8821,7 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -8846,7 +8846,7 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -8867,7 +8867,7 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -8984,7 +8984,7 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -9044,7 +9044,7 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -9065,7 +9065,7 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
@@ -9175,7 +9175,7 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -9538,7 +9538,7 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                     }
                 }
             } else {
@@ -9552,7 +9552,7 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
                 }
             }
         } else {
