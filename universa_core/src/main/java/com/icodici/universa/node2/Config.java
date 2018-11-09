@@ -44,7 +44,7 @@ public class Config {
             encryptionError.printStackTrace();
         }
 
-        rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
+        rate.put(NSmartContract.SmartContractType.SLOT1.name(),4.0);
         rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
         rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 1.0);
 
