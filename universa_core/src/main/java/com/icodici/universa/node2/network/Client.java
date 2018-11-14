@@ -367,7 +367,7 @@ public class Client {
     @Deprecated
     public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
         try {
-            registerParcel(packed, millisToWait);
+            registerParcelWithState(packed, millisToWait);
             return true;
         } catch (ClientError e) {
             if (e.getErrorRecord().getError() == Errors.COMMAND_PENDING)
