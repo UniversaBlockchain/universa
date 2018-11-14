@@ -575,4 +575,51 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         assertTrue(joinResult.isOk());
     }
 
+
+    @Test
+    public void joinWithDisallowedPermission() throws Exception {
+
+        Contract contract = new Contract(ownerKey1);
+        contract.getDefinition().getData().set("currency","UTN");
+
+        Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.data.currency","definition.issuer"));
+        Role ownerLink = new RoleLink("@onwer_link","owner");
+        contract.registerRole(ownerLink);
+        SplitJoinPermission  splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+        contract.addPermission(splitJoinPermission);
+        contract.getStateData().set("amount","1000.5");
+        contract.seal();
+        contract.check();
+        assertTrue(contract.isOk());
+
+        Contract contractToJoin = new Contract(ownerKey1);
+        contractToJoin.setOwnerKey(ownerKey2.getPublicKey());
+        contractToJoin.getDefinition().getData().set("currency","UTN");
+        ownerLink = new RoleLink("@onwer_link","owner");
+        contractToJoin.getStateData().set("amount","100.0");
+        contractToJoin.registerRole(ownerLink);
+
+        splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+        contractToJoin.addPermission(splitJoinPermission);
+        contractToJoin.seal();
+        contractToJoin.check();
+        assertTrue(contractToJoin.isOk());
+
+
+        HashSet<PrivateKey> keys = new HashSet<>();
+        keys.add(ownerKey1);
+        Contract joinResult = ContractsService.createJoin(contract, contractToJoin, "amount", keys);
+        joinResult.check();
+        assertFalse(joinResult.isOk());
+
+
+
+        keys = new HashSet<>();
+        keys.add(ownerKey1);
+        keys.add(ownerKey2);
+        joinResult = ContractsService.createJoin(contract, contractToJoin, "amount", keys);
+        joinResult.check();
+        assertTrue(joinResult.isOk());
+    }
+
 }

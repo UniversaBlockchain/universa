@@ -120,7 +120,7 @@ public class SplitJoinPermission extends Permission {
             if (a instanceof Contract) {
                 Contract c = (Contract) a;
 
-                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences))
+                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences,true))
                     continue;
 
                 revokesToRemove.add(c);
@@ -154,8 +154,6 @@ public class SplitJoinPermission extends Permission {
 
 
             if (!isMergeable(s) || !validateMergeFields(changed, s) || !hasSimilarPermission(s, keys, checkingReferences, false)) {
-                int a = 0;
-                a++;
                 continue;
             }
 
@@ -190,7 +188,7 @@ public class SplitJoinPermission extends Permission {
         for (Approvable r : changed.getRevokingItems()) {
             if (r instanceof Contract) {
                 Contract c = (Contract) r;
-                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences))
+                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences,true))
                     continue;
 
                 revokesToRemove.add(c);
@@ -200,10 +198,6 @@ public class SplitJoinPermission extends Permission {
 
 
         return splitJoinSum.compareTo(rSum) == 0;
-    }
-
-    private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, Collection<String> references) {
-        return hasSimilarPermission(contract,keys,references,false);
     }
 
     private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, Collection<String> references,boolean checkAllowance) {

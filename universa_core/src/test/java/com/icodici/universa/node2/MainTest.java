@@ -6999,4 +6999,74 @@ public class MainTest {
 
         mm.forEach(x -> x.shutdown());
     }
+
+
+
+    @Test
+    public void joinFromDifferentOwners() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(m->m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Thread.sleep(2000);
+
+        PrivateKey issuer = TestKeys.privateKey(11);
+        PrivateKey owner1 = TestKeys.privateKey(12);
+        PrivateKey owner2 = TestKeys.privateKey(13);
+        PrivateKey owner3 = TestKeys.privateKey(14);
+
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(issuer)), new HashSet<>(Do.listOf(owner1.getPublicKey())), "3000");
+        assertEquals(ts.client.register(token.getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+        Contract part1 = token.createRevision(owner1);
+        Contract[] parts = part1.split(2);
+        Contract part2 = parts[0];
+        Contract part3 = parts[1];
+
+
+        part1.setOwnerKey(owner1.getPublicKey());
+        part1.getStateData().set("amount","1000");
+        part2.setOwnerKey(owner2.getPublicKey());
+        part2.getStateData().set("amount","1000");
+        part3.setOwnerKey(owner3.getPublicKey());
+        part3.getStateData().set("amount","1000");
+
+        part2.seal();
+        part3.seal();
+
+        part1.seal();
+
+
+        ItemResult rr = ts.client.register(part1.getPackedTransaction(), 15000);
+        System.out.println(rr.errors);
+        assertEquals(rr.state,ItemState.APPROVED);
+        assertEquals(ts.client.getState(part2.getId()).state,ItemState.APPROVED);
+        assertEquals(ts.client.getState(part3.getId()).state,ItemState.APPROVED);
+
+
+        part1 = Contract.fromPackedTransaction(part1.getPackedTransaction());
+        part2 = Contract.fromPackedTransaction(part2.getPackedTransaction());
+        part3 = Contract.fromPackedTransaction(part3.getPackedTransaction());
+
+
+        Contract badJoin = part1.createRevision(owner1);
+        badJoin.addRevokingItems(part2);
+        badJoin.addRevokingItems(part3);
+        badJoin.getStateData().set("amount","3000");
+        badJoin.seal();
+        badJoin.check();
+        assertEquals(ts.client.register(badJoin.getPackedTransaction(),15000).state,ItemState.DECLINED);
+
+        Contract goodJoin = part1.createRevision(owner1, owner2,owner3);
+        goodJoin.addRevokingItems(part2);
+        goodJoin.addRevokingItems(part3);
+        goodJoin.getStateData().set("amount","3000");
+        goodJoin.seal();
+        assertEquals(ts.client.register(goodJoin.getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+
+        ts.nodes.forEach(m->m.shutdown());
+
+    }
+
 }
