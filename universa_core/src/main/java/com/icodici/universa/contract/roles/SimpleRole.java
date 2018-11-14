@@ -182,7 +182,8 @@ public class SimpleRole extends Role {
      * @return true if role is valid
      */
     public boolean isValid() {
-        return !keyRecords.isEmpty() || !anonymousIds.isEmpty() || !keyAddresses.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty() || !keyAddresses.isEmpty() ||
+                !requiredAllReferences.isEmpty() || !requiredAnyReferences.isEmpty();
     }
 
     /**
