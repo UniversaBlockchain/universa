@@ -280,7 +280,7 @@ public class FollowerContract extends NSmartContract {
     public boolean canFollowContract(Contract contract) {
         // check for contract owner
         Role owner = contract.getOwner();
-        if (owner.isAllowedForKeys(getSealedByKeys()))
+        if (owner.isAllowedForKeys(getEffectiveKeys()))
             return true;
 
         // check for roles from field data.follower_roles in all sections of contract
@@ -302,7 +302,7 @@ public class FollowerContract extends NSmartContract {
                             if ((!(role instanceof Role)) || ((role instanceof RoleLink) && (role.getContract() == null)))
                                 return false;
 
-                            return role.isAllowedForKeys(getSealedByKeys());
+                            return role.isAllowedForKeys(getEffectiveKeys());
                         })))
                     return true;
             } catch (Exception e) {} // no followable roles in <section>.data
