@@ -10,8 +10,10 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
@@ -21,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 
@@ -104,24 +107,26 @@ public class RoleReferencesTest {
         PublicKey key = keys.get(0).getPublicKey();
         Set<PublicKey> keySet = new HashSet<>();
         keySet.add(key);
+        Contract contract = new Contract();
+
         SimpleRole sr = new SimpleRole("tr1");
         sr.addKeyRecord(new KeyRecord(key));
+        contract.registerRole(sr);
 
         assertTrue(!sr.isAllowedForKeys(new HashSet<>()));
         assertTrue(sr.isAllowedForKeys(keySet));
-        assertTrue(sr.isAllowedFor(keySet,new HashSet<>()));
         sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
         sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
-        Set<String> allRef = new HashSet<>();
-        allRef.add("ref1");
-        assertTrue(!sr.isAllowedFor(keySet,allRef));
-        allRef.add("ref2");
-        assertTrue(sr.isAllowedFor(keySet,allRef));
+
+        contract.getValidRoleReferences().add("ref1");
+        assertFalse(sr.isAllowedForKeys(keySet));
+        contract.getValidRoleReferences().add("ref2");
+        assertTrue(sr.isAllowedForKeys(keySet));
         sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
-        assertTrue(!sr.isAllowedFor(keySet,allRef));
+        assertFalse(sr.isAllowedForKeys(keySet));
         sr.addRequiredReference("ref4", Role.RequiredMode.ANY_OF);
         sr.addRequiredReference("ref5", Role.RequiredMode.ANY_OF);
-        allRef.add("ref4");
-        assertTrue(sr.isAllowedFor(keySet,allRef));
+        contract.getValidRoleReferences().add("ref4");
+        assertTrue(sr.isAllowedForKeys(keySet));
     }
 }

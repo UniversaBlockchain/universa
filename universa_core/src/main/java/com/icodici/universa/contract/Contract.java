@@ -1237,10 +1237,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(ISSUER_MUST_CREATE, "issuer.keys");
         }
 
-        if (!issuer.isAllowedForReferences(getValidRoleReferences())) {
-            addError(ISSUER_MUST_CREATE, "issuer.references");
-        }
-
         if (state.revision != 1)
             addError(BAD_VALUE, "state.revision", "must be 1 in a root contract");
         if (state.createdAt == null)
@@ -1645,7 +1641,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
             for (Permission p : cp) {
-                if (p.isAllowedFor(keys, getValidRoleReferences())) {
+                if (p.isAllowedFor(keys)) {
                     checkApplicablePermissionQuantized(p);
                     return true;
                 }

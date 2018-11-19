@@ -136,17 +136,16 @@ public class ContractDelta {
 
     private void excludePermittedChanges() throws Quantiser.QuantiserException {
         Set<PublicKey> checkingKeys = changed.getEffectiveKeys();
-        Set<String> checkingReferences = existing.getValidRoleReferences();
         for (String key : existing.getPermissions().keySet()) {
             Collection<Permission> permissions = existing.getPermissions().get(key);
             boolean permissionQuantized = false;
             for (Permission permission : permissions) {
-                if (permission.isAllowedFor(checkingKeys, checkingReferences)) {
+                if (permission.isAllowedForKeys(checkingKeys)) {
                     if(!permissionQuantized) {
                         changed.checkApplicablePermissionQuantized(permission);
                         permissionQuantized = true;
                     }
-                    permission.checkChanges(existing, changed, stateChanges,revokingItems,checkingKeys,checkingReferences);
+                    permission.checkChanges(existing, changed, stateChanges,revokingItems,checkingKeys);
                 }
             }
         }

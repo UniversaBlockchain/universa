@@ -74,10 +74,9 @@ public class ModifyDataPermission extends Permission {
      * @param stateChanges map of changes, see {@link Delta} for details
      * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
-     * @param checkingReferences are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
+    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
         Delta data = stateChanges.get("data");
         if (data != null && data instanceof MapDelta) {
             Map mapChanges = ((MapDelta) data).getChanges();

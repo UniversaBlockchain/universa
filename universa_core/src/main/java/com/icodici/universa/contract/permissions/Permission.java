@@ -132,7 +132,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         Set<PublicKey> keySet = new HashSet<>();
         for (PublicKey k : keys)
             keySet.add(k);
-        return isAllowedFor(keySet, null);
+        return isAllowedFor(keySet);
     }
 
     /**
@@ -143,18 +143,17 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      */
     public boolean isAllowedForKeys(Collection<PublicKey> keys) {
 //        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
-        return isAllowedFor(keys, null);
+        return isAllowedFor(keys);
     }
 
     /**
      * Check permission is allowed to keys and references
      *
      * @param keys is collection of public keys
-     * @param references is collection of references names
      * @return true if permission is allowed to keys and references
      */
-    public boolean isAllowedFor(Collection<PublicKey> keys, Collection<String> references) {
-        return role.isAllowedFor(keys, references);
+    public boolean isAllowedFor(Collection<PublicKey> keys) {
+        return role.isAllowedForKeys(new HashSet<>(keys));
     }
 
     @Override
@@ -189,9 +188,8 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * @param stateChanges map of changes, see {@link Delta} for details
      * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
-     * @param checkingReferences are used to check other contracts permissions
      */
-    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences);
+    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys);
 
     /**
      * Get permission as string.

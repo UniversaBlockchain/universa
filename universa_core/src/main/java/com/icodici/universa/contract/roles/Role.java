@@ -133,25 +133,25 @@ public abstract class Role implements BiSerializable {
      * @param keys is set of keys
      * @return true if role is allowed to keys
      */
-    public abstract boolean isAllowedForKeys(Set<? extends AbstractKey> keys);
+    public  boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
+        return isAllowedForReferences(contract == null ? new HashSet<>() : contract.getValidRoleReferences());
+    }
+
 
     /**
      * Check role is allowed to keys and references
      *
      * @param keys is collection of keys
-     * @param references is collection of references names
+     * @param references this parameter is ignored
      * @return true if role is allowed to keys and references
+     * @deprecated use isAllowedForKeys instead. References should be used withith reference contract context
      */
+    @Deprecated
     public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
-        if(!isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys)))
-            return false;
-        if(!isAllowedForReferences(references))
-            return false;
-        return true;
-
+        return isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys));
     }
 
-    public boolean isAllowedForReferences(Collection<String> references) {
+    private boolean isAllowedForReferences(Collection<String> references) {
         if(requiredAllReferences.stream().anyMatch(ref -> references == null || !references.contains(ref))) {
             return false;
         }
@@ -165,7 +165,9 @@ public abstract class Role implements BiSerializable {
      *
      * @param keyAddress address for matching with role
      * @return true if match or false
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      */
+    @Deprecated
     public boolean isMatchingKeyAddress(KeyAddress keyAddress) {
         for (KeyAddress ka : this.getKeyAddresses()) {
             if (keyAddress.isMatchingKeyAddress(ka))
@@ -179,7 +181,10 @@ public abstract class Role implements BiSerializable {
 
         return false;
     }
-
+    /**
+     * @deprecated the only usable check allowance method is isAllowedForKeys
+     */
+    @Deprecated
     public  boolean isMatchingRole(Role role) {
 
         return false;
@@ -225,23 +230,27 @@ public abstract class Role implements BiSerializable {
      *
      * @param otherRole is {@link Role} for checking by keys
      * @return true if equals
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      */
+    @Deprecated
     public boolean equalKeys(@NonNull Role otherRole) {
         return otherRole.getKeys().equals(getKeys());
     }
-
+    @Deprecated
     public boolean equalAddresses(Role otherRole) {
         return otherRole.getKeyAddresses().equals(getKeyAddresses());
     }
-
+    @Deprecated
     public boolean equalAnonIds(Role otherRole) {
         return otherRole.getAnonymousIds().equals(getAnonymousIds());
     }
 
     /**
      * Get all addresses, used by this role. For public keys returns addresses too.
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return list of strings with addresses
      */
+    @Deprecated
     public List<String> getAllAddresses() {
         List<String> res = new ArrayList<>();
         getKeyAddresses().forEach(ka -> res.add(ka.toString()));
@@ -294,30 +303,34 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Get set of all keys in sub-roles.
-     *
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return set of public keys (see {@link PublicKey})
      */
+    @Deprecated
     public abstract Set<PublicKey> getKeys();
 
     /**
      * Get set of all anonymous identifiers in sub-roles.
-     *
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return set of anonymous identifiers (see {@link AnonymousId})
      */
+    @Deprecated
     public abstract Set<AnonymousId> getAnonymousIds();
 
     /**
      * Get set of all key addresses in sub-roles.
-     *
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return set of key addresses (see {@link KeyAddress})
      */
+    @Deprecated
     public abstract Set<KeyAddress> getKeyAddresses();
 
     /**
      * Get set of all key records in sub-roles.
-     *
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return set of key records (see {@link KeyAddress})
      */
+    @Deprecated
     public abstract Set<KeyRecord> getKeyRecords();
 
     /**
@@ -334,7 +347,7 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Testing only. For lne-key roles, return the keyrecord.
-     *
+     * @deprecated the only usable check allowance method is isAllowedForKeys
      * @return found {@link KeyRecord}
      */
     @Deprecated

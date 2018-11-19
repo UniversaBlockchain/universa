@@ -450,8 +450,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("change_owner").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
-        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+        c.getValidRoleReferences().addAll(references);
+        assertTrue(r.isAllowedForKeys(stepaPublicKeys));
 
         System.out.println("Owner now :" + c.getOwner());
         System.out.println("change owner permission :" + c.getPermissions().get("change_owner"));
@@ -520,8 +521,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("revoke").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
-        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+        c.getValidRoleReferences().addAll(references);
+        assertTrue(r.isAllowedForKeys(stepaPublicKeys));
 
         System.out.println("revoke permission :" + c.getPermissions().get("revoke"));
 
@@ -597,8 +599,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("split_join").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
-        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+        c.getValidRoleReferences().addAll(references);
+        assertTrue(r.isAllowedForKeys(stepaPublicKeys));
 
         System.out.println("split join permission :" + c.getPermissions().get("split_join"));
 
@@ -674,8 +677,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("decrement_permission").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
-        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+        c.getValidRoleReferences().addAll(references);
+        assertTrue(r.isAllowedForKeys(stepaPublicKeys));
 
         System.out.println("decrement permission :" + c.getPermissions().get("decrement_permission"));
 

@@ -164,6 +164,10 @@ public class SimpleRole extends Role {
      */
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
+        if(!super.isAllowedForKeys(keys)) {
+            return false;
+        }
+
         boolean allMatch1 = anonymousIds.stream().allMatch(anonId -> keys.stream().anyMatch(key -> {
             try {
                 return key.matchAnonymousId(anonId.getBytes());

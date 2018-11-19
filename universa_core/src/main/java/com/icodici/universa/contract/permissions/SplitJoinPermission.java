@@ -83,10 +83,9 @@ public class SplitJoinPermission extends Permission {
      * @param stateChanges       map of changes, see {@link Delta} for details
      * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
-     * @param checkingReferences are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
         MapDelta<String, Binder, Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
         if (dataChanges == null)
             return;
@@ -100,9 +99,9 @@ public class SplitJoinPermission extends Permission {
 
                 int cmp = oldValue.compareTo(newValue);
                 if (cmp > 0)
-                    checkSplit(changed, dataChanges, revokingItems, keys, checkingReferences, oldValue, newValue);
+                    checkSplit(changed, dataChanges, revokingItems, keys, oldValue, newValue);
                 else if (cmp < 0)
-                    checkMerge(changed, dataChanges, revokingItems, keys, checkingReferences, newValue);
+                    checkMerge(changed, dataChanges, revokingItems, keys, newValue);
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
@@ -110,7 +109,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences, Decimal newValue) {
+    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal newValue) {
         boolean isValid;
 
         // merge means there are mergeable contracts in the revoking items
@@ -120,7 +119,7 @@ public class SplitJoinPermission extends Permission {
             if (a instanceof Contract) {
                 Contract c = (Contract) a;
 
-                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences,true))
+                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys,true))
                     continue;
 
                 revokesToRemove.add(c);
@@ -134,7 +133,7 @@ public class SplitJoinPermission extends Permission {
 
         if (!isValid) {
             revokesToRemove.clear();
-            isValid = checkSplitJoinCase(changed, revokesToRemove, keys, checkingReferences);
+            isValid = checkSplitJoinCase(changed, revokesToRemove, keys);
         }
 
 
@@ -144,7 +143,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences, Decimal oldValue, Decimal newValue) {
+    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal oldValue, Decimal newValue) {
         boolean isValid;
 
         // We need to find the splitted contracts
@@ -153,7 +152,7 @@ public class SplitJoinPermission extends Permission {
         for (Contract s : changed.getSiblings()) {
 
 
-            if (!isMergeable(s) || !validateMergeFields(changed, s) || !hasSimilarPermission(s, keys, checkingReferences, false)) {
+            if (!isMergeable(s) || !validateMergeFields(changed, s) || !hasSimilarPermission(s, keys, false)) {
                 continue;
             }
 
@@ -164,7 +163,7 @@ public class SplitJoinPermission extends Permission {
         isValid = sum.equals(oldValue);
 
         if (!isValid)
-            isValid = checkSplitJoinCase(changed, revokesToRemove, keys, checkingReferences);
+            isValid = checkSplitJoinCase(changed, revokesToRemove, keys);
 
 
         if (isValid && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0) {
@@ -173,11 +172,11 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private boolean checkSplitJoinCase(Contract changed, Set<Contract> revokesToRemove, Collection<PublicKey> keys, Collection<String> checkingReferences) {
+    private boolean checkSplitJoinCase(Contract changed, Set<Contract> revokesToRemove, Collection<PublicKey> keys) {
         Decimal splitJoinSum = Decimal.ZERO;
 
         for (Contract c : changed.getSiblings()) {
-            if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences, false))
+            if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys,  false))
                 continue;
 
             splitJoinSum = splitJoinSum.add(new Decimal(c.getStateData().getString(fieldName)));
@@ -188,7 +187,7 @@ public class SplitJoinPermission extends Permission {
         for (Approvable r : changed.getRevokingItems()) {
             if (r instanceof Contract) {
                 Contract c = (Contract) r;
-                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, checkingReferences,true))
+                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, true))
                     continue;
 
                 revokesToRemove.add(c);
@@ -200,7 +199,7 @@ public class SplitJoinPermission extends Permission {
         return splitJoinSum.compareTo(rSum) == 0;
     }
 
-    private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, Collection<String> references,boolean checkAllowance) {
+    private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, boolean checkAllowance) {
         Collection<Permission> permissions = contract.getPermissions().get("split_join");
         if(permissions == null)
             return false;
@@ -221,7 +220,7 @@ public class SplitJoinPermission extends Permission {
             if(!((SplitJoinPermission)p).mergeFields.containsAll(mergeFields)) {
                 return false;
             }
-            if(checkAllowance && !p.isAllowedFor(keys,references)) {
+            if(checkAllowance && !p.isAllowedFor(keys)) {
                 return false;
             }
             return true;
