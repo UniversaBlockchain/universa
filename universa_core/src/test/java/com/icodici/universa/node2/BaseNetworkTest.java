@@ -7408,51 +7408,6 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 60000)
-    public void checkReferencesContracts() throws Exception {
-        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract1.yml");
-        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract2.yml");
-        Contract contract3 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract3.yml");
-        contract1.seal();
-        contract2.seal();
-        contract3.seal();
-
-        TransactionPack tp = new TransactionPack();
-        tp.setContract(contract1);
-        tp.addSubItem(contract1);
-        tp.addReferencedItem(contract1);
-        tp.addSubItem(contract2);
-        tp.addReferencedItem(contract2);
-        tp.addSubItem(contract3);
-        tp.addReferencedItem(contract3);
-
-        Contract refContract1 = new Contract(contract1.seal(), tp);
-        Contract refContract2 = new Contract(contract3.seal(), tp);
-
-        refContract1.check();
-        refContract2.check();
-
-        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(refContract1));
-        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract2));
-        assertFalse(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract3));
-
-        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(refContract1));
-        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract2));
-        assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
-
-        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(refContract1));
-        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
-        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
-
-        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
-        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
-        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(refContract2));
-
-        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
-        assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
-        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(refContract2));
-    }
-
-    @Test(timeout = 60000)
     public void referenceForChangeOwnerWithCreateContract() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
@@ -17566,5 +17521,48 @@ public class BaseNetworkTest extends TestCase {
         callback.shutdown();
 
         nodes.forEach(n -> assertFalse(n.hasDeferredNotifications()));
+    }
+
+    @Test(timeout = 60000)
+    public void checkReferenceCanPlay() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        final PrivateKey key2 = new PrivateKey(Do.read(ROOT_PATH + "test_network_whitekey.private.unikey"));
+
+        Contract contract2 = new Contract(key2);
+        contract2.addSignerKey(key);
+        contract2.seal();
+        contract2.check();
+        contract2.traceErrors();
+        assertTrue(contract2.isOk());
+
+        Contract contract1 = new Contract(key);
+
+        List<String> listConditions = new ArrayList<>();
+        listConditions.add("ref.id==" + contract2.getId().toBase64String());
+        listConditions.add("this can_play ref.issuer");
+        listConditions.add("ref can_play this.owner");
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+
+        Reference ref = new Reference(contract1);
+        ref.name = "ref_can_play";
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref.setConditions(conditions);
+        contract1.addReference(ref);
+
+        contract1.addNewItems(contract2);
+        contract1.addSignerKey(key2);
+
+        contract1.seal();
+        contract1.check();
+        contract1.traceErrors();
+        assertTrue(contract1.isOk());
+
+        registerAndCheckApproved(contract1);
+
+        ItemResult itemResult = node.waitItem(contract2.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
     }
 }
