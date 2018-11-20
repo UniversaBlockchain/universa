@@ -3063,10 +3063,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public Set<PublicKey> getEffectiveKeys() {
-        if (effectiveKeys.isEmpty()) {
+        /*if (effectiveKeys.isEmpty()) {
             getSealedByKeys();
             effectiveKeys = new HashMap<>(sealedByKeys);
-        }
+        }*/
 
         return effectiveKeys.keySet();
     }

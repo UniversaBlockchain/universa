@@ -675,7 +675,13 @@ public class Reference implements BiSerializable {
                         if ((right == null) || !(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
-                        ret = ((Role) right).isAllowedFor(leftOperandContract.getEffectiveKeys(), null);
+                        Set<PublicKey> keys;
+                        if (leftOperand.equals("this"))
+                            keys = leftOperandContract.getEffectiveKeys();
+                        else
+                            keys = leftOperandContract.getSealedByKeys();
+
+                        ret = ((Role) right).isAllowedFor(keys, null);
 
                         break;
                     default:

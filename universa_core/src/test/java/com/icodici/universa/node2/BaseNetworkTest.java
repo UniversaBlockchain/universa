@@ -17530,6 +17530,7 @@ public class BaseNetworkTest extends TestCase {
         final PrivateKey key2 = new PrivateKey(Do.read(ROOT_PATH + "test_network_whitekey.private.unikey"));
 
         Contract contract2 = new Contract(key2);
+        contract2.addSignerKey(key);
         contract2.seal();
         contract2.check();
         contract2.traceErrors();
