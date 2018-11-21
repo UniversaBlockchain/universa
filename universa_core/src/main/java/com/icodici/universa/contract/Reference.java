@@ -473,22 +473,22 @@ public class Reference implements BiSerializable {
                                 ret = true;
                         } else if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
                             ((right != null) && right.getClass().getName().endsWith("HashId"))) {
-                            String leftID;
-                            String rightID;
+                            HashId leftID;
+                            HashId rightID;
 
                             if ((left != null) && left.getClass().getName().endsWith("HashId"))
-                                leftID = ((HashId) left).toBase64String();
+                                leftID = (HashId) left;
                             else if ((left != null) && left.getClass().getName().endsWith("String"))
-                                leftID = (String) left;
+                                leftID = HashId.withDigest((String) left);
                             else
-                                leftID = leftOperand;
+                                leftID = HashId.withDigest(leftOperand);
 
                             if ((right != null) && right.getClass().getName().endsWith("HashId"))
-                                rightID = ((HashId) right).toBase64String();
+                                rightID = (HashId) right;
                             else if ((right != null) && right.getClass().getName().endsWith("String"))
-                                rightID = (String) right;
+                                rightID = HashId.withDigest((String) right);
                             else
-                                rightID = rightOperand;
+                                rightID = HashId.withDigest(rightOperand);
 
                             ret = leftID.equals(rightID);
 
