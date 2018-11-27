@@ -690,7 +690,7 @@ public class Reference implements BiSerializable {
                         else
                             keys = leftOperandContract.getSealedByKeys();
 
-                        ret = ((Role) right).isAllowedFor(keys, null);
+                        ret = ((Role) right).isAllowedForKeys(keys);
 
                         break;
                     default:
