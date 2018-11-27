@@ -505,10 +505,6 @@ public class Reference implements BiSerializable {
                                     ((indxOperator == EQUAL) && ((Role)left).equalsIgnoreName((Role) right)))
                                     ret = true;
 
-                                if(!ret) {
-                                    int a = 0;
-                                    a++;
-                                }
                             } else {
                                 Role role;
                                 String compareOperand;
@@ -552,10 +548,6 @@ public class Reference implements BiSerializable {
                                 if (indxOperator == NOT_EQUAL)
                                     ret = !ret;
 
-                                if(!ret) {
-                                    int a = 0;
-                                    a++;
-                                }
                             }
                         } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
                                    ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
