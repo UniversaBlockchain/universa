@@ -38,6 +38,11 @@ public class Config {
             uIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
             uIssuerKeys.add(new KeyAddress("J3uaVvHE7JqhvVb1c26RyDhfJw9eP2KR1KRhm2VdmYx7NwHpzdHTyEPjcmKpgkJAtzWLSPUw"));
             addressesWhiteList.add(new KeyAddress("JguevMekFzsM8Co2bqrswrVim9c9WsNxG9thLeCcNxncBcHVsnziRjhzEbhwDnL3wj2hha6H"));
+
+            //U-bank
+            addressesWhiteList.add(new KeyAddress("YuY8XgTD9mwuucSku9myWyZbbJ1CY43D2KXD8obuxp73eoK5EU"));
+            addressesWhiteList.add(new KeyAddress("JuDQ9auvkvLEXaudcSEYabMzSnEu6drQ3UHV3gDFuYBxusSXHSLj2DgDNCL69zw2XkzdrDmr"));
+
         } catch (KeyAddress.IllegalAddressException e) {
             e.printStackTrace();
         } catch (EncryptionError encryptionError) {
