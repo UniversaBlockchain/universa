@@ -5318,13 +5318,16 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.getStateData().set("account_origin", newAccountCertificate.getOrigin().toBase64String());
 
         llcProperty2.seal();
+        llcProperty2 = Contract.fromPackedTransaction(llcProperty2.getPackedTransaction());
         llcProperty2.check();
         llcProperty2.traceErrors();
-        assertFalse(llcProperty2.isOk());
+        //bank_certificate reference is not required here as it is only needed for split/join.
+        //previous version of the test contained assertFalse because RoleLink references serialization error
+        assertTrue(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        // don't forget add all contracts needed for all references
-        tp_before.addReferencedItem(newAccountCertificate);
+        // ref not needed because there is not split join in action
+        //tp_before.addReferencedItem(newAccountCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);

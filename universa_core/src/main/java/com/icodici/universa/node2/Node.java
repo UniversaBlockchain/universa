@@ -3600,6 +3600,7 @@ public class Node {
         }
     }
 
+    @SuppressWarnings("deprecation") //outdated method. will be replaced with new one soon
     private void checkForNetConfig(Contract contract) {
         if (contract.getIssuer().getKeys().stream().anyMatch(key -> config.getNetworkReconfigKeyAddress().isMatchingKey(key))) {
             if(contract.getParent() == null)
@@ -3666,6 +3667,7 @@ public class Node {
         }
     }
 
+    @SuppressWarnings("deprecation") //outdated method. will be replaced with new one soon
     private boolean checkIfContractContainsNetConfig(Contract contract) {
         if(!contract.getStateData().containsKey("net_config")) {
             return false;

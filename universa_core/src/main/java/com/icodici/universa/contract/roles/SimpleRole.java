@@ -122,6 +122,7 @@ public class SimpleRole extends Role {
      *
      * @return set of key records (see {@link KeyRecord})
      */
+    @Deprecated
     public Set<KeyRecord> getKeyRecords() {
         return new HashSet(keyRecords.values());
     }
@@ -132,6 +133,7 @@ public class SimpleRole extends Role {
      * @return set of public keys (see {@link PublicKey})
      */
     @Override
+    @Deprecated
     public Set<PublicKey> getKeys() {
         return keyRecords.keySet();
     }
@@ -142,6 +144,7 @@ public class SimpleRole extends Role {
      * @return set of anonymous identifiers (see {@link AnonymousId})
      */
     @Override
+    @Deprecated
     public Set<AnonymousId> getAnonymousIds() {
         return anonymousIds;
     }
@@ -151,8 +154,46 @@ public class SimpleRole extends Role {
      *
      * @return set of key addresses (see {@link KeyAddress})
      */
+    @Deprecated
     @Override
     public Set<KeyAddress> getKeyAddresses() {
+        return keyAddresses;
+    }
+
+
+    /**
+     * Get set of all key records in role.
+     *
+     * @return set of key records (see {@link KeyRecord})
+     */
+    public Set<KeyRecord> getSimpleKeyRecords() {
+        return new HashSet(keyRecords.values());
+    }
+
+    /**
+     * Get set of all keys in role.
+     *
+     * @return set of public keys (see {@link PublicKey})
+     */
+    public Set<PublicKey> getSimpleKeys() {
+        return keyRecords.keySet();
+    }
+
+    /**
+     * Get set of all anonymous identifiers in role.
+     *
+     * @return set of anonymous identifiers (see {@link AnonymousId})
+     */
+    public Set<AnonymousId> getSimpleAnonymousIds() {
+        return anonymousIds;
+    }
+
+    /**
+     * Get set of all key addresses in role.
+     *
+     * @return set of key addresses (see {@link KeyAddress})
+     */
+    public Set<KeyAddress> getSimpleKeyAddresses() {
         return keyAddresses;
     }
 
@@ -190,58 +231,40 @@ public class SimpleRole extends Role {
                 !requiredAllReferences.isEmpty() || !requiredAnyReferences.isEmpty();
     }
 
-    /**
-     * Role equality is different: it only checks that it points to the same role.
-     *
-     * @param obj is object to be checked with
-     * @return true if equals
-     */
+
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof SimpleRole) {
-            boolean a = ((SimpleRole) obj).getName().equals(getName());
-            boolean b = ((SimpleRole) obj).equalKeys(this);
-            boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
-            boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds);
+    protected boolean equalsIgnoreNameAndRefs(Role role) {
+        if(!(role instanceof SimpleRole))
+            return false;
 
-            if (!(a && b && c && d))
-                return false;
+        if(!hasAllKeys(this,(SimpleRole)role))
+            return false;
 
-            boolean e = true;
-            for (KeyAddress ka1: this.getKeyAddresses()) {
-                e = false;
-                for (KeyAddress ka2: ((SimpleRole) obj).getKeyAddresses()) {
-                    if (ka1.equals(ka2)) {
-                        e = true;
-                        break;
-                    }
-                }
+        if(!hasAllKeys((SimpleRole)role,this))
+            return false;
 
-                if (!e)
-                    break;
-            }
+        return true;
+    }
 
-            if (!e)
-                return false;
+    private boolean hasAllKeys(SimpleRole role1, SimpleRole role2) {
+        if(!role1.keyRecords.keySet().stream().allMatch(k->
+                role2.keyRecords.containsKey(k) ||
+                        role2.keyAddresses.contains(k.getShortAddress()) ||
+                        role2.keyAddresses.contains(k.getLongAddress()) ||
+                        role2.anonymousIds.contains(new AnonymousId(k.createAnonymousId()))))
+            return false;
 
-            e = true;
-            for (KeyAddress ka1: ((SimpleRole) obj).getKeyAddresses()) {
-                e = false;
-                for (KeyAddress ka2: this.getKeyAddresses()) {
-                    if (ka1.equals(ka2)) {
-                        e = true;
-                        break;
-                    }
-                }
+        if(!role1.keyAddresses.stream().allMatch(ka->
+                role2.keyAddresses.contains(ka) ||
+                        role2.keyRecords.keySet().stream().anyMatch(key->ka.equals(key.getShortAddress()) || ka.equals(key.getLongAddress()))))
+            return false;
 
-                if (!e)
-                    break;
-            }
+        if(!role1.anonymousIds.stream().allMatch(anonymousId ->
+                role2.anonymousIds.contains(anonymousId) ||
+                        role2.keyRecords.keySet().stream().anyMatch(key->new AnonymousId(key.createAnonymousId()).equals(anonymousId))))
+            return false;
 
-            return e;
-        }
-
-        return false;
+        return true;
     }
 
     /**

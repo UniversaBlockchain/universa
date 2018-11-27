@@ -11,10 +11,7 @@ import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.permissions.*;
-import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.roles.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
@@ -659,8 +656,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
         roles.values().forEach(role -> {
-            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
-            role.getAnonymousIds().forEach(anonId -> {
+
+            RoleExtractor.extractKeys(role).forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            RoleExtractor.extractAnonymousIds(role).forEach(anonId -> {
                 getTransactionPack().getKeysForPack().forEach(
                         key -> {
                             try {
@@ -673,7 +671,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         }
                 );
             });
-            role.getKeyAddresses().forEach(keyAddr -> {
+            RoleExtractor.extractKeyAddresses(role).forEach(keyAddr -> {
                 getTransactionPack().getKeysForPack().forEach(
                         key -> {
                             try {
@@ -1100,12 +1098,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // The "U" contract is checked to have valid issuer key (one of preset URS keys)
-        Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
-        for (PublicKey publicKey : getIssuer().getKeys())
-            thisIssuerAddresses.add(publicKey.getShortAddress());
-        if (Collections.disjoint(issuerKeys, thisIssuerAddresses)) {
+
+        Role issuer = getIssuer();
+        if(!(issuer instanceof SimpleRole)) {
             res = false;
-            addError(Errors.BAD_VALUE, "issuerKeys is not valid");
+            addError(Errors.BAD_VALUE, "issuer is not valid. must be simple role");
+        } else {
+            Set<KeyAddress> thisIssuerAddresses = new HashSet<>(((SimpleRole) issuer).getSimpleKeyAddresses());
+            for (PublicKey publicKey : ((SimpleRole) issuer).getSimpleKeys())
+                thisIssuerAddresses.add(publicKey.getShortAddress());
+
+
+            if (Collections.disjoint(issuerKeys, thisIssuerAddresses)) {
+                res = false;
+                addError(Errors.BAD_VALUE, "issuerKeys is not valid");
+            }
         }
 
         // If the check is failed, checking process is aborting
@@ -1458,6 +1465,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Get all addresses, used by registered role from the contract. For public keys returns addresses too.
      * @return list of strings with addresses
      */
+    @Deprecated
     public List<String> getRoleAddresses(String roleName) {
         return getRole(roleName).getAllAddresses();
     }
@@ -1545,6 +1553,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return definition;
     }
 
+    @Deprecated
     public KeyRecord testGetOwner() {
         return getRole("owner").getKeyRecords().iterator().next();
     }
@@ -3659,8 +3668,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public boolean isU(Set<KeyAddress> issuerKeys, String issuerName) {
-        Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
-        for (PublicKey publicKey : getIssuer().getKeys())
+        Role issuer = getIssuer();
+        if(!(issuer instanceof SimpleRole))
+            return false;
+
+
+        Set<KeyAddress> thisIssuerAddresses = new HashSet<>(((SimpleRole)issuer).getSimpleKeyAddresses());
+        for (PublicKey publicKey : ((SimpleRole)issuer).getSimpleKeys())
             thisIssuerAddresses.add(publicKey.getShortAddress());
         if (Collections.disjoint(issuerKeys, thisIssuerAddresses))
             return false;

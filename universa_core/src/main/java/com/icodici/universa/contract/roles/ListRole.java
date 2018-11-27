@@ -204,6 +204,22 @@ public class ListRole extends Role {
         return !this.roles.isEmpty();
     }
 
+    @Override
+    protected boolean equalsIgnoreNameAndRefs(Role otherRole) {
+        if(!(otherRole instanceof ListRole))
+            return false;
+
+        if(!roles.equals(((ListRole) otherRole).roles))
+            return false;
+
+        if(mode != ((ListRole) otherRole).mode)
+            return false;
+
+        if(mode == Mode.QUORUM && quorumSize != ((ListRole) otherRole).quorumSize)
+            return false;
+        return true;
+    }
+
     /**
      * Initializes combining role from dsl.
      *
@@ -250,9 +266,10 @@ public class ListRole extends Role {
      * @return set of public keys (see {@link PublicKey})
      */
     @Override
+    @Deprecated
     public Set<KeyRecord> getKeyRecords() {
         return this.roles.stream()
-                .flatMap(role -> role.getKeyRecords().stream())
+                .flatMap(role -> RoleExtractor.extractKeyRecords(role).stream())
                 .collect(Collectors.toSet());
     }
 
@@ -262,9 +279,10 @@ public class ListRole extends Role {
      * @return set of public keys (see {@link PublicKey})
      */
     @Override
+    @Deprecated
     public Set<PublicKey> getKeys() {
         return this.roles.stream()
-                .flatMap(role -> role.getKeys().stream())
+                .flatMap(role -> RoleExtractor.extractKeys(role).stream())
                 .collect(Collectors.toSet());
     }
 
@@ -274,9 +292,10 @@ public class ListRole extends Role {
      * @return set of anonymous identifiers (see {@link AnonymousId})
      */
     @Override
+    @Deprecated
     public Set<AnonymousId> getAnonymousIds() {
         return this.roles.stream()
-                .flatMap(role -> role.getAnonymousIds().stream())
+                .flatMap(role -> RoleExtractor.extractAnonymousIds(role).stream())
                 .collect(Collectors.toSet());
     }
 
@@ -286,9 +305,10 @@ public class ListRole extends Role {
      * @return set of key addresses (see {@link KeyAddress})
      */
     @Override
+    @Deprecated
     public Set<KeyAddress> getKeyAddresses() {
         return this.roles.stream()
-                .flatMap(role -> role.getKeyAddresses().stream())
+                .flatMap(role -> RoleExtractor.extractKeyAddresses(role).stream())
                 .collect(Collectors.toSet());
     }
 

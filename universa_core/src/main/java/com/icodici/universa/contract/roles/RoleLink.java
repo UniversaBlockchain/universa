@@ -102,6 +102,7 @@ public class RoleLink extends Role {
      * @return set of key records (see {@link KeyRecord})
      */
     @Override
+    @Deprecated
     public Set<KeyRecord> getKeyRecords() {
         return resolve().getKeyRecords();
     }
@@ -112,6 +113,7 @@ public class RoleLink extends Role {
      * @return set of anonymous identifiers (see {@link AnonymousId})
      */
     @Override
+    @Deprecated
     public Set<AnonymousId> getAnonymousIds() {
         final Role role = resolve();
         return (role == null) ? null : role.getAnonymousIds();
@@ -123,6 +125,7 @@ public class RoleLink extends Role {
      * @return set of key addresses (see {@link KeyAddress})
      */
     @Override
+    @Deprecated
     public Set<KeyAddress> getKeyAddresses() {
         final Role role = resolve();
         return (role == null) ? null : role.getKeyAddresses();
@@ -134,6 +137,7 @@ public class RoleLink extends Role {
      * @return set of public keys (see {@link PublicKey})
      */
     @Override
+    @Deprecated
     public Set<PublicKey> getKeys() {
         final Role role = resolve();
         return (role == null) ? null : role.getKeys();
@@ -175,6 +179,7 @@ public class RoleLink extends Role {
      * @return true if equals
      */
     @Override
+    @Deprecated
     public boolean equalKeys(Role otherRole) {
         final Role role = getRole();
         return (role == null) ? false : role.equalKeys(otherRole);
@@ -208,23 +213,19 @@ public class RoleLink extends Role {
         }
     }
 
-    /**
-     * RoleLink equality is different: it only checks that it points to the same role.
-     *
-     * @param obj is object to be checked with
-     * @return true if equals
-     */
+
+
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof RoleLink) {
-            return ((RoleLink) obj).roleName.equals(roleName);
+    protected boolean equalsIgnoreNameAndRefs(Role otherRole) {
+        if (otherRole instanceof RoleLink) {
+            return ((RoleLink) otherRole).roleName.equals(roleName);
         }
         return false;
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
-        return Binder.fromKeysValues(
+        return super.serialize(s).putAll(
                 "name", getName(),
                 "target_name", roleName
         );

@@ -56,7 +56,7 @@ public class SimpleRoleTest {
         Binder serialized = DefaultBiMapper.serialize(sr);
         Role r1 = DefaultBiMapper.deserialize(serialized);
         assertEquals(sr, r1);
-        Set<PublicKey> kk = r1.getKeys();
+        Set<PublicKey> kk = ((SimpleRole)r1).getSimpleKeys();
         keys.forEach(k->assertTrue(kk.contains(k.getPublicKey())));
     }
 

@@ -22,6 +22,7 @@ import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
+import net.sergeych.tools.Do;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -1509,7 +1510,7 @@ public class ContractsService {
                                                    boolean withTestPayment) {
 
         Contract paymentDecreased = payment.createRevision(keys);
-
+        paymentDecreased.getTransactionalData().set("id",payload.getId().toBase64String());
         if (withTestPayment) {
             paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
@@ -1676,7 +1677,7 @@ public class ContractsService {
     public static Contract addConsent(Contract source, KeyAddress... consentKeyAddresses) {
         Contract consent = new Contract();
         consent.setExpiresAt(ZonedDateTime.now().plusDays(10));
-        consent.setIssuerKeys(consentKeyAddresses);
+        consent.setIssuerKeys(Arrays.asList(consentKeyAddresses));
         consent.registerRole(new RoleLink("creator","issuer"));
         consent.registerRole(new RoleLink("owner","issuer"));
         RoleLink ownerLink = new RoleLink("@owner_link","owner");

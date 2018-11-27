@@ -214,13 +214,21 @@ public abstract class Role implements BiSerializable {
      * @return true if equals
      */
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (obj instanceof Role) {
-            Role otherRole = (Role) obj;
-            return otherRole.requiredAnyReferences.equals(requiredAnyReferences) && otherRole.requiredAllReferences.equals(requiredAllReferences) && otherRole.name.equals(name) && otherRole.getClass() == getClass();
+            return equalsIgnoreName((Role) obj) && ((name == null && ((Role) obj).name == null) || (name != null && ((Role) obj).name != null && name.equals(((Role) obj).name)));
         }
         return false;
     }
+
+    public final boolean equalsIgnoreName(Role otherRole) {
+        boolean refsEquals = otherRole.requiredAnyReferences.equals(requiredAnyReferences) && otherRole.requiredAllReferences.equals(requiredAllReferences);
+        if(!refsEquals)
+            return false;
+        return equalsIgnoreNameAndRefs(otherRole);
+    }
+
+    protected abstract boolean equalsIgnoreNameAndRefs(Role otherRole);
 
     /**
      * A role has exactly same set of keys as in the supplied role. It does not check the logic,
@@ -407,7 +415,7 @@ public abstract class Role implements BiSerializable {
                 required.set(ALL_OF.name(),s.serialize(requiredAllReferences));
             }
 
-            if(!requiredAllReferences.isEmpty()) {
+            if(!requiredAnyReferences.isEmpty()) {
                 required.set(ANY_OF.name(),s.serialize(requiredAnyReferences));
             }
 

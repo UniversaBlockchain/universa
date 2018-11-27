@@ -5,9 +5,12 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.crypto.KeyAddress;
+import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
@@ -472,9 +475,14 @@ public class Reference implements BiSerializable {
                                    ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) { // if role - compare with role, key or address
                             if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) &&
                                 ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) {
-                                if (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
-                                    ((indxOperator == EQUAL) && left.equals(right)))
+                                if (((indxOperator == NOT_EQUAL) && !((Role)left).equalsIgnoreName((Role) right)) ||
+                                    ((indxOperator == EQUAL) && ((Role)left).equalsIgnoreName((Role) right)))
                                     ret = true;
+
+                                if(!ret) {
+                                    int a = 0;
+                                    a++;
+                                }
                             } else {
                                 Role role;
                                 String compareOperand;
@@ -492,19 +500,23 @@ public class Reference implements BiSerializable {
                                         compareOperand = leftOperand;
                                 }
 
+                                if(role instanceof RoleLink) {
+                                    role  = role.resolve();
+                                }
+
                                 try {
                                     compareOperand = compareOperand.replaceAll("\\s+", "");       // for key in quotes
 
                                     if (compareOperand.length() > 72) {
                                         // Key
                                         PublicKey publicKey = new PublicKey(Base64u.decodeCompactString(compareOperand));
-                                        Set<PublicKey> keys = new HashSet();
-                                        keys.add(publicKey);
-                                        ret = role.isAllowedForKeys(keys);
+                                        SimpleRole simpleRole = new SimpleRole(role.getName(), Do.listOf(publicKey));
+                                        ret = role.equalsIgnoreName(simpleRole);
                                     } else {
                                         // Address
                                         KeyAddress ka = new KeyAddress(compareOperand);
-                                        ret = role.isMatchingKeyAddress(ka);
+                                        SimpleRole simpleRole = new SimpleRole(role.getName(), Do.listOf(ka));
+                                        ret = role.equalsIgnoreName(simpleRole);
                                     }
                                 }
                                 catch (Exception e) {
@@ -513,6 +525,11 @@ public class Reference implements BiSerializable {
 
                                 if (indxOperator == NOT_EQUAL)
                                     ret = !ret;
+
+                                if(!ret) {
+                                    int a = 0;
+                                    a++;
+                                }
                             }
                         } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
                                    ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
@@ -1410,7 +1427,7 @@ public class Reference implements BiSerializable {
             if (i > 0)
                 res += ", ";
             Role r = signed_by.get(i);
-            res += r.getName() + ":" + Bytes.toHex(r.getKeys().iterator().next().fingerprint()).substring(0, 8) + "...";
+            res += r.toString();
         }
         res += "]";
         res += "}";
