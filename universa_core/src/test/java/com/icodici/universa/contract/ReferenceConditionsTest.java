@@ -1,6 +1,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
@@ -12,13 +13,13 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class ReferenceConditionsTest {
-    protected static final String ROOT_PATH = "./src/test_contracts/references/";
+    protected static final String ROOT_PATH = "./src/test_contracts/";
 
     @Test
     public void checkReferences() throws Exception {
 
-        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "ReferencedConditions_contract1.yml");
-        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "ReferencedConditions_contract2.yml");
+        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "references/ReferencedConditions_contract1.yml");
+        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "references/ReferencedConditions_contract2.yml");
 
         PrivateKey key = new PrivateKey(Do.read("./src/test_contracts/" + "_xer0yfe2nn1xthc.private.unikey"));
 
@@ -57,6 +58,9 @@ public class ReferenceConditionsTest {
         Contract contract3 = contract2.createRevision(key);
         contract3.seal();
 
+        // signature to check can_play operator
+        contract2.addSignatureToSeal(key);
+
         contract1.getStateData().set("contract2_origin", contract2.getOrigin().toBase64String());
         contract1.getStateData().set("contract2_id", contract2.getId().toBase64String());
         contract1.getStateData().set("contract3_parent", contract3.getParent().toBase64String());
@@ -64,6 +68,9 @@ public class ReferenceConditionsTest {
         contract1.getState().setBranchNumber(25);
         System.out.println("branchId: " + contract1.getState().getBranchId());
         contract1.seal();
+
+        // signature to check can_play operator
+        contract1.addSignatureToSeal(key);
 
         System.out.println("Contract3_parent: " + contract3.getParent().toBase64String());
         System.out.println("contract2_origin:  " + contract1.getStateData().get("contract2_origin"));
@@ -99,6 +106,8 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_bigdecimal").matchingItems.contains(contract2));
         System.out.println("Check parent conditions");
         assertTrue(refContract.getReferences().get("ref_parent").matchingItems.contains(contract3));
+        System.out.println("Check can_play conditions");
+        assertTrue(refContract.getReferences().get("ref_can_play").matchingItems.contains(contract2));
      }
 
     @Test
@@ -243,5 +252,50 @@ public class ReferenceConditionsTest {
         Boolean res = batch.check();
         batch.traceErrors();
         assertEquals(false, res);
+    }
+
+    @Test(timeout = 60000)
+    public void checkReferencesContracts() throws Exception {
+        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract1.yml");
+        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract2.yml");
+        Contract contract3 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract3.yml");
+        contract1.seal();
+        contract2.seal();
+        contract3.seal();
+
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(contract1);
+        tp.addSubItem(contract1);
+        tp.addReferencedItem(contract1);
+        tp.addSubItem(contract2);
+        tp.addReferencedItem(contract2);
+        tp.addSubItem(contract3);
+        tp.addReferencedItem(contract3);
+
+        Contract refContract1 = new Contract(contract1.seal(), tp);
+        Contract refContract2 = new Contract(contract3.seal(), tp);
+
+        refContract1.check();
+        refContract2.check();
+
+        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(refContract1));
+        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract2));
+        assertFalse(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract3));
+
+        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(refContract1));
+        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract2));
+        assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
+
+        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(refContract1));
+        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
+        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
+
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(refContract2));
+
+        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
+        assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
+        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(refContract2));
     }
 }

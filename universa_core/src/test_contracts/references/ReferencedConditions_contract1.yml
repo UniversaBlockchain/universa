@@ -1567,6 +1567,13 @@ state:
          - ref.state.data.bigdecimal2==this.state.data.bigdecimal1::number
          - ref.state.data.bigdecimal2::number != this.state.data.bigdecimal2
 
+ - reference:
+     name: ref_can_play
+     where:
+       all_of:
+         - this can_play ref.issuer
+         - ref can_play this.issuer
+
  # required section. any application data that could be changed.
  data:
    amount: 1000
