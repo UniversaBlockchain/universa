@@ -24,4 +24,9 @@ public class JSApiHttpResponse {
         response.setBody(JsonTool.toJsonString(bodyAsJson));
         response.getHeaders().set("Content-type", "application/json");
     }
+
+    public void setBodyAsFileBinary(byte[] bodyAsBinary) {
+        response.setBody(bodyAsBinary);
+        response.getHeaders().set("Content-type", "application/octet-stream");
+    }
 }

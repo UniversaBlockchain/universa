@@ -5,6 +5,8 @@ import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.JsonTool;
 
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,8 +44,24 @@ public class JSApiHttpServerRoutes {
             ArrayList<String> jsApiParamsList = (ArrayList<String>)route.get("jsApiParams");
             String[] jsApiParams = jsApiParamsList == null ? null : jsApiParamsList.toArray(new String[0]);
             Contract contract = null;
-            if (contractPath != null)
-                contract = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractPath)));
+            if (contractPath != null) {
+                if (contractPath.startsWith("http://") || contractPath.startsWith("https://")) {
+                    URL contractUrl = new URL(contractPath);
+                    URLConnection contractUrlConnection = contractUrl.openConnection();
+                    try {
+                        int contractBinLength = contractUrlConnection.getInputStream().available();
+                        if (contractBinLength > 2 * 1024 * 1024)
+                            throw new IllegalArgumentException("JSApiHttpServerRoutes error: remote contract too large (" + contractPath + ")");
+                        byte[] contractBytes = new byte[contractBinLength];
+                        contractUrlConnection.getInputStream().read(contractBytes);
+                        contract = Contract.fromPackedTransaction(contractBytes);
+                    } finally {
+                        contractUrlConnection.getInputStream().close();
+                    }
+                } else {
+                    contract = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractPath)));
+                }
+            }
             else if (slotIdStr != null && originIdStr != null)
                 contract = Contract.fromPackedTransaction(slot1Requestor.queryContract(slotId, originId));
             if (contract == null)

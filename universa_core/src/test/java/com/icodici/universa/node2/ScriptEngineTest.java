@@ -2206,4 +2206,93 @@ public class ScriptEngineTest {
         testSpace.nodes.forEach(m -> m.shutdown());
     }
 
+    @Test
+    public void jsInStateAndDefinition() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.setOwnerKeys(TestKeys.publicKey(1), TestKeys.publicKey(2), TestKeys.publicKey(3));
+        contract.setCreatorKeys(TestKeys.publicKey(4), TestKeys.publicKey(5).getLongAddress());
+        String jsDefinitionA = "print('hello world from definition A'); result = 'dA';";
+        String jsDefinitionB = "print('hello world from definition B'); result = 'dB';";
+        String jsStateA = "print('hello world from state A'); result = 'sA';";
+        String jsStateB = "print('hello world from state B'); result = 'sB';";
+        contract.getDefinition().setJS(jsDefinitionA.getBytes(), "script1.js", new JSApiScriptParameters(), true);
+        contract.getDefinition().setJS(jsDefinitionB.getBytes(), "script2.js", new JSApiScriptParameters(), true);
+        contract.getState().setJS(jsStateA.getBytes(), "script3.js", new JSApiScriptParameters(), true);
+        contract.getState().setJS(jsStateB.getBytes(), "script4.js", new JSApiScriptParameters(), true);
+        contract.seal();
+        String res1 = (String)contract.execJSByName("script1.js");
+        String res2 = (String)contract.execJSByName("script2.js");
+        String res3 = (String)contract.execJSByName("script3.js");
+        String res4 = (String)contract.execJSByName("script4.js");
+        assertEquals("dA", res1);
+        assertEquals("dB", res2);
+        assertEquals("sA", res3);
+        assertEquals("sB", res4);
+    }
+
+    @Test
+    public void loadHttpContractFromUrl() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_index = function(request, response){" +
+                "  response.setBodyAsPlainText('httpHandler_index_answer');" +
+                "};";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.timeLimitMillis = 3000;
+        contract.getState().setJS(js.getBytes(), "script.js", scriptParameters, true);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        byte[] bin = contract.getPackedTransaction();
+
+        Contract someFileHost = new Contract(TestKeys.privateKey(1));
+        String jsHost = "";
+        jsHost += "var jsApiEvents = new Object();";
+        jsHost += "jsApiEvents.httpHandler_getContract = function(request, response){" +
+                  "  response.setBodyAsFileBinary(jsApi.base64toBin('"+Base64.encodeString(bin)+"'));" +
+                  "};";
+        JSApiScriptParameters scriptParametersHost = new JSApiScriptParameters();
+        scriptParametersHost.timeLimitMillis = 3000;
+        someFileHost.getState().setJS(jsHost.getBytes(), "fileHost.js", scriptParametersHost, true);
+        someFileHost.seal();
+        someFileHost = Contract.fromPackedTransaction(someFileHost.getPackedTransaction());
+
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathContractHost = tmpdir + "/" + "contractHost.tp";
+        Files.deleteIfExists(Paths.get(strPathContractHost));
+        new File(strPathContractHost).createNewFile();
+        Files.write(Paths.get(strPathContractHost), someFileHost.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        String routesJsonStringHost =
+                "{\n" +
+                "  \"listenPort\": \"8882\",\n" +
+                "  \"routes\": [\n" +
+                "    {\"endpoint\": \"/fileHosting/getContract\", \"handlerName\": \"httpHandler_getContract\", \"contractPath\": \""+strPathContractHost+"\", \"scriptName\": \"fileHost.js\"}\n" +
+                "  ]\n" +
+                "}\n";
+        JSApiHttpServerRoutes routesHost = new JSApiHttpServerRoutes(routesJsonStringHost.getBytes(), (slotId, originId) -> null);
+        JSApiHttpServer httpServerFileHost = new JSApiHttpServer(routesHost, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/contract1\", \"handlerName\": \"httpHandler_index\", \"contractPath\": \"http://localhost:8882/fileHosting/getContract\", \"scriptName\": \"script.js\"}\n" +
+                        "  ]\n" +
+                        "}\n";
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(routesJsonString.getBytes(), (slotId, originId) -> null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParametersClient = new JSApiScriptParameters();
+        scriptParametersClient.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParametersClient);
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1", JSApiHttpClient.RESPTYPE_TEXT);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("httpHandler_index_answer", httpRes.get(1));
+
+        httpServerFileHost.stop();
+        httpServer.stop();
+    }
+
 }
