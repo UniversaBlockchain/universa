@@ -29,11 +29,6 @@ public class JSApiSimpleRole extends JSApiRole {
     }
 
     @Override
-    public List<String> getAllAddresses() {
-        return simpleRole.getAllAddresses();
-    }
-
-    @Override
     public Role extractRole(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return simpleRole;
