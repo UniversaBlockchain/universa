@@ -68,6 +68,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -7067,6 +7068,48 @@ public class MainTest {
 
         ts.nodes.forEach(m->m.shutdown());
 
+    }
+
+    @Test
+    public void stressPing() {
+        try {
+            TestSpace ts = prepareTestSpace();
+
+            AtomicLong counter = new AtomicLong(0);
+
+            List<Thread> threadList = new ArrayList<>();
+            for (int i = 0; i < 4; ++i) {
+                Thread t = new Thread(() -> {
+                    try {
+                        for (int j = 0; j < 20000; ++j) {
+                            ts.client.ping();
+                            counter.incrementAndGet();
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+                t.start();
+            }
+
+            long prevCounterValue = -1;
+            while (counter.get() < 20000*4) {
+                Thread.sleep(1000);
+                long counterValue = counter.get();
+                System.out.println("counter: " + counterValue + ", speed: " + (counterValue-prevCounterValue) + " rps");
+                if (prevCounterValue == counterValue)
+                    assertTrue(false);
+                prevCounterValue = counterValue;
+            }
+
+            for (Thread t : threadList)
+                t.join();
+
+            ts.nodes.forEach(m -> m.shutdown());
+        } catch (Exception e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
     }
 
 }

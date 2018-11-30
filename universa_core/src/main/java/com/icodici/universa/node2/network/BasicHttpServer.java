@@ -108,6 +108,7 @@ public class BasicHttpServer {
 
     public void addEndpoint(String path, Endpoint ep) {
         on(path, (request, response) -> {
+            response.getHeaders().put("connection", "close");
             Binder result;
             try {
                 Result epResult = new Result();

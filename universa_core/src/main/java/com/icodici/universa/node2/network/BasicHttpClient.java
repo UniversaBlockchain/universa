@@ -356,6 +356,7 @@ public class BasicHttpClient {
             connection.setReadTimeout(CONNECTION_READ_TIMEOUT);
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("connection", "close");
 
 
             try (
