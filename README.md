@@ -2,7 +2,7 @@
 
 This is the Universa network codebase (Java core), containing the node, the console client (`uniclient`) and the associated subsystems.
 
-To learn more about Universa, you may want to read through Universa Knowledge Base at [kb.universa.io](https://kb.universa.io).
+The latest documentation on Universa is available in Universa Knowledge Base at [kb.universa.io](https://kb.universa.io). For a visual guide on the documentation topics, visit the Universa Development Map at [lnd.im/UniversaDevelopmentMap](https://lnd.im/UniversaDevelopmentMap).
 
 ## Build Dependencies
 
