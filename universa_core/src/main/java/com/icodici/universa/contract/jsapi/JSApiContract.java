@@ -5,6 +5,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
+import com.icodici.universa.contract.jsapi.roles.JSApiRoleBuilder;
 import com.icodici.universa.node2.Quantiser;
 
 import java.util.ArrayList;
@@ -66,16 +67,16 @@ public class JSApiContract {
         this.currentContract.getTransactionalData().set(fieldPath, value);
     }
 
-    public List<String> getIssuer() {
-        return this.currentContract.getIssuer().getAllAddresses();
+    public JSApiRole getIssuer() {
+        return JSApiRole.createJSApiRole(this.currentContract.getIssuer());
     }
 
-    public List<String> getOwner() {
-        return this.currentContract.getOwner().getAllAddresses();
+    public JSApiRole getOwner() {
+        return JSApiRole.createJSApiRole(this.currentContract.getOwner());
     }
 
-    public List<String> getCreator() {
-        return this.currentContract.getCreator().getAllAddresses();
+    public JSApiRole getCreator() {
+        return JSApiRole.createJSApiRole(this.currentContract.getCreator());
     }
 
     public void setOwner(List<String> addresses) throws KeyAddress.IllegalAddressException {

@@ -11,8 +11,6 @@ import java.util.List;
 
 public abstract class JSApiRole {
 
-    abstract public List<String> getAllAddresses();
-
     abstract public Role extractRole(JSApiAccessor apiAccessor);
 
     abstract public boolean isAllowedForKeys(PublicKey... keys);

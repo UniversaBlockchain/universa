@@ -12,6 +12,7 @@ import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
+import com.icodici.universa.contract.jsapi.roles.JSApiRole;
 import com.icodici.universa.contract.jsapi.storage.JSApiStorage;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.RoleLink;
@@ -582,16 +583,16 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('testSimpleRole');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        js += "result = simpleRole.getAllAddresses();";
+        js += "result = simpleRole;";
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
         contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
-        List<String> res = (List<String>)contract.execJS(js.getBytes());
-        assertTrue(res.contains(k0.toString()));
-        assertTrue(res.contains(k1.toString()));
-        assertTrue(res.contains(k2.toString()));
-        assertFalse(res.contains(k3.toString()));
+        JSApiRole res = (JSApiRole)contract.execJS(js.getBytes());
+        assertTrue(res.isAllowedForKeys(TestKeys.publicKey(0), TestKeys.publicKey(1), TestKeys.publicKey(2)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(0)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(1)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(2)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(3)));
     }
 
     @Test
@@ -606,7 +607,6 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('testSimpleRoleCheck');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "var check0 = simpleRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'));";
         js += "var check1 = simpleRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "print('check0: ' + check0);";
@@ -632,20 +632,17 @@ public class ScriptEngineTest {
         js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
-        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
-        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
-        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole0, simpleRole1, simpleRole2);";
-        js += "print('listRole: ' + listRole.getAllAddresses());";
-        js += "result = listRole.getAllAddresses();";
+        js += "result = listRole;";
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
         contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
-        List<String> res = (List<String>)contract.execJS(js.getBytes());
-        assertTrue(res.contains(k0.toString()));
-        assertTrue(res.contains(k1.toString()));
-        assertTrue(res.contains(k2.toString()));
-        assertFalse(res.contains(k3.toString()));
+        JSApiRole res = (JSApiRole)contract.execJS(js.getBytes());
+        assertTrue(res.isAllowedForKeys(TestKeys.publicKey(0), TestKeys.publicKey(1), TestKeys.publicKey(2)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(0)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(1)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(2)));
+        assertFalse(res.isAllowedForKeys(TestKeys.publicKey(3)));
     }
 
     @Test
@@ -665,13 +662,8 @@ public class ScriptEngineTest {
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
         js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
-        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
-        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
-        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
-        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
         js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole0, simpleRole1, listSubRole);";
-        js += "print('listRole: ' + listRole.getAllAddresses());";
         js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'), jsApi.base64toPublicKey('"+p3+"'));";
         js += "print('check0: ' + check0);";
@@ -702,13 +694,8 @@ public class ScriptEngineTest {
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
         js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
-        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
-        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
-        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
-        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
         js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
-        js += "print('listRole: ' + listRole.getAllAddresses());";
         js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
         js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
         js += "var check2 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
@@ -748,14 +735,9 @@ public class ScriptEngineTest {
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
         js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
-        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
-        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
-        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
-        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
         js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
         js += "listRole.setQuorum(2);";
-        js += "print('listRole: ' + listRole.getAllAddresses());";
         js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
         js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
         js += "var check2 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
@@ -815,12 +797,6 @@ public class ScriptEngineTest {
         js += "jsApi.getCurrentContract().registerRole(roleLink1);";
         js += "jsApi.getCurrentContract().registerRole(roleLink2);";
         js += "jsApi.getCurrentContract().registerRole(roleLink3);";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        js += "print('listRole: ' + listRole.getAllAddresses());";
-        js += "print('roleLink0: ' + roleLink0.getAllAddresses());";
-        js += "print('roleLink1: ' + roleLink1.getAllAddresses());";
-        js += "print('roleLink2: ' + roleLink2.getAllAddresses());";
-        js += "print('roleLink3: ' + roleLink3.getAllAddresses());";
         js += "var check0 = roleLink0.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
         js += "var check1 = roleLink1.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
         js += "var check2 = roleLink2.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
@@ -851,7 +827,6 @@ public class ScriptEngineTest {
         js += "var splitJoinPermission = jsApi.getPermissionBuilder().createSplitJoinPermission(simpleRole, " +
                 "{field_name: 'testval', min_value: 33, min_unit: 1e-7, join_match_fields: ['state.origin']}" +
                 ");";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "jsApi.getCurrentContract().addPermission(splitJoinPermission);";
         js += "var isPermitted0 = jsApi.getCurrentContract().isPermitted('split_join', jsApi.base64toPublicKey('"+p0+"'));";
         js += "var isPermitted1 = jsApi.getCurrentContract().isPermitted('split_join', jsApi.base64toPublicKey('"+p1+"'));";
@@ -897,7 +872,6 @@ public class ScriptEngineTest {
         js += "var changeNumberPermission = jsApi.getPermissionBuilder().createChangeNumberPermission(simpleRole, " +
                 "{field_name: 'testval', min_value: 44, max_value: 55, min_step: 1, max_step: 2}" +
                 ");";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
         js += "var isPermitted0 = jsApi.getCurrentContract().isPermitted('decrement_permission', jsApi.base64toPublicKey('"+p0+"'));";
         js += "var isPermitted1 = jsApi.getCurrentContract().isPermitted('decrement_permission', jsApi.base64toPublicKey('"+p1+"'));";
@@ -943,7 +917,6 @@ public class ScriptEngineTest {
         js += "print('testChangeOwnerPermission');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var changeOwnerPermission = jsApi.getPermissionBuilder().createChangeOwnerPermission(simpleRole);";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "result = changeOwnerPermission;";
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
@@ -965,7 +938,6 @@ public class ScriptEngineTest {
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var modifyDataPermission = jsApi.getPermissionBuilder().createModifyDataPermission(simpleRole, " +
                 "{some_field: [1, 2, 3]});";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "result = modifyDataPermission;";
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
@@ -990,7 +962,6 @@ public class ScriptEngineTest {
         js += "print('testRevokePermission');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var revokePermission = jsApi.getPermissionBuilder().createRevokePermission(simpleRole);";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "result = revokePermission;";
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
@@ -1895,7 +1866,6 @@ public class ScriptEngineTest {
                 "{field_name: 'testval', min_value: 3, max_value: 80, min_step: 1, max_step: 3}" +
                 ");";
         js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.execJS(js.getBytes());
         contract.seal();
@@ -2204,6 +2174,95 @@ public class ScriptEngineTest {
 
         System.out.println("\n\n\n============= shutdown...");
         testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void jsInStateAndDefinition() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.setOwnerKeys(TestKeys.publicKey(1), TestKeys.publicKey(2), TestKeys.publicKey(3));
+        contract.setCreatorKeys(TestKeys.publicKey(4), TestKeys.publicKey(5).getLongAddress());
+        String jsDefinitionA = "print('hello world from definition A'); result = 'dA';";
+        String jsDefinitionB = "print('hello world from definition B'); result = 'dB';";
+        String jsStateA = "print('hello world from state A'); result = 'sA';";
+        String jsStateB = "print('hello world from state B'); result = 'sB';";
+        contract.getDefinition().setJS(jsDefinitionA.getBytes(), "script1.js", new JSApiScriptParameters(), true);
+        contract.getDefinition().setJS(jsDefinitionB.getBytes(), "script2.js", new JSApiScriptParameters(), true);
+        contract.getState().setJS(jsStateA.getBytes(), "script3.js", new JSApiScriptParameters(), true);
+        contract.getState().setJS(jsStateB.getBytes(), "script4.js", new JSApiScriptParameters(), true);
+        contract.seal();
+        String res1 = (String)contract.execJSByName("script1.js");
+        String res2 = (String)contract.execJSByName("script2.js");
+        String res3 = (String)contract.execJSByName("script3.js");
+        String res4 = (String)contract.execJSByName("script4.js");
+        assertEquals("dA", res1);
+        assertEquals("dB", res2);
+        assertEquals("sA", res3);
+        assertEquals("sB", res4);
+    }
+
+    @Test
+    public void loadHttpContractFromUrl() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var jsApiEvents = new Object();";
+        js += "jsApiEvents.httpHandler_index = function(request, response){" +
+                "  response.setBodyAsPlainText('httpHandler_index_answer');" +
+                "};";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.timeLimitMillis = 3000;
+        contract.getState().setJS(js.getBytes(), "script.js", scriptParameters, true);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        byte[] bin = contract.getPackedTransaction();
+
+        Contract someFileHost = new Contract(TestKeys.privateKey(1));
+        String jsHost = "";
+        jsHost += "var jsApiEvents = new Object();";
+        jsHost += "jsApiEvents.httpHandler_getContract = function(request, response){" +
+                  "  response.setBodyAsFileBinary(jsApi.base64toBin('"+Base64.encodeString(bin)+"'));" +
+                  "};";
+        JSApiScriptParameters scriptParametersHost = new JSApiScriptParameters();
+        scriptParametersHost.timeLimitMillis = 3000;
+        someFileHost.getState().setJS(jsHost.getBytes(), "fileHost.js", scriptParametersHost, true);
+        someFileHost.seal();
+        someFileHost = Contract.fromPackedTransaction(someFileHost.getPackedTransaction());
+
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPathContractHost = tmpdir + "/" + "contractHost.tp";
+        Files.deleteIfExists(Paths.get(strPathContractHost));
+        new File(strPathContractHost).createNewFile();
+        Files.write(Paths.get(strPathContractHost), someFileHost.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        String routesJsonStringHost =
+                "{\n" +
+                "  \"listenPort\": \"8882\",\n" +
+                "  \"routes\": [\n" +
+                "    {\"endpoint\": \"/fileHosting/getContract\", \"handlerName\": \"httpHandler_getContract\", \"contractPath\": \""+strPathContractHost+"\", \"scriptName\": \"fileHost.js\"}\n" +
+                "  ]\n" +
+                "}\n";
+        JSApiHttpServerRoutes routesHost = new JSApiHttpServerRoutes(routesJsonStringHost.getBytes(), (slotId, originId) -> null);
+        JSApiHttpServer httpServerFileHost = new JSApiHttpServer(routesHost, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        String routesJsonString =
+                "{\n" +
+                        "  \"listenPort\": \"8880\",\n" +
+                        "  \"routes\": [\n" +
+                        "    {\"endpoint\": \"/contract1\", \"handlerName\": \"httpHandler_index\", \"contractPath\": \"http://localhost:8882/fileHosting/getContract\", \"scriptName\": \"script.js\"}\n" +
+                        "  ]\n" +
+                        "}\n";
+        JSApiHttpServerRoutes routes = new JSApiHttpServerRoutes(routesJsonString.getBytes(), (slotId, originId) -> null);
+        JSApiHttpServer httpServer = new JSApiHttpServer(routes, new JSApiExecOptions(), hashId -> true, (slotId, originId) -> null);
+
+        // here can be any http client. JSApiHttpClient used just for easiness
+        JSApiScriptParameters scriptParametersClient = new JSApiScriptParameters();
+        scriptParametersClient.domainMasks.add("localhost:*");
+        JSApiHttpClient httpClient = new JSApiHttpClient(scriptParametersClient);
+        List httpRes = httpClient.sendGetRequest("http://localhost:8880/contract1", JSApiHttpClient.RESPTYPE_TEXT);
+        System.out.println("httpRes: " + httpRes);
+        assertEquals("httpHandler_index_answer", httpRes.get(1));
+
+        httpServerFileHost.stop();
+        httpServer.stop();
     }
 
 }

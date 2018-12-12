@@ -125,7 +125,7 @@ public class FollowerContract extends NSmartContract {
            getDefinition().setExtendedType(SmartContractType.FOLLOWER1.name());
 
         // add modify_data permission
-        boolean permExist = false;
+        /*boolean permExist = false;
         Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
         if(mdps != null) {
             for (Permission perm : mdps) {
@@ -138,25 +138,24 @@ public class FollowerContract extends NSmartContract {
             }
         }
 
-        if(!permExist) {
-            RoleLink ownerLink = new RoleLink("owner_link", "owner");
-            registerRole(ownerLink);
-            HashMap<String, Object> fieldsMap = new HashMap<>();
-            fieldsMap.put("action", null);
-            fieldsMap.put("/expires_at", null);
-            fieldsMap.put(PAID_U_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_OD_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
-            fieldsMap.put(FOLLOWED_ORIGINS_FIELD_NAME, null);
-            fieldsMap.put(SPENT_OD_FIELD_NAME, null);
-            fieldsMap.put(SPENT_OD_TIME_FIELD_NAME, null);
-            fieldsMap.put(CALLBACK_RATE_FIELD_NAME, null);
-            fieldsMap.put(TRACKING_ORIGINS_FIELD_NAME, null);
-            fieldsMap.put(CALLBACK_KEYS_FIELD_NAME, null);
-               Binder modifyDataParams = Binder.of("fields", fieldsMap);
-            ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-            addPermission(modifyDataPermission);
-        }
+        if(!permExist) {*/
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        fieldsMap.put("/expires_at", null);
+        fieldsMap.put(PAID_U_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_OD_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
+        fieldsMap.put(FOLLOWED_ORIGINS_FIELD_NAME, null);
+        fieldsMap.put(SPENT_OD_FIELD_NAME, null);
+        fieldsMap.put(SPENT_OD_TIME_FIELD_NAME, null);
+        fieldsMap.put(CALLBACK_RATE_FIELD_NAME, null);
+        fieldsMap.put(TRACKING_ORIGINS_FIELD_NAME, null);
+        fieldsMap.put(CALLBACK_KEYS_FIELD_NAME, null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
     }
 
     /**

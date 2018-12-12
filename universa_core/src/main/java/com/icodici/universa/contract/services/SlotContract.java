@@ -8,6 +8,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.roles.RoleExtractor;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
@@ -137,7 +138,7 @@ public class SlotContract extends NSmartContract {
 
         // add modify_data permission
 
-        boolean permExist = false;
+        /*boolean permExist = false;
         Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
         if(mdps != null) {
             for (Permission perm : mdps) {
@@ -150,24 +151,23 @@ public class SlotContract extends NSmartContract {
             }
         }
 
-        if(!permExist) {
-            RoleLink ownerLink = new RoleLink("owner_link", "owner");
-            registerRole(ownerLink);
-            HashMap<String, Object> fieldsMap = new HashMap<>();
-            fieldsMap.put("action", null);
-            fieldsMap.put("/expires_at", null);
-            fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
-            fieldsMap.put(PAID_U_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
-            fieldsMap.put(STORED_BYTES_FIELD_NAME, null);
-            fieldsMap.put(SPENT_KD_FIELD_NAME, null);
-            fieldsMap.put(SPENT_KD_TIME_FIELD_NAME, null);
-            fieldsMap.put(TRACKING_CONTRACT_FIELD_NAME, null);
-            Binder modifyDataParams = Binder.of("fields", fieldsMap);
-            ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-            addPermission(modifyDataPermission);
-        }
+        if(!permExist) {*/
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        fieldsMap.put("/expires_at", null);
+        fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
+        fieldsMap.put(PAID_U_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
+        fieldsMap.put(STORED_BYTES_FIELD_NAME, null);
+        fieldsMap.put(SPENT_KD_FIELD_NAME, null);
+        fieldsMap.put(SPENT_KD_TIME_FIELD_NAME, null);
+        fieldsMap.put(TRACKING_CONTRACT_FIELD_NAME, null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
     }
 
     /**
@@ -534,6 +534,15 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
+        if(getTrackingContract() != null) {
+            // check for that last revision of tracking contract has same owner as creator of slot
+            checkResult = getTrackingContract().getOwner().isAllowedForKeys(getEffectiveKeys());
+            if (!checkResult) {
+                addError(Errors.FAILED_CHECK, "Slot-contract signing keys must has allowed keys for owner of tracking contract");
+                return checkResult;
+            }
+        }
+
         // and call common slot check
         checkResult = additionallySlotCheck(c);
 
@@ -553,6 +562,15 @@ public class SlotContract extends NSmartContract {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_KD_FIELD_NAME + "] value. " +
                     "Should be sum of early paid U and paid U by current revision.");
             return checkResult;
+        }
+
+        if(getTrackingContract() != null) {
+            // check for that last revision of tracking contract has same owner as creator of slot
+            checkResult = getTrackingContract().getOwner().isAllowedForKeys(getEffectiveKeys());
+            if (!checkResult) {
+                addError(Errors.FAILED_CHECK, "Slot-contract signing keys must has allowed keys for owner of tracking contract");
+                return checkResult;
+            }
         }
 
         // and call common slot check
@@ -592,13 +610,6 @@ public class SlotContract extends NSmartContract {
         }
 
         if(getTrackingContract() != null) {
-            // check for that last revision of tracking contract has same owner as creator of slot
-            checkResult = getTrackingContract().getOwner().isAllowedForKeys(getCreator().getKeys());
-            if (!checkResult) {
-                addError(Errors.FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
-                return checkResult;
-            }
-
             // check for all revisions of tracking contract has same origin
             for(Contract tc : trackingContracts) {
                 checkResult = getTrackingContract().getOrigin().equals(tc.getOrigin());
