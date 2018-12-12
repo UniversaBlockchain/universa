@@ -20,16 +20,20 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 import net.sergeych.tools.Do;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static java.util.Arrays.asList;
 
@@ -1073,6 +1077,47 @@ public class ContractsService {
         notaryContract.addSignatureToSeal(issuerKeys);
 
         return notaryContract;
+    }
+
+    /**
+     * Check the data attached to the notary contract
+     *
+     * @param notaryContract is notary-type contract.
+     * @param filePaths file or file folder.
+     * @return result of checking the data attached to the notary contract.
+     */
+    public synchronized static boolean checkAttachNotaryContract(Contract notaryContract,  String filePaths ) throws IOException {
+
+        Binder files = notaryContract.getDefinition().getData().getBinderOrThrow("files");
+        File path = new File(filePaths);
+
+        if (!path.exists()) {
+            throw new IOException("Cannot access " + filePaths + ": No such file or directory");
+        }
+
+        Predicate<String> predicate = key -> {
+            Binder file = files.getBinderOrThrow(key);
+            try {
+                String fileName = filePaths+file.getString("file_name");
+                //String fileDesc = file.getString("file_description");
+                HashId fileHash = HashId.of(Files.readAllBytes(Paths.get(fileName)));
+                HashId notaryHash = DefaultBiMapper.deserialize(file.getBinder("hash_id"));
+                return fileHash.equals(notaryHash);
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println(e.getMessage());
+                return false;
+            }
+        };
+
+        if (path.isFile()) {
+            boolean allFilesMatch = files.keySet().stream().anyMatch(predicate);
+        } else if (path.isDirectory()) {
+            boolean allFilesMatch = files.keySet().stream().allMatch(predicate);
+        } else {
+            throw new IOException("Cannot access " + filePaths + ": Invalid path format");
+        }
+        return false;
     }
 
     /**

@@ -1435,7 +1435,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return created {@link Role}
      */
     @NonNull
-    protected Role createRole(String roleName, Object roleObject) {
+    public Role createRole(String roleName, Object roleObject) {
         if (roleObject instanceof CharSequence) {
             return registerRole(new RoleLink(roleName, roleObject.toString()));
         }
