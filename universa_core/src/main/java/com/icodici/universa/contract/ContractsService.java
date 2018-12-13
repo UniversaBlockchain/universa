@@ -658,14 +658,14 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, Double,String,String,String)
+     * @see #createTokenContract(Set, Set, String, String, String, String, String)
      */
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
         return createTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, Double)
+     * @see #createTokenContract(Set, Set, String, String)
      */
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
         return createTokenContract(issuerKeys, ownerKeys, amount, "0.01");
@@ -764,14 +764,14 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, Double,String,String,String)
+     * @see #createTokenContract(Set, Set, String, String, String, String, String)
      */
     public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
         return createMintableTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, Double)
+     * @see #createTokenContract(Set, Set, String, String)
      */
     public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
         return createMintableTokenContract(issuerKeys, ownerKeys, amount, "0.01");
@@ -819,7 +819,7 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContractWithEmission(Set, Set, String, Double)
+     * @see #createTokenContractWithEmission(Set, Set, String, String)
      */
     @Deprecated
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
