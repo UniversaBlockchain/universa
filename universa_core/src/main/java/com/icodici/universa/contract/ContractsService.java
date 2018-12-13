@@ -20,16 +20,20 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 import net.sergeych.tools.Do;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static java.util.Arrays.asList;
 
@@ -1092,6 +1096,54 @@ public class ContractsService {
         notaryContract.addSignatureToSeal(issuerKeys);
 
         return notaryContract;
+    }
+
+    /**
+     * Check the data attached to the notary contract
+     *
+     * @param notaryContract is notary-type contract.
+     * @param filePaths is path to attached file or folder with files.
+     * @return result of checking the data attached to the notary contract.
+     */
+    public synchronized static boolean checkAttachNotaryContract(Contract notaryContract, String filePaths) throws IOException {
+
+        Binder files = notaryContract.getDefinition().getData().getBinderOrThrow("files");
+        File path = new File(filePaths);
+        final String normalPath;
+
+        if (!path.exists())
+            throw new IOException("Cannot access " + filePaths + ": No such file or directory");
+
+        if (path.isDirectory() && (!filePaths.endsWith("/")))
+            normalPath = filePaths + "/";
+        else
+            normalPath = filePaths;
+
+        Predicate<String> predicate = key -> {
+            Binder file = files.getBinderOrThrow(key);
+            try {
+                String filePath = normalPath;
+                String fileName = file.getString("file_name");
+                if (filePath.endsWith("/"))
+                    filePath += fileName;
+                else if (!filePath.endsWith(fileName))
+                    return false;
+
+                HashId fileHash = HashId.of(Files.readAllBytes(Paths.get(filePath)));
+                HashId notaryHash = DefaultBiMapper.deserialize(file.getBinder("hash_id"));
+
+                return fileHash.equals(notaryHash);
+            } catch (IOException e) {
+                return false;
+            }
+        };
+
+        if (path.isFile())
+            return files.keySet().stream().anyMatch(predicate);
+        else if (path.isDirectory())
+            return files.keySet().stream().allMatch(predicate);
+        else
+            throw new IOException("Cannot access " + filePaths + ": Invalid path format");
     }
 
     /**
