@@ -1769,8 +1769,8 @@ public class MainTest {
         assertEquals(tokenContract.getPermissions().get("split_join").size(), 1);
 
         Binder splitJoinParams = tokenContract.getPermissions().get("split_join").iterator().next().getParams();
-        assertEquals(splitJoinParams.get("min_value"), 0.01);
-        assertEquals(splitJoinParams.get("min_unit"), 0.01);
+        assertEquals(splitJoinParams.get("min_value"), "0.01");
+        assertEquals(splitJoinParams.get("min_unit"), "0.01");
         assertEquals(splitJoinParams.get("field_name"), "amount");
         assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
         assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
@@ -1823,8 +1823,8 @@ public class MainTest {
         assertEquals(emittedContract.getPermissions().get("split_join").size(), 1);
 
         Binder splitJoinParams = emittedContract.getPermissions().get("split_join").iterator().next().getParams();
-        assertEquals(splitJoinParams.get("min_value"), 0.01);
-        assertEquals(splitJoinParams.get("min_unit"), 0.01);
+        assertEquals(splitJoinParams.get("min_value"), "0.01");
+        assertEquals(splitJoinParams.get("min_unit"), "0.01");
         assertEquals(splitJoinParams.get("field_name"), "amount");
         assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
         assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
