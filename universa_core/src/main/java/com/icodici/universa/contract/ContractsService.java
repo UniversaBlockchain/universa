@@ -567,7 +567,15 @@ public class ContractsService {
         return twoSignContract;
     }
 
+    @Deprecated
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
+        return createTokenContract(issuerKeys, ownerKeys, amount, minValue.toString(), currency, name, description);
+    }
 
+    @Deprecated
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+        return createTokenContract(issuerKeys, ownerKeys, amount, minValue.toString());
+    }
 
     /**
      * Creates a token contract for given keys with given currency code,name,description.
@@ -586,7 +594,7 @@ public class ContractsService {
      * @param description  is currency description
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue, String currency, String name, String description) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -652,7 +660,7 @@ public class ContractsService {
     /**
      * @see #createTokenContract(Set, Set, String, Double,String,String,String)
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
         return createTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
     }
 
@@ -660,11 +668,19 @@ public class ContractsService {
      * @see #createTokenContract(Set, Set, String, Double)
      */
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createTokenContract(issuerKeys, ownerKeys, amount, 0.01);
+        return createTokenContract(issuerKeys, ownerKeys, amount, "0.01");
     }
 
 
+    @Deprecated
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, minValue.toString(), currency, name, description);
+    }
 
+    @Deprecated
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, minValue.toString());
+    }
 
     /**
      * Creates a mintable token contract for given keys with given currency code,name,description.
@@ -683,7 +699,7 @@ public class ContractsService {
      * @param description  is currency description
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue, String currency, String name, String description) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -750,7 +766,7 @@ public class ContractsService {
     /**
      * @see #createTokenContract(Set, Set, String, Double,String,String,String)
      */
-    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
         return createMintableTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
     }
 
@@ -758,10 +774,13 @@ public class ContractsService {
      * @see #createTokenContract(Set, Set, String, Double)
      */
     public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createMintableTokenContract(issuerKeys, ownerKeys, amount, 0.01);
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, "0.01");
     }
 
-
+    @Deprecated
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, minValue.toString());
+    }
 
     /**
      * Creates a token contract with possible additional emission.
@@ -780,7 +799,7 @@ public class ContractsService {
      * @return signed and sealed contract, ready for register.
      */
     @Deprecated
-    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
 
         Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
 
@@ -804,7 +823,7 @@ public class ContractsService {
      */
     @Deprecated
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, 0.01);
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, "0.01");
     }
 
     /**
