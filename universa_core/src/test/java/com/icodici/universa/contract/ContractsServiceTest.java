@@ -322,6 +322,15 @@ public class ContractsServiceTest extends ContractTestBase {
         Contract notaryDeserialized = DefaultBiMapper.deserialize(BossBiMapper.serialize(notaryContract));
         assertTrue(notaryContract.getDefinition().getData().equals(notaryDeserialized.getDefinition().getData()));
 
+        // checking by ContractsService.checkAttachNotaryContract
+        assertTrue(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/references/ReferencedConditions_contract2.yml"));
+        assertTrue(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/references/ReferencedConditions_contract1.yml"));
+        assertTrue(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/references"));
+        assertTrue(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/references/"));
+        assertFalse(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/references/subscriptionReference.yml"));
+        assertFalse(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/roles/link.yml"));
+        assertFalse(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/roles/"));
+        assertFalse(ContractsService.checkAttachNotaryContract(notaryContract, rootPath + "/roles"));
     }
 
     @Test

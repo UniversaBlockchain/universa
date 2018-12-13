@@ -1083,41 +1083,48 @@ public class ContractsService {
      * Check the data attached to the notary contract
      *
      * @param notaryContract is notary-type contract.
-     * @param filePaths file or file folder.
+     * @param filePaths is path to attached file or folder with files.
      * @return result of checking the data attached to the notary contract.
      */
-    public synchronized static boolean checkAttachNotaryContract(Contract notaryContract,  String filePaths ) throws IOException {
+    public synchronized static boolean checkAttachNotaryContract(Contract notaryContract, String filePaths) throws IOException {
 
         Binder files = notaryContract.getDefinition().getData().getBinderOrThrow("files");
         File path = new File(filePaths);
+        final String normalPath;
 
-        if (!path.exists()) {
+        if (!path.exists())
             throw new IOException("Cannot access " + filePaths + ": No such file or directory");
-        }
+
+        if (path.isDirectory() && (!filePaths.endsWith("/")))
+            normalPath = filePaths + "/";
+        else
+            normalPath = filePaths;
 
         Predicate<String> predicate = key -> {
             Binder file = files.getBinderOrThrow(key);
             try {
-                String fileName = filePaths+file.getString("file_name");
-                //String fileDesc = file.getString("file_description");
-                HashId fileHash = HashId.of(Files.readAllBytes(Paths.get(fileName)));
+                String filePath = normalPath;
+                String fileName = file.getString("file_name");
+                if (filePath.endsWith("/"))
+                    filePath += fileName;
+                else if (!filePath.endsWith(fileName))
+                    return false;
+
+                HashId fileHash = HashId.of(Files.readAllBytes(Paths.get(filePath)));
                 HashId notaryHash = DefaultBiMapper.deserialize(file.getBinder("hash_id"));
+
                 return fileHash.equals(notaryHash);
             } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println(e.getMessage());
                 return false;
             }
         };
 
-        if (path.isFile()) {
-            boolean allFilesMatch = files.keySet().stream().anyMatch(predicate);
-        } else if (path.isDirectory()) {
-            boolean allFilesMatch = files.keySet().stream().allMatch(predicate);
-        } else {
+        if (path.isFile())
+            return files.keySet().stream().anyMatch(predicate);
+        else if (path.isDirectory())
+            return files.keySet().stream().allMatch(predicate);
+        else
             throw new IOException("Cannot access " + filePaths + ": Invalid path format");
-        }
-        return false;
     }
 
     /**
