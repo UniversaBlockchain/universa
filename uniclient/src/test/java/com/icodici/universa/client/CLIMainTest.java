@@ -3670,7 +3670,7 @@ public class CLIMainTest {
         owners.add(splitJoinKey2.getPublicKey());
 
 
-        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", 0.01);
+        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", "0.01");
         contract.seal();
         contract.check();
         assertTrue(contract.isOk());
@@ -3745,7 +3745,7 @@ public class CLIMainTest {
         HashSet<PublicKey> owners = new HashSet<>();
         owners.add(key1.getPublicKey());
 
-        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", 0.01);
+        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", "0.01");
         SimpleRole issuer1 = new SimpleRole("issuer1",new KeyRecord(key1.getPublicKey()));
         SimpleRole issuer2 = new SimpleRole("issuer2",new KeyRecord(key2.getPublicKey()));
         ListRole issuer = new ListRole("issuer",ListRole.Mode.ALL,Do.listOf(issuer1,issuer2));

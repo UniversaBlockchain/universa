@@ -2382,7 +2382,7 @@ public class MainTest {
         Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
 
-        Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, "100", 0.0001);
+        Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, "100", "0.0001");
         delorean.seal();
 
         delorean.check();
@@ -2391,7 +2391,7 @@ public class MainTest {
         ItemResult itemResult = client.register(delorean.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract lamborghini = ContractsService.createTokenContract(stepaPrivateKeys, stepaPublicKeys, "100", 0.0001);
+        Contract lamborghini = ContractsService.createTokenContract(stepaPrivateKeys, stepaPublicKeys, "100", "0.0001");
         lamborghini.seal();
 
         lamborghini.check();
@@ -2486,8 +2486,8 @@ public class MainTest {
         Set<PublicKey> user2PublicKeySet = user2PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
 
 
-        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivateKeySet, user1PublicKeySet, "100", 0.0001);
-        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivateKeySet, user2PublicKeySet, "100", 0.001);
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivateKeySet, user1PublicKeySet, "100", "0.0001");
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivateKeySet, user2PublicKeySet, "100", "0.001");
 
         contractTOK92.seal();
         contractTOK92.check();
@@ -3605,7 +3605,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace();
         testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
         for(int i = 109; i < 110; i++) {
-            Contract c = ContractsService.createTokenContract(issuers, owners, "100000.9", 0.01);
+            Contract c = ContractsService.createTokenContract(issuers, owners, "100000.9", "0.01");
             c.setIssuerKeys(key.getPublicKey().getShortAddress());
             c.setCreatorKeys(key.getPublicKey().getShortAddress());
             c.setExpiresAt(ZonedDateTime.now().plusDays(10));

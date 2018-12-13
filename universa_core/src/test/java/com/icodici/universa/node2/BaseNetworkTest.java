@@ -3087,8 +3087,8 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> user1PubKeySet = user1PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
         Set<PublicKey> user2PubKeySet = user2PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
 
-        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivKeySet, user1PubKeySet, "100", 0.0001);
-        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivKeySet, user2PubKeySet, "100", 0.001);
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivKeySet, user1PubKeySet, "100", "0.0001");
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivKeySet, user2PubKeySet, "100", "0.001");
         contractTOK92.setApiLevel(2);
         contractTOK93.setApiLevel(2);
 
