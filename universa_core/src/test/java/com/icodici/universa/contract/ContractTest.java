@@ -37,6 +37,7 @@ import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileOutputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -94,7 +95,7 @@ public class ContractTest extends ContractTestBase {
         assertTrue(c_1.check());
         c_1.traceErrors();
 
-        Contract c_2_1 = ContractsService.createSplit(c_1, "20", "amount", keys);
+        Contract c_2_1 = ContractsService.createSplit(c_1, new BigDecimal("20"), "amount", keys);
         Contract c_2_2 = c_2_1.getNew().get(0);
         if(c_2_2 != null) {
             Contract c_2_3 = c_2_2.copy();
@@ -122,7 +123,7 @@ public class ContractTest extends ContractTestBase {
         assertTrue(c_1.check());
         c_1.traceErrors();
 
-        Contract c_2_1 = ContractsService.createSplit(c_1, "20", "amount", keys);
+        Contract c_2_1 = ContractsService.createSplit(c_1, new BigDecimal("20"), "amount", keys);
         Contract c_2_2 = c_2_1.getNew().get(0);
 
         System.out.println("c_2_1 revision id: " + c_2_1.getRevisionId());
@@ -130,9 +131,9 @@ public class ContractTest extends ContractTestBase {
         c_2_1.traceErrors();
         c_2_1.seal();
 
-        Contract c_3_1 = ContractsService.createSplit(c_2_1, "10", "amount", keys);
+        Contract c_3_1 = ContractsService.createSplit(c_2_1, new BigDecimal("10"), "amount", keys);
         Contract c_3_2 = c_3_1.getNew().get(0);
-        Contract c_3_3 = ContractsService.createSplit(c_2_2, "10", "amount", keys);
+        Contract c_3_3 = ContractsService.createSplit(c_2_2, new BigDecimal("10"), "amount", keys);
         Contract c_3_4 = c_3_3.getNew().get(0);
 
         System.out.println("c_3_1 revision id: " + c_3_1.getRevisionId());

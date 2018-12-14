@@ -27,6 +27,7 @@ import net.sergeych.tools.Do;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -614,7 +615,7 @@ public class PermissionsTest extends ContractTestBase {
         // Bad contract change: owner has no right to change owner ;)
         Set<PrivateKey> badPrivateKeys = new HashSet<>();
         badPrivateKeys.add(TestKeys.privateKey(0));
-        Contract c1 = ContractsService.createSplit(c, "1", "amount", badPrivateKeys);
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("1"), "amount", badPrivateKeys);
         c1.seal();
         c1.check();
         c1.traceErrors();
@@ -625,7 +626,7 @@ public class PermissionsTest extends ContractTestBase {
 
         // bad contract change: good key but no reference
 
-        Contract c2 = ContractsService.createSplit(c, "1", "amount", stepaPrivateKeys);
+        Contract c2 = ContractsService.createSplit(c, new BigDecimal("1"), "amount", stepaPrivateKeys);
         c2.createRole("creator", c2.getRole("owner"));
         c2.getNew().get(0).createRole("creator", c2.getNew().get(0).getRole("owner"));
         assertEquals(c2, c2.getPermissions().getFirst("split_join").getRole().getContract());
@@ -641,7 +642,7 @@ public class PermissionsTest extends ContractTestBase {
 
         // good contract change: creator is an owner
 
-        Contract c3 = ContractsService.createSplit(c, "1", "amount", stepaPrivateKeys);
+        Contract c3 = ContractsService.createSplit(c, new BigDecimal("1"), "amount", stepaPrivateKeys);
         c3.createRole("creator", c3.getRole("owner"));
         c3.getNew().get(0).createRole("creator", c3.getNew().get(0).getRole("owner"));
         c3.addNewItems(jobCertificate);

@@ -28,6 +28,7 @@ import net.sergeych.tools.Do;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -83,6 +84,16 @@ public class ContractsService {
         return tc;
     }
 
+    @Deprecated
+    public synchronized static Contract createSplit(Contract c, String amount, String fieldName, Set<PrivateKey> keys) {
+        return createSplit(c, new BigDecimal(amount), fieldName, keys);
+    }
+
+    @Deprecated
+    public synchronized static Contract createSplit(Contract c, String amount, String fieldName, Set<PrivateKey> keys, boolean andSetCreator) {
+        return createSplit(c, new BigDecimal(amount), fieldName, keys, andSetCreator);
+    }
+
     /**
      * Implementing split procedure for token-type contracts.
      * <br><br>
@@ -97,8 +108,7 @@ public class ContractsService {
      * @param keys      is keys from owner of c
      * @return working contract that should be register in the Universa to finish procedure.
      */
-    public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
-                                                    Set<PrivateKey> keys) {
+    public synchronized static Contract createSplit(Contract c, BigDecimal amount, String fieldName, Set<PrivateKey> keys) {
         return createSplit(c, amount, fieldName, keys, false);
     }
 
@@ -117,8 +127,7 @@ public class ContractsService {
      * @param andSetCreator if true set owners as creator in both contarcts
      * @return working contract that should be register in the Universa to finish procedure.
      */
-    public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
-                                                    Set<PrivateKey> keys, boolean andSetCreator) {
+    public synchronized static Contract createSplit(Contract c, BigDecimal amount, String fieldName, Set<PrivateKey> keys, boolean andSetCreator) {
         Contract splitFrom = c.createRevision();
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
 
@@ -573,12 +582,17 @@ public class ContractsService {
 
     @Deprecated
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
-        return createTokenContract(issuerKeys, ownerKeys, amount, minValue.toString(), currency, name, description);
+        return createTokenContract(issuerKeys, ownerKeys, new BigDecimal(amount), new BigDecimal(minValue), currency, name, description);
     }
 
     @Deprecated
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
-        return createTokenContract(issuerKeys, ownerKeys, amount, minValue.toString());
+        return createTokenContract(issuerKeys, ownerKeys, new BigDecimal(amount), new BigDecimal(minValue));
+    }
+
+    @Deprecated
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createTokenContract(issuerKeys, ownerKeys, new BigDecimal(amount));
     }
 
     /**
@@ -598,7 +612,7 @@ public class ContractsService {
      * @param description  is currency description
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue, String currency, String name, String description) {
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount, BigDecimal minValue, String currency, String name, String description) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -631,7 +645,7 @@ public class ContractsService {
         tokenContract.registerRole(ownerRole);
         tokenContract.createRole("owner", ownerRole);
 
-        tokenContract.getStateData().set("amount", amount);
+        tokenContract.getStateData().set("amount", amount.toString());
 
         RoleLink ownerLink = new RoleLink("@owner_link", "owner");
         ownerLink.setContract(tokenContract);
@@ -639,8 +653,8 @@ public class ContractsService {
         tokenContract.addPermission(changeOwnerPerm);
 
         Binder params = new Binder();
-        params.set("min_value", minValue);
-        params.set("min_unit", minValue);
+        params.set("min_value", minValue.toString());
+        params.set("min_unit", minValue.toString());
         params.set("field_name", "amount");
         List<String> listFields = new ArrayList<>();
         listFields.add("state.origin");
@@ -662,28 +676,28 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, String, String, String, String)
+     * @see #createTokenContract(Set, Set, BigDecimal, BigDecimal, String, String, String)
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
-        return createTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount, BigDecimal minValue) {
+        return createTokenContract(issuerKeys, ownerKeys, amount, minValue, "DT", "Default token name", "Default token description");
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, String)
+     * @see #createTokenContract(Set, Set, BigDecimal, BigDecimal)
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createTokenContract(issuerKeys, ownerKeys, amount, "0.01");
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount) {
+        return createTokenContract(issuerKeys, ownerKeys, amount, new BigDecimal("0.01"));
     }
 
 
     @Deprecated
     public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
-        return createMintableTokenContract(issuerKeys, ownerKeys, amount, minValue.toString(), currency, name, description);
+        return createMintableTokenContract(issuerKeys, ownerKeys, new BigDecimal(amount), new BigDecimal(minValue), currency, name, description);
     }
 
     @Deprecated
     public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
-        return createMintableTokenContract(issuerKeys, ownerKeys, amount, minValue.toString());
+        return createMintableTokenContract(issuerKeys, ownerKeys, new BigDecimal(amount), new BigDecimal(minValue));
     }
 
     /**
@@ -703,7 +717,7 @@ public class ContractsService {
      * @param description  is currency description
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue, String currency, String name, String description) {
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount, BigDecimal minValue, String currency, String name, String description) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -736,7 +750,7 @@ public class ContractsService {
         tokenContract.registerRole(ownerRole);
         tokenContract.createRole("owner", ownerRole);
 
-        tokenContract.getStateData().set("amount", amount);
+        tokenContract.getStateData().set("amount", amount.toString());
 
         RoleLink ownerLink = new RoleLink("@owner_link", "owner");
         ownerLink.setContract(tokenContract);
@@ -744,8 +758,8 @@ public class ContractsService {
         tokenContract.addPermission(changeOwnerPerm);
 
         Binder params = new Binder();
-        params.set("min_value", minValue);
-        params.set("min_unit", minValue);
+        params.set("min_value", minValue.toString());
+        params.set("min_unit", minValue.toString());
         params.set("field_name", "amount");
         List<String> listFields = new ArrayList<>();
         listFields.add("definition.data.currency");
@@ -768,22 +782,37 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, String, String, String, String)
+     * @see #createTokenContract(Set, Set, BigDecimal, BigDecimal, String, String, String)
      */
-    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
-        return createMintableTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount, BigDecimal minValue) {
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, minValue, "DT", "Default token name", "Default token description");
     }
 
     /**
-     * @see #createTokenContract(Set, Set, String, String)
+     * @see #createTokenContract(Set, Set, BigDecimal, BigDecimal)
      */
-    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createMintableTokenContract(issuerKeys, ownerKeys, amount, "0.01");
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount) {
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, new BigDecimal("0.01"));
     }
 
     @Deprecated
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
-        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, minValue.toString());
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, new BigDecimal(amount), new BigDecimal(minValue));
+    }
+
+    @Deprecated
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, new BigDecimal(amount));
+    }
+
+    @Deprecated
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
+        return createTokenEmission(tokenContract, new BigDecimal(amount), keys, fieldName);
+    }
+
+    @Deprecated
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys) {
+        return createTokenEmission(tokenContract, new BigDecimal(amount), keys);
     }
 
     /**
@@ -803,7 +832,7 @@ public class ContractsService {
      * @return signed and sealed contract, ready for register.
      */
     @Deprecated
-    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, String minValue) {
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount, BigDecimal minValue) {
 
         Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
 
@@ -823,11 +852,11 @@ public class ContractsService {
     }
 
     /**
-     * @see #createTokenContractWithEmission(Set, Set, String, String)
+     * @see #createTokenContractWithEmission(Set, Set, BigDecimal, BigDecimal)
      */
     @Deprecated
-    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
-        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, "0.01");
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount) {
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, new BigDecimal("0.01"));
     }
 
     /**
@@ -843,7 +872,7 @@ public class ContractsService {
      * @return signed and sealed contract, ready for register.
      */
     @Deprecated
-    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
+    public synchronized static Contract createTokenEmission(Contract tokenContract, BigDecimal amount, Set<PrivateKey> keys, String fieldName) {
 
         Contract emittedToken = tokenContract.createRevision();
 
@@ -863,8 +892,13 @@ public class ContractsService {
      * @see #createTokenEmission(Contract, String, Set, String)
      */
     @Deprecated
-    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys) {
+    public synchronized static Contract createTokenEmission(Contract tokenContract, BigDecimal amount, Set<PrivateKey> keys) {
         return createTokenEmission(tokenContract, amount, keys, "amount");
+    }
+
+    @Deprecated
+    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createShareContract(issuerKeys, ownerKeys, new BigDecimal(amount));
     }
 
     /**
@@ -882,7 +916,7 @@ public class ContractsService {
      * @param amount     is maximum shares number.
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, BigDecimal amount) {
         Contract shareContract = new Contract();
         shareContract.setApiLevel(3);
 
@@ -915,7 +949,7 @@ public class ContractsService {
         shareContract.registerRole(ownerRole);
         shareContract.createRole("owner", ownerRole);
 
-        shareContract.getStateData().set("amount", amount);
+        shareContract.getStateData().set("amount", amount.toString());
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         shareContract.addPermission(changeOwnerPerm);

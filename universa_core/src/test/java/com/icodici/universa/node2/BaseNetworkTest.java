@@ -38,6 +38,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.*;
@@ -1027,7 +1028,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("30"), "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -1059,7 +1060,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 550
-        Contract c1 = ContractsService.createSplit(c, "550", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("550"), "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("-450", c1.getStateData().get("amount").toString());
         assertEquals("550", c2.getStateData().get("amount").toString());
@@ -1092,7 +1093,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("30"), "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -1139,7 +1140,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("30"), "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         registerAndCheckApproved(c1);
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -1240,7 +1241,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract.setTestQuantaLimit(60);
         // 30
-        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, new BigDecimal("30"), "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
 
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -1521,7 +1522,7 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys, "100000000000");
+        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("100000000000"));
 
         tokenContract.check();
         tokenContract.traceErrors();
@@ -1541,14 +1542,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
 
-        //Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
-
-        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"300000000000");
+        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("300000000000"));
         tokenContract1.check();
         tokenContract1.traceErrors();
         registerAndCheckApproved(tokenContract1);
 
-        Contract tokenContract2 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
+        Contract tokenContract2 = ContractsService.createMintableTokenContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("100000000000"));
         tokenContract2.check();
         tokenContract2.traceErrors();
         registerAndCheckApproved(tokenContract2);
@@ -1580,14 +1579,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
 
-        //Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
-
-        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"300000000000");
+        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("300000000000"));
         tokenContract1.check();
         tokenContract1.traceErrors();
         registerAndCheckApproved(tokenContract1);
 
-        Contract tokenContract2 = ContractsService.createMintableTokenContract(stepaPrivateKeys,stepaPublicKeys,"100000000000");
+        Contract tokenContract2 = ContractsService.createMintableTokenContract(stepaPrivateKeys, stepaPublicKeys, new BigDecimal("100000000000"));
         tokenContract2.check();
         tokenContract2.traceErrors();
         registerAndCheckApproved(tokenContract2);
@@ -1619,7 +1616,7 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys,stepaPublicKeys,"100");
+        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("100"));
 
         shareContract.check();
         shareContract.traceErrors();
@@ -3036,9 +3033,9 @@ public class BaseNetworkTest extends TestCase {
 
 
         // 100 - 30 = 70
-        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, "30", "amount", martyPrivateKeys);
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, new BigDecimal("30"), "amount", martyPrivateKeys);
         Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
-        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, "30", "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, new BigDecimal("30"), "amount", stepaPrivateKeys);
         Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
 
         martyCoinsSplit.check();
@@ -3087,8 +3084,8 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> user1PubKeySet = user1PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
         Set<PublicKey> user2PubKeySet = user2PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
 
-        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivKeySet, user1PubKeySet, "100", "0.0001");
-        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivKeySet, user2PubKeySet, "100", "0.001");
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivKeySet, user1PubKeySet, new BigDecimal("100"), new BigDecimal("0.0001"));
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivKeySet, user2PubKeySet, new BigDecimal("100"), new BigDecimal("0.001"));
         contractTOK92.setApiLevel(2);
         contractTOK93.setApiLevel(2);
 
@@ -3105,10 +3102,10 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("--- coins created ---");
 
         // TOK92: 100 - 8.02 = 91.98
-        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, "8.02", "amount", user1PrivKeySet);
+        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, new BigDecimal("8.02"), "amount", user1PrivKeySet);
         Contract user1CoinsSplitToUser2 = user1CoinsSplit.getNew().get(0);
         // TOK93: 100 - 10.01 = 89.99
-        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, "10.01", "amount", user2PrivKeySet);
+        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, new BigDecimal("10.01"), "amount", user2PrivKeySet);
         Contract user2CoinsSplitToUser1 = user2CoinsSplit.getNew().get(0);
 
         user1CoinsSplitToUser2.check();
@@ -3194,13 +3191,13 @@ public class BaseNetworkTest extends TestCase {
 
 
         // 100 - 30 = 70
-        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, "30", "amount", martyPrivateKeys);
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, new BigDecimal("30"), "amount", martyPrivateKeys);
         // remove sign!!
         martyCoinsSplit.getKeysToSignWith().clear();
         martyCoinsSplit.removeAllSignatures();
         martyCoinsSplit.seal();
         Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
-        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, "30", "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, new BigDecimal("30"), "amount", stepaPrivateKeys);
         Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
 
         martyCoinsSplit.check();
@@ -4873,7 +4870,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(tp_after);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100",
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, new BigDecimal("100"),
                 "amount", stepaPrivateKeys, true);
 //        llcProperty2.createRole("creator", llcProperty2.getRole("owner"));
 //        llcProperty2.getNew().get(0).createRole("creator", llcProperty2.getNew().get(0).getRole("owner"));
@@ -5277,7 +5274,7 @@ public class BaseNetworkTest extends TestCase {
         // - second in the state
         // - second inherits conditions from the first
 
-        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100");
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, new BigDecimal("100"));
 
         // update change_owner permission for use required reference
 
@@ -5336,7 +5333,7 @@ public class BaseNetworkTest extends TestCase {
 
         // 3 revision: split
 
-        Contract llcProperty3 = ContractsService.createSplit(llcProperty2, "80", "amount", stepaPrivateKeys, true);
+        Contract llcProperty3 = ContractsService.createSplit(llcProperty2, new BigDecimal("80"), "amount", stepaPrivateKeys, true);
         llcProperty3.check();
         llcProperty3.traceErrors();
         assertFalse(llcProperty3.isOk());
@@ -5413,7 +5410,7 @@ public class BaseNetworkTest extends TestCase {
 
         // 1 revision: main contract with reference in the definition
 
-        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100");
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, new BigDecimal("100"));
 
         // update split_join permission for use required reference
 
@@ -5454,7 +5451,7 @@ public class BaseNetworkTest extends TestCase {
 
         // wrong (old) referenced contract
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "80", "amount", stepaPrivateKeys, true);
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, new BigDecimal("80"), "amount", stepaPrivateKeys, true);
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
         // don't forget add all contracts needed for all references
@@ -5469,7 +5466,7 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("------");
 
-        llcProperty2 = ContractsService.createSplit(llcProperty, "80", "amount", stepaPrivateKeys, true);
+        llcProperty2 = ContractsService.createSplit(llcProperty, new BigDecimal("80"), "amount", stepaPrivateKeys, true);
 
         // and seal all again
         llcProperty2.getNew().get(0).seal();
@@ -5923,7 +5920,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(tp_after);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100",
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, new BigDecimal("100"),
                 "amount", stepaPrivateKeys, true);
         llcProperty2.check();
         llcProperty2.traceErrors();
@@ -7185,7 +7182,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c1);
 
         System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
-        Contract c2 = ContractsService.createSplit(c1, "99", "amount", keys);
+        Contract c2 = ContractsService.createSplit(c1, new BigDecimal("99"), "amount", keys);
         Contract c3 = c2.getNew().get(0);
 
         System.out.println("money after split (c2): " + c2.getStateData().getIntOrThrow("amount"));
@@ -7675,7 +7672,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(jobCertificate);
 
-        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100000000000");
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, new BigDecimal("100000000000"));
 
         List <String> listConditions = new ArrayList<>();
         listConditions.add("ref.definition.issuer == \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5\n" +
@@ -7718,7 +7715,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100", "amount", stepaPrivateKeys, true);
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, new BigDecimal("100"), "amount", stepaPrivateKeys, true);
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());

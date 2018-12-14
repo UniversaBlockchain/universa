@@ -23,6 +23,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -350,7 +351,7 @@ public class ContractsServiceTest extends ContractTestBase {
         for (PrivateKey pk : martyPrivateKeys)
             martyPublicKeys.add(pk.getPublicKey());
 
-        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, "100");
+        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("100"));
 
         tokenContract.check();
         tokenContract.traceErrors();
@@ -406,7 +407,7 @@ public class ContractsServiceTest extends ContractTestBase {
         for (PrivateKey pk : martyPrivateKeys)
             martyPublicKeys.add(pk.getPublicKey());
 
-        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, "100");
+        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, new BigDecimal("100"));
 
         shareContract.check();
         shareContract.traceErrors();

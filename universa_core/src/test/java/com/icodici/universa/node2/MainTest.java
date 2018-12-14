@@ -1533,7 +1533,7 @@ public class MainTest {
         Contract contractMoney = ContractsService.createTokenContract(
                 new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
                 new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
-                "9000"
+                new BigDecimal("9000")
         );
         ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, ir1.state);
@@ -1571,7 +1571,7 @@ public class MainTest {
         Contract contractMoney = ContractsService.createTokenContract(
             new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
             new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
-            "9000"
+            new BigDecimal("9000")
         );
         ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, ir1.state);
@@ -1749,7 +1749,7 @@ public class MainTest {
         Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
         Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
-        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, "1000000");
+        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("1000000"));
         tokenContract.check();
         tokenContract.traceErrors();
 
@@ -1806,7 +1806,7 @@ public class MainTest {
         Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
         Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
-        Contract mintableTokenContract = ContractsService.createTokenContractWithEmission(issuerPrivateKeys, ownerPublicKeys, "300000000000");
+        Contract mintableTokenContract = ContractsService.createTokenContractWithEmission(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("300000000000"));
 
         mintableTokenContract.check();
         mintableTokenContract.traceErrors();
@@ -1815,7 +1815,7 @@ public class MainTest {
         System.out.println("mintableTokenContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract emittedContract = ContractsService.createTokenEmission(mintableTokenContract, "100000000000", issuerPrivateKeys);
+        Contract emittedContract = ContractsService.createTokenEmission(mintableTokenContract, new BigDecimal("100000000000"), issuerPrivateKeys);
 
         emittedContract.check();
         emittedContract.traceErrors();
@@ -1865,7 +1865,7 @@ public class MainTest {
         Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
         Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
 
-        Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, "100");
+        Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("100"));
         contractC.check();
         contractC.traceErrors();
 
@@ -1874,7 +1874,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // 100 - 30 = 70
-        Contract сontractA = ContractsService.createSplit(contractC, "30", "amount", issuerPrivateKeys2, true);
+        Contract сontractA = ContractsService.createSplit(contractC, new BigDecimal("30"), "amount", issuerPrivateKeys2, true);
         Contract contractB = сontractA.getNew().get(0);
         assertEquals("70", сontractA.getStateData().get("amount").toString());
         assertEquals("30", contractB.getStateData().get("amount").toString());
@@ -1925,7 +1925,7 @@ public class MainTest {
         Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
         Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
-        Contract shareContract = ContractsService.createShareContract(issuerPrivateKeys,ownerPublicKeys,"100");
+        Contract shareContract = ContractsService.createShareContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("100"));
 
         shareContract.check();
         shareContract.traceErrors();
@@ -2342,7 +2342,7 @@ public class MainTest {
 
         Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
-        Contract sourceContract = ContractsService.createShareContract(issuerPrivateKeys,ownerPublicKeys,"100");
+        Contract sourceContract = ContractsService.createShareContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("100"));
 
         sourceContract.check();
         sourceContract.traceErrors();
@@ -2382,7 +2382,7 @@ public class MainTest {
         Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
 
 
-        Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, "100", "0.0001");
+        Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, new BigDecimal("100"), new BigDecimal("0.0001"));
         delorean.seal();
 
         delorean.check();
@@ -2391,7 +2391,7 @@ public class MainTest {
         ItemResult itemResult = client.register(delorean.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract lamborghini = ContractsService.createTokenContract(stepaPrivateKeys, stepaPublicKeys, "100", "0.0001");
+        Contract lamborghini = ContractsService.createTokenContract(stepaPrivateKeys, stepaPublicKeys, new BigDecimal("100"), new BigDecimal("0.0001"));
         lamborghini.seal();
 
         lamborghini.check();
@@ -2486,8 +2486,8 @@ public class MainTest {
         Set<PublicKey> user2PublicKeySet = user2PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
 
 
-        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivateKeySet, user1PublicKeySet, "100", "0.0001");
-        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivateKeySet, user2PublicKeySet, "100", "0.001");
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivateKeySet, user1PublicKeySet, new BigDecimal("100"), new BigDecimal("0.0001"));
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivateKeySet, user2PublicKeySet, new BigDecimal("100"), new BigDecimal("0.001"));
 
         contractTOK92.seal();
         contractTOK92.check();
@@ -2507,10 +2507,10 @@ public class MainTest {
         System.out.println("--- tokens created ---");
 
         // TOK92: 100 - 8.02 = 91.98
-        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, "8.02", "amount", user1PrivateKeySet);
+        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, new BigDecimal("8.02"), "amount", user1PrivateKeySet);
         Contract user1CoinsSplitToUser2 = user1CoinsSplit.getNew().get(0);
         // TOK93: 100 - 10.01 = 89.99
-        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, "10.01", "amount", user2PrivateKeySet);
+        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, new BigDecimal("10.01"), "amount", user2PrivateKeySet);
         Contract user2CoinsSplitToUser1 = user2CoinsSplit.getNew().get(0);
 
         user1CoinsSplitToUser2.check();
@@ -3605,7 +3605,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace();
         testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
         for(int i = 109; i < 110; i++) {
-            Contract c = ContractsService.createTokenContract(issuers, owners, "100000.9", "0.01");
+            Contract c = ContractsService.createTokenContract(issuers, owners, new BigDecimal("100000.9"), new BigDecimal("0.01"));
             c.setIssuerKeys(key.getPublicKey().getShortAddress());
             c.setCreatorKeys(key.getPublicKey().getShortAddress());
             c.setExpiresAt(ZonedDateTime.now().plusDays(10));
@@ -3904,7 +3904,7 @@ public class MainTest {
 
         Set<PublicKey> ownerKeys = new HashSet<>();
         ownerKeys.add(userKey.getPublicKey());
-        Contract utnContract = ContractsService.createTokenContract(utnIssuer,ownerKeys,"100000");
+        Contract utnContract = ContractsService.createTokenContract(utnIssuer, ownerKeys, new BigDecimal("100000"));
         @NonNull ItemResult ir = testSpace.client.register(utnContract.getPackedTransaction());
 
         while(ir.state.isPending()) {
@@ -3919,7 +3919,7 @@ public class MainTest {
 
 
         //CREATE COMPOUND
-        Contract compound = ContractsService.createSplit(utnContract, "150", "amount", new HashSet<>(),true);
+        Contract compound = ContractsService.createSplit(utnContract, new BigDecimal("150"), "amount", new HashSet<>(),true);
         Contract paymentInUTNs = (Contract) compound.getNewItems().iterator().next();
         paymentInUTNs.setOwnerKeys(universaAdminKey);
 
@@ -6915,7 +6915,7 @@ public class MainTest {
         List<Contract> splits = new ArrayList<>();
         Integer amountTokens = 1000;
 
-        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys, ownerPublicKeys, "1000");
+        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("1000"));
         tokenContract.check();
         tokenContract.traceErrors();
 
@@ -6926,7 +6926,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         for (Integer i = 1; i < 41; i++) {
-            Contract contractRemainder = ContractsService.createSplit(tokenContract, i.toString(), "amount", issuerPrivateKeys2, true);
+            Contract contractRemainder = ContractsService.createSplit(tokenContract, new BigDecimal(i), "amount", issuerPrivateKeys2, true);
             Contract contractSplit = contractRemainder.getNew().get(0);
             amountTokens -= i;
 
@@ -7016,7 +7016,7 @@ public class MainTest {
         PrivateKey owner2 = TestKeys.privateKey(13);
         PrivateKey owner3 = TestKeys.privateKey(14);
 
-        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(issuer)), new HashSet<>(Do.listOf(owner1.getPublicKey())), "3000");
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(issuer)), new HashSet<>(Do.listOf(owner1.getPublicKey())), new BigDecimal("3000"));
         assertEquals(ts.client.register(token.getPackedTransaction(),15000).state,ItemState.APPROVED);
 
         Contract part1 = token.createRevision(owner1);

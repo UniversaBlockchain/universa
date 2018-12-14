@@ -160,7 +160,7 @@ public class CLIMainTest {
         String uContract = getApprovedUContract();
 
         callMain("--register", basePath + "packedContract.unicon", "--u", uContract, "-k", rootPath + "keys/stepan_mamontov.private.unikey", "--wait", "5000");
-        Contract packedContract = ContractsService.createSplit(contract, "1", FIELD_NAME, keys);
+        Contract packedContract = ContractsService.createSplit(contract, new BigDecimal("1"), FIELD_NAME, keys);
         packedContract.addSignerKey(keys.iterator().next());
         packedContract.seal();
 
@@ -3555,7 +3555,7 @@ public class CLIMainTest {
 
         List<Contract> res = new ArrayList<>();
         for (String value : values) {
-            Contract contract = ContractsService.createSplit(money, value, FIELD_NAME, new HashSet<PrivateKey>());
+            Contract contract = ContractsService.createSplit(money, new BigDecimal(value), FIELD_NAME, new HashSet<PrivateKey>());
             contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
             res.add(contract.getNew().get(0));
         }
@@ -3670,7 +3670,7 @@ public class CLIMainTest {
         owners.add(splitJoinKey2.getPublicKey());
 
 
-        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", "0.01");
+        Contract contract = ContractsService.createTokenContract(issuers, owners, new BigDecimal("10000.50"), new BigDecimal("0.01"));
         contract.seal();
         contract.check();
         assertTrue(contract.isOk());
@@ -3745,7 +3745,7 @@ public class CLIMainTest {
         HashSet<PublicKey> owners = new HashSet<>();
         owners.add(key1.getPublicKey());
 
-        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", "0.01");
+        Contract contract = ContractsService.createTokenContract(issuers, owners, new BigDecimal("10000.50"), new BigDecimal("0.01"));
         SimpleRole issuer1 = new SimpleRole("issuer1",new KeyRecord(key1.getPublicKey()));
         SimpleRole issuer2 = new SimpleRole("issuer2",new KeyRecord(key2.getPublicKey()));
         ListRole issuer = new ListRole("issuer",ListRole.Mode.ALL,Do.listOf(issuer1,issuer2));
