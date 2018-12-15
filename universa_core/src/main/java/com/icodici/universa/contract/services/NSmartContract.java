@@ -21,6 +21,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -47,7 +48,11 @@ public class NSmartContract extends Contract implements NContract {
         Set<KeyAddress> getUIssuerKeys();
         String getUIssuerName();
         int getMinPayment(String extendedType);
+
+        @Deprecated
         double getRate(String extendedType);
+
+        BigDecimal getServiceRate(String extendedType);
         Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType);
     };
 
@@ -267,12 +272,12 @@ public class NSmartContract extends Contract implements NContract {
         return 0;
     }
 
-    protected double getRate() {
-        return nodeInfoProvider.getRate(getExtendedType());
+    protected BigDecimal getRate() {
+        return nodeInfoProvider.getServiceRate(getExtendedType());
     }
 
-    protected double getRate(String key) {
-        return nodeInfoProvider.getRate(getExtendedType() + ":" + key);
+    protected BigDecimal getRate(String key) {
+        return nodeInfoProvider.getServiceRate(getExtendedType() + ":" + key);
     }
 
     protected Collection<PublicKey> getAdditionalKeysToSignWith() {

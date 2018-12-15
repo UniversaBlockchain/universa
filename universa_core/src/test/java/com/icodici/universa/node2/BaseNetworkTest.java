@@ -8148,8 +8148,14 @@ public class BaseNetworkTest extends TestCase {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override
@@ -8200,7 +8206,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals(100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), slotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
 
 //        for(Node n : nodes) {
 //            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -8226,7 +8232,7 @@ public class BaseNetworkTest extends TestCase {
 
         Thread.sleep(5000);
 
-        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+        double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -8302,7 +8308,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), refilledSlotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8323,7 +8329,7 @@ public class BaseNetworkTest extends TestCase {
         double spentDays = (double) spentSeconds / (3600 * 24);
         double spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = ((double) (100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
+        days = ((double) (100 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -8338,7 +8344,8 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -8358,7 +8365,8 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -8392,7 +8400,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), refilledSlotContract2.getPrepaidKilobytesDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8413,7 +8421,7 @@ public class BaseNetworkTest extends TestCase {
         spentDays = (double) spentSeconds / (3600 * 24);
         spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = ((double) (100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
+        days = ((double) (100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() - spentKDs) * 1024 / simpleContract.getPackedTransaction().length;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -8428,7 +8436,8 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1+(long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -8449,7 +8458,8 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -8553,10 +8563,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
+        assertEquals(100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), slotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
+        System.out.println(">> " + slotContract.getPrepaidKilobytesDays().doubleValue() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double)100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double)100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8596,7 +8606,7 @@ public class BaseNetworkTest extends TestCase {
                 for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                        double days = (double) 100 * networkNode.getConfig().getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                        double days = (double) 100 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
                         double hours = days * 24;
                         long seconds = (long) (days * 24 * 3600);
                         calculateExpires = timeReg1.plusSeconds(seconds);
@@ -8634,7 +8644,7 @@ public class BaseNetworkTest extends TestCase {
             for (Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                    double days = (double) 100 * node.getConfig().getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                    double days = (double) 100 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
                     calculateExpires = timeReg1.plusSeconds(seconds);
@@ -8694,12 +8704,12 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
+        assertEquals((100 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), refilledSlotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
+        System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesDays().doubleValue() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> Summ: " + ((double)(simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
-        System.out.println(">> " +  ((double)(100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+        System.out.println(">> " +  ((double)(100 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8722,7 +8732,7 @@ public class BaseNetworkTest extends TestCase {
         spentKDs = spentDays * simpleContract.getPackedTransaction().length / 1024;
 
         int totalLength = simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length;
-        double days = (((double) (100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name())) - spentKDs) * 1024 / totalLength;
+        double days = (((double) (100 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()) - spentKDs) * 1024 / totalLength;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
@@ -8755,7 +8765,8 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1+(long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -8776,7 +8787,8 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -8801,7 +8813,8 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -8822,7 +8835,8 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -8872,12 +8886,12 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
+        assertEquals((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), refilledSlotContract2.getPrepaidKilobytesDays().doubleValue(), 0.01);
+        System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesDays().doubleValue() + " KD");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> Summ: " + ((double)(simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
-        System.out.println(">> " + ((double)(100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+        System.out.println(">> " + ((double)(100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8899,7 +8913,7 @@ public class BaseNetworkTest extends TestCase {
         spentKDs += spentDays2 * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024;
 
         int totalLength2 = simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length;
-        double days2 =  (((double) (100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name())) - spentKDs) * 1024 / totalLength2;
+        double days2 =  (((double) (100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()) - spentKDs) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds2);
@@ -8939,7 +8953,8 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -8989,7 +9004,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract2.getId(), restoredContract.getId());
 
 //        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
 //                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
 
         envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
@@ -8999,7 +9014,8 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -9020,7 +9036,8 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -9058,10 +9075,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
+        assertEquals((100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), refilledSlotContract3.getPrepaidKilobytesDays().doubleValue(), 0.01);
+        System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesDays().doubleValue() + " KD");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract3.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract3.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg4 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -9083,7 +9100,7 @@ public class BaseNetworkTest extends TestCase {
         spentKDs += spentDays3 * (simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length) / 1024;
 
         int totalLength3 = simpleContract3.getPackedTransaction().length;
-        double days3 = ((double) (100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / totalLength3;
+        double days3 = ((double) (100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() - spentKDs) * 1024 / totalLength3;
         double hours3 = days3 * 24;
         long seconds3 = (long) (days3 * 24 * 3600);
         calculateExpires = timeReg4.plusSeconds(seconds3);
@@ -9130,7 +9147,8 @@ public class BaseNetworkTest extends TestCase {
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 1 + (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -9170,7 +9188,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
 //        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
+//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
 
         envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
         if(envs.size() > 0) {
@@ -9303,10 +9321,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
+        assertEquals(100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), slotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
+        System.out.println(">> " + slotContract.getPrepaidKilobytesDays().doubleValue() + " KD");
         System.out.println(">> " + ((double) simpleContract.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -9346,7 +9364,7 @@ public class BaseNetworkTest extends TestCase {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                        double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
                         double hours = days * 24;
                         long seconds = (long) (days * 24 * 3600);
                         calculateExpires = timeReg1.plusSeconds(seconds);
@@ -9385,7 +9403,7 @@ public class BaseNetworkTest extends TestCase {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                    double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                    double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
                     calculateExpires = timeReg1.plusSeconds(seconds);
@@ -9459,14 +9477,14 @@ public class BaseNetworkTest extends TestCase {
 
 
 //        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
 //                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
         long spentSeconds2 = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays2 = (double) spentSeconds2 / (3600 * 24);
         spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length) / 1024);
 
         int totalLength2 = simpleContract2.getPackedTransaction().length;
-        double days2 = ((double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) - spentKDs) * 1024 / totalLength2;
+        double days2 = ((double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() - spentKDs) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds2);
@@ -9493,7 +9511,8 @@ public class BaseNetworkTest extends TestCase {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                         System.out.println(foundCss.expiresAt());
-                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
@@ -9507,7 +9526,8 @@ public class BaseNetworkTest extends TestCase {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println(foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), (long) (5*config.getRate(NSmartContract.SmartContractType.SLOT1.name())));
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
@@ -10705,8 +10725,9 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
         config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
 
-        double oldValue = config.getRate(NSmartContract.SmartContractType.UNS1.name());
-        config.setRate(NSmartContract.SmartContractType.UNS1.name(), 10.0 / (24 * 3600 * nodeInfoProvider.getMinPayment(NSmartContract.SmartContractType.UNS1.name())));
+        BigDecimal oldValue = config.getServiceRate(NSmartContract.SmartContractType.UNS1.name());
+        config.setServiceRate(NSmartContract.SmartContractType.UNS1.name(),
+                new BigDecimal(10.0 / (24 * 3600 * nodeInfoProvider.getMinPayment(NSmartContract.SmartContractType.UNS1.name()))));
         config.setHoldDuration(Duration.ofSeconds(10));
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
@@ -10816,7 +10837,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
-        config.setRate(NSmartContract.SmartContractType.UNS1.name(),oldValue);
+        config.setServiceRate(NSmartContract.SmartContractType.UNS1.name(), oldValue);
     }
 
 
@@ -11906,7 +11927,7 @@ public class BaseNetworkTest extends TestCase {
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         // check remaining balance
-        assertEquals(1470 * config.getRate(NSmartContract.SmartContractType.UNS1.name()), uns.getPrepaidNamesForDays(), 0.01);
+        assertEquals(1470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue(), uns.getPrepaidNamesDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -11923,7 +11944,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2);
 
         // check calculation expiration time
-        double days = (double) 1470 * config.getRate(NSmartContract.SmartContractType.UNS1.name()) / uns.getUnsName(reducedName).getRecordsCount();
+        double days = (double) 1470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / uns.getUnsName(reducedName).getRecordsCount();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -11964,7 +11985,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(refilledUnsContract.isOk());
 
         // check remaining balance
-        assertEquals(2470 * config.getRate(NSmartContract.SmartContractType.UNS1.name()), refilledUnsContract.getPrepaidNamesForDays(), 0.01);
+        assertEquals(2470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue(), refilledUnsContract.getPrepaidNamesDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -11985,7 +12006,7 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentNDs = (double) spentSeconds / (3600 * 24);
 
-        days = (double) (2470 - spentNDs) * config.getRate(NSmartContract.SmartContractType.UNS1.name()) / refilledUnsContract.getUnsName(reducedName).getRecordsCount();
+        days = (double) (2470 - spentNDs) * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / refilledUnsContract.getUnsName(reducedName).getRecordsCount();
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -14362,7 +14383,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -14386,7 +14408,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
 
         // check subscription
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -14446,7 +14468,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
-        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+        assertEquals((200 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                refilledFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -14467,7 +14490,7 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = (200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
+        days = (200 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -14531,7 +14554,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract2.get("definition.extended_type"));
-        assertEquals((200 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract2.getPrepaidOriginsForDays(), 0.01);
+        assertEquals((200 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                refilledFollowerContract2.getPrepaidOriginsDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -14551,7 +14575,7 @@ public class BaseNetworkTest extends TestCase {
         spentSeconds = (timeReg3.toEpochSecond() - timeReg1.toEpochSecond());
         spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = (200 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
+        days = (200 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds);
 
@@ -14655,7 +14679,7 @@ public class BaseNetworkTest extends TestCase {
             return simpleContractRevision;
 
         // check subscription
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
         double days = callbackRate / origins;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = baseCalculateExpires.minusSeconds(seconds * callbackNum);
@@ -14839,8 +14863,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -14870,7 +14894,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check subscription
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -14945,8 +14969,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.get("definition.extended_type"));
-        assertEquals(400 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                newRevFollowerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(400 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                newRevFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -14984,7 +15008,7 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = ((200 + 200) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays) / 2;
+        days = ((200 + 200) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays) / 2;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -15147,8 +15171,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -15178,8 +15202,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check before callback
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -15459,8 +15483,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -15490,8 +15514,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check before callback
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -15775,8 +15799,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(250 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(250 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -15806,8 +15830,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check before callback
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
-        double days = 250.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
+        double days = 250.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -16108,8 +16132,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -16139,7 +16163,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check subscription
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -16220,8 +16244,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.get("definition.extended_type"));
-        assertEquals(400 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                newRevFollowerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(400 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                newRevFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -16259,11 +16283,11 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = ((200 + 200) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays) / 2;
+        days = ((200 + 200) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays) / 2;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
         days = callbackRate / newRevFollowerContract.getTrackingOrigins().size();
         seconds = (long) (days * 24 * 3600);
         calculateExpires = calculateExpires.minusSeconds(seconds);
@@ -16381,8 +16405,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), newRevFollowerContract.get("definition.extended_type"));
-        assertEquals(900 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                newRevFollowerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(900 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                newRevFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -16420,7 +16444,7 @@ public class BaseNetworkTest extends TestCase {
         spentSeconds = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
         spentDays += (double) spentSeconds * 2 / (3600 * 24);
 
-        days = ((200 + 200 + 500) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays) / 2;
+        days = ((200 + 200 + 500) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays) / 2;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds);
 
@@ -16685,7 +16709,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -16710,7 +16735,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(followerContract.isCallbackURLUsed("http://localhost:7781/follow.callback"));
 
         // check subscription
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -16787,7 +16812,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
-        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+        assertEquals((200 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                refilledFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -16809,7 +16835,7 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
 
-        days = (200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()) - spentDays;
+        days = (200 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue() - spentDays;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -17030,7 +17056,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         node.registerParcel(payingParcel);
         synchronized (uContractLock) {
@@ -17090,7 +17117,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), refilledFollowerContract.get("definition.extended_type"));
-        assertEquals((200 + 300) * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()), refilledFollowerContract.getPrepaidOriginsForDays(), 0.01);
+        assertEquals((200 + 300) * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                refilledFollowerContract.getPrepaidOriginsDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         synchronized (uContractLock) {
@@ -17140,7 +17168,7 @@ public class BaseNetworkTest extends TestCase {
             return Do.listOf(simpleContractRevision, simpleContractRevision2);
 
         // check subscription
-        double callbackRate = config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback");
+        double callbackRate = config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").doubleValue();
         double days = callbackRate / origins;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = baseCalculateExpires.minusSeconds(seconds * callbackNum);
@@ -17326,8 +17354,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         Multimap<String, Permission> permissions = followerContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -17357,7 +17385,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check subscription
-        double days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        double days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -17428,8 +17456,8 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.FOLLOWER1.name(), followerContract2.get("definition.extended_type"));
-        assertEquals(200 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name()),
-                followerContract2.getPrepaidOriginsForDays(), 0.1);
+        assertEquals(200 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue(),
+                followerContract2.getPrepaidOriginsDays().doubleValue(), 0.1);
 
         permissions = followerContract2.getPermissions();
         mdp = permissions.get("modify_data");
@@ -17454,7 +17482,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
         // check subscription
-        days = 200.0 * config.getRate(NSmartContract.SmartContractType.FOLLOWER1.name());
+        days = 200.0 * config.getServiceRate(NSmartContract.SmartContractType.FOLLOWER1.name()).doubleValue();
         seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires2 = timeReg2.plusSeconds(seconds);
 

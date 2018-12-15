@@ -21,6 +21,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -313,7 +314,7 @@ public class SlotContract extends NSmartContract {
 
         spentEarlyKDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyKDsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
-        prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * getRate();
+        prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * getRate().doubleValue();
 
         spentKDsTime = now;
 
@@ -390,11 +391,16 @@ public class SlotContract extends NSmartContract {
         }
     }
 
+    @Deprecated
+    public double getPrepaidKilobytesForDays() {
+        return prepaidKilobytesForDays;
+    }
+
     /**
      * @return calculated prepaid KD (kilobytes*days) for all time, from first revision
      */
-    public double getPrepaidKilobytesForDays() {
-        return prepaidKilobytesForDays;
+    public BigDecimal getPrepaidKilobytesDays() {
+        return new BigDecimal(prepaidKilobytesForDays);
     }
 
     @Override

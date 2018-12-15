@@ -41,6 +41,7 @@ import javax.script.ScriptException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -181,8 +182,14 @@ public class ScriptEngineTest {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override

@@ -61,7 +61,7 @@ public class ConfigTest extends TestCase {
         assertEquals(config.getFollowerCallbackDelay(), copyConfig.getFollowerCallbackDelay());
         assertEquals(config.getFollowerCallbackStateStoreTime(), copyConfig.getFollowerCallbackStateStoreTime());
         assertEquals(config.getFollowerCallbackSynchronizationInterval(), copyConfig.getFollowerCallbackSynchronizationInterval());
-        assertEquals(config.getRateNodesSendFollowerCallbackToComplete(), copyConfig.getRateNodesSendFollowerCallbackToComplete(), 0.001);
+        assertEquals(config.getRatioNodesSendFollowerCallbackToComplete().doubleValue(), copyConfig.getRatioNodesSendFollowerCallbackToComplete().doubleValue(), 0.001);
     }
 
     @Test

@@ -670,8 +670,8 @@ public class Client {
     public Decimal storageGetRate() throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("storageGetRate");
-            Double U = result.getDouble("U");
-            return new Decimal(BigDecimal.valueOf(U));
+            String U = result.getStringOrThrow("U");
+            return new Decimal(U);
         });
     }
 
@@ -722,8 +722,8 @@ public class Client {
     public Decimal unsRate() throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("unsRate");
-            Double U = result.getDouble("U");
-            return new Decimal(BigDecimal.valueOf(U));
+            String U = result.getStringOrThrow("U");
+            return new Decimal(U);
         });
     }
 

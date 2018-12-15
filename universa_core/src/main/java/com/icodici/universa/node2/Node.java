@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -140,8 +141,14 @@ public class Node {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override
@@ -4488,7 +4495,7 @@ public class Node {
         private void checkForComplete() {
             // if some nodes (rate defined in config) also sended callback and received packed item (without answer)
             // callback is deemed complete
-            if (nodesSendCallback.size() >= (int) Math.floor(network.allNodes().size() * config.getRateNodesSendFollowerCallbackToComplete()))
+            if (nodesSendCallback.size() >= (int) Math.floor(network.allNodes().size() * config.getRatioNodesSendFollowerCallbackToComplete().doubleValue()))
                 complete();
         }
 

@@ -28,6 +28,7 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -220,7 +221,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session, true);
 
-        Double rate = config.rate.get(NSmartContract.SmartContractType.UNS1.name());
+        BigDecimal rate = config.rate.get(NSmartContract.SmartContractType.UNS1.name());
         String str = rate.toString();
         Binder b = new Binder();
         b.put("U", str);
@@ -642,7 +643,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session, true);
 
-        Double rate = config.rate.get(NSmartContract.SmartContractType.SLOT1.name());
+        BigDecimal rate = config.rate.get(NSmartContract.SmartContractType.SLOT1.name());
         String str = rate.toString();
         Binder b = new Binder();
         b.put("U", str);
@@ -710,8 +711,8 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session, true);
 
-        Double rateOriginDays = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
-        Double rateCallback = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback") / rateOriginDays;
+        BigDecimal rateOriginDays = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name());
+        BigDecimal rateCallback = config.rate.get(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback").divide(rateOriginDays);
 
         Binder b = new Binder();
         b.put("rateOriginDays", rateOriginDays.toString());

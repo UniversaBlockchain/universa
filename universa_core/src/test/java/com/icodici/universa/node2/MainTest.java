@@ -2081,7 +2081,7 @@ public class MainTest {
 
         Decimal kilobytesAndDaysPerU = client.storageGetRate();
         System.out.println("storageGetRate: " + kilobytesAndDaysPerU);
-        assertEquals(new Decimal((int) main.config.getRate("SLOT1")), kilobytesAndDaysPerU);
+        assertEquals(new Decimal(main.config.getServiceRate("SLOT1").toString()), kilobytesAndDaysPerU);
 
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();
@@ -2150,7 +2150,7 @@ public class MainTest {
 
         Decimal namesAndDaysPerU = testSpace.client.unsRate();
         System.out.println("unsRate: " + namesAndDaysPerU);
-        assertEquals(testSpace.node.config.getRate("UNS1"), namesAndDaysPerU.doubleValue(), 0.000001);
+        assertEquals(testSpace.node.config.getServiceRate("UNS1").doubleValue(), namesAndDaysPerU.doubleValue(), 0.000001);
 
         Contract simpleContract = new Contract(manufacturePrivateKeys.iterator().next());
         simpleContract.seal();
@@ -2264,8 +2264,8 @@ public class MainTest {
         System.out.println("rateOriginDays: " + followerRate.get("rateOriginDays"));
         System.out.println("rateCallback: " + followerRate.get("rateCallback"));
 
-        assertEquals(main.config.getRate("FOLLOWER1"), followerRate.getDouble("rateOriginDays"), 0.000001);
-        assertEquals((main.config.getRate("FOLLOWER1" + ":callback") / main.config.getRate("FOLLOWER1")), followerRate.getDouble("rateCallback"), 0.000001);
+        assertEquals(main.config.getServiceRate("FOLLOWER1").toString(), followerRate.getString("rateOriginDays"));
+        assertEquals(main.config.getServiceRate("FOLLOWER1" + ":callback").divide(main.config.getServiceRate("FOLLOWER1")).toString(), followerRate.getString("rateCallback"));
 
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();
@@ -2310,7 +2310,7 @@ public class MainTest {
         assertEquals(followerInfo.size(),9);
 
         assertEquals(followerInfo.getInt("paid_U", 0),followerContract.getStateData().get("paid_U"));
-        assertTrue(followerInfo.getDouble("prepaid_OD") ==  followerContract.getPrepaidOriginsForDays());
+        assertTrue(followerInfo.getDouble("prepaid_OD") == followerContract.getPrepaidOriginsDays().doubleValue());
         assertEquals(followerInfo.getLong("prepaid_from", 0), followerContract.getStateData().get("prepaid_from"));
         assertEquals(followerInfo.getInt("followed_origins", 0), followerContract.getStateData().get("followed_origins"));
         assertEquals(followerInfo.getDouble("spent_OD"), followerContract.getStateData().get("spent_OD"));
@@ -2731,8 +2731,14 @@ public class MainTest {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override

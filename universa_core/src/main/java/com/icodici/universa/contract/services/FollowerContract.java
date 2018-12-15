@@ -22,6 +22,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -327,7 +328,7 @@ public class FollowerContract extends NSmartContract {
         paidU = getPaidU();
 
         if (callbackRate == 0)
-            callbackRate = getRate("callback");
+            callbackRate = getRate("callback").doubleValue();
 
         // then looking for prepaid early U that can be find at the stat.data
         // additionally we looking for and calculate times of payment fillings and some other data
@@ -348,7 +349,7 @@ public class FollowerContract extends NSmartContract {
 
         spentEarlyODsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyODsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
-        prepaidOriginDays = wasPrepaidOriginDays + paidU * getRate();
+        prepaidOriginDays = wasPrepaidOriginDays + paidU * getRate().doubleValue();
 
         spentODsTime = now;
 
@@ -422,13 +423,18 @@ public class FollowerContract extends NSmartContract {
         }
     }
 
+    @Deprecated
+    public double getPrepaidOriginsForDays() {
+        return prepaidOriginDays;
+    }
+
     /**
      * Get calculated prepaid origins*days for this follower contract
      *
      * @return calculated prepaid origins*days for all time, from first revision
      */
-    public double getPrepaidOriginsForDays() {
-        return prepaidOriginDays;
+    public BigDecimal getPrepaidOriginsDays() {
+        return new BigDecimal(prepaidOriginDays);
     }
 
     @Override

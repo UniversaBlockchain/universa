@@ -22,6 +22,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -136,8 +137,13 @@ public class UnsContract extends NSmartContract {
         addPermission(revokePermission);
     }
 
+    @Deprecated
     public double getPrepaidNamesForDays() {
         return prepaidNamesForDays;
+    }
+
+    public BigDecimal getPrepaidNamesDays() {
+        return new BigDecimal(prepaidNamesForDays);
     }
 
     private double calculatePrepaidNamesForDays(boolean withSaveToState) {
@@ -161,7 +167,7 @@ public class UnsContract extends NSmartContract {
 
         spentEarlyNDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyNDsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
-        prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate();
+        prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate().doubleValue();
 
         spentNDsTime = now;
 

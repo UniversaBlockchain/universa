@@ -15,6 +15,7 @@ import com.icodici.universa.contract.services.NSmartContract;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.temporal.TemporalAmount;
 import java.util.*;
@@ -24,8 +25,8 @@ public class Config {
 
     private KeyAddress networkAdminKeyAddress = null;
     private KeyAddress networkReconfigKeyAddress = null;
-    public Map<String,Integer> minPayment = new HashMap<>();
-    public Map<String,Double> rate = new HashMap<>();
+    public Map<String, Integer> minPayment = new HashMap<>();
+    public Map<String, BigDecimal> rate = new HashMap<>();
 
     public Config () {
         System.out.println("USING REAL CONFIG");
@@ -49,14 +50,14 @@ public class Config {
             encryptionError.printStackTrace();
         }
 
-        rate.put(NSmartContract.SmartContractType.SLOT1.name(),4.0);
-        rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
-        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 1.0);
+        rate.put(NSmartContract.SmartContractType.SLOT1.name(), new BigDecimal("4"));
+        rate.put(NSmartContract.SmartContractType.UNS1.name(), new BigDecimal("0.25"));
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), new BigDecimal("1"));
 
-        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", 1.0);
+        rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", new BigDecimal("1"));
 
         minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
-        minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
+        minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name()).doubleValue()));
         minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 100);
     }
 
@@ -101,7 +102,7 @@ public class Config {
         config.followerCallbackDelay = followerCallbackDelay;
         config.followerCallbackStateStoreTime = followerCallbackStateStoreTime;
         config.followerCallbackSynchronizationInterval = followerCallbackSynchronizationInterval;
-        config.rateNodesSendFollowerCallbackToComplete = rateNodesSendFollowerCallbackToComplete;
+        config.ratioNodesSendFollowerCallbackToComplete = ratioNodesSendFollowerCallbackToComplete;
         return config;
     }
 
@@ -148,8 +149,13 @@ public class Config {
         this.holdDuration = holdDuration;
     }
 
+    @Deprecated
     public void setRate(String name, double value) {
-        rate.put(name,value);
+        rate.put(name, new BigDecimal(value));
+    }
+
+    public void setServiceRate(String name, BigDecimal value) {
+        rate.put(name, value);
     }
 
     public interface ConsensusConfigUpdater {
@@ -207,7 +213,7 @@ public class Config {
     private Duration followerCallbackDelay = Duration.ofSeconds(10);
     private Duration followerCallbackStateStoreTime = Duration.ofDays(3);
     private Duration followerCallbackSynchronizationInterval = Duration.ofHours(12);
-    private double rateNodesSendFollowerCallbackToComplete = 0.3;
+    private BigDecimal ratioNodesSendFollowerCallbackToComplete = BigDecimal.valueOf(0.3);
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -248,8 +254,12 @@ public class Config {
         return minPayment.get(extendedType);
     }
 
-    public double getRate(String extendedType)
-    {
+    @Deprecated
+    public double getRate(String extendedType) {
+        return rate.get(extendedType).doubleValue();
+    }
+
+    public BigDecimal getServiceRate(String extendedType) {
         return rate.get(extendedType);
     }
 
@@ -524,9 +534,17 @@ public class Config {
         this.followerCallbackSynchronizationInterval = followerCallbackSynchronizationInterval;
     }
 
-    public double getRateNodesSendFollowerCallbackToComplete() { return rateNodesSendFollowerCallbackToComplete; }
+    @Deprecated
+    public double getRateNodesSendFollowerCallbackToComplete() { return ratioNodesSendFollowerCallbackToComplete.doubleValue(); }
 
+    @Deprecated
     public void setRateNodesSendFollowerCallbackToComplete(double rateNodesSendFollowerCallbackToComplete) {
-        this.rateNodesSendFollowerCallbackToComplete = rateNodesSendFollowerCallbackToComplete;
+        this.ratioNodesSendFollowerCallbackToComplete = new BigDecimal(rateNodesSendFollowerCallbackToComplete);
+    }
+
+    public BigDecimal getRatioNodesSendFollowerCallbackToComplete() { return ratioNodesSendFollowerCallbackToComplete; }
+
+    public void setRatioNodesSendFollowerCallbackToComplete(BigDecimal ratioNodesSendFollowerCallbackToComplete) {
+        this.ratioNodesSendFollowerCallbackToComplete = ratioNodesSendFollowerCallbackToComplete;
     }
 }

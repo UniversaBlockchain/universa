@@ -20,6 +20,7 @@ import net.sergeych.tools.Do;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -168,8 +169,14 @@ public class FollowerContractTest extends ContractTestBase {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override

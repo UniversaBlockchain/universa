@@ -17,6 +17,7 @@ import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -211,8 +212,14 @@ public class UnsContractTest extends ContractTestBase {
         }
 
         @Override
+        @Deprecated
         public double getRate(String extendedType) {
             return config.getRate(extendedType);
+        }
+
+        @Override
+        public BigDecimal getServiceRate(String extendedType) {
+            return config.getServiceRate(extendedType);
         }
 
         @Override
