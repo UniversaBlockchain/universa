@@ -9197,7 +9197,8 @@ public class BaseNetworkTest extends TestCase {
                 for (ContractSubscription foundCss : environment.storageSubscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
-                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
