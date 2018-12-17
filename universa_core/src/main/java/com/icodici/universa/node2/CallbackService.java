@@ -293,13 +293,15 @@ public class CallbackService {
                     CallbackNotification.CallbackNotificationType.RETURN_STATE, null,
                     ledger.getFollowerCallbackStateById(notification.getId())));
         } else if (notification.getType() == CallbackNotification.CallbackNotificationType.RETURN_STATE) {
-            CallbackRecord record = callbacksToSynchronize.get(notification.getId());
+            synchronized (callbackProcessors) {
+                CallbackRecord record = callbacksToSynchronize.get(notification.getId());
 
-            if ((record != null) && record.synchronizeState(notification.getState(), ledger, node)) {
-                callbacksToSynchronize.remove(notification.getId());
+                if ((record != null) && record.synchronizeState(notification.getState(), ledger, node)) {
+                    callbacksToSynchronize.remove(notification.getId());
 
-                node.report(DatagramAdapter.VerboseLevel.DETAILED, "obtainCallbackNotification: callback ",
+                    node.report(DatagramAdapter.VerboseLevel.DETAILED, "obtainCallbackNotification: callback ",
                             notification.getId().toBase64String(), " synchronized with state ", notification.getState().name());
+                }
             }
         } else {
             synchronized (callbackProcessors) {
