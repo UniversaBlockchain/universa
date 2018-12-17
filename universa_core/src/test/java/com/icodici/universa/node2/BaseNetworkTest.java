@@ -8248,17 +8248,22 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract.getId(), restoredContract.getId());
 
-            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println(foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println(foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we store environment
@@ -8273,17 +8278,22 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
-        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println(foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we store environment
@@ -8338,18 +8348,24 @@ public class BaseNetworkTest extends TestCase {
         // additional check for all network nodes
 
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println(foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println(foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -8359,18 +8375,24 @@ public class BaseNetworkTest extends TestCase {
         }
 
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println(foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -8430,18 +8452,24 @@ public class BaseNetworkTest extends TestCase {
         // additional check for all network nodes
 
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println(foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println(foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -8452,18 +8480,24 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(refilledSlotContract2.getId()));
         }
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println(foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println(foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -8497,7 +8531,7 @@ public class BaseNetworkTest extends TestCase {
 
             // check if we remove subscriptions
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             assertEquals(envs.size(),0);
             // check if we remove environment
 
@@ -8510,7 +8544,7 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove subscriptions
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         assertEquals(envs.size(),0);
         // check if we remove environment
 
@@ -8601,16 +8635,16 @@ public class BaseNetworkTest extends TestCase {
 
             ZonedDateTime calculateExpires;
 
-            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                        double days = (double) 100 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
-                        double hours = days * 24;
-                        long seconds = (long) (days * 24 * 3600);
-                        calculateExpires = timeReg1.plusSeconds(seconds);
+                    double days = (double) 100 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+                    double hours = days * 24;
+                    long seconds = (long) (days * 24 * 3600);
+                    calculateExpires = timeReg1.plusSeconds(seconds);
 
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("days " + days);
                         System.out.println("hours " + hours);
                         System.out.println("seconds " + seconds);
@@ -8619,9 +8653,15 @@ public class BaseNetworkTest extends TestCase {
                         System.out.println("found " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we store environment
@@ -8639,16 +8679,16 @@ public class BaseNetworkTest extends TestCase {
         double spentKDs;
         ZonedDateTime calculateExpires;
 
-        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if (envs.size() > 0) {
             for (Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                    double days = (double) 100 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
-                    double hours = days * 24;
-                    long seconds = (long) (days * 24 * 3600);
-                    calculateExpires = timeReg1.plusSeconds(seconds);
+                double days = (double) 100 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+                double hours = days * 24;
+                long seconds = (long) (days * 24 * 3600);
+                calculateExpires = timeReg1.plusSeconds(seconds);
 
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("days " + days);
                     System.out.println("hours " + hours);
                     System.out.println("seconds " + seconds);
@@ -8657,9 +8697,15 @@ public class BaseNetworkTest extends TestCase {
                     System.out.println("found " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we store environment
@@ -8758,19 +8804,26 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract.getId(), restoredContract.getId());
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check revision of stored contract
@@ -8780,19 +8833,26 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract2.getId(), restoredContract.getId());
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             assertNull(networkNode.getLedger().getEnvironment(slotContract.getId()));
@@ -8806,19 +8866,26 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check revision of stored contract
@@ -8828,19 +8895,26 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract2.getId(), restoredContract.getId());
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -8936,7 +9010,7 @@ public class BaseNetworkTest extends TestCase {
             restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
             assertNull(restoredPackedData);
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             assertEquals(0, envs.size());
 
             // check revision of stored contract
@@ -8946,19 +9020,26 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract2.getId(), restoredContract.getId());
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check additional revision of stored contract
@@ -8968,18 +9049,24 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract3.getId(), restoredContract.getId());
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -8993,7 +9080,7 @@ public class BaseNetworkTest extends TestCase {
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         assertEquals(0, envs.size());
 
         // check revision of stored contract
@@ -9004,22 +9091,29 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract2.getId(), restoredContract.getId());
 
 //        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 * 24 * 3600 - (long)spentKDs) /
 //                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check additional revision of stored contract
@@ -9029,19 +9123,26 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                             1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -9123,14 +9224,14 @@ public class BaseNetworkTest extends TestCase {
             restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
             assertNull(restoredPackedData);
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             assertEquals(0, envs.size());
 
             // check revision of stored contract
             restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract2.getId());
             assertNull(restoredPackedData);
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
             assertEquals(0, envs.size());
 
             // check additional (last) revision of stored contract
@@ -9140,19 +9241,26 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(restoredContract);
             assertEquals(simpleContract3.getId(), restoredContract.getId());
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected:" + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
                                 1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                                1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -9170,14 +9278,14 @@ public class BaseNetworkTest extends TestCase {
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         assertEquals(0, envs.size());
 
         // check revision of stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
         assertNull(restoredPackedData);
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
         assertEquals(0, envs.size());
 
         // check additional (last) revision of stored contract
@@ -9188,21 +9296,28 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
 //        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
+//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected:" + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
-                            1 + (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -9241,11 +9356,11 @@ public class BaseNetworkTest extends TestCase {
 
             // check if we remove subscriptions
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             assertEquals(0, envs.size());
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
             assertEquals(0, envs.size());
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
             assertEquals(0, envs.size());
 
             // check if we remove environment
@@ -9264,11 +9379,11 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove subscriptions
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         assertEquals(0, envs.size());
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
         assertEquals(0, envs.size());
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract3.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract3.getId());
         assertEquals(0, envs.size());
 
         // check if we remove environment
@@ -9360,16 +9475,16 @@ public class BaseNetworkTest extends TestCase {
 
             ZonedDateTime calculateExpires;
 
-            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            Set<Long> envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                        double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
-                        double hours = days * 24;
-                        long seconds = (long) (days * 24 * 3600);
-                        calculateExpires = timeReg1.plusSeconds(seconds);
+                    double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+                    double hours = days * 24;
+                    long seconds = (long) (days * 24 * 3600);
+                    calculateExpires = timeReg1.plusSeconds(seconds);
 
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("days " + days);
                         System.out.println("hours " + hours);
                         System.out.println("seconds " + seconds);
@@ -9378,9 +9493,15 @@ public class BaseNetworkTest extends TestCase {
                         System.out.println("found " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                     }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                    }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
 
             // check if we store environment
@@ -9399,16 +9520,16 @@ public class BaseNetworkTest extends TestCase {
         double spentKDs = 0;
         ZonedDateTime calculateExpires;
 
-        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                    double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
-                    double hours = days * 24;
-                    long seconds = (long) (days * 24 * 3600);
-                    calculateExpires = timeReg1.plusSeconds(seconds);
+                double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+                double hours = days * 24;
+                long seconds = (long) (days * 24 * 3600);
+                calculateExpires = timeReg1.plusSeconds(seconds);
 
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("days " + days);
                     System.out.println("hours " + hours);
                     System.out.println("seconds " + seconds);
@@ -9417,9 +9538,15 @@ public class BaseNetworkTest extends TestCase {
                     System.out.println("found " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
                 }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
 
         // check if we store environment
@@ -9450,7 +9577,7 @@ public class BaseNetworkTest extends TestCase {
             restoredPackedData = networkNode.getLedger().getContractInStorage(simpleContract.getId());
             assertNull(restoredPackedData);
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
             assertEquals(0, envs.size());
 
             // check revision of stored contract
@@ -9466,7 +9593,7 @@ public class BaseNetworkTest extends TestCase {
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
         assertEquals(0, envs.size());
 
         // check revision of stored contract
@@ -9506,33 +9633,49 @@ public class BaseNetworkTest extends TestCase {
 
         for (Node networkNode: nodes) {
 
-            envs = networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                        System.out.println(foundCss.expiresAt());
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                                (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                    }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
                                 (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                     }
                 }
             } else {
-                fail("ContractStorageSubscription was not found");
+                fail("ContractSubscription was not found");
             }
         }
 
-        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId());
         if(envs.size() > 0) {
             for (Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.storageSubscriptions()) {
-                    System.out.println(foundCss.expiresAt());
+                for (ContractSubscription foundCss : environment.subscriptions()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(),
+                            (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
+                }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(),
                             (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
                 }
             }
         } else {
-            fail("ContractStorageSubscription was not found");
+            fail("ContractSubscription was not found");
         }
     }
 
@@ -10176,10 +10319,10 @@ public class BaseNetworkTest extends TestCase {
 
             // check if we remove subscriptions
 
-            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId()).size());
-            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId()).size());
-            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(slotContract.getId()).size());
-            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIdsForContractId(refilledSlotContract.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIds(slotContract.getId()).size());
+            assertEquals(0, networkNode.getLedger().getSubscriptionEnviromentIds(refilledSlotContract.getId()).size());
 
             // check if we remove environment
 
@@ -10202,10 +10345,10 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove subscriptions
 
-        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId()).size());
-        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId()).size());
-        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(slotContract.getId()).size());
-        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(refilledSlotContract.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIds(slotContract.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIds(refilledSlotContract.getId()).size());
 
         // check if we remove environment
 
@@ -10637,6 +10780,180 @@ public class BaseNetworkTest extends TestCase {
         Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
 
         registerAndCheckDeclined(revokingSlotContract);
+    }
+
+    @Test
+    public void registerTwoSlotContracts() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
+        slotContract.putTrackingContract(simpleContract);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), slotContract.getPrepaidKilobytesDays().doubleValue(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        slotContract.traceErrors();
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
+
+        Thread.sleep(5000);
+
+        double days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.subscriptions()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+
+                for (ContractStorage foundStorage : environment.storages()) {
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundStorage.expiresAt());
+                    assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                }
+            }
+        } else {
+            fail("ContractSubscription was not found");
+        }
+
+        // check if we store environment
+        assertNotNull(node.getLedger().getEnvironment(slotContract.getId()));
+
+        // second slot contract that storing
+
+        SlotContract slotContract2 = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
+        slotContract2.putTrackingContract(simpleContract);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedUContract();
+
+        payingParcel = ContractsService.createPayingParcel(slotContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        slotContract2.check();
+        slotContract2.traceErrors();
+        assertTrue(slotContract2.isOk());
+
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract2.get("definition.extended_type"));
+        assertEquals(100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue(), slotContract2.getPrepaidKilobytesDays().doubleValue(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        slotContract.traceErrors();
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract2.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(slotContract2.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(simpleContract.getId(), slotContract2.getTrackingContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
+
+        Thread.sleep(5000);
+
+        days = (double) 100 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue() * 1024 / simpleContract.getPackedTransaction().length;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        // check if we store same contract as want
+
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        Set<Long> envs2 = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs2)
+                if (!envs.contains(envId)) {
+                    NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+
+                    for (ContractStorage foundStorage : environment.storages()) {
+                        System.out.println("expected " + calculateExpires);
+                        System.out.println("found " + foundStorage.expiresAt());
+                        assertAlmostSame(calculateExpires, foundStorage.expiresAt(), 5);
+                    }
+                }
+        } else {
+            fail("ContractSubscription was not found");
+        }
+
+        // check if we store environment
+        assertNotNull(node.getLedger().getEnvironment(slotContract2.getId()));
     }
 
 
@@ -12940,9 +13257,9 @@ public class BaseNetworkTest extends TestCase {
             // check contract_storage table
             assertNotNull(n.getLedger().getContractInStorage(trackingContract.getId()));
             // check contract_subscription table
-            PreparedStatement ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
-                    "select count(*) from contract_subscription where contract_storage_id=?",
-                    ((NContractStorageSubscription)env.storageSubscriptions().iterator().next()).getId());
+            PreparedStatement ps = ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from contract_subscription where hash_id = ?",
+                    env.subscriptions().iterator().next().getContractId().getDigest());
             ResultSet rs = ps.executeQuery();
             assertTrue(rs.next());
             assertEquals(1, rs.getInt(1));
@@ -12955,9 +13272,9 @@ public class BaseNetworkTest extends TestCase {
             // check contract_storage table
             assertNull(n.getLedger().getContractInStorage(trackingContract.getId()));
             // check contract_subscription table
-            ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
-                    "select count(*) from contract_subscription where contract_storage_id=?",
-                    ((NContractStorageSubscription)env.storageSubscriptions().iterator().next()).getId());
+            ps = ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from contract_subscription where hash_id = ?",
+                    env.subscriptions().iterator().next().getContractId().getDigest());
             rs = ps.executeQuery();
             assertTrue(rs.next());
             assertEquals(0, rs.getInt(1));
@@ -14413,11 +14730,11 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14434,11 +14751,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14495,11 +14812,11 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14517,11 +14834,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14580,11 +14897,11 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14603,11 +14920,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14635,7 +14952,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, itemResult.state);
 
         // check if we remove subscriptions
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         assertEquals(envs.size(), 0);
 
         // check if we remove environment
@@ -14646,7 +14963,7 @@ public class BaseNetworkTest extends TestCase {
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             // check if we remove subscriptions
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             assertEquals(envs.size(), 0);
 
             // check if we remove environment
@@ -14656,7 +14973,8 @@ public class BaseNetworkTest extends TestCase {
 
     private Contract checkFollowerContractRevision(Contract contractRevision, PrivateKey oldOwnerKey, PrivateKey newOwnerKey,
                                                    int callbackNum, ZonedDateTime baseCalculateExpires, HashId originCallback,
-                                                   HashId originNoCallback, int origins, boolean waitCallback, boolean checkSubscription) throws Exception {
+                                                   HashId originNoCallback, int origins, boolean waitCallback,
+                                                   boolean waitRevokeCallback, boolean checkSubscription) throws Exception {
         // create revision of follow contract
         Contract simpleContractRevision = contractRevision.createRevision(oldOwnerKey);
         simpleContractRevision.setOwnerKeys(newOwnerKey);
@@ -14672,9 +14990,11 @@ public class BaseNetworkTest extends TestCase {
         });
         System.out.println(output);
 
-        // find call follower callback
+        // find call follower callbacks
         assertTrue((output.indexOf("Follower callback received. Contract: " + simpleContractRevision.getId().toString()) >= 0) == waitCallback);
         assertTrue((output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0) == waitCallback);
+        assertTrue((output.indexOf("Follower callback received. Revoking ID: " + contractRevision.getId().toString()) >= 0) == waitRevokeCallback);
+        assertTrue((output.indexOf("Follower callback processed. Revoking ID: " + contractRevision.getId().toString()) >= 0) == waitRevokeCallback);
 
         if (!checkSubscription)
             return simpleContractRevision;
@@ -14687,94 +15007,66 @@ public class BaseNetworkTest extends TestCase {
 
         Set<Long> envs;
         if (originNoCallback != null) {
-            envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originNoCallback);
+            envs = node.getLedger().getSubscriptionEnviromentIds(originNoCallback);
             if (envs.size() > 0) {
                 for (Long envId : envs) {
                     NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected expiresAt: " + calculateExpires);
                         System.out.println("found expiresAt: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        if (fss.getOrigin().equals(originNoCallback)) {
-                            System.out.println("expected callbacks spent: 0.0");
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
-                }
+               }
             } else {
                 fail("FollowerSubscription was not found");
             }
         }
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback);
+        envs = node.getLedger().getSubscriptionEnviromentIds(originCallback);
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
-
-                    if (fss.getOrigin().equals(originCallback)) {
-                        System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                    }
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
         }
 
-        if (waitCallback)
+        if (waitCallback || waitRevokeCallback)
             Thread.sleep(5000);
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
             if (originNoCallback != null) {
-                envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originNoCallback);
+                envs = networkNode.getLedger().getSubscriptionEnviromentIds(originNoCallback);
                 if (envs.size() > 0) {
                     for (Long envId : envs) {
                         NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                        for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                        for (ContractSubscription foundCss : environment.subscriptions()) {
                             System.out.println("expected: " + calculateExpires);
                             System.out.println("found: " + foundCss.expiresAt());
                             assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                            NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                            System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                            System.out.println("found mutedAt: " + fss.mutedAt());
-                            assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                            System.out.println("expected started callbacks: 0");
-                            System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                            assertEquals(0, fss.getStartedCallbacks());
-
-                            if (fss.getOrigin().equals(originNoCallback)) {
-                                System.out.println("expected callbacks spent: 0.0");
-                                System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                                assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                            }
                         }
                     }
                 } else {
@@ -14782,30 +15074,32 @@ public class BaseNetworkTest extends TestCase {
                 }
             }
 
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback);
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(originCallback);
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        if (fss.getOrigin().equals(originCallback)) {
-                            System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -14899,11 +15193,11 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -14920,11 +15214,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -15013,11 +15307,11 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -15027,11 +15321,11 @@ public class BaseNetworkTest extends TestCase {
             fail("FollowerSubscription was not found");
         }
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -15049,11 +15343,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -15063,11 +15357,11 @@ public class BaseNetworkTest extends TestCase {
                 fail("FollowerSubscription was not found");
             }
 
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -15087,32 +15381,32 @@ public class BaseNetworkTest extends TestCase {
 
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
-        // register 6 revisions (3 with callback) of following contract
+        // register 6 revisions of following contract
         Contract simpleContractRevision = simpleContract2;
-        for (int i = 1; i < 4; i++) {
-            simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, i,
+        for (int i = 0; i < 3; i++) {
+            simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, i * 2 + 1,
                     calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                    newRevFollowerContract.getTrackingOrigins().size(), true, true);
-            simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, i,
+                    newRevFollowerContract.getTrackingOrigins().size(), true, false, true);
+            simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, (i + 1) * 2,
                     calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                    newRevFollowerContract.getTrackingOrigins().size(), false, true);
+                    newRevFollowerContract.getTrackingOrigins().size(), false, true, true);
         }
 
-        // subscriptions already muted (after 7 callback)
+        // subscriptions already muted (after 7 callback if callback cost 50 U)
         /*simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 7,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                newRevFollowerContract.getTrackingOrigins().size(), true, false);
+                newRevFollowerContract.getTrackingOrigins().size(), true, false, true);
         simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 7,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                newRevFollowerContract.getTrackingOrigins().size(), false, false);
+                newRevFollowerContract.getTrackingOrigins().size(), false, false, false);
 
         // remaining payments are not enough to pay callback
         simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 8,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                newRevFollowerContract.getTrackingOrigins().size(), false, false);
+                newRevFollowerContract.getTrackingOrigins().size(), false, false, false);
         checkFollowerContractRevision(simpleContractRevision, key, key2, 8,
                 calculateExpires, simpleContract2.getOrigin(), simpleContract.getOrigin(),
-                newRevFollowerContract.getTrackingOrigins().size(), false, false);*/
+                newRevFollowerContract.getTrackingOrigins().size(), false, false, false);*/
 
         callback.shutdown();
 
@@ -15211,28 +15505,32 @@ public class BaseNetworkTest extends TestCase {
         // for muted calculate
         seconds = (long) (callbackRate * 24 * 3600);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15242,28 +15540,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15293,33 +15595,39 @@ public class BaseNetworkTest extends TestCase {
         });
         System.out.println(output);
 
-        // check call follower callback
+        // check call follower callbacks
         assertTrue(output.indexOf("Follower callback received. Contract: " + simpleContractRevision.getId().toString()) >= 0);
         assertTrue(output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0);
+        assertTrue(output.indexOf("Follower callback received. Revoking ID: " + simpleContract.getId().toString()) >= 0);
+        assertTrue(output.indexOf("Follower callback processed. Revoking ID: " + simpleContract.getId().toString()) >= 0);
 
         // check callback not completed
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback already started
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 1");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(1, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 3));      // callbacks already started
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds * 3), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 2");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(2, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15327,28 +15635,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));  // callback already started
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 1");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(1, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 3));      // callbacks already started
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 3), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 2");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(2, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15359,36 +15671,42 @@ public class BaseNetworkTest extends TestCase {
         output = ConsoleInterceptor.copyOut(() -> Thread.sleep(3000 * (nodes.size() + 1)));
         System.out.println(output);
 
-        // check call follower callback
+        // check don`t call follower callbacks
         assertFalse(output.indexOf("Follower callback received. Contract: " + simpleContractRevision.getId().toString()) >= 0);
         assertFalse(output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback received. Revoking ID: " + simpleContract.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback processed. Revoking ID: " + simpleContract.getId().toString()) >= 0);
 
         // check callback completed
         seconds = (long) (callbackRate * 24 * 3600);
-        calculateExpires = calculateExpires.minusSeconds(seconds);
+        calculateExpires = calculateExpires.minusSeconds(seconds * 2);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: " + callbackRate);
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * 2);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * 2, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15396,28 +15714,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: " + callbackRate);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * 2);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * 2, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15523,28 +15845,32 @@ public class BaseNetworkTest extends TestCase {
         // for muted calculate
         seconds = (long) (callbackRate * 24 * 3600);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15554,28 +15880,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15606,33 +15936,39 @@ public class BaseNetworkTest extends TestCase {
         });
         System.out.println(output);
 
-        // check call follower callback
+        // check don`t call follower callbacks
         assertFalse(output.indexOf("Follower callback received. Contract: " + simpleContractRevision.getId().toString()) >= 0);
         assertFalse(output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback received. Revoking ID: " + simpleContract.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback processed. Revoking ID: " + simpleContract.getId().toString()) >= 0);
 
         // check callback not completed
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback already started
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 1");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(1, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 3));      // callbacks already started
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds * 3), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 2");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(2, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15640,28 +15976,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));  // callback already started
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 1");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(1, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 3));      // callbacks already started
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 3), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 2");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(2, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15674,33 +16014,39 @@ public class BaseNetworkTest extends TestCase {
         output = ConsoleInterceptor.copyOut(() -> Thread.sleep(50000));
         System.out.println(output);
 
-        // check call follower callback
+        // check don`t call follower callbacks
         assertFalse(output.indexOf("Follower callback received. Contract: " + simpleContractRevision.getId().toString()) >= 0);
         assertFalse(output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback received. Revoking ID: " + simpleContract.getId().toString()) >= 0);
+        assertFalse(output.indexOf("Follower callback processed. Revoking ID: " + simpleContract.getId().toString()) >= 0);
 
-        // check callback failed
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        // check callbacks failed
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15708,28 +16054,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15839,28 +16189,32 @@ public class BaseNetworkTest extends TestCase {
         // for muted calculate
         seconds = (long) (callbackRate * 24 * 3600);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: 0.0");
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: 0.0");
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(0, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15870,28 +16224,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: 0.0");
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(0, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -15908,17 +16266,17 @@ public class BaseNetworkTest extends TestCase {
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
         Contract simpleContractRevision = checkFollowerContractRevision(simpleContract, key2, key, 1, calculateExpires,
-                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), true, true);
-        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 1, calculateExpires,
-                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), false, true);
+                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), true, false, true);
+        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 2, calculateExpires,
+                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), false, true, true);
 
         // check without network nodes keys
         callback.clearNetworkNodeKeys();
 
-        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 2, calculateExpires,
-                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), true, true);
-        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 2, calculateExpires,
-                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), false, true);
+        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key2, key, 3, calculateExpires,
+                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), true, false, true);
+        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 4, calculateExpires,
+                simpleContract.getOrigin(), null, followerContract.getTrackingOrigins().size(), false, true, true);
 
         // check with wrong network nodes keys
         Set<PublicKey> wrongKeys =  new HashSet<>();
@@ -15945,30 +16303,34 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(output.indexOf("Follower callback processed. Contract: " + finalContractRevision.getId().toString()) >= 0);
 
         // check callback not completed
-        calculateExpires = calculateExpires.minusSeconds(seconds * 2);
+        calculateExpires = calculateExpires.minusSeconds(seconds * 4);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback already started
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: " + callbackRate * 2);
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(callbackRate * 2, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 1");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(1, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback already started
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 1");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(1, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * 4);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * 4, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -15976,28 +16338,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));  // callback already started
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: " + callbackRate * 2);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate * 2, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 1");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(1, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback already started
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 1");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(1, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * 4);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * 4, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -16015,28 +16381,32 @@ public class BaseNetworkTest extends TestCase {
         // check callback completed
         calculateExpires = calculateExpires.minusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected callbacks spent: " + callbackRate * 3);
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(callbackRate * 3, fss.getCallbacksSpent(), 0.001);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * 5);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * 5, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -16044,28 +16414,32 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected callbacks spent: " + callbackRate * 3);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate * 3, fss.getCallbacksSpent(), 0.001);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * 5);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * 5, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -16098,6 +16472,7 @@ public class BaseNetworkTest extends TestCase {
 
         SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        RevokePermission revokePermission = new RevokePermission(ownerRole);
 
         // contract for follow
         Contract simpleContract = new Contract(key2);
@@ -16115,7 +16490,7 @@ public class BaseNetworkTest extends TestCase {
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
                 followerIssuerPublicKeys, nodeInfoProvider);
-        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback",
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7787/follow.callback",
                 callbackKey.getPublicKey());
 
         // payment contract
@@ -16141,10 +16516,10 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(followerContract.getCallbackKeys().get("http://localhost:7787/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(followerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7787/follow.callback");
         assertTrue(followerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(followerContract.isCallbackURLUsed("http://localhost:7787/follow.callback"));
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()),
@@ -16168,11 +16543,11 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16189,11 +16564,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16208,17 +16583,18 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // init follower callback
-        FollowerCallback callback = new FollowerCallback(callbackKey, 7777, "/follow.callback");
+        FollowerCallback callback = new FollowerCallback(callbackKey, 7787, "/follow.callback");
 
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
         // register revision of following contract
         checkFollowerContractRevision(simpleContract, key2, key, 1, calculateExpires, simpleContract.getOrigin(), null,
-                followerContract.getTrackingOrigins().size(), true, true);
+                followerContract.getTrackingOrigins().size(), true, false, true);
 
         // contract2 for follow
         Contract simpleContract2 = new Contract(key2);
-        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract2.addPermission(changeOwnerPerm);
+        simpleContract2.addPermission(revokePermission);
         simpleContract2.seal();
         simpleContract2.check();
         simpleContract2.traceErrors();
@@ -16230,7 +16606,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertTrue(newRevFollowerContract instanceof FollowerContract);
 
-        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+        newRevFollowerContract.putTrackingOrigin(simpleContract2.getOrigin(), "http://localhost:7787/follow.callback", callbackKey.getPublicKey());
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
 
         newRevFollowerContract.seal();
@@ -16270,15 +16646,15 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7787/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7787/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7787/follow.callback"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7787/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http://localhost:7787/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract2.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7787/follow.callback"));
 
         // check subscription
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
@@ -16293,42 +16669,38 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = calculateExpires.minusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
-
-                    if (fss.getOrigin().equals(simpleContract.getOrigin())) {
-                        System.out.println("expected callbacks spent: " + callbackRate);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-                    }
-
-                    if (fss.getOrigin().equals(simpleContract2.getOrigin())) {
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                    }
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
         }
 
-        Set<Long> envs2 = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+        Set<Long> envs2 = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
         assertTrue(envs.equals(envs2));
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -16339,42 +16711,38 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        if (fss.getOrigin().equals(simpleContract.getOrigin())) {
-                            System.out.println("expected callbacks spent: " + callbackRate);
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-                        }
-
-                        if (fss.getOrigin().equals(simpleContract2.getOrigin())) {
-                            System.out.println("expected callbacks spent: 0.0");
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
             }
 
-            envs2 = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+            envs2 = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
             assertTrue(envs.equals(envs2));
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -16386,8 +16754,8 @@ public class BaseNetworkTest extends TestCase {
         callback.shutdown();
 
         // register revision of following contract
-        Contract simpleContractRevision = checkFollowerContractRevision(simpleContract2, key2, key, 1, calculateExpires, simpleContract2.getOrigin(), null,
-                followerContract.getTrackingOrigins().size(), false, false);
+        Contract simpleContractRevision = checkFollowerContractRevision(simpleContract2, key2, key, 1, calculateExpires,
+                simpleContract2.getOrigin(), null, followerContract.getTrackingOrigins().size(), false, false, false);
 
         // new revision of follower contract
         newRevFollowerContract = (FollowerContract) newRevFollowerContract.createRevision(key);
@@ -16431,15 +16799,15 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"), callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7787/follow.callback"), callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract.getOrigin()), "http://localhost:7787/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7787/follow.callback"));
 
-        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7777/follow.callback"),callbackKey.getPublicKey());
-        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http://localhost:7777/follow.callback");
+        assertEquals(newRevFollowerContract.getCallbackKeys().get("http://localhost:7787/follow.callback"),callbackKey.getPublicKey());
+        assertEquals(newRevFollowerContract.getTrackingOrigins().get(simpleContract2.getOrigin()), "http://localhost:7787/follow.callback");
         assertTrue(newRevFollowerContract.isOriginTracking(simpleContract2.getOrigin()));
-        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7777/follow.callback"));
+        assertTrue(newRevFollowerContract.isCallbackURLUsed("http://localhost:7787/follow.callback"));
 
         // check subscription
         spentSeconds = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
@@ -16453,46 +16821,38 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = calculateExpires.minusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));  // callback started
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                    if (fss.getOrigin().equals(simpleContract.getOrigin())) {
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        System.out.println("expected callbacks spent: " + callbackRate);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-                    }
-
-                    if (fss.getOrigin().equals(simpleContract2.getOrigin())) {
-                        System.out.println("expected started callbacks: 1");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(1, fss.getStartedCallbacks());
-
-                        System.out.println("expected callbacks spent: 0.0");
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                    }
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback started
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 1");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(1, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
         }
 
-        envs2 = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+        envs2 = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
         assertTrue(envs.equals(envs2));
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -16503,46 +16863,38 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));  // callback started
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fss.mutedAt(), 5);
-
-                        if (fss.getOrigin().equals(simpleContract.getOrigin())) {
-                            System.out.println("expected started callbacks: 0");
-                            System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                            assertEquals(0, fss.getStartedCallbacks());
-
-                            System.out.println("expected callbacks spent: " + callbackRate);
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
-                        }
-
-                        if (fss.getOrigin().equals(simpleContract2.getOrigin())) {
-                            System.out.println("expected started callbacks: 1");
-                            System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                            assertEquals(1, fss.getStartedCallbacks());
-
-                            System.out.println("expected callbacks spent: 0.0");
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(0, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds * 2));      // callback started
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds * 2), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 1");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(1, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
             }
 
-            envs2 = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+            envs2 = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
             assertTrue(envs.equals(envs2));
 
             // check if we updated environment and subscriptions (remove old, create new)
@@ -16551,7 +16903,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // start callback server
-        callback = new FollowerCallback(callbackKey, 7777, "/follow.callback");
+        callback = new FollowerCallback(callbackKey, 7787, "/follow.callback");
 
         // intercept System.out
         String output = ConsoleInterceptor.copyOut(() -> {
@@ -16568,34 +16920,38 @@ public class BaseNetworkTest extends TestCase {
         // check subscription
         calculateExpires = calculateExpires.minusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
-
-                    System.out.println("expected callbacks spent: " + callbackRate);
-                    System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                    assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * 2);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * 2, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
         }
 
-        envs2 = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+        envs2 = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
         assertTrue(envs.equals(envs2));
 
         // check if we updated environment and subscriptions (remove old, create new)
@@ -16606,39 +16962,137 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        System.out.println("expected callbacks spent: " + callbackRate);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate, fss.getCallbacksSpent(), 0.001);
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * 2);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * 2, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
             }
 
-            envs2 = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+            envs2 = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
             assertTrue(envs.equals(envs2));
 
             // check if we updated environment and subscriptions (remove old, create new)
             assertNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
             assertNotNull(networkNode.getLedger().getEnvironment(newRevFollowerContract.getId()));
+        }
+
+        // revocation of following contract
+        Contract revokeContract = ContractsService.createRevocation(simpleContractRevision, key2);
+
+        revokeContract.check();
+        revokeContract.traceErrors();
+        assertTrue(revokeContract.isOk());
+
+        // intercept System.out
+        output = ConsoleInterceptor.copyOut(() -> {
+            registerAndCheckApproved(revokeContract);
+            Thread.sleep(5000);
+        });
+        System.out.println(output);
+
+        // find call follower callback
+        assertTrue(output.indexOf("Follower callback received. Revoking ID: " + simpleContractRevision.getId().toString()) >= 0);
+        assertTrue(output.indexOf("Follower callback processed. Revoking ID: " + simpleContractRevision.getId().toString()) >= 0);
+
+        // check subscription
+        calculateExpires = calculateExpires.minusSeconds(seconds);
+
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractSubscription foundCss : environment.subscriptions()) {
+                    System.out.println("expected: " + calculateExpires);
+                    System.out.println("found: " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * 3);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * 3, fs.getCallbacksSpent(), 0.001);
+            }
+        } else {
+            fail("FollowerSubscription was not found");
+        }
+
+        envs2 = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
+        assertTrue(envs.equals(envs2));
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
+            if(envs.size() > 0) {
+                for(Long envId : envs) {
+                    NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
+                        System.out.println("expected: " + calculateExpires);
+                        System.out.println("found: " + foundCss.expiresAt());
+                        assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * 3);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * 3, fs.getCallbacksSpent(), 0.001);
+                }
+            } else {
+                fail("FollowerSubscription was not found");
+            }
+
+            envs2 = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
+            assertTrue(envs.equals(envs2));
         }
 
         callback.shutdown();
@@ -16740,11 +17194,11 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16761,11 +17215,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16840,11 +17294,11 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16862,11 +17316,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -16889,9 +17343,9 @@ public class BaseNetworkTest extends TestCase {
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
         Contract simpleContractRevision = checkFollowerContractRevision(simpleContract, key2, key, 1, calculateExpires,
-                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), true, true);
-        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 1, calculateExpires,
-                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), false, true);
+                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), true, false, true);
+        simpleContractRevision = checkFollowerContractRevision(simpleContractRevision, key, key2, 2, calculateExpires,
+                simpleContract.getOrigin(), null, refilledFollowerContract.getTrackingOrigins().size(), false, true, true);
 
         // check following is new item
         simpleContractRevision = simpleContractRevision.createRevision(key2);
@@ -17164,6 +17618,10 @@ public class BaseNetworkTest extends TestCase {
         assertTrue((output.indexOf("Follower callback processed. Contract: " + simpleContractRevision.getId().toString()) >= 0) == waitCallback);
         assertTrue((output.indexOf("Follower callback received. Contract: " + simpleContractRevision2.getId().toString()) >= 0) == waitCallback);
         assertTrue((output.indexOf("Follower callback processed. Contract: " + simpleContractRevision2.getId().toString()) >= 0) == waitCallback);
+        assertTrue((output.indexOf("Follower callback received. Revoking ID: " + contractRevision.getId().toString()) >= 0) == waitCallback);
+        assertTrue((output.indexOf("Follower callback processed. Revoking ID: " + contractRevision.getId().toString()) >= 0) == waitCallback);
+        assertTrue((output.indexOf("Follower callback received. Revoking ID: " + contractRevision2.getId().toString()) >= 0) == waitCallback);
+        assertTrue((output.indexOf("Follower callback processed. Revoking ID: " + contractRevision2.getId().toString()) >= 0) == waitCallback);
 
         if (!checkSubscription)
             return Do.listOf(simpleContractRevision, simpleContractRevision2);
@@ -17176,59 +17634,63 @@ public class BaseNetworkTest extends TestCase {
         ZonedDateTime calculateExpires2 = baseCalculateExpires2.minusSeconds(seconds * callbackNum);
 
         Set<Long> envs;
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback);
+        envs = node.getLedger().getSubscriptionEnviromentIds(originCallback);
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
-
-                    if (fss.getOrigin().equals(originCallback)) {
-                        System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                    }
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
         }
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback2);
+        envs = node.getLedger().getSubscriptionEnviromentIds(originCallback2);
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires2);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires2, foundCss.expiresAt(), 5);
-
-                    NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                    System.out.println("expected mutedAt: " + calculateExpires2.minusSeconds(seconds));
-                    System.out.println("found mutedAt: " + fss.mutedAt());
-                    assertAlmostSame(calculateExpires2.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                    System.out.println("expected started callbacks: 0");
-                    System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                    assertEquals(0, fss.getStartedCallbacks());
-
-                    if (fss.getOrigin().equals(originCallback2)) {
-                        System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                        System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                        assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                    }
                 }
+
+                FollowerService fs = environment.getFollowerService();
+                System.out.println("expected expiresAt: " + calculateExpires2);
+                System.out.println("found expiresAt: " + fs.expiresAt());
+                assertAlmostSame(calculateExpires2, fs.expiresAt(), 5);
+
+                System.out.println("expected mutedAt: " + calculateExpires2.minusSeconds(seconds));
+                System.out.println("found mutedAt: " + fs.mutedAt());
+                assertAlmostSame(calculateExpires2.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                System.out.println("expected started callbacks: 0");
+                System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                assertEquals(0, fs.getStartedCallbacks());
+
+                System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
             }
         } else {
             fail("FollowerSubscription was not found");
@@ -17238,59 +17700,63 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback);
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(originCallback);
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        if (fss.getOrigin().equals(originCallback)) {
-                            System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
             }
 
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(originCallback2);
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(originCallback2);
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires2);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires2, foundCss.expiresAt(), 5);
-
-                        NContractFollowerSubscription fss = (NContractFollowerSubscription) foundCss;
-                        System.out.println("expected mutedAt: " + calculateExpires2.minusSeconds(seconds));
-                        System.out.println("found mutedAt: " + fss.mutedAt());
-                        assertAlmostSame(calculateExpires2.minusSeconds(seconds), fss.mutedAt(), 5);
-
-                        System.out.println("expected started callbacks: 0");
-                        System.out.println("found started callbacks: " + fss.getStartedCallbacks());
-                        assertEquals(0, fss.getStartedCallbacks());
-
-                        if (fss.getOrigin().equals(originCallback2)) {
-                            System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
-                            System.out.println("found callbacks spent: " + fss.getCallbacksSpent());
-                            assertEquals(callbackRate * callbackNum, fss.getCallbacksSpent(), 0.001);
-                        }
                     }
+
+                    FollowerService fs = environment.getFollowerService();
+                    System.out.println("expected expiresAt: " + calculateExpires2);
+                    System.out.println("found expiresAt: " + fs.expiresAt());
+                    assertAlmostSame(calculateExpires2, fs.expiresAt(), 5);
+
+                    System.out.println("expected mutedAt: " + calculateExpires2.minusSeconds(seconds));
+                    System.out.println("found mutedAt: " + fs.mutedAt());
+                    assertAlmostSame(calculateExpires2.minusSeconds(seconds), fs.mutedAt(), 5);
+
+                    System.out.println("expected started callbacks: 0");
+                    System.out.println("found started callbacks: " + fs.getStartedCallbacks());
+                    assertEquals(0, fs.getStartedCallbacks());
+
+                    System.out.println("expected callbacks spent: " + callbackRate * callbackNum);
+                    System.out.println("found callbacks spent: " + fs.getCallbacksSpent());
+                    assertEquals(callbackRate * callbackNum, fs.getCallbacksSpent(), 0.001);
                 }
             } else {
                 fail("FollowerSubscription was not found");
@@ -17390,11 +17856,11 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<Long> envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -17411,11 +17877,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
@@ -17487,11 +17953,11 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires2 = timeReg2.plusSeconds(seconds);
 
-        envs = node.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+        envs = node.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
         if(envs.size() > 0) {
             for(Long envId : envs) {
                 NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
-                for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires2);
                     System.out.println("found: " + foundCss.expiresAt());
                     assertAlmostSame(calculateExpires2, foundCss.expiresAt(), 5);
@@ -17508,11 +17974,11 @@ public class BaseNetworkTest extends TestCase {
 
         // additional check for all network nodes
         for (Node networkNode: nodes) {
-            envs = networkNode.getLedger().getFollowerSubscriptionEnviromentIdsForOrigin(simpleContract2.getOrigin());
+            envs = networkNode.getLedger().getSubscriptionEnviromentIds(simpleContract2.getOrigin());
             if(envs.size() > 0) {
                 for(Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(envId);
-                    for (ContractSubscription foundCss : environment.followerSubscriptions()) {
+                    for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires2);
                         System.out.println("found: " + foundCss.expiresAt());
                         assertAlmostSame(calculateExpires2, foundCss.expiresAt(), 5);
@@ -17532,11 +17998,11 @@ public class BaseNetworkTest extends TestCase {
         callback.setNetworkNodeKeys(nodes.stream().map(n -> n.getNodeKey()).collect(Collectors.toSet()));
 
         // register 3 revisions with callbacks
-        List<Contract> revisions = checkFollowerContractRevisionsParallel(simpleContract, simpleContract2, key, key2, 1, calculateExpires, calculateExpires2,
+        List<Contract> revisions = checkFollowerContractRevisionsParallel(simpleContract, simpleContract2, key, key2, 2, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
-        revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key2, key, 2, calculateExpires, calculateExpires2,
+        revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key2, key, 4, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
-        revisions = checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key, key2, 3, calculateExpires, calculateExpires2,
+        checkFollowerContractRevisionsParallel(revisions.get(0), revisions.get(1), key, key2, 6, calculateExpires, calculateExpires2,
                 simpleContract.getOrigin(), simpleContract2.getOrigin(), 1, true, true);
 
         // subscriptions already muted

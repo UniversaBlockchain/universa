@@ -18,8 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CallbackRecord {
     private HashId id;
     private long environmentId;
-    private long subscriptionId;
-    private Node.FollowerCallbackState state;
+    private CallbackService.FollowerCallbackState state;
     private ZonedDateTime expiresAt;
 
     // synchronization counters
@@ -36,13 +35,11 @@ public class CallbackRecord {
      *
      * @param id is callback identifier
      * @param environmentId is environment subscription
-     * @param subscriptionId is follower subscription identifier
      * @param state is callback state
      */
-    public CallbackRecord(HashId id, long environmentId, long subscriptionId, Node.FollowerCallbackState state) {
+    public CallbackRecord(HashId id, long environmentId, CallbackService.FollowerCallbackState state) {
         this.id = id;
         this.environmentId = environmentId;
-        this.subscriptionId = subscriptionId;
         this.state = state;
     }
 
@@ -51,20 +48,21 @@ public class CallbackRecord {
      *
      * @param id is callback identifier
      * @param environmentId is environment identifier
-     * @param subscriptionId is follower subscription identifier
      * @param config is node configuration
      * @param networkNodesCount is count of nodes in Universa network
      * @param ledger is node ledger
      */
-    public static void addCallbackRecordToLedger(HashId id, long environmentId, long subscriptionId, Config config, int networkNodesCount, Ledger ledger) {
+    public static void addCallbackRecordToLedger(HashId id, long environmentId, Config config, int networkNodesCount, Ledger ledger) {
         ZonedDateTime now = ZonedDateTime.now();
         ZonedDateTime expiresAt = now.plus(config.getFollowerCallbackExpiration()).plusSeconds(config.getFollowerCallbackDelay().getSeconds() * (networkNodesCount + 3));
         ZonedDateTime storedUntil = now.plus(config.getFollowerCallbackStateStoreTime());
 
-        ledger.addFollowerCallback(id, environmentId, subscriptionId, expiresAt, storedUntil);
+        ledger.addFollowerCallback(id, environmentId, expiresAt, storedUntil);
     }
 
     public HashId getId() { return id; }
+
+    public CallbackService.FollowerCallbackState getState() { return state; }
 
     public ZonedDateTime getExpiresAt() { return expiresAt; }
 
@@ -85,72 +83,57 @@ public class CallbackRecord {
     }
 
     private void complete(Node node) {
+        synchronized (node.getCallbackService()) {
+            // full environment
+            Binder fullEnvironment = node.getFullEnvironment(environmentId);
+            FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
+            NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
 
-        // full environment
-        Binder fullEnvironment = node.getFullEnvironment(environmentId, subscriptionId);
-        FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
-        NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
-        NContractFollowerSubscription subscription = (NContractFollowerSubscription) fullEnvironment.get("subscription");
-
-        // complete event
-        follower.onContractSubscriptionEvent(new ContractSubscription.CompletedEvent() {
-            @Override
-            public MutableEnvironment getEnvironment() {
-                return environment;
-            }
-
-            @Override
-            public ContractSubscription getSubscription() {
-                return subscription;
-            }
-        });
-        environment.save();
+            // complete event
+            follower.onContractSubscriptionEvent(new ContractSubscription.CompletedEvent() {
+                @Override
+                public MutableEnvironment getEnvironment() {
+                    return environment;
+                }
+            });
+            environment.save();
+        }
     }
 
     private void fail(Node node) {
+        synchronized (node.getCallbackService()) {
+            // full environment
+            Binder fullEnvironment = node.getFullEnvironment(environmentId);
+            FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
+            NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
 
-        // full environment
-        Binder fullEnvironment = node.getFullEnvironment(environmentId, subscriptionId);
-        FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
-        NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
-        NContractFollowerSubscription subscription = (NContractFollowerSubscription) fullEnvironment.get("subscription");
-
-        // fail event
-        follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
-            @Override
-            public MutableEnvironment getEnvironment() {
-                return environment;
-            }
-
-            @Override
-            public ContractSubscription getSubscription() {
-                return subscription;
-            }
-        });
-        environment.save();
+            // fail event
+            follower.onContractSubscriptionEvent(new ContractSubscription.FailedEvent() {
+                @Override
+                public MutableEnvironment getEnvironment() {
+                    return environment;
+                }
+            });
+            environment.save();
+        }
     }
 
     private void spent(Node node) {
+        synchronized (node.getCallbackService()) {
+            // full environment
+            Binder fullEnvironment = node.getFullEnvironment(environmentId);
+            FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
+            NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
 
-        // full environment
-        Binder fullEnvironment = node.getFullEnvironment(environmentId, subscriptionId);
-        FollowerContract follower = (FollowerContract) fullEnvironment.get("follower");
-        NMutableEnvironment environment = (NMutableEnvironment) fullEnvironment.get("environment");
-        NContractFollowerSubscription subscription = (NContractFollowerSubscription) fullEnvironment.get("subscription");
-
-        // fail event
-        follower.onContractSubscriptionEvent(new ContractSubscription.SpentEvent() {
-            @Override
-            public MutableEnvironment getEnvironment() {
-                return environment;
-            }
-
-            @Override
-            public ContractSubscription getSubscription() {
-                return subscription;
-            }
-        });
-        environment.save();
+            // fail event
+            follower.onContractSubscriptionEvent(new ContractSubscription.SpentEvent() {
+                @Override
+                public MutableEnvironment getEnvironment() {
+                    return environment;
+                }
+            });
+            environment.save();
+        }
     }
 
     /**
@@ -175,23 +158,23 @@ public class CallbackRecord {
      *
      * @return true if callback state is synchronized
      */
-    public boolean synchronizeState(Node.FollowerCallbackState newState, Ledger ledger, Node node) {
-        if (newState == Node.FollowerCallbackState.COMPLETED) {
+    public boolean synchronizeState(CallbackService.FollowerCallbackState newState, Ledger ledger, Node node) {
+        if (newState == CallbackService.FollowerCallbackState.COMPLETED) {
             if (incrementCompletedNodes() >= consensus) {
-                if (state == Node.FollowerCallbackState.STARTED)
+                if (state == CallbackService.FollowerCallbackState.STARTED)
                     complete(node);
-                else if (state == Node.FollowerCallbackState.EXPIRED)
+                else if (state == CallbackService.FollowerCallbackState.EXPIRED)
                     spent(node);
 
-                ledger.updateFollowerCallbackState(id, Node.FollowerCallbackState.COMPLETED);
+                ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.COMPLETED);
                 return true;
             }
-        } else if ((newState == Node.FollowerCallbackState.FAILED) || (newState == Node.FollowerCallbackState.EXPIRED)) {
+        } else if ((newState == CallbackService.FollowerCallbackState.FAILED) || (newState == CallbackService.FollowerCallbackState.EXPIRED)) {
             if (incrementFailedNodes() >= consensus) {
-                if (state == Node.FollowerCallbackState.STARTED)
+                if (state == CallbackService.FollowerCallbackState.STARTED)
                     fail(node);
 
-                ledger.updateFollowerCallbackState(id, Node.FollowerCallbackState.FAILED);
+                ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.FAILED);
                 return true;
             }
         } else
@@ -220,17 +203,17 @@ public class CallbackRecord {
 
         // final (additional) check for consensus of callback state
         if (completedNodes.get() >= consensus) {
-            if (state == Node.FollowerCallbackState.STARTED)
+            if (state == CallbackService.FollowerCallbackState.STARTED)
                 complete(node);
-            else if (state == Node.FollowerCallbackState.EXPIRED)
+            else if (state == CallbackService.FollowerCallbackState.EXPIRED)
                 spent(node);
 
-            ledger.updateFollowerCallbackState(id, Node.FollowerCallbackState.COMPLETED);
+            ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.COMPLETED);
         } else if (failedNodes.get() >= consensus) {
-            if (state == Node.FollowerCallbackState.STARTED)
+            if (state == CallbackService.FollowerCallbackState.STARTED)
                 fail(node);
 
-            ledger.updateFollowerCallbackState(id, Node.FollowerCallbackState.FAILED);
+            ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.FAILED);
         } else if (allNodes.get() >= limit)
             // remove callback if synchronization is impossible
             ledger.removeFollowerCallback(id);

@@ -357,7 +357,7 @@ public class SlotContract extends NSmartContract {
         calculatePrepaidKilobytesForDays(false);
 
         int storingBytes = 0;
-        for(byte[] packed : packedTrackingContracts) {
+        for (byte[] packed : packedTrackingContracts) {
             storingBytes += packed.length;
         }
 
@@ -368,12 +368,33 @@ public class SlotContract extends NSmartContract {
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
                 .plusSeconds(seconds);
 
-
+        // update storages
         Map<HashId, Contract> newContracts = trackingContracts.stream().collect(Collectors.toMap(Contract::getId, c -> c));
 
-        me.storageSubscriptions().forEach(sub -> {
-            HashId id = sub.getContract().getId();
+        me.storages().forEach(storage -> {
+            HashId id = storage.getContract().getId();
             if(newContracts.containsKey(id)) {
+                me.setStorageExpiresAt(storage, newExpires);
+                newContracts.remove(id);
+            } else {
+                me.destroyStorage(storage);
+            }
+        });
+
+        for (Contract tc: newContracts.values()) {
+            try {
+                me.createContractStorage(tc.getPackedTransaction(), newExpires);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // update subscriptions
+        Set<HashId> newContractIds = trackingContracts.stream().map(Contract::getId).collect(Collectors.toSet());
+
+        me.subscriptions().forEach(sub -> {
+            HashId id = sub.getContractId();
+            if(newContractIds.contains(id)) {
                 me.setSubscriptionExpiresAt(sub, newExpires);
                 newContracts.remove(id);
             } else {
@@ -381,10 +402,9 @@ public class SlotContract extends NSmartContract {
             }
         });
 
-        for(Contract tc : newContracts.values()) {
+        for (HashId id: newContractIds) {
             try {
-                ContractSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
-                css.receiveEvents(true);
+                ContractSubscription css = me.createContractSubscription(id, newExpires);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -408,7 +428,7 @@ public class SlotContract extends NSmartContract {
 
 
         if(event instanceof ContractSubscription.ApprovedEvent) {
-            MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
+            MutableEnvironment me = event.getEnvironment();
             // recreate subscription:
             Contract newStoredItem = ((ContractSubscription.ApprovedEvent)event).getNewRevision();
 

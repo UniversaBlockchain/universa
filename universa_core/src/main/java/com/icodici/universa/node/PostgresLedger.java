@@ -16,10 +16,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node2.CallbackRecord;
-import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.Node;
-import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 
@@ -876,67 +873,24 @@ public class PostgresLedger implements Ledger {
     }
 
 
-
-    private Collection<ContractSubscription> getContractStorageSubscriptions(long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "" +
-                                            "SELECT " +
-                                            "  contract_storage.bin_data, " +
-                                            "  contract_subscription.expires_at, " +
-                                            "  contract_subscription.id " +
-                                            "FROM contract_subscription " +
-                                            "JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
-                                            "WHERE environment_id=? "
-                            )
-            ) {
-                statement.setLong(1, environmentId);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("getContractStorageSubscriptions failed: returning null");
-                List<ContractSubscription> res = new ArrayList<>();
-                while (rs.next()) {
-                    NContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
-                    css.setId(rs.getLong(3));
-                    res.add(css);
-                }
-                rs.close();
-                return res;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("getContractStorageSubscriptions failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Failure("getContractStorageSubscriptions failed: " + e);
-        }
-    }
-
-    private Collection<ContractSubscription> getFollowerSubscriptions(long environmentId) {
+    private Collection<ContractSubscription> getContractSubscriptions(long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "SELECT id, origin, expires_at, muted_at, spent_for_callbacks, started_callbacks FROM follower_subscription WHERE environment_id = ?"
+                        "SELECT hash_id, subscription_on_chain, expires_at, id FROM contract_subscription WHERE environment_id = ?"
                     )
             ) {
                 statement.setLong(1, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
-                    throw new Failure("getFollowerSubscriptions failed: returning null");
+                    throw new Failure("getContractSubscriptions failed: returning null");
                 List<ContractSubscription> res = new ArrayList<>();
                 while (rs.next()) {
-                    NContractFollowerSubscription css = new NContractFollowerSubscription(
-                            HashId.withDigest(rs.getBytes(2)),
-                            StateRecord.getTime(rs.getLong(3)),
-                            StateRecord.getTime(rs.getLong(4)),
-                            rs.getDouble(5),
-                            rs.getInt(6));
-                    css.setId(rs.getLong(1));
+                    NContractSubscription css = new NContractSubscription(HashId.withDigest(rs.getBytes(1)),
+                            rs.getBoolean(2), StateRecord.getTime(rs.getLong(3)));
+                    css.setId(rs.getLong(4));
                     res.add(css);
                 }
                 rs.close();
@@ -944,10 +898,43 @@ public class PostgresLedger implements Ledger {
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("getFollowerSubscriptions failed: " + se);
+            throw new Failure("getContractSubscriptions failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("getFollowerSubscriptions failed: " + e);
+            throw new Failure("getContractSubscriptions failed: " + e);
+        }
+    }
+
+
+    private Collection<ContractStorage> getContractStorages(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "SELECT bin_data, expires_at, id FROM contract_storage JOIN contract_binary " +
+                        "ON contract_binary.hash_id = contract_storage.hash_id WHERE environment_id = ?"
+                    )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getContractStorages failed: returning null");
+                List<ContractStorage> res = new ArrayList<>();
+                while (rs.next()) {
+                    NContractStorage cst = new NContractStorage(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    cst.setId(rs.getLong(3));
+                    res.add(cst);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getContractStorages failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getContractStorages failed: " + e);
         }
     }
 
@@ -985,6 +972,41 @@ public class PostgresLedger implements Ledger {
     }
 
 
+    private FollowerService getFollowerService(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "SELECT expires_at, muted_at, spent_for_callbacks, started_callbacks FROM follower_environments WHERE environment_id = ?"
+                )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getFollowerService failed: returning null");
+
+                NFollowerService fs = null;
+                if (rs.next())
+                    fs = new NFollowerService(this,
+                        StateRecord.getTime(rs.getLong(1)),
+                        StateRecord.getTime(rs.getLong(2)),
+                        environmentId,
+                        rs.getDouble(3),
+                        rs.getInt(4));
+                rs.close();
+                return fs;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getFollowerSubscriptions failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getFollowerSubscriptions failed: " + e);
+        }
+    }
+
+
     private Long getEnvironmentIdForSmartContractHashId(HashId smartContractHashId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
@@ -1011,8 +1033,9 @@ public class PostgresLedger implements Ledger {
             contract = findNContract == null ? contract : findNContract;
             NSmartContract nSmartContract = (NSmartContract) contract;
             Binder kvBinder = Boss.unpack(smkv.get(1));
-            Collection<ContractSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
-            Collection<ContractSubscription> contractFollowerSubscriptions = getFollowerSubscriptions(environmentId);
+            Collection<ContractSubscription> contractSubscriptions = getContractSubscriptions(environmentId);
+            Collection<ContractStorage> contractStorages = getContractStorages(environmentId);
+            FollowerService followerService = getFollowerService(environmentId);
             List<String> reducedNames = getReducedNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String reducedName : reducedNames) {
@@ -1021,7 +1044,7 @@ public class PostgresLedger implements Ledger {
                 nameRecords.add(nr);
             }
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder,
-                    contractStorageSubscriptions, contractFollowerSubscriptions, nameRecords, this);
+                    contractSubscriptions, contractStorages, nameRecords, followerService, this);
             nImmutableEnvironment.setId(environmentId);
             return nImmutableEnvironment;
         });
@@ -1057,7 +1080,7 @@ public class PostgresLedger implements Ledger {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "UPDATE contract_subscription  SET expires_at = ? WHERE id = ?"
+                                    "UPDATE contract_subscription SET expires_at = ? WHERE id = ?"
                             )
             ) {
                 statement.setLong(1, StateRecord.unixTime(expiresAt));
@@ -1067,36 +1090,61 @@ public class PostgresLedger implements Ledger {
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("updateEnvironment failed: " + se);
+            throw new Failure("updateSubscriptionInStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("updateEnvironment failed: " + e);
+            throw new Failure("updateSubscriptionInStorage failed: " + e);
         }
     }
 
     @Override
-    public void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {
+    public void updateStorageExpiresAt(long storageId, ZonedDateTime expiresAt) {
         try (PooledDb db = dbPool.db()) {
             try (
-                PreparedStatement statement =
-                    db.statement(
-                        "UPDATE follower_subscription SET expires_at = ?, muted_at = ?, spent_for_callbacks = ?, started_callbacks = ? WHERE id = ?"
-                    )
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE contract_storage SET expires_at = ? WHERE id = ?"
+                            )
             ) {
                 statement.setLong(1, StateRecord.unixTime(expiresAt));
-                statement.setLong(2, StateRecord.unixTime(mutedAt));
-                statement.setDouble(3, spent);
-                statement.setInt(4, startedCallbacks);
-                statement.setLong(5, subscriptionId);
+                statement.setLong(2, storageId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("updateFollowerSubscriptionInStorage failed: " + se);
+            throw new Failure("updateStorageExpiresAt failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("updateFollowerSubscriptionInStorage failed: " + e);
+            throw new Failure("updateStorageExpiresAt failed: " + e);
+        }
+    }
+
+    @Override
+    public void saveFollowerEnvironment(long environmentId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                        "INSERT INTO follower_environments (environment_id, expires_at, muted_at, spent_for_callbacks, started_callbacks) " +
+                        "VALUES (?,?,?,?,?) ON CONFLICT (environment_id) DO UPDATE SET expires_at = EXCLUDED.expires_at, " +
+                        "muted_at = EXCLUDED.muted_at, spent_for_callbacks = EXCLUDED.spent_for_callbacks, started_callbacks = EXCLUDED.started_callbacks"
+                    )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.setLong(2, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, StateRecord.unixTime(mutedAt));
+                statement.setDouble(4, spent);
+                statement.setInt(5, startedCallbacks);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveFollowerEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveFollowerEnvironment failed: " + e);
         }
     }
 
@@ -1218,16 +1266,22 @@ public class PostgresLedger implements Ledger {
             NSmartContract nsc = environment.getContract();
             removeEnvironment(nsc.getId());
             long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
+
             for (NameRecord nr : environment.nameRecords()) {
                 NNameRecord nnr = (NNameRecord)nr;
                 nnr.setEnvironmentId(envId);
                 addNameRecord(nnr);
             }
-            for (ContractSubscription css : environment.storageSubscriptions()) {
-                NContractStorageSubscription ncss = (NContractStorageSubscription) css;
-                long contractStorageId = saveContractInStorage(ncss.getContract().getId(), ncss.getPackedContract(), ncss.expiresAt(), ncss.getContract().getOrigin());
-                saveSubscriptionInStorage(contractStorageId, ncss.expiresAt(), envId);
-            }
+
+            for (ContractSubscription css : environment.subscriptions())
+                saveSubscriptionInStorage(css.getHashId(), css.isChainSubscription(), css.expiresAt(), envId);
+
+            for (ContractStorage cst : environment.storages())
+                saveContractInStorage(cst.getContract().getId(), cst.getPackedContract(), cst.expiresAt(), cst.getContract().getOrigin(), envId);
+
+            FollowerService fs = environment.getFollowerService();
+            if (fs != null)
+                saveFollowerEnvironment(envId, fs.expiresAt(), fs.mutedAt(), fs.getCallbacksSpent(), fs.getStartedCallbacks());
         }
         return conflicts;
     }
@@ -1278,16 +1332,16 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {
+    public long saveSubscriptionInStorage(HashId hashId, boolean subscriptionOnChain, ZonedDateTime expiresAt, long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at,environment_id) VALUES(?,?,?) RETURNING id")
+                            db.statement("INSERT INTO contract_subscription (hash_id, subscription_on_chain, expires_at, environment_id) VALUES(?,?,?,?) RETURNING id")
             ) {
-                statement.setLong(1, contractStorageId);
-                statement.setLong(2, StateRecord.unixTime(expiresAt));
-                statement.setLong(3, environmentId);
-                //db.updateWithStatement(statement);
+                statement.setBytes(1, hashId.getDigest());
+                statement.setBoolean(2, subscriptionOnChain);
+                statement.setLong(3, StateRecord.unixTime(expiresAt));
+                statement.setLong(4, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1306,108 +1360,70 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
-    public long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                PreparedStatement statement =
-                    db.statement("INSERT INTO follower_subscription (origin,expires_at,muted_at,environment_id,spent_for_callbacks,started_callbacks) VALUES(?,?,?,?,0,0) RETURNING id")
-            ) {
-                statement.setBytes(1, origin.getDigest());
-                statement.setLong(2, StateRecord.unixTime(expiresAt));
-                statement.setLong(3, StateRecord.unixTime(mutedAt));
-                statement.setLong(4, environmentId);
-                //db.updateWithStatement(statement);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("saveFollowerSubscriptionInStorage failed: returning null");
-                rs.next();
-                long resId = rs.getLong(1);
-                rs.close();
-                return resId;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("saveFollowerSubscriptionInStorage failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 0;
-        }
-    }
-
 
     @Override
-    public List<Long> clearExpiredStorageSubscriptions() {
+    public void clearExpiredSubscriptions() {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime now = ZonedDateTime.now();
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_subscription WHERE expires_at<? RETURNING contract_storage_id"
+                                    "DELETE FROM contract_subscription WHERE expires_at < ?"
                             )
             ) {
                 statement.setLong(1, StateRecord.unixTime(now));
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("clearExpiredStorageSubscriptions failed: returning null");
-                List<Long> resList = new ArrayList<>();
-                while (rs.next())
-                    resList.add(rs.getLong(1));
-                rs.close();
-                return resList;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("clearExpiredStorageSubscriptions failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    @Override
-    public void clearExpiredFollowerSubscriptions() {
-        try (PooledDb db = dbPool.db()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM follower_subscription WHERE expires_at<?"
-                            )
-            ) {
-                statement.setLong(1, StateRecord.unixTime(now));
-                statement.closeOnCompletion();
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("clearExpiredFollowerSubscriptions failed: " + se);
+            throw new Failure("clearExpiredSubscriptions failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+
     @Override
-    public void clearExpiredStorageContracts() {
+    public void clearExpiredStorages() {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM contract_storage WHERE expires_at < ?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(now));
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("clearExpiredStorages failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    @Override
+    public void clearExpiredStorageContractBinaries() {
         //TODO: add trigger for delete expired contracts after deleting all subscriptions, and remove this function
         try (PooledDb db = dbPool.db()) {
             try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM contract_storage WHERE id IN (SELECT contract_storage.id FROM contract_storage LEFT OUTER JOIN contract_subscription ON (contract_storage.id=contract_subscription.contract_storage_id) WHERE contract_subscription.id IS NULL)"
-                            )
+                PreparedStatement statement = db.statement(
+                    "DELETE FROM contract_binary WHERE hash_id NOT IN (SELECT hash_id FROM contract_storage GROUP BY hash_id)"
+                )
             ) {
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("clearExpiredStorageContracts failed: " + se);
+            throw new Failure("clearExpiredStorageContractBinaries failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
     @Override
     public void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
@@ -1469,14 +1485,11 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
+    public Set<Long> getSubscriptionEnviromentIds(HashId id) {
         return protect(() -> {
             HashSet<Long> environmentIds = new HashSet<>();
 
-            try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT contract_subscription.environment_id FROM contract_storage " +
-                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
-                    "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM contract_subscription WHERE hash_id = ? GROUP BY environment_id", id.getDigest()))) {
                 if (rs == null)
                     return new HashSet<>();
                 do {
@@ -1494,36 +1507,13 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin) {
-        return protect(() -> {
-            HashSet<Long> environmentIds = new HashSet<>();
-            long now = ZonedDateTime.now().toEpochSecond();
-
-            try (ResultSet rs = inPool(db -> db.queryRow("SELECT environment_id FROM follower_subscription WHERE origin = ? AND muted_at > ?", origin.getDigest(), now))) {
-                if (rs == null)
-                    return new HashSet<>();
-                do {
-                    environmentIds.add(rs.getLong(1));
-                } while (rs.next());
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-
-            return environmentIds;
-        });
-    }
-
-
-    @Override
-    public Node.FollowerCallbackState getFollowerCallbackStateById(HashId id) {
+    public CallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("SELECT state FROM follower_callbacks WHERE id = ?", id.getDigest()))) {
                 if (rs == null)
-                    return Node.FollowerCallbackState.UNDEFINED;
+                    return CallbackService.FollowerCallbackState.UNDEFINED;
 
-                return Node.FollowerCallbackState.values()[rs.getInt(1)];
+                return CallbackService.FollowerCallbackState.values()[rs.getInt(1)];
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -1538,14 +1528,14 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "SELECT id, subscription_id, state FROM follower_callbacks WHERE environment_id = ? " +
+                        "SELECT id, state FROM follower_callbacks WHERE environment_id = ? " +
                         "AND expires_at < ? AND (state = ? OR state = ?)"
                     )
             ) {
                 statement.setLong(1, environmentId);
                 statement.setLong(2, now);
-                statement.setLong(3, Node.FollowerCallbackState.STARTED.ordinal());
-                statement.setLong(4, Node.FollowerCallbackState.EXPIRED.ordinal());
+                statement.setLong(3, CallbackService.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(4, CallbackService.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1555,8 +1545,7 @@ public class PostgresLedger implements Ledger {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
                             environmentId,
-                            rs.getLong(2),
-                            Node.FollowerCallbackState.values()[rs.getInt(3)]);
+                            CallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1578,13 +1567,13 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "SELECT id, state, subscription_id, environment_id FROM follower_callbacks " +
+                        "SELECT id, state, environment_id FROM follower_callbacks " +
                         "WHERE expires_at < ? AND (state = ? OR state = ?)"
                     )
             ) {
                 statement.setLong(1, now);
-                statement.setLong(2, Node.FollowerCallbackState.STARTED.ordinal());
-                statement.setLong(3, Node.FollowerCallbackState.EXPIRED.ordinal());
+                statement.setLong(2, CallbackService.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(3, CallbackService.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1593,9 +1582,8 @@ public class PostgresLedger implements Ledger {
                 while (rs.next()) {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
-                            rs.getLong(4),
                             rs.getLong(3),
-                            Node.FollowerCallbackState.values()[rs.getInt(2)]);
+                            CallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1611,20 +1599,19 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {
+    public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
                     db.statement(
-                        "INSERT INTO follower_callbacks (id, state, environment_id, subscription_id, expires_at, stored_until) VALUES (?,?,?,?,?,?)"
+                        "INSERT INTO follower_callbacks (id, state, environment_id, expires_at, stored_until) VALUES (?,?,?,?,?)"
                     )
             ) {
                 statement.setBytes(1, id.getDigest());
-                statement.setInt(2, Node.FollowerCallbackState.STARTED.ordinal());
+                statement.setInt(2, CallbackService.FollowerCallbackState.STARTED.ordinal());
                 statement.setLong(3, environmentId);
-                statement.setLong(4, subscriptionId);
-                statement.setLong(5, StateRecord.unixTime(expiresAt));
-                statement.setLong(6, StateRecord.unixTime(storedUntil));
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                statement.setLong(5, StateRecord.unixTime(storedUntil));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1636,7 +1623,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state) {
+    public void updateFollowerCallbackState(HashId id, CallbackService.FollowerCallbackState state) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
@@ -1696,7 +1683,7 @@ public class PostgresLedger implements Ledger {
     public byte[] getContractInStorage(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT bin_data FROM contract_storage " +
+                    "SELECT bin_data FROM contract_binary " +
                     "WHERE hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
@@ -1713,9 +1700,10 @@ public class PostgresLedger implements Ledger {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
                     "SELECT bin_data FROM environments " +
-                    "LEFT JOIN contract_subscription ON environments.id=contract_subscription.environment_id " +
-                    "LEFT JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
-                    "WHERE environments.ncontract_hash_id=? AND contract_storage.hash_id=?", slotId.getDigest(), contractId.getDigest()))) {
+                    "LEFT JOIN contract_storage ON environments.id=contract_storage.environment_id " +
+                    "LEFT JOIN contract_binary ON contract_binary.hash_id=contract_storage.hash_id " +
+                    "WHERE environments.ncontract_hash_id=? AND contract_storage.hash_id=?",
+                    slotId.getDigest(), contractId.getDigest()))) {
                 if (rs == null)
                     return null;
                 return rs.getBytes(1);
@@ -1731,9 +1719,10 @@ public class PostgresLedger implements Ledger {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
                     "SELECT bin_data FROM environments " +
-                    "LEFT JOIN contract_subscription ON environments.id=contract_subscription.environment_id " +
-                    "LEFT JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
-                    "WHERE environments.ncontract_hash_id=? AND contract_storage.origin=?", slotId.getDigest(), originId.getDigest()))) {
+                    "LEFT JOIN contract_storage ON environments.id=contract_storage.environment_id " +
+                    "LEFT JOIN contract_binary ON contract_binary.hash_id=contract_storage.hash_id " +
+                    "WHERE environments.ncontract_hash_id=? AND contract_storage.origin=?",
+                    slotId.getDigest(), originId.getDigest()))) {
                 List<byte[]> res = new ArrayList<>();
                 if (rs == null)
                     return res;
@@ -1754,7 +1743,7 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                "DELETE FROM contract_subscription WHERE id=?"
+                        "DELETE FROM contract_subscription WHERE id = ?"
                     )
             ) {
                 statement.setLong(1, subscriptionId);
@@ -1769,28 +1758,26 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-
     @Override
-    public void removeEnvironmentFollowerSubscription(long subscriptionId) {
+    public void removeEnvironmentStorage(long storageId) {
         try (PooledDb db = dbPool.db()) {
             try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM follower_subscription WHERE id=?"
-                            )
+                PreparedStatement statement =
+                    db.statement(
+                        "DELETE FROM contract_storage WHERE id = ?"
+                    )
             ) {
-                statement.setLong(1, subscriptionId);
+                statement.setLong(1, storageId);
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("removeEnvironmentFollowerSubscription failed: " + se);
+            throw new Failure("removeEnvironmentStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("removeEnvironmentFollowerSubscription failed: " + e);
+            throw new Failure("removeEnvironmentStorage failed: " + e);
         }
     }
-
 
     /*public List<Long> getEnvironmentSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
@@ -1851,9 +1838,9 @@ public class PostgresLedger implements Ledger {
     @Override
     public long removeEnvironment(HashId ncontractHashId) {
         long envId = getEnvironmentId(ncontractHashId);
-        removeStorageSubscriptionsByEnvId(envId);
-        removeFollowerSubscriptionsByEnvId(envId);
-        clearExpiredStorageContracts();
+        removeSubscriptionsByEnvId(envId);
+        removeStorageContractsByEnvId(envId);
+        clearExpiredStorageContractBinaries();
         return removeEnvironmentEx(ncontractHashId);
     }
 
@@ -1885,95 +1872,51 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    public List<Long> removeStorageSubscriptionsByEnvId(long environmentId) {
+    public void removeSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_subscription WHERE environment_id=? RETURNING contract_storage_id"
+                                    "DELETE FROM contract_subscription WHERE environment_id = ?"
                             )
             ) {
                 statement.setLong(1, environmentId);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("removeStorageSubscriptionsByIds failed: returning null");
-                List<Long> resList = new ArrayList<>();
-                while (rs.next())
-                    resList.add(rs.getLong(1));
-                rs.close();
-                return resList;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("removeStorageSubscriptionsByEnvId failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Failure("removeStorageSubscriptionsByEnvId failed: " + e);
-        }
-    }
-
-    public void removeFollowerSubscriptionsByEnvId(long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM follower_subscription WHERE environment_id=?"
-                            )
-            ) {
-                statement.setLong(1, environmentId);
-                statement.closeOnCompletion();
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("removeFollowerSubscriptionsByEnvId failed: " + se);
+            throw new Failure("removeSubscriptionsByEnvId failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("removeFollowerSubscriptionsByEnvId failed: " + e);
+            throw new Failure("removeSubscriptionsByEnvId failed: " + e);
         }
     }
 
-    public void removeStorageContractsForIds(List<Long> contracts) {
+
+    public void removeStorageContractsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
-            List<String> queryPatterns = new ArrayList<>();
-            for (int i = 0; i < contracts.size(); ++i)
-                queryPatterns.add("?");
-            String queryPatternStr = String.join(",", queryPatterns);
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_storage WHERE id IN ("+queryPatternStr+") AND (SELECT COUNT(*) FROM contract_subscription WHERE contract_storage_id=contract_storage.id)=0"
+                                    "DELETE FROM contract_storage WHERE environment_id = ?"
                             )
             ) {
-                for (int i = 0; i < contracts.size(); ++i)
-                    statement.setLong(i+1, contracts.get(i));
+                statement.setLong(1, environmentId);
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("removeStorageContractsForIds failed: " + se);
+            throw new Failure("removeStorageContractsByEnvId failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {
-        long environmentId = getEnvironmentId(slotHashId);
-        removeEnvironment(slotHashId);
-        if (environmentId != 0) {
-            List<Long> contracts = removeStorageSubscriptionsByEnvId(environmentId);
-            if ((contracts != null) && (contracts.size() > 0))
-                removeStorageContractsForIds(contracts);
         }
     }
 
     @Override
-    public void removeExpiredStorageSubscriptionsCascade() {
-        clearExpiredFollowerSubscriptions();
-        List<Long> contracts = clearExpiredStorageSubscriptions();
-        if ((contracts != null) && (contracts.size() > 0))
-            removeStorageContractsForIds(contracts);
+    public void removeExpiredStoragesAndSubscriptionsCascade() {
+        clearExpiredSubscriptions();
+        clearExpiredStorages();
+        clearExpiredStorageContractBinaries();
     }
 
     private long addNameStorage(final NNameRecord nameRecord) {
@@ -2063,20 +2006,36 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {
+    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin, long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("" +
-                                    "INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) " +
-                                    "ON CONFLICT(hash_id) DO UPDATE SET hash_id=EXCLUDED.hash_id " +
-                                    "RETURNING id")
+                            db.statement(
+                                    "INSERT INTO contract_binary (hash_id, bin_data) VALUES (?,?) " +
+                                    "ON CONFLICT (hash_id) DO UPDATE SET bin_data=EXCLUDED.bin_data"
+                            )
             ) {
                 statement.setBytes(1, contractId.getDigest());
                 statement.setBytes(2, binData);
-                statement.setBytes(3, origin.getDigest());
-                statement.setLong(4, StateRecord.unixTime(expiresAt));
-                //db.updateWithStatement(statement);
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveContractInStorage binary failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement("INSERT INTO contract_storage (hash_id, origin, expires_at, environment_id) VALUES (?,?,?,?) RETURNING id")
+            ) {
+                statement.setBytes(1, contractId.getDigest());
+                statement.setBytes(2, origin.getDigest());
+                statement.setLong(3, StateRecord.unixTime(expiresAt));
+                statement.setLong(4, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -2092,6 +2051,7 @@ public class PostgresLedger implements Ledger {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         return 0;
     }
 

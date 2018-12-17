@@ -21,10 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.icodici.universa.contract.services.FollowerContract.FOLLOWER_ROLES_FIELD_NAME;
 import static org.junit.Assert.*;
@@ -480,4 +477,89 @@ public class FollowerContractTest extends ContractTestBase {
 
     }
 
+    @Test
+    public void testAllCanFollowContract() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        final PrivateKey followerKey = new PrivateKey(2048);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        PrivateKey callbackKey = new PrivateKey(2048);
+
+        FollowerContract followerContract = new FollowerContract(followerKey);
+
+        followerContract.setNodeInfoProvider(nodeInfoProvider);
+        followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
+        followerContract.seal();
+
+        // can not follow simpleContract (owner = key2) by smartContract (signed by key)
+        assertFalse(followerContract.canFollowContract(simpleContract));
+
+        Contract.Definition cd = simpleContract.getDefinition();
+        ListRole followerAllRole = new ListRole("all", 0, new ArrayList<>());
+        List<Role> followerAllRoles = Do.listOf(followerAllRole);
+
+        Binder data = new Binder();
+        data.set(FOLLOWER_ROLES_FIELD_NAME, followerAllRoles);
+        cd.setData(data);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertTrue(followerContract.canFollowContract(simpleContract));
+
+        data.remove(FOLLOWER_ROLES_FIELD_NAME);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertFalse(followerContract.canFollowContract(simpleContract));
+
+        //state
+        simpleContract.getStateData().set(FOLLOWER_ROLES_FIELD_NAME, followerAllRoles);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertTrue(followerContract.canFollowContract(simpleContract));
+
+        simpleContract.getStateData().remove(FOLLOWER_ROLES_FIELD_NAME);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertFalse(followerContract.canFollowContract(simpleContract));
+
+        //transactional
+        simpleContract.getTransactionalData().set(FOLLOWER_ROLES_FIELD_NAME, followerAllRoles);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertTrue(followerContract.canFollowContract(simpleContract));
+
+        simpleContract.getTransactionalData().remove(FOLLOWER_ROLES_FIELD_NAME);
+
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        assertFalse(followerContract.canFollowContract(simpleContract));
+    }
 }

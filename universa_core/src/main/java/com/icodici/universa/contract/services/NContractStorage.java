@@ -1,6 +1,5 @@
 package com.icodici.universa.contract.services;
 
-import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -8,42 +7,29 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Implements {@link ContractSubscription} interface for slot contract.
+ * Implements {@link ContractStorage} interface for contract.
  */
-public class NContractStorageSubscription implements ContractSubscription, BiSerializable {
+public class NContractStorage implements ContractStorage, BiSerializable {
 
     private long id = 0;
-
     private byte[] packedContract;
-    private long contractStorageId = 0;
-    private long environmentId = 0;
     private ZonedDateTime expiresAt = ZonedDateTime.now().plusMonths(1);
-    private boolean isReceiveEvents = false;
 
     private Contract trackingContract;
 
-    public NContractStorageSubscription() {
+    public NContractStorage() {}
 
-    }
-
-    public NContractStorageSubscription(byte[] packedContract, ZonedDateTime expiresAt) {
+    public NContractStorage(byte[] packedContract, ZonedDateTime expiresAt) {
         this.packedContract = packedContract;
         this.expiresAt = expiresAt;
         try {
             this.trackingContract = Contract.fromPackedTransaction(packedContract);
         } catch (IOException e) {
-            throw new IllegalArgumentException("NContractStorageSubscription unable to unpack TP " + e.getMessage());
+            throw new IllegalArgumentException("NContractStorage unable to unpack TP " + e.getMessage());
         }
-    }
-
-    @Override
-    public void receiveEvents(boolean doReceive) {
-        isReceiveEvents = doReceive;
     }
 
     @Override
@@ -62,18 +48,6 @@ public class NContractStorageSubscription implements ContractSubscription, BiSer
         return id;
     }
 
-    /**
-     * Set id from ledger for record with stored contract.
-     *
-     * @param value is id
-     */
-    public void setContractStorageId(long value) {
-        contractStorageId = value;
-    }
-    public long getContractStorageId() {
-        return contractStorageId;
-    }
-
     @Override
     public Contract getContract() {
         return trackingContract;
@@ -81,23 +55,6 @@ public class NContractStorageSubscription implements ContractSubscription, BiSer
     @Override
     public byte[] getPackedContract() {
         return packedContract;
-    }
-    @Override
-    public HashId getOrigin() {
-        return null;
-    }
-
-
-    public boolean isReceiveEvents() {
-        return isReceiveEvents;
-    }
-
-    public long getEnvironmentId() {
-        return environmentId;
-    }
-
-    public void setEnvironmentId(long environmentId) {
-        this.environmentId = environmentId;
     }
 
     @Override

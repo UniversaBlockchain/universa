@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node2.CallbackService;
 
 import java.time.ZonedDateTime;
 
@@ -18,17 +19,20 @@ import java.time.ZonedDateTime;
 
 public interface ContractSubscription {
 
+    /**
+     * @return the expiration time of subscription.
+     */
     ZonedDateTime expiresAt();
 
     /**
-     * @return the unpacked stored contract. Note that this instance could be cached/shared among subscribers.
+     * @return the {@link HashId} of subscribed contract or contracts chain.
      */
-    Contract getContract();
+    HashId getHashId();
 
     /**
-     * @return stored packed representation (transaction pack)
+     * @return the id of subscribed contract.
      */
-    byte[] getPackedContract();
+    HashId getContractId();
 
     /**
      * @return the origin of contracts chain of subscription.
@@ -36,14 +40,33 @@ public interface ContractSubscription {
     HashId getOrigin();
 
     /**
-     * The subscription event base interface. Real events are either {@link ApprovedEvent} or {@link RevokedEvent}
-     * implementations.
+     * @return true if subscription for contracts chain.
+     */
+    boolean isChainSubscription();
+
+    /**
+     * Set expiration time of subscription.
+     *
+     * @param expiredAt is expiration time of subscription
+     */
+    void setExpiresAt(ZonedDateTime expiredAt);
+
+    /**
+     * The subscription event base interface.
      */
     interface Event {
+        MutableEnvironment getEnvironment();
+    }
+
+    /**
+     * The subscription event base interface for storage subscription.
+     * Real events are either {@link ApprovedEvent} or {@link RevokedEvent} implementations.
+     */
+    interface SubscriptionEvent extends Event {
         ContractSubscription getSubscription();
     }
 
-    interface ApprovedEvent extends Event {
+    interface ApprovedEvent extends SubscriptionEvent {
         /**
          * @return new revision just approved as the Contract
          */
@@ -53,32 +76,38 @@ public interface ContractSubscription {
          * @return Packed transaction of the new revision just approved
          */
         byte[] getPackedTransaction();
-
-
-        MutableEnvironment getEnvironment();
     }
 
-    interface RevokedEvent extends Event {
-        ImmutableEnvironment getEnvironment();
-    }
-
-    interface CompletedEvent extends Event {
-        MutableEnvironment getEnvironment();
-    }
-
-    interface FailedEvent extends Event {
-        MutableEnvironment getEnvironment();
-    }
-
-    interface SpentEvent extends Event {
-        MutableEnvironment getEnvironment();
-    }
+    interface RevokedEvent extends SubscriptionEvent {}
 
     /**
-     * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
-     * NContract#onContractSubscriptionEvent(Event)}
-     *
-     * @param doReceive true to receive events, false to stop
+     * The subscription event base interface for starting follower callback.
+     * Real events are either {@link ApprovedWithCallbackEvent} or {@link RevokedWithCallbackEvent} implementations.
      */
-    void receiveEvents(boolean doReceive);
+    interface CallbackEvent extends Event {
+        /**
+         * @return service for callback sending
+         */
+        CallbackService getCallbackService();
+    }
+
+    interface ApprovedWithCallbackEvent extends CallbackEvent {
+        /**
+         * @return new revision just approved as the Contract
+         */
+        Contract getNewRevision();
+    }
+
+    interface RevokedWithCallbackEvent extends CallbackEvent {
+        /**
+         * @return revoking item as the Contract
+         */
+        Contract getRevokingItem();
+    }
+
+    interface CompletedEvent extends Event {}
+
+    interface FailedEvent extends Event {}
+
+    interface SpentEvent extends Event {}
 }

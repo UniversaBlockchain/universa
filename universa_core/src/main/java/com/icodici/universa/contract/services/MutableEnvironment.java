@@ -39,15 +39,23 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @param origin of contracts chain
      * @param expiresAt is time to expiration subscription
-     * @param mutedAt is time to muted (not send callbacks due to insufficient payments)
      *
      * @return follower subscription
      */
-    @Nullable ContractSubscription createFollowerSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt,
-                                                              @NonNull ZonedDateTime mutedAt);
+    @NonNull ContractSubscription createChainSubscription(@NonNull HashId origin, @NonNull ZonedDateTime expiresAt);
 
     /**
-     * Create storage subscription to a packed contract. It always creates the subscription to new or existing contract.
+     * Create subscription to a packed contract. It always creates the subscription to new or existing contract.
+     *
+     * @param id is contract identifier
+     * @param expiresAt is time to expiration subscription
+     *
+     * @return storage subscription
+     */
+    @NonNull ContractSubscription createContractSubscription(@NonNull HashId id, @NonNull ZonedDateTime expiresAt);
+
+    /**
+     * Create storage for a packed contract.
      * The storage must not create copies of the same contracts or update its stored binary representations. There
      * should be always no one copy in the storage.
      *
@@ -56,12 +64,10 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return storage subscription
      */
-    @NonNull ContractSubscription createStorageSubscription(byte[] packedTransaction,
-                                                                   @NonNull ZonedDateTime expiresAt);
+    @NonNull NContractStorage createContractStorage(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt);
 
 
-    @NonNull NameRecord createNameRecord(@NonNull UnsName unsName,
-                                              @NonNull ZonedDateTime expiresAt);
+    @NonNull NameRecord createNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt);
 
     /**
      * Set expiration time for subscription
@@ -72,14 +78,12 @@ public interface MutableEnvironment extends ImmutableEnvironment {
     void setSubscriptionExpiresAt(ContractSubscription subscription, ZonedDateTime expiresAt);
 
     /**
-     * Set expiration and muted time for follower subscription.
-     * Muted follower subscription is not removed from the ledger, but callbacks are no longer executed (due to lack of funds).
+     * Set expiration time for contract storage
      *
-     * @param subscription is follower subscription
-     * @param expiresAt is time to expiration subscription
-     * @param mutedAt is muted time of subscription
+     * @param storage is contract storage
+     * @param expiresAt is time to expiration contract storage
      */
-    void setSubscriptionExpiresAtAndMutedAt(ContractSubscription subscription, ZonedDateTime expiresAt, ZonedDateTime mutedAt);
+    void setStorageExpiresAt(ContractStorage storage, ZonedDateTime expiresAt);
 
     /**
      * Remove subscription from the ledger
@@ -87,6 +91,13 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      * @param subscription
      */
     void destroySubscription(ContractSubscription subscription);
+
+    /**
+     * Remove stored contract from the ledger
+     *
+     * @param contractStorage is contract storage
+     */
+    void destroyStorage(ContractStorage contractStorage);
 
     /**
      * Set expiration time for storing UNS name
@@ -102,56 +113,4 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      * @param nameRecord is UNS name record
      */
     void destroyNameRecord(NameRecord nameRecord);
-
-    /**
-     * Get origin-days spent for callbacks by all subscriptions in this environment
-     *
-     * @return spent origin-days
-     */
-    double getSubscriptionsCallbacksSpentODs();
-
-    /**
-     * Get number of started callbacks by all subscriptions in this environment
-     *
-     * @return number of started callbacks
-     */
-    int getSubscriptionsStartedCallbacks();
-
-    /**
-     * Decrease time to expiration follower subscription
-     *
-     * @param subscription is follower subscription
-     * @param decreaseSeconds is interval in seconds for which subscription time is reduced
-     */
-    void decreaseSubscriptionExpiresAt(ContractSubscription subscription, int decreaseSeconds);
-
-    /**
-     * Change muted time of follower subscription
-     *
-     * @param subscription is follower subscription
-     * @param deltaSeconds is interval in seconds for which subscription muted time is changed
-     */
-    void changeSubscriptionMutedAt(ContractSubscription subscription, int deltaSeconds);
-
-    /**
-     * Increase origin-days spent for callbacks of follower subscription
-     *
-     * @param subscription is follower subscription
-     * @param addSpent is spent origin-days
-     */
-    void increaseCallbacksSpent(ContractSubscription subscription, double addSpent);
-
-    /**
-     * Increment number of started callbacks of follower subscription
-     *
-     * @param subscription is follower subscription
-     */
-    void increaseStartedCallbacks(ContractSubscription subscription);
-
-    /**
-     * Decrement number of started callbacks of follower subscription
-     *
-     * @param subscription is follower subscription
-     */
-    void decreaseStartedCallbacks(ContractSubscription subscription);
 }

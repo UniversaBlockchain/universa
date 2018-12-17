@@ -71,8 +71,7 @@ public interface NContract {
     @NonNull Binder query(ImmutableEnvironment e, String methodName, Binder params);
 
     /**
-     * For the {@link ContractSubscription} to which {@link ContractSubscription#receiveEvents(boolean)}
-     * is called, the instance will receive event notifications with this callback
+     * For the {@link ContractSubscription} the instance will receive event notifications with this callback
      *
      * @param event
      */

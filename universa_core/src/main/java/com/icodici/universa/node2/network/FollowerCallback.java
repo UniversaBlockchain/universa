@@ -3,6 +3,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.HashType;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
@@ -89,10 +90,24 @@ public class FollowerCallback {
     }
 
     private Binder onCallback(Binder params) throws IOException {
-        byte[] packedItem = params.getBytesOrThrow("data").toArray();
-        Contract contract = Contract.fromPackedTransaction(packedItem);
+        String event = params.getString("event");
+        byte[] packedData;
+        HashId id;
 
-        System.out.println("Follower callback received. Contract: " + contract.getId().toString());
+        if (event.equals("new")) {
+            packedData = params.getBytesOrThrow("data").toArray();
+            Contract contract = Contract.fromPackedTransaction(packedData);
+            id = contract.getId();
+        } else if (event.equals("revoke")) {
+            packedData = params.getBytesOrThrow("id").toArray();
+            id = HashId.withDigest(packedData);
+        } else
+            return Binder.EMPTY;
+
+        if (event.equals("new"))
+            System.out.println("Follower callback received. Contract: " + id.toString());
+        else
+            System.out.println("Follower callback received. Revoking ID: " + id.toString());
 
         // check node key
         if (nodeKeys != null) {
@@ -100,14 +115,17 @@ public class FollowerCallback {
 
             byte[] signature = params.getBytesOrThrow("signature").toArray();
 
-            if (!nodeKey.verify(packedItem, signature, HashType.SHA512) || !nodeKeys.stream().anyMatch(n -> n.equals(nodeKey)))
+            if (!nodeKey.verify(packedData, signature, HashType.SHA512) || !nodeKeys.stream().anyMatch(n -> n.equals(nodeKey)))
                 return Binder.EMPTY;
         }
 
         // sign receipt
-        byte[] receipt = callbackKey.sign(contract.getId().getDigest(), HashType.SHA512);
+        byte[] receipt = callbackKey.sign(id.getDigest(), HashType.SHA512);
 
-        System.out.println("Follower callback processed. Contract: " + contract.getId().toString());
+        if (event.equals("new"))
+            System.out.println("Follower callback processed. Contract: " + id.toString());
+        else
+            System.out.println("Follower callback processed. Revoking ID: " + id.toString());
 
         return Binder.of("receipt", receipt);
     }

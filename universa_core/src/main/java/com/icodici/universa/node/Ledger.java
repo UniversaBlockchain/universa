@@ -14,7 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.Node;
+import com.icodici.universa.node2.CallbackService;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Duration;
@@ -160,7 +160,8 @@ public interface Ledger {
     boolean isTestnet(HashId itemId);
 
     void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
-    void updateFollowerSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks);
+    void updateStorageExpiresAt(long storageId, ZonedDateTime expiresAt);
+    void saveFollowerEnvironment(long environmentId, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks);
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 
@@ -209,27 +210,22 @@ public interface Ledger {
 
     void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
 
+    long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin, long environmentId);
 
-    long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
+    long saveSubscriptionInStorage(HashId hashId, boolean subscriptionOnChain, ZonedDateTime expiresAt, long environmentId);
 
+    Set<Long> getSubscriptionEnviromentIds(HashId id);
 
-    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
-    long saveFollowerSubscriptionInStorage(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId);
-
-    Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
-    Set<Long> getFollowerSubscriptionEnviromentIdsForOrigin(HashId origin);
-
-    Node.FollowerCallbackState getFollowerCallbackStateById(HashId id);
+    CallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id);
     Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId);
     Collection<CallbackRecord> getFollowerCallbacksToResync();
-    void addFollowerCallback(HashId id, long environmentId, long subscriptionId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
-    void updateFollowerCallbackState(HashId id, Node.FollowerCallbackState state);
+    void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
+    void updateFollowerCallbackState(HashId id, CallbackService.FollowerCallbackState state);
     void removeFollowerCallback(HashId id);
 
-    List<Long> clearExpiredStorageSubscriptions();
-    void clearExpiredFollowerSubscriptions();
-
-    void clearExpiredStorageContracts();
+    void clearExpiredStorages();
+    void clearExpiredSubscriptions();
+    void clearExpiredStorageContractBinaries();
 
     byte[] getSmartContractById(HashId smartContractId);
     byte[] getContractInStorage(HashId contractId);
@@ -237,9 +233,9 @@ public interface Ledger {
     List<byte[]> getContractsInStorageByOrigin(HashId slotId, HashId originId);
 
     void removeEnvironmentSubscription(long subscriptionId);
-    void removeEnvironmentFollowerSubscription(long subscriptionId);
+    void removeEnvironmentStorage(long storageId);
     long removeEnvironment(HashId ncontractHashId);
-    void removeExpiredStorageSubscriptionsCascade();
+    void removeExpiredStoragesAndSubscriptionsCascade();
 
     void addNameRecord(final NNameRecord nameRecordModel);
     void removeNameRecord(final String nameReduced);

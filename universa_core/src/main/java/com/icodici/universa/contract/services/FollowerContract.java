@@ -11,6 +11,8 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.CallbackService;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiType;
@@ -27,7 +29,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @BiType(name = "FollowerContract")
 /**
@@ -390,24 +391,28 @@ public class FollowerContract extends NSmartContract {
         // recalculate prepaid origins*days without saving to state
         calculatePrepaidOriginDays(false);
 
+        FollowerService fs = me.getFollowerService(true);
+
         // recalculate time that will be added to now as new expiring time
         // it is difference of all prepaid ODs (origins*days) and already spent divided to new number of tracking origins.
-        double days = (prepaidOriginDays - spentODs - me.getSubscriptionsCallbacksSpentODs()) / trackingOrigins.size();
+        double days = (prepaidOriginDays - spentODs - fs.getCallbacksSpent()) / trackingOrigins.size();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
                 .plusSeconds(seconds);
 
         // recalculate muted period of follower contract subscription
-        days = (me.getSubscriptionsStartedCallbacks() + 1) * callbackRate / trackingOrigins.size();
+        days = (fs.getStartedCallbacks() + 1) * callbackRate / trackingOrigins.size();
         seconds = (long) (days * 24 * 3600);
         ZonedDateTime newMuted = newExpires.minusSeconds(seconds);
 
+        fs.setExpiresAndMutedAt(newExpires, newMuted);
+
         Set<HashId> newOrigins = new HashSet<>(trackingOrigins.keySet());
 
-        me.followerSubscriptions().forEach(sub -> {
+        me.subscriptions().forEach(sub -> {
             HashId origin = sub.getOrigin();
             if (newOrigins.contains(origin)) {
-                me.setSubscriptionExpiresAtAndMutedAt(sub, newExpires, newMuted);
+                me.setSubscriptionExpiresAt(sub, newExpires);
                 newOrigins.remove(origin);
             } else
                 me.destroySubscription(sub);
@@ -415,8 +420,7 @@ public class FollowerContract extends NSmartContract {
 
         for (HashId origin: newOrigins) {
             try {
-                ContractSubscription sub = me.createFollowerSubscription(origin, newExpires, newMuted);
-                sub.receiveEvents(true);
+                ContractSubscription sub = me.createChainSubscription(origin, newExpires);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -440,54 +444,79 @@ public class FollowerContract extends NSmartContract {
     @Override
     public void onContractSubscriptionEvent(ContractSubscription.Event event) {
 
-        if (event instanceof ContractSubscription.ApprovedEvent) {
-            MutableEnvironment me = ((ContractSubscription.ApprovedEvent) event).getEnvironment();
+        MutableEnvironment me = event.getEnvironment();
+        FollowerService fs = me.getFollowerService(true);
 
-            ContractSubscription sub = event.getSubscription();
-            me.increaseStartedCallbacks(sub);
+        if (event instanceof ContractSubscription.ApprovedWithCallbackEvent) {
+            if (fs.mutedAt().isBefore(ZonedDateTime.now()))
+                return;
+
+            fs.increaseStartedCallbacks();
 
             // decrease muted period of all follower subscription in environment of contract
             double deltaDays = -callbackRate / trackingOrigins.size();
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
-            me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
-        } else if (event instanceof ContractSubscription.CompletedEvent) {
-            MutableEnvironment me = ((ContractSubscription.CompletedEvent) event).getEnvironment();
+            fs.changeMutedAt(deltaSeconds);
 
-            ContractSubscription sub = event.getSubscription();
-            me.decreaseStartedCallbacks(sub);
-            me.increaseCallbacksSpent(sub, callbackRate);
+            // save before start callback processor
+            ((NMutableEnvironment) me).save();
+
+            // start callback processor
+            CallbackService callbackService = ((ContractSubscription.ApprovedWithCallbackEvent) event).getCallbackService();
+            callbackService.startCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
+                    ItemState.APPROVED, this, (NMutableEnvironment) me);
+
+        } else if (event instanceof ContractSubscription.RevokedWithCallbackEvent) {
+            if (fs.mutedAt().isBefore(ZonedDateTime.now()))
+                return;
+
+            fs.increaseStartedCallbacks();
+
+            // decrease muted period of all follower subscription in environment of contract
+            double deltaDays = -callbackRate / trackingOrigins.size();
+            int deltaSeconds = (int) (deltaDays * 24 * 3600);
+
+            fs.changeMutedAt(deltaSeconds);
+
+            // save before start callback processor
+            ((NMutableEnvironment) me).save();
+
+            // start callback processor
+            CallbackService callbackService = ((ContractSubscription.RevokedWithCallbackEvent) event).getCallbackService();
+            callbackService.startCallbackProcessor(((ContractSubscription.RevokedWithCallbackEvent) event).getRevokingItem(),
+                    ItemState.REVOKED, this, (NMutableEnvironment) me);
+
+        } else if (event instanceof ContractSubscription.CompletedEvent) {
+            fs.decreaseStartedCallbacks();
+            fs.increaseCallbacksSpent(callbackRate);
 
             // decrease expires period of all follower subscription in environment of contract
             double deltaDays = callbackRate / trackingOrigins.size();
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
-            me.followerSubscriptions().forEach(fsub -> me.decreaseSubscriptionExpiresAt(fsub, deltaSeconds));
-        } else if (event instanceof ContractSubscription.FailedEvent) {
-            MutableEnvironment me = ((ContractSubscription.FailedEvent) event).getEnvironment();
+            fs.decreaseExpiresAt(deltaSeconds);
+            me.subscriptions().forEach(sub -> me.setSubscriptionExpiresAt(sub, sub.expiresAt().minusSeconds(deltaSeconds)));
 
-            ContractSubscription sub = event.getSubscription();
-            me.decreaseStartedCallbacks(sub);
+        } else if (event instanceof ContractSubscription.FailedEvent) {
+            fs.decreaseStartedCallbacks();
 
             // increase muted period of all follower subscription in environment of contract
             double deltaDays = callbackRate / trackingOrigins.size();
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
-            me.followerSubscriptions().forEach(fsub -> me.changeSubscriptionMutedAt(fsub, deltaSeconds));
-        } else if (event instanceof ContractSubscription.SpentEvent) {
-            MutableEnvironment me = ((ContractSubscription.SpentEvent) event).getEnvironment();
+            fs.changeMutedAt(deltaSeconds);
 
-            ContractSubscription sub = event.getSubscription();
-            me.increaseCallbacksSpent(sub, callbackRate);
+        } else if (event instanceof ContractSubscription.SpentEvent) {
+            fs.increaseCallbacksSpent(callbackRate);
 
             double deltaDays = callbackRate / trackingOrigins.size();
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
             // decrease muted and expires period of all follower subscription in environment of contract
-            me.followerSubscriptions().forEach(fsub -> {
-                me.changeSubscriptionMutedAt(fsub, -deltaSeconds);
-                me.decreaseSubscriptionExpiresAt(fsub, deltaSeconds);
-            });
+            fs.changeMutedAt(-deltaSeconds);
+            fs.decreaseExpiresAt(deltaSeconds);
+            me.subscriptions().forEach(sub -> me.setSubscriptionExpiresAt(sub, sub.expiresAt().minusSeconds(deltaSeconds)));
         }
     }
 

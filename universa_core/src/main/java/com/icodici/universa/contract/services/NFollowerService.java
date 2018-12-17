@@ -1,52 +1,41 @@
 package com.icodici.universa.contract.services;
 
-import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.Ledger;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
  * Implements {@link ContractSubscription} interface for follower contract.
  */
-public class NContractFollowerSubscription implements ContractSubscription, BiSerializable {
+public class NFollowerService implements FollowerService, BiSerializable {
 
     private long id = 0;
-    private long environmentId = 0;
+    private long environmentId;
     private ZonedDateTime expiresAt = ZonedDateTime.now().plusMonths(1);
     private ZonedDateTime mutedAt = ZonedDateTime.now().plusMonths(1);
-    private boolean isReceiveEvents = false;
-    private HashId origin;
     private double spent = 0;
     private int startedCallbacks = 0;
+    private Ledger ledger;
 
-    public NContractFollowerSubscription() {
+    public NFollowerService() {}
 
+    public NFollowerService(Ledger ledger, long environmentId) {
+        this.ledger = ledger;
+        this.environmentId = environmentId;
     }
 
-    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt, double spent, int startedCallbacks) {
-        this.origin = origin;
+    public NFollowerService(Ledger ledger, ZonedDateTime expiresAt, ZonedDateTime mutedAt, long environmentId, double spent, int startedCallbacks) {
+        this.ledger = ledger;
+        this.environmentId = environmentId;
         this.expiresAt = expiresAt;
         this.mutedAt = mutedAt;
         this.spent = spent;
         this.startedCallbacks = startedCallbacks;
-    }
-
-    public NContractFollowerSubscription(HashId origin, ZonedDateTime expiresAt, ZonedDateTime mutedAt) {
-        this.origin = origin;
-        this.expiresAt = expiresAt;
-        this.mutedAt = mutedAt;
-    }
-
-    @Override
-    public void receiveEvents(boolean doReceive) {
-        isReceiveEvents = doReceive;
     }
 
     @Override
@@ -57,9 +46,28 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
         return mutedAt;
     }
 
+    @Override
     public void setExpiresAt(ZonedDateTime expiresAt) { this.expiresAt = expiresAt; }
+
+    @Override
     public void setMutedAt(ZonedDateTime mutedAt) {
         this.mutedAt = mutedAt;
+    }
+
+    @Override
+    public void setExpiresAndMutedAt(ZonedDateTime expiresAt, ZonedDateTime mutedAt) {
+        this.expiresAt = expiresAt;
+        this.mutedAt = mutedAt;
+    }
+
+    @Override
+    public void decreaseExpiresAt(int decreaseSeconds) {
+        expiresAt = expiresAt.minusSeconds(decreaseSeconds);
+    }
+
+    @Override
+    public void changeMutedAt(int deltaSeconds) {
+        mutedAt = mutedAt.plusSeconds(deltaSeconds);
     }
 
     public void setId(long value) {
@@ -69,42 +77,23 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
         return id;
     }
 
+    @Override
     public void increaseCallbacksSpent(double addSpent) { spent += addSpent; }
+
+    @Override
     public double getCallbacksSpent() { return spent; }
 
+    @Override
     public void increaseStartedCallbacks() { startedCallbacks++; }
+
+    @Override
     public void decreaseStartedCallbacks() { startedCallbacks--; }
+
+    @Override
     public int getStartedCallbacks() { return startedCallbacks; }
 
     @Override
-    public Contract getContract() {
-        return null;
-    }
-    @Override
-    public byte[] getPackedContract() {
-        return null;
-    }
-    @Override
-    public HashId getOrigin() {
-        return origin;
-    }
-
-
-    public boolean isReceiveEvents() {
-        return isReceiveEvents;
-    }
-
-    public long getEnvironmentId() {
-        return environmentId;
-    }
-
-    public void setEnvironmentId(long environmentId) {
-        this.environmentId = environmentId;
-    }
-
-    @Override
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
-        origin = deserializer.deserialize(data.get("origin"));
         expiresAt = data.getZonedDateTimeOrThrow("expiresAt");
         mutedAt = data.getZonedDateTimeOrThrow("mutedAt");
         spent = data.getDouble("spent");
@@ -114,11 +103,15 @@ public class NContractFollowerSubscription implements ContractSubscription, BiSe
     @Override
     public Binder serialize(BiSerializer serializer) {
         Binder data = new Binder();
-        data.put("origin",serializer.serialize(origin));
         data.put("expiresAt", serializer.serialize(expiresAt));
         data.put("mutedAt", serializer.serialize(mutedAt));
         data.put("spent", spent);
         data.put("startedCallbacks", startedCallbacks);
         return data;
+    }
+
+    @Override
+    public void save() {
+        ledger.saveFollowerEnvironment(environmentId, expiresAt, mutedAt, spent, startedCallbacks);
     }
 }

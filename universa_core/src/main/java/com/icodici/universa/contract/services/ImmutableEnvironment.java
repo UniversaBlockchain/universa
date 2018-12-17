@@ -52,9 +52,11 @@ public interface ImmutableEnvironment {
      */
     @NonNull ZonedDateTime instanceCreatedAt();
 
-    Iterable<ContractSubscription> storageSubscriptions();
-    Iterable<ContractSubscription> followerSubscriptions();
+    Iterable<ContractSubscription> subscriptions();
+    Iterable<ContractStorage> storages();
     Iterable<NameRecord> nameRecords();
+    FollowerService getFollowerService(boolean init);
+    FollowerService getFollowerService();
 
     List<ErrorRecord> tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate);
 }

@@ -6,6 +6,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.Ledger;
@@ -292,4 +293,13 @@ public class NSmartContract extends Contract implements NContract {
         return new Binder();
     }
 
+    public Map<HashId, String> getTrackingOrigins() {
+        return null;
+    }
+
+    public Map<String, PublicKey> getCallbackKeys() {
+        return null;
+    }
+
+    public boolean canFollowContract(Contract contract) { return false; }
 }
