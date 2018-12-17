@@ -189,7 +189,7 @@ public class Node {
 
         label = "Node(" + myInfo.getNumber() + ") ";
 
-        network.subscribe(myInfo, notification -> onNotification(notification));
+        network.subscribe(myInfo, notification -> executorService.submit(()->onNotification(notification)));
 
         recordsToSanitate = ledger.findUnfinished();
 

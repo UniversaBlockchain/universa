@@ -1086,13 +1086,15 @@ public class UDPAdapter extends DatagramAdapter {
          */
         public void sendAllFromOutputQueue() {
             try {
-                OutputQueueItem queuedItem;
-                int maxOutputs = MAX_RETRANSMIT_QUEUE_SIZE - retransmitMap.size();
-                int i = 0;
-                while ((queuedItem = outputQueue.poll()) != null) {
-                    send(queuedItem.destination, queuedItem.payload);
-                    if (i++ > maxOutputs)
-                        break;
+                if (state.get() != Session.STATE_HANDSHAKE) {
+                    OutputQueueItem queuedItem;
+                    int maxOutputs = MAX_RETRANSMIT_QUEUE_SIZE - retransmitMap.size();
+                    int i = 0;
+                    while ((queuedItem = outputQueue.poll()) != null) {
+                        send(queuedItem.destination, queuedItem.payload);
+                        if (i++ > maxOutputs)
+                            break;
+                    }
                 }
             } catch (InterruptedException e) {
                 callErrorCallbacks("(sendAllFromOutputQueue) InterruptedException in node " + myNodeInfo.getNumber() + ": " + e);
