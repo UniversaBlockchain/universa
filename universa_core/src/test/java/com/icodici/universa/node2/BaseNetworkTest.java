@@ -17594,4 +17594,104 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(contract2.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
+
+    @Test(timeout = 60000)
+    public void checkConstraintNow() throws Exception {
+        final PrivateKey key = TestKeys.privateKey(0);
+        final PrivateKey ownerKeyBefore = TestKeys.privateKey(1);
+        final PrivateKey ownerKeyAfter = TestKeys.privateKey(2);
+
+        Contract contract = new Contract(key);
+        contract.addSignerKey(key);
+
+        contract.createTransactionalSection();
+        contract.getTransactional().setId(HashId.createRandom().toBase64String());
+
+        long valid_till = ZonedDateTime.now().plusSeconds(10).toEpochSecond();
+
+        List<String> listConditionBefore = new ArrayList<>();
+        listConditionBefore.add("now<=" + valid_till);
+
+        Binder conditionBefore = new Binder();
+        conditionBefore.set("all_of", listConditionBefore);
+
+        Reference ref = new Reference(contract);
+        ref.name = "ref_before";
+        ref.type = Reference.TYPE_TRANSACTIONAL;
+        ref.setConditions(conditionBefore);
+        contract.addReference(ref);
+
+        List<String> listConditionAfter = new ArrayList<>();
+        listConditionAfter.add("now>" + valid_till);
+
+        Binder conditionAfter = new Binder();
+        conditionAfter.set("all_of", listConditionAfter);
+
+        ref = new Reference(contract);
+        ref.name = "ref_after";
+        ref.type = Reference.TYPE_TRANSACTIONAL;
+        ref.setConditions(conditionAfter);
+        contract.addReference(ref);
+
+        SimpleRole ownerBefore = new SimpleRole("ownerBefore", new KeyRecord(ownerKeyBefore.getPublicKey()));
+        ownerBefore.addRequiredReference("ref_before", Role.RequiredMode.ALL_OF);
+        SimpleRole ownerAfter = new SimpleRole("ownerAfter", new KeyRecord(ownerKeyAfter.getPublicKey()));
+        ownerAfter.addRequiredReference("ref_after", Role.RequiredMode.ALL_OF);
+
+        Collection<Role> roleCollection = new HashSet();
+        roleCollection.add(ownerBefore);
+        roleCollection.add(ownerAfter);
+        Role listRole = new ListRole("owner", ListRole.Mode.ANY, roleCollection);
+
+        contract.registerRole(listRole);
+
+        contract.getPermissions().remove("change_owner");
+        contract.getPermissions().remove("revoke");
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(listRole);
+        contract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePermission = new RevokePermission(listRole);
+        contract.addPermission(revokePermission);
+
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        registerAndCheckApproved(contract);
+
+        // Revisions
+        Contract revisionBefore = contract.createRevision(ownerKeyBefore);
+        revisionBefore.setOwnerKeys(ownerKeyBefore.getPublicKey());
+        revisionBefore.seal();
+
+        revisionBefore.check();
+        revisionBefore.traceErrors();
+        assertTrue(revisionBefore.isOk());
+
+        Contract revisionAfter = contract.createRevision(ownerKeyAfter);
+        revisionAfter.setOwnerKeys(ownerKeyAfter.getPublicKey());
+        revisionAfter.seal();
+
+        revisionAfter.check();
+        revisionAfter.traceErrors();
+        assertFalse(revisionAfter.isOk());
+
+        System.out.println("================ Wait 11 seconds ================");
+        Thread.sleep(11000);
+
+        revisionBefore.check();
+        revisionBefore.traceErrors();
+        assertFalse(revisionBefore.isOk());
+
+        registerAndCheckDeclined(revisionBefore);
+
+        revisionAfter.getErrors().clear();
+        revisionAfter.check();
+        revisionAfter.traceErrors();
+        assertTrue(revisionAfter.isOk());
+
+        registerAndCheckApproved(revisionAfter);
+    }
 }

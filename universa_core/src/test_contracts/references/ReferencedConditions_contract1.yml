@@ -1377,12 +1377,40 @@ definition:
          - ref.state.expires_at >= this.definition.created_at
          - ref.definition.data.time2 <= ref.state.created_at
          - this.state.data.time3 != ref.state.data.time3
+
+         - now > this.definition.data.time1
+         - now <= ref.state.data.time3
+         - now == now
+         - now < 100000000000000000
+         - now >= 600000
+         - now < this.definition.expires_at
+         - now > "1968-04-18 23:58:01"
+         - now != "2086-03-22 11:35:37"
+         - now>this.definition.data.time1
+         - now<=ref.state.data.time3
+         - now==now
+         - now<100000000000000000
+         - now>=600000
+         - now<this.definition.expires_at
+         - now>"1968-04-18 23:58:01"
+         - now!="2086-03-22 11:35:37"
         # mirroring -------------------------------------------------------------------------------------------
          - 700000000000 >= ref.definition.created_at
          - 0 < this.definition.expires_at
          - 10000 < this.definition.created_at
          - this.definition.data.time1 < this.definition.expires_at
          - ref.state.created_at <= this.definition.data.time2
+
+         - this.definition.data.time1 < now
+         - ref.state.data.time3 >= now
+         - 100000000000000000 > now
+         - 600000 <= now
+         - this.definition.expires_at > now
+         - this.definition.data.time1<now
+         - ref.state.data.time3>=now
+         - 100000000000000000>now
+         - 600000<=now
+         - this.definition.expires_at>now
         # mirroring ===========================================================================================
 
  - reference:

@@ -50,6 +50,8 @@ public class ReferenceConditionsTest {
         // Mirroring conditions with time string
         condList.add("\"1977-06-14 16:03:10\"<ref.definition.created_at");
         condList.add("\"2958-04-18 00:58:00\">this.definition.expires_at");
+        condList.add("\"1968-04-18 23:58:01\" < now");
+        condList.add("\"2086-03-22 11:35:37\"!=now");
 
         contract1.getReferences().get("ref_time").setConditions(conditions);
 

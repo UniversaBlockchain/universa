@@ -15,6 +15,7 @@ import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -312,29 +313,32 @@ public class Reference implements BiSerializable {
                     leftOperand = leftOperand.substring(firstPointPos + 1);
                 } else
                     throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
-            } else if ((typeOfLeftOperand == compareOperandType.CONSTOTHER) && (indxOperator == CAN_PLAY)) {
-                if (leftOperand.equals("ref")) {
-                    leftOperandContract = refContract;
-                } else if (leftOperand.equals("this")) {
-                    if (baseContract == null)
-                        throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
+            } else if (typeOfLeftOperand == compareOperandType.CONSTOTHER) {
+                if (indxOperator == CAN_PLAY) {
+                    if (leftOperand.equals("ref")) {
+                        leftOperandContract = refContract;
+                    } else if (leftOperand.equals("this")) {
+                        if (baseContract == null)
+                            throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
 
-                    leftOperandContract = baseContract;
-                } else {
-                    if (baseContract == null)
-                        throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
+                        leftOperandContract = baseContract;
+                    } else {
+                        if (baseContract == null)
+                            throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
 
-                    Reference ref = baseContract.findReferenceByName(leftOperand);
-                    if (ref == null)
-                        throw new IllegalArgumentException("Not found reference: " + leftOperand);
+                        Reference ref = baseContract.findReferenceByName(leftOperand);
+                        if (ref == null)
+                            throw new IllegalArgumentException("Not found reference: " + leftOperand);
 
-                    for (Contract checkedContract : contracts)
-                        if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
-                            leftOperandContract = checkedContract;
+                        for (Contract checkedContract : contracts)
+                            if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                                leftOperandContract = checkedContract;
 
-                    if (leftOperandContract == null)
-                        return false;
-                }
+                        if (leftOperandContract == null)
+                            return false;
+                    }
+                } else if (leftOperand.equals("now"))
+                    left = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             }
         }
 
@@ -368,6 +372,9 @@ public class Reference implements BiSerializable {
                 }
                 else
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
+            } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {
+                if (rightOperand.equals("now"))
+                    right = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             }
 
             if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
@@ -845,8 +852,8 @@ public class Reference implements BiSerializable {
                     typeRightOperand = compareOperandType.FIELD;
             }
 
-            if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
-                throw new IllegalArgumentException("At least one operand must be a field in condition: " + condition);
+            //if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
+            //    throw new IllegalArgumentException("At least one operand must be a field in condition: " + condition);
 
             if ((typeLeftOperand == compareOperandType.FIELD) && (leftOperand.endsWith("::number"))) {
                 leftConversion = CONVERSION_BIG_DECIMAL;
