@@ -3117,32 +3117,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 for (LinkedHashMap<String, Binder> refItem : refList) {
                     Binder item = new Binder(refItem);
                     Binder ref = item.getBinder("reference");
-                    if (ref != null) {
-                        String name = ref.getString("name");
-                        Binder where = null;
-                        try {
-                            where = ref.getBinderOrThrow("where");
-                        }
-                        catch (Exception e)
-                        {
-                            // Insert simple condition to binder with key all_of
-                            List<String> simpleConditions = ref.getList("where", null);
-                            if (simpleConditions != null)
-                                where = new Binder(all_of.name(), simpleConditions);
-                        }
-
-                        Reference reference = new Reference(getContract());
-
-                        if (name == null)
-                            throw new IllegalArgumentException("Expected reference name");
-
-                        reference.setName(name);
-
-                        if (where != null)
-                            reference.setConditions(where);
-
-                        references.add(reference);
-                    }
+                    if (ref != null)
+                        references.add(Reference.fromDslBinder(ref, getContract()));
                     else
                         throw new IllegalArgumentException("Expected reference section");
                 }
@@ -3339,32 +3315,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 for (LinkedHashMap<String, Binder> refItem : refList) {
                     Binder item = new Binder(refItem);
                     Binder ref = item.getBinder("reference");
-                    if (ref != null) {
-                        String name = ref.getString("name");
-                        Binder where = null;
-                        try {
-                            where = ref.getBinderOrThrow("where");
-                        }
-                        catch (Exception e)
-                        {
-                            // Insert simple condition to binder with key all_of
-                            List<String> simpleConditions = ref.getList("where", null);
-                            if (simpleConditions != null)
-                                where = new Binder(all_of.name(), simpleConditions);
-                        }
-
-                        Reference reference = new Reference(getContract());
-
-                        if (name == null)
-                            throw new IllegalArgumentException("Expected reference name");
-
-                        reference.setName(name);
-
-                        if (where != null)
-                            reference.setConditions(where);
-
-                        references.add(reference);
-                    }
+                    if (ref != null)
+                        references.add(Reference.fromDslBinder(ref, getContract()));
                     else
                         throw new IllegalArgumentException("Expected reference section");
                 }

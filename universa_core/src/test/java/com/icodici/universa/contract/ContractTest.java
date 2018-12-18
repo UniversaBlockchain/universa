@@ -1162,9 +1162,17 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void checkReferenceSerialization() throws Exception {
         Contract contract = Contract.fromDslFile(rootPath + "simple_root_contract_with_references.yml");
+
+        assertEquals(contract.findReferenceByName("ref_cont").getComment(), "ref_comment");
+
+        contract.findReferenceByName("ref_cont3").setComment("ref_comment3");
         contract.seal();
         Binder b = BossBiMapper.serialize(contract);
         Contract desContract = DefaultBiMapper.deserialize(b);
+
+        assertEquals(desContract.findReferenceByName("ref_cont").getComment(), "ref_comment");
+        assertEquals(desContract.findReferenceByName("ref_cont3").getComment(), "ref_comment3");
+        assertNull(desContract.findReferenceByName("ref_cont2").getComment());
 
         for (Reference ref: contract.getReferences().values()) {
             Reference desRef = desContract.findReferenceByName(ref.getName());

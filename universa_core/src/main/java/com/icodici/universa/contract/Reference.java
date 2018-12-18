@@ -44,6 +44,7 @@ public class Reference implements BiSerializable {
     public List<Approvable> matchingItems = new ArrayList<>();
     private Binder conditions = new Binder();
     private Contract baseContract;
+    private String comment = null;
 
     public static final int TYPE_TRANSACTIONAL = 1;
     public static final int TYPE_EXISTING_DEFINITION = 2;
@@ -65,6 +66,7 @@ public class Reference implements BiSerializable {
         this.name = data.getString("name", null);
 
         this.type = data.getInt("type", null);
+        this.comment = data.getString("comment", null);
 
         this.transactional_id = data.getString("transactional_id", "");
 
@@ -126,7 +128,39 @@ public class Reference implements BiSerializable {
 
         data.set("where", s.serialize(this.conditions));
 
+        if (comment != null)
+            data.set("comment", comment);
+
         return data;
+    }
+
+    static public Reference fromDslBinder(Binder ref, Contract contract) {
+        String name = ref.getString("name");
+        String comment = ref.getString("comment", null);
+        Binder where = null;
+        try {
+            where = ref.getBinderOrThrow("where");
+        }
+        catch (Exception e)
+        {
+            // Insert simple condition to binder with key all_of
+            List<String> simpleConditions = ref.getList("where", null);
+            if (simpleConditions != null)
+                where = new Binder(all_of.name(), simpleConditions);
+        }
+
+        Reference reference = new Reference(contract);
+
+        if (name == null)
+            throw new IllegalArgumentException("Expected reference name");
+
+        reference.setName(name);
+        reference.setComment(comment);
+
+        if (where != null)
+            reference.setConditions(where);
+
+        return reference;
     }
 
     public boolean equals(Reference a) {
@@ -1261,8 +1295,29 @@ public class Reference implements BiSerializable {
      * @return this reference
      */
     public Reference setName(String name) {
-        this.name = name;
+        if (name != null)
+            this.name = name;
+        else
+            this.name = "";
         return this;
+    }
+
+    /**
+     * Get comment of the reference
+     *
+     * @return comment of the reference (may be null)
+     */
+    public String getComment() {
+        return comment;
+    }
+
+    /**
+     * Set comment of the reference
+     *
+     * @param comment of the reference
+     */
+    public void setComment(String comment) {
+        this.comment = comment;
     }
 
     /**
@@ -1480,6 +1535,8 @@ public class Reference implements BiSerializable {
         String res = "{";
         res += "name:"+name;
         res += ", type:"+type;
+        if (comment != null)
+            res += ", comment:"+comment;
         if (transactional_id.length() > 8)
             res += ", transactional_id:"+transactional_id.substring(0, 8)+"...";
         else

@@ -65,6 +65,7 @@ public abstract class Role implements BiSerializable {
 
     private String name;
     private Contract contract;
+    private String comment = null;
     protected Set<String> requiredAllReferences = new HashSet<>();
     protected Set<String> requiredAnyReferences = new HashSet<>();
 
@@ -125,6 +126,24 @@ public abstract class Role implements BiSerializable {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * Get comment of role
+     *
+     * @return comment of role (may be null)
+     */
+    public String getComment() {
+        return comment;
+    }
+
+    /**
+     * Set comment of role
+     *
+     * @param comment of role
+     */
+    public void setComment(String comment) {
+        this.comment = comment;
     }
 
     /**
@@ -303,8 +322,8 @@ public abstract class Role implements BiSerializable {
             if(requires.containsKey("any_of")) {
                 result.requiredAnyReferences.addAll(requires.getListOrThrow("any_of"));
             }
-
         }
+        result.setComment(serializedRole.getString("comment", null));
 
         return result;
     }
@@ -387,6 +406,7 @@ public abstract class Role implements BiSerializable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         name = data.getStringOrThrow("name");
+        comment = data.getString("comment", null);
         contract = deserializer.getContext();
         Binder required = data.getBinder("required");
         if(required != null) {
@@ -421,6 +441,9 @@ public abstract class Role implements BiSerializable {
 
             b.set("required",required);
         }
+
+        if (comment != null)
+            b.set("comment", comment);
 
         return b;
     }

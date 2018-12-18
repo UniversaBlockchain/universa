@@ -47,6 +47,7 @@ definition:
  references:
  - reference:
      name: ref_cont
+     comment: ref_comment
      where:
        all_of:
        - this.owner == ref.definition.issuer
