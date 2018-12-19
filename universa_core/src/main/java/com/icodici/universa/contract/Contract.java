@@ -1997,6 +1997,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private void setOwnBinary(Binder result) {
+        if(result.getArray("signatures").isEmpty()) {
+            result.put("salt",Bytes.random(12).toArray());
+        } else {
+            result.remove("salt");
+        }
         sealedBinary = Boss.pack(result);
         transactionPack = null;
         this.id = HashId.of(sealedBinary);
