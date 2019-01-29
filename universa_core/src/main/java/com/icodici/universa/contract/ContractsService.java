@@ -178,6 +178,54 @@ public class ContractsService {
 
 
     /**
+     * Implementing join procedure.
+     * <br><br>
+     * Service create new revision of first contract, update amount field with sum of amount fields in the both contracts
+     * and put second contract in revoking items of created new revision.
+     * <br><br>
+     * Given contract should have splitjoin permission for given keys.
+     * <br><br>
+     *
+     * @param contractsToJoin one or more contracts to join into main contract
+     * @param amountsToSplit  one or more amounts to split from main contract
+     * @param addressesToSplit are addresses the ownership of splitted parts will be transferred to
+     * @param fieldName is name of field that should be join by
+     * @param ownerKeys owner keys of joined contracts
+     * @return list of contracts containing main contract followed by splitted parts.
+     */
+    public static List<Contract> createSplitJoin(Collection<Contract> contractsToJoin, List<String> amountsToSplit, List<KeyAddress> addressesToSplit,Set<PrivateKey> ownerKeys, String fieldName) {
+        Iterator<Contract> it = contractsToJoin.iterator();
+        Contract contract = it.next();
+        contract = contract.createRevision(ownerKeys);
+        BigDecimal sum = new BigDecimal(contract.getStateData().getStringOrThrow(fieldName));
+        while (it.hasNext()) {
+            Contract c = it.next();
+            sum = sum.add(new BigDecimal(c.getStateData().getStringOrThrow(fieldName)));
+            contract.addRevokingItems(c);
+        }
+        Contract[] parts = contract.split(amountsToSplit.size());
+        for(int i = 0; i < parts.length;i++) {
+            sum = sum.subtract(new BigDecimal(amountsToSplit.get(i)));
+            parts[i].setOwnerKeys(addressesToSplit.get(i));
+            parts[i].getStateData().set(fieldName,amountsToSplit.get(i));
+
+            //TODO: remove in future releases
+            //for(Contract c : contract.getRevoking()) {
+            //    parts[i].addRevokingItems(c);
+            //}
+            //end of TODO
+
+            parts[i].seal();
+        }
+        contract.getStateData().set(fieldName,sum.toString());
+        contract.seal();
+        ArrayList<Contract> arrayList = new ArrayList<>();
+        arrayList.add(contract);
+        arrayList.addAll(Do.listOf(parts));
+        return arrayList;
+    }
+
+    /**
      * First step of swap procedure. Calls from swapper1 part.
      * <br><br>
      * Get single contracts.

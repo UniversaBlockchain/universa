@@ -8556,4 +8556,42 @@ public class MainTest {
 
         testSpace.nodes.forEach(x -> x.shutdown());
     }
+
+
+    @Test
+    public void splitJoinCaseTest() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Set<PrivateKey> issuersPriv = new HashSet<>();
+        Set<PublicKey> ownersPub = new HashSet<>();
+        Set<PrivateKey> ownersPriv = new HashSet<>();
+        issuersPriv.add(TestKeys.privateKey(1));
+        ownersPub.add(TestKeys.publicKey(2));
+        ownersPriv.add(TestKeys.privateKey(2));
+        Contract token = ContractsService.createTokenContract(issuersPriv,ownersPub,new BigDecimal("10000"));
+        assertTrue(token.check());
+        assertEquals(ts.client.register(token.getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+        Contract token1 = ContractsService.createSplit(token,new BigDecimal("5000"),"amount",ownersPriv,true);
+        assertTrue(token1.check());
+        Contract token2 = (Contract) token1.getNewItems().iterator().next();
+
+        token1 = Contract.fromPackedTransaction(token1.getPackedTransaction());
+        token2 = Contract.fromPackedTransaction(token2.getPackedTransaction());
+
+
+        assertEquals(ts.client.register(token1.getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.getState(token2.getId()).state,ItemState.APPROVED);
+
+
+        List<Contract> contracts = ContractsService.createSplitJoin(Do.listOf(token1, token2),
+                Do.listOf("6000", "1000", "500", "500"),
+                Do.listOf(TestKeys.publicKey(4).getShortAddress(), TestKeys.publicKey(5).getShortAddress(), TestKeys.publicKey(6).getShortAddress(), TestKeys.publicKey(7).getShortAddress()),
+                ownersPriv, "amount");
+
+
+        assertEquals(ts.client.register(contracts.get(0).getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+    }
 }

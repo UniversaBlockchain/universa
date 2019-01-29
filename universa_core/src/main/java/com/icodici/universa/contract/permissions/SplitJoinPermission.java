@@ -10,6 +10,7 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
@@ -174,30 +175,34 @@ public class SplitJoinPermission extends Permission {
 
     private boolean checkSplitJoinCase(Contract changed, Set<Contract> revokesToRemove, Collection<PublicKey> keys) {
         Decimal splitJoinSum = Decimal.ZERO;
+        Decimal rSum = Decimal.ZERO;
+
+        HashMap<HashId,Contract> allRevokes = new HashMap<>();
 
         for (Contract c : changed.getSiblings()) {
             if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys,  false))
                 continue;
-
             splitJoinSum = splitJoinSum.add(new Decimal(c.getStateData().getString(fieldName)));
-        }
-
-        Decimal rSum = Decimal.ZERO;
-
-        for (Approvable r : changed.getRevokingItems()) {
-            if (r instanceof Contract) {
-                Contract c = (Contract) r;
-                if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, true))
-                    continue;
-
-                revokesToRemove.add(c);
-                rSum = rSum.add(new Decimal(((Contract) r).getStateData().getString(fieldName)));
+            for (Approvable r : c.getRevokingItems()) {
+                if (r instanceof Contract) {
+                    Contract rc = (Contract) r;
+                    allRevokes.put(rc.getId(),rc);
+                }
             }
         }
 
+        for(Contract c : allRevokes.values()) {
+            if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys, true))
+                continue;
+
+            revokesToRemove.add(c);
+            rSum = rSum.add(new Decimal(c.getStateData().getString(fieldName)));
+
+        }
 
         return splitJoinSum.compareTo(rSum) == 0;
     }
+
 
     private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, boolean checkAllowance) {
         Collection<Permission> permissions = contract.getPermissions().get("split_join");
