@@ -35,6 +35,7 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -8592,6 +8593,26 @@ public class MainTest {
 
 
         assertEquals(ts.client.register(contracts.get(0).getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+    }
+
+    @Test
+    public void fakeParent() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.seal();
+        assertEquals(ts.client.register(contract.getPackedTransaction(),15000).state,ItemState.APPROVED);
+
+
+        Contract contract2 = new Contract(TestKeys.privateKey(2));
+        contract2.addRevokingItems(contract);
+        contract2.getState().setParent(contract.getId());
+        contract2.seal();
+
+        assertEquals(ts.client.register(contract2.getPackedTransaction(),15000).state,ItemState.DECLINED);
+        assertEquals(ts.client.getState(contract.getId()).state,ItemState.APPROVED);
 
     }
 }

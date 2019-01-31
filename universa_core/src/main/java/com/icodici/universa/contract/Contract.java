@@ -1253,6 +1253,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (state.origin != null)
             addError(BAD_VALUE, "state.origin", "must be empty in a root contract");
 
+        if (state.parent != null)
+            addError(BAD_VALUE, "state.parent", "must be empty in a root contract");
+
         checkRevokePermissions(revokingItems);
     }
 
