@@ -50,9 +50,9 @@ public class ChangeNumberPermission extends Permission {
     protected void initFromParams() {
         fieldName = params.getStringOrThrow("field_name");
         minValue = new Decimal(params.getString("min_value", "0"));
-        minStep = new Decimal(params.getString("min_step", ""+Integer.MIN_VALUE));
-        maxStep = new Decimal(params.getString("max_step", ""+Integer.MAX_VALUE));
-        maxValue = new Decimal(params.getString("max_value", ""+Integer.MAX_VALUE));
+        minStep = new Decimal(params.getString("min_step", "-10E+3333"));
+        maxStep = new Decimal(params.getString("max_step", "10E+3333"));
+        maxValue = new Decimal(params.getString("max_value", "10E+3333"));
     }
 
     @Override
