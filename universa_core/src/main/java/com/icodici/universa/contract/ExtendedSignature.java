@@ -73,7 +73,7 @@ public class ExtendedSignature {
         try {
             byte[] targetSignature = ExtendedSignature.createTargetSignature(key.getPublicKey(),data,savePublicKey);
 
-            return ExtendedSignature.of(targetSignature,
+            return ExtendedSignature.ofSha512AndSha3_384(targetSignature,
                     key.sign(targetSignature, HashType.SHA512),
                     key.sign(targetSignature, HashType.SHA3_384));
 
@@ -97,11 +97,24 @@ public class ExtendedSignature {
         return targetSignature;
     }
 
+
+
+    @Deprecated
     static public byte[] of(byte[] targetSignature, byte[] sign, byte[] sign2) {
         Binder result = Binder.fromKeysValues(
                 "exts", targetSignature,
                 "sign", sign,
                 "sign2", sign2
+        );
+        return Boss.pack(result);
+    }
+
+
+    static public byte[] ofSha512AndSha3_384(byte[] targetSignature, byte[] sign512, byte[] sign3_384) {
+        Binder result = Binder.fromKeysValues(
+                "exts", targetSignature,
+                "sign", sign512,
+                "sign3", sign3_384
         );
         return Boss.pack(result);
     }
@@ -186,6 +199,7 @@ public class ExtendedSignature {
             byte[] exts = src.getBinaryOrThrow("exts");
             boolean isSignValid = key.verify(exts, src.getBinaryOrThrow("sign"), HashType.SHA512);
             boolean isSign2Valid = true;
+            boolean isSign3Valid = true;
             byte[] sign2bin = null;
             try {
                 sign2bin = src.getBinaryOrThrow("sign2");
@@ -193,8 +207,18 @@ public class ExtendedSignature {
                 sign2bin = null;
             }
             if (sign2bin != null)
-                isSign2Valid = key.verify(exts, sign2bin, HashType.SHA3_384);
-            if (isSignValid && isSign2Valid) {
+                isSign2Valid = key.verify(exts, sign2bin, HashType.SHA3_256);
+
+            byte[] sign3bin = null;
+            try {
+                sign3bin = src.getBinaryOrThrow("sign3");
+            } catch (IllegalArgumentException e) {
+                sign3bin = null;
+            }
+            if (sign3bin != null)
+                isSign3Valid = key.verify(exts, sign3bin, HashType.SHA3_384);
+
+            if (isSignValid && isSign2Valid && isSign3Valid) {
                 Binder b = Boss.unpack(exts);
                 es.keyId = b.getBytesOrThrow("key");
                 es.createdAt = b.getZonedDateTimeOrThrow("created_at");
