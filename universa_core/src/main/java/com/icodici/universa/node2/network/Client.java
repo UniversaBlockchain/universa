@@ -388,7 +388,7 @@ public class Client {
         Object result = protect(() -> httpClient.command("approveParcel", "packedItem", packed)
                 .get("result"));
         if(result instanceof String) {
-            System.out.println(">> registerParcel " + result);
+//            System.out.println(">> registerParcel " + result);
             throw new ClientError(Errors.FAILURE, "registerParcel", "approveParcel returns: " + result);
         } else {
             if (millisToWait > 0) {
@@ -398,13 +398,13 @@ public class Client {
                     Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
                     int interval = 1000;
                     while (Instant.now().isBefore(end) && pState.isProcessing()) {
-                        System.out.println("parcel state is: " + pState);
+//                        System.out.println("parcel state is: " + pState);
                         Thread.currentThread().sleep(interval);
                         interval -= 350;
                         interval = Math.max(interval, 300);
                         pState = getParcelProcessingState(parcel.getId());
                     }
-                    System.out.println("parcel state is: " + pState);
+//                    System.out.println("parcel state is: " + pState);
                     ItemResult lastResult = getState(parcel.getPayloadContract().getId());
                     while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
                         Thread.currentThread().sleep(interval);

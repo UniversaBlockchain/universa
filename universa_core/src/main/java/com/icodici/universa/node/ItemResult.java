@@ -204,4 +204,15 @@ public class ItemResult implements IExtDataBinder {
             bw.writeObject(0);
         bw.writeObject(haveCopy);
     }
+
+    public ItemResult copy() {
+        ItemResult res = new ItemResult(state, haveCopy, createdAt, expiresAt);
+        if(errors != null)
+            res.errors = new ArrayList<>(errors);
+        res.lockedById = lockedById;
+        res.meta.putAll(meta);
+        res.isTestnet = isTestnet;
+        res.extraDataBinder.putAll(extraDataBinder);
+        return res;
+    }
 }

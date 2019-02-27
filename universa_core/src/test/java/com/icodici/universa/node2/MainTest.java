@@ -33,6 +33,7 @@ import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Base64u;
@@ -8613,6 +8614,86 @@ public class MainTest {
 
         assertEquals(ts.client.register(contract2.getPackedTransaction(),15000).state,ItemState.DECLINED);
         assertEquals(ts.client.getState(contract.getId()).state,ItemState.APPROVED);
+
+    }
+
+
+    @Test
+    public void informerTest() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract payment = getApprovedUContract(ts);
+        Set<PrivateKey> paymentKeys = new HashSet();
+        paymentKeys.add(ts.myKey);
+
+        //Case 1: contract too old - U spent
+        Contract c = new Contract(TestKeys.privateKey(1));
+        Binder s = BossBiMapper.serialize(c);
+        ZonedDateTime cr = ZonedDateTime.now().minusMonths(1);
+        s.getBinder("definition").set("created_at",cr);
+        s.getBinder("state").set("created_at",cr);
+        c = BossBiMapper.deserialize(s);
+        c.getKeysToSignWith().add(TestKeys.privateKey(1));
+        c.seal();
+        Parcel parcel = ContractsService.createParcel(c, payment, 1, paymentKeys);
+        ItemResult res = ts.client.registerParcelWithState(parcel.pack(), 15000);
+        assertSame(res.state, ItemState.UNDEFINED);
+        assertEquals(1, res.errors.size());
+        System.out.println(res.errors);
+        //U was spent. updating payment contract;
+        payment = parcel.getPayment().getContract();
+
+
+        //Case 2: payload contract corrupted - U spent
+        //TODO: invent case where contract is unpacked without problems but still causes exception during check()
+
+        //Case 3: insufficient payment - U spent
+        c = new Contract(TestKeys.privateKey(1));
+        for(int i = 0; i < 20; i++) {
+            c.addNewItems(new Contract(TestKeys.privateKey(1)));
+        }
+        c.seal();
+        parcel = ContractsService.createParcel(c, payment, 1, paymentKeys);
+        res = ts.client.registerParcelWithState(parcel.pack(), 15000);
+        assertSame(res.state, ItemState.UNDEFINED);
+        assertEquals(1, res.errors.size());
+        System.out.println(res.errors);
+        payment = parcel.getPayment().getContract();
+
+
+        //Case 4: declined contract - U spent
+        c = new Contract(TestKeys.privateKey(1));
+        Contract ri = new Contract(TestKeys.privateKey(2));
+        ri.seal();
+        c.addRevokingItems(ri);
+        c.seal();
+        parcel = ContractsService.createParcel(c, payment, 1, paymentKeys);
+        res = ts.client.registerParcelWithState(parcel.pack(), 15000);
+        assertTrue(res.state == ItemState.DECLINED);
+        assertEquals(1, res.errors.size());
+        System.out.println(res.errors);
+        payment = parcel.getPayment().getContract();
+
+
+        //Case 5: approved contract - U spent
+        c = new Contract(TestKeys.privateKey(1));
+        c.seal();
+        parcel = ContractsService.createParcel(c, payment, 1, paymentKeys);
+        res = ts.client.registerParcelWithState(parcel.pack(), 15000);
+        assertSame(res.state, ItemState.APPROVED);
+        payment = parcel.getPayment().getContract();
+
+        //Case 6: wrong U - U wasn't spent
+        c = new Contract(TestKeys.privateKey(1));
+        c.seal();
+        parcel = ContractsService.createParcel(c, payment, -1, paymentKeys);
+        res = ts.client.registerParcelWithState(parcel.pack(), 15000);
+        ItemResult state = ts.client.getState(parcel.getPaymentContract().getId());
+        assertSame(state.state, ItemState.DECLINED);
+        assertSame(res.state, ItemState.UNDEFINED);
+        assertEquals(0, res.errors.size());
+
+        //DO not update payment contract. Old one still valid
+        //payment = parcel.getPayment().getContract();
 
     }
 }

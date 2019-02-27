@@ -291,7 +291,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         node.resync(itemId);
         ItemResult itemResult = node.checkItem(itemId);
 
-        if (itemResult == ItemResult.UNDEFINED)
+        if (itemResult.state == ItemState.UNDEFINED)
             return res;
 
         Approvable item = node.getKeepingItemFromNetwork(itemId);
@@ -456,6 +456,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of("itemResult",
                     node.checkItem((HashId) params.get("itemId")));
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));

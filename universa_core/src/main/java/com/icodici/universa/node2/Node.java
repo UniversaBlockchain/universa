@@ -416,6 +416,8 @@ public class Node {
                 itemId, "is ", irFinal.state),
                 DatagramAdapter.VerboseLevel.BASE);
 
+        ir = ir.copy();
+
         ItemInformer.Record record = informer.takeFor(itemId);
         if (record != null)
             ir.errors = record.errorRecords;
@@ -881,6 +883,7 @@ public class Node {
                             item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
                         // it is too old - client must manually check other nodes. For us it's unknown
                         item.addError(Errors.EXPIRED, "created_at", "too old");
+                        informer.inform(item);
                         report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
                                 "too old: "),
                                 DatagramAdapter.VerboseLevel.BASE);
@@ -2028,9 +2031,11 @@ public class Node {
                                 checkSubItems();
                             }
                         }
+
                     } catch (Quantiser.QuantiserException e) {
                         item.addError(Errors.FAILURE, item.getId().toString(),
                                 "Not enough payment for process item (quantas limit)");
+                        informer.inform(item);
                         emergencyBreak();
                         return;
                     } catch (Exception e) {
@@ -2038,6 +2043,7 @@ public class Node {
                         //if(verboseLevel > DatagramAdapter.VerboseLevel.NOTHING) {
                             e.printStackTrace();
                         //}
+                        informer.inform(item);
                     }
                     alreadyChecked = true;
 
