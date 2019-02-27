@@ -212,7 +212,8 @@ public class ItemResult implements IExtDataBinder {
         res.lockedById = lockedById;
         res.meta.putAll(meta);
         res.isTestnet = isTestnet;
-        res.extraDataBinder.putAll(extraDataBinder);
+        if(extraDataBinder != null)
+            res.extraDataBinder.putAll(extraDataBinder);
         return res;
     }
 }
