@@ -64,7 +64,7 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return storage subscription
      */
-    @NonNull NContractStorage createContractStorage(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt);
+    @NonNull ContractStorage createContractStorage(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt);
 
 
     @NonNull NameRecord createNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt);

@@ -460,12 +460,14 @@ public class FollowerContract extends NSmartContract {
             fs.changeMutedAt(deltaSeconds);
 
             // save before start callback processor
-            ((NMutableEnvironment) me).save();
+            //TODO: save performed by node outside this funciton
+            ((MutableEnvironment) me).save();
 
             // start callback processor
+            //TODO: callback service should be an interface inside  com.icodici.universa.contract.services. Implementation of this interface in module universa_node should have access to the actuall callback service
             CallbackService callbackService = ((ContractSubscription.ApprovedWithCallbackEvent) event).getCallbackService();
             callbackService.startCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
-                    ItemState.APPROVED, this, (NMutableEnvironment) me);
+                    ItemState.APPROVED, this, (MutableEnvironment) me);
 
         } else if (event instanceof ContractSubscription.RevokedWithCallbackEvent) {
             if (fs.mutedAt().isBefore(ZonedDateTime.now()))
@@ -480,9 +482,11 @@ public class FollowerContract extends NSmartContract {
             fs.changeMutedAt(deltaSeconds);
 
             // save before start callback processor
-            ((NMutableEnvironment) me).save();
+            //TODO: save performed by node outside this funciton
+            ((MutableEnvironment) me).save();
 
             // start callback processor
+            //TODO: callback service should be an interface inside  com.icodici.universa.contract.services. Implementation of this interface in module universa_node should have access to the actuall callback service
             CallbackService callbackService = ((ContractSubscription.RevokedWithCallbackEvent) event).getCallbackService();
             callbackService.startCallbackProcessor(((ContractSubscription.RevokedWithCallbackEvent) event).getRevokingItem(),
                     ItemState.REVOKED, this, (NMutableEnvironment) me);

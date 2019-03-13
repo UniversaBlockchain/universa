@@ -88,6 +88,7 @@ public interface ContractSubscription {
         /**
          * @return service for callback sending
          */
+        //TODO: callback service should be an interface inside  com.icodici.universa.contract.services. Implementation of this interface in module universa_node should have access to the actuall callback service
         CallbackService getCallbackService();
     }
 
