@@ -26,7 +26,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
@@ -7304,8 +7304,8 @@ public class MainTest {
                         Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                         assertEquals(callbacks.size(), 2);
                         Iterator<CallbackRecord> it = callbacks.iterator();
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     }
                 } else {
                     fail("FollowerSubscription was not found");
@@ -7541,8 +7541,8 @@ public class MainTest {
                 Collection<CallbackRecord> callbacks = testSpace.node.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                 assertEquals(callbacks.size(), 2);
                 Iterator<CallbackRecord> it = callbacks.iterator();
-                assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
-                assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
+                assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
+                assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
 
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.subscriptions()) {
@@ -7580,8 +7580,8 @@ public class MainTest {
                     Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                     assertEquals(callbacks.size(), 2);
                     Iterator<CallbackRecord> it = callbacks.iterator();
-                    assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
-                    assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
+                    assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
+                    assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
@@ -7629,11 +7629,11 @@ public class MainTest {
                     Iterator<CallbackRecord> it = callbacks.iterator();
 
                     if (absentNodeNumber == networkNode.node.getNumber()) {
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     } else {
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.EXPIRED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.EXPIRED);
                     }
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -8058,8 +8058,8 @@ public class MainTest {
                         Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                         assertEquals(callbacks.size(), 2);
                         Iterator<CallbackRecord> it = callbacks.iterator();
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     }
                 } else {
                     fail("FollowerSubscription was not found");
@@ -8410,8 +8410,8 @@ public class MainTest {
                         Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                         assertEquals(callbacks.size(), 2);
                         Iterator<CallbackRecord> it = callbacks.iterator();
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     } else
                         assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
                 }
@@ -8463,8 +8463,8 @@ public class MainTest {
                         Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                         assertEquals(callbacks.size(), 2);
                         Iterator<CallbackRecord> it = callbacks.iterator();
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     } else
                         assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
                 }
@@ -8489,8 +8489,8 @@ public class MainTest {
                         Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                         assertEquals(callbacks.size(), 2);
                         Iterator<CallbackRecord> it = callbacks.iterator();
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
-                        assertEquals(it.next().getState(), CallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
+                        assertEquals(it.next().getState(), NCallbackService.FollowerCallbackState.STARTED);
                     } else
                         assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
                 }

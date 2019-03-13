@@ -1,6 +1,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.TestCase;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;

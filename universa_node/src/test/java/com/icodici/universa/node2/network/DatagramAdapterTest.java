@@ -8,7 +8,7 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.SymmetricKey;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.AsyncEvent;

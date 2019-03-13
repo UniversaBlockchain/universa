@@ -2,7 +2,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.node.TestCase;
+import com.icodici.universa.TestCase;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertTrue;

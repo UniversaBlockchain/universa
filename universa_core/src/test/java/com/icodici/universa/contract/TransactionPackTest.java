@@ -12,7 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.utils.Base64;
 import org.junit.Before;

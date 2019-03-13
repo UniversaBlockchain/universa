@@ -8,6 +8,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.TestCase;
 import net.sergeych.boss.Boss;
 import org.junit.Test;
 

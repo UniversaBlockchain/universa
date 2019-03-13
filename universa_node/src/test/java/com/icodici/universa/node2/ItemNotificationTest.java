@@ -10,7 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;

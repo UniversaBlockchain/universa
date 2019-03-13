@@ -6,7 +6,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;

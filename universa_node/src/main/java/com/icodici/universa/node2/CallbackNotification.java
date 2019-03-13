@@ -58,8 +58,8 @@ public class CallbackNotification extends Notification {
         return signature;
     }
 
-    private CallbackService.FollowerCallbackState state;
-    public CallbackService.FollowerCallbackState getState() { return state; }
+    private NCallbackService.FollowerCallbackState state;
+    public NCallbackService.FollowerCallbackState getState() { return state; }
 
     /**
      * Create callback notification.
@@ -72,7 +72,7 @@ public class CallbackNotification extends Notification {
      * @param signature is receipt signed by follower callback server (required if type == COMPLETED)
      * @param state is callback state (required if type == RETURN_STATE)
      */
-    public CallbackNotification(NodeInfo from, HashId id, CallbackNotificationType type, byte[] signature, CallbackService.FollowerCallbackState state) {
+    public CallbackNotification(NodeInfo from, HashId id, CallbackNotificationType type, byte[] signature, NCallbackService.FollowerCallbackState state) {
         super(from);
         this.id = id;
         this.signature = signature;
@@ -81,7 +81,7 @@ public class CallbackNotification extends Notification {
     }
 
     public CallbackNotification(NodeInfo from, HashId id, CallbackNotificationType type, byte[] signature) {
-        this(from, id, type, signature, CallbackService.FollowerCallbackState.UNDEFINED);
+        this(from, id, type, signature, NCallbackService.FollowerCallbackState.UNDEFINED);
     }
 
     @Override
@@ -97,7 +97,7 @@ public class CallbackNotification extends Notification {
         id = HashId.withDigest(br.readBinary());
         signature = br.readBinary();
         type = CallbackNotificationType.values()[br.readInt()];
-        state = CallbackService.FollowerCallbackState.values()[br.readInt()];
+        state = NCallbackService.FollowerCallbackState.values()[br.readInt()];
     }
 
     protected CallbackNotification(NodeInfo from) throws IOException {

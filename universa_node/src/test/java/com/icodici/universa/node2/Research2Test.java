@@ -10,7 +10,7 @@ import com.icodici.universa.contract.InnerContractsService;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.boss.Boss;

@@ -3,6 +3,7 @@ package com.icodici.universa.node2;
 
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.TestCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

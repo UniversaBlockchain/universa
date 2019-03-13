@@ -1,7 +1,7 @@
 package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
 

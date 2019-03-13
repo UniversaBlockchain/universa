@@ -1507,13 +1507,13 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public CallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id) {
+    public NCallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("SELECT state FROM follower_callbacks WHERE id = ?", id.getDigest()))) {
                 if (rs == null)
-                    return CallbackService.FollowerCallbackState.UNDEFINED;
+                    return NCallbackService.FollowerCallbackState.UNDEFINED;
 
-                return CallbackService.FollowerCallbackState.values()[rs.getInt(1)];
+                return NCallbackService.FollowerCallbackState.values()[rs.getInt(1)];
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -1534,8 +1534,8 @@ public class PostgresLedger implements Ledger {
             ) {
                 statement.setLong(1, environmentId);
                 statement.setLong(2, now);
-                statement.setLong(3, CallbackService.FollowerCallbackState.STARTED.ordinal());
-                statement.setLong(4, CallbackService.FollowerCallbackState.EXPIRED.ordinal());
+                statement.setLong(3, NCallbackService.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(4, NCallbackService.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1545,7 +1545,7 @@ public class PostgresLedger implements Ledger {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
                             environmentId,
-                            CallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
+                            NCallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1572,8 +1572,8 @@ public class PostgresLedger implements Ledger {
                     )
             ) {
                 statement.setLong(1, now);
-                statement.setLong(2, CallbackService.FollowerCallbackState.STARTED.ordinal());
-                statement.setLong(3, CallbackService.FollowerCallbackState.EXPIRED.ordinal());
+                statement.setLong(2, NCallbackService.FollowerCallbackState.STARTED.ordinal());
+                statement.setLong(3, NCallbackService.FollowerCallbackState.EXPIRED.ordinal());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1583,7 +1583,7 @@ public class PostgresLedger implements Ledger {
                     CallbackRecord callback = new CallbackRecord(
                             HashId.withDigest(rs.getBytes(1)),
                             rs.getLong(3),
-                            CallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
+                            NCallbackService.FollowerCallbackState.values()[rs.getInt(2)]);
                     res.add(callback);
                 }
                 rs.close();
@@ -1608,7 +1608,7 @@ public class PostgresLedger implements Ledger {
                     )
             ) {
                 statement.setBytes(1, id.getDigest());
-                statement.setInt(2, CallbackService.FollowerCallbackState.STARTED.ordinal());
+                statement.setInt(2, NCallbackService.FollowerCallbackState.STARTED.ordinal());
                 statement.setLong(3, environmentId);
                 statement.setLong(4, Ut.unixTime(expiresAt));
                 statement.setLong(5, Ut.unixTime(storedUntil));
@@ -1623,7 +1623,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void updateFollowerCallbackState(HashId id, CallbackService.FollowerCallbackState state) {
+    public void updateFollowerCallbackState(HashId id, NCallbackService.FollowerCallbackState state) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =

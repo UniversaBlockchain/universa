@@ -12,7 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;

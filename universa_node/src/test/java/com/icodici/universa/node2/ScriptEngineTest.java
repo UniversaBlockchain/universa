@@ -21,7 +21,7 @@ import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
 import jdk.nashorn.api.scripting.ClassFilter;

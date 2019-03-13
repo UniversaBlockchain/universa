@@ -8,8 +8,8 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.node.TestCase;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestCase;
+import com.icodici.universa.TestKeys;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import org.junit.Test;

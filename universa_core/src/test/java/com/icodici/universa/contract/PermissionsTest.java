@@ -16,7 +16,7 @@ import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;

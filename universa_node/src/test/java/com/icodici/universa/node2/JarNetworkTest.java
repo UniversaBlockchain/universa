@@ -2,9 +2,10 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.TestCase;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;

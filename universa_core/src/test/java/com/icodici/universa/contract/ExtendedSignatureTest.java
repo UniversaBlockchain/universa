@@ -9,8 +9,8 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.node.TestCase;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestCase;
+import com.icodici.universa.TestKeys;
 import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.junit.Ignore;

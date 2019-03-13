@@ -11,7 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;

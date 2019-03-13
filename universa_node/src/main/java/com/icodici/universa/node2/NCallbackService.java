@@ -158,13 +158,13 @@ public class NCallbackService implements CallbackService {
      */
     public void startCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract, MutableEnvironment me) {
         // save before start callback processor
-        me.save();
+        ((NMutableEnvironment) me).save();
 
         // initialize callback processor
-        CallbackProcessor callback = new CallbackProcessor(updatingItem, state, contract, me.getId(), this);
+        CallbackProcessor callback = new CallbackProcessor(updatingItem, state, contract, ((NMutableEnvironment) me).getId(), this);
 
         // add callback record to DB
-        CallbackRecord.addCallbackRecordToLedger(callback.getId(), me.getId(), config, network.getNodesCount(), ledger);
+        CallbackRecord.addCallbackRecordToLedger(callback.getId(), ((NMutableEnvironment) me).getId(), config, network.getNodesCount(), ledger);
 
         // run callback processor
         int startDelay = callback.getDelay();

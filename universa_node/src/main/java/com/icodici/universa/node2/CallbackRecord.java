@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CallbackRecord {
     private HashId id;
     private long environmentId;
-    private CallbackService.FollowerCallbackState state;
+    private NCallbackService.FollowerCallbackState state;
     private ZonedDateTime expiresAt;
 
     // synchronization counters
@@ -37,7 +37,7 @@ public class CallbackRecord {
      * @param environmentId is environment subscription
      * @param state is callback state
      */
-    public CallbackRecord(HashId id, long environmentId, CallbackService.FollowerCallbackState state) {
+    public CallbackRecord(HashId id, long environmentId, NCallbackService.FollowerCallbackState state) {
         this.id = id;
         this.environmentId = environmentId;
         this.state = state;
@@ -62,7 +62,7 @@ public class CallbackRecord {
 
     public HashId getId() { return id; }
 
-    public CallbackService.FollowerCallbackState getState() { return state; }
+    public NCallbackService.FollowerCallbackState getState() { return state; }
 
     public ZonedDateTime getExpiresAt() { return expiresAt; }
 
@@ -158,23 +158,23 @@ public class CallbackRecord {
      *
      * @return true if callback state is synchronized
      */
-    public boolean synchronizeState(CallbackService.FollowerCallbackState newState, Ledger ledger, Node node) {
-        if (newState == CallbackService.FollowerCallbackState.COMPLETED) {
+    public boolean synchronizeState(NCallbackService.FollowerCallbackState newState, Ledger ledger, Node node) {
+        if (newState == NCallbackService.FollowerCallbackState.COMPLETED) {
             if (incrementCompletedNodes() >= consensus) {
-                if (state == CallbackService.FollowerCallbackState.STARTED)
+                if (state == NCallbackService.FollowerCallbackState.STARTED)
                     complete(node);
-                else if (state == CallbackService.FollowerCallbackState.EXPIRED)
+                else if (state == NCallbackService.FollowerCallbackState.EXPIRED)
                     spent(node);
 
-                ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.COMPLETED);
+                ledger.updateFollowerCallbackState(id, NCallbackService.FollowerCallbackState.COMPLETED);
                 return true;
             }
-        } else if ((newState == CallbackService.FollowerCallbackState.FAILED) || (newState == CallbackService.FollowerCallbackState.EXPIRED)) {
+        } else if ((newState == NCallbackService.FollowerCallbackState.FAILED) || (newState == NCallbackService.FollowerCallbackState.EXPIRED)) {
             if (incrementFailedNodes() >= consensus) {
-                if (state == CallbackService.FollowerCallbackState.STARTED)
+                if (state == NCallbackService.FollowerCallbackState.STARTED)
                     fail(node);
 
-                ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.FAILED);
+                ledger.updateFollowerCallbackState(id, NCallbackService.FollowerCallbackState.FAILED);
                 return true;
             }
         } else
@@ -203,17 +203,17 @@ public class CallbackRecord {
 
         // final (additional) check for consensus of callback state
         if (completedNodes.get() >= consensus) {
-            if (state == CallbackService.FollowerCallbackState.STARTED)
+            if (state == NCallbackService.FollowerCallbackState.STARTED)
                 complete(node);
-            else if (state == CallbackService.FollowerCallbackState.EXPIRED)
+            else if (state == NCallbackService.FollowerCallbackState.EXPIRED)
                 spent(node);
 
-            ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.COMPLETED);
+            ledger.updateFollowerCallbackState(id, NCallbackService.FollowerCallbackState.COMPLETED);
         } else if (failedNodes.get() >= consensus) {
-            if (state == CallbackService.FollowerCallbackState.STARTED)
+            if (state == NCallbackService.FollowerCallbackState.STARTED)
                 fail(node);
 
-            ledger.updateFollowerCallbackState(id, CallbackService.FollowerCallbackState.FAILED);
+            ledger.updateFollowerCallbackState(id, NCallbackService.FollowerCallbackState.FAILED);
         } else if (allNodes.get() >= limit)
             // remove callback if synchronization is impossible
             ledger.removeFollowerCallback(id);

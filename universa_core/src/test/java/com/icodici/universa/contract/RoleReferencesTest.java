@@ -7,7 +7,7 @@ import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
 

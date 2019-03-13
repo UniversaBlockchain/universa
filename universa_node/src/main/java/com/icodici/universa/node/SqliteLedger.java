@@ -393,7 +393,7 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public CallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id) { return CallbackService.FollowerCallbackState.UNDEFINED; }
+    public NCallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id) { return NCallbackService.FollowerCallbackState.UNDEFINED; }
 
     @Override
     public Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId) {
@@ -409,7 +409,7 @@ public class SqliteLedger implements Ledger {
     public void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil) {}
 
     @Override
-    public void updateFollowerCallbackState(HashId id, CallbackService.FollowerCallbackState state) {}
+    public void updateFollowerCallbackState(HashId id, NCallbackService.FollowerCallbackState state) {}
 
     @Override
     public void removeFollowerCallback(HashId id) {}

@@ -9,7 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.TestKeys;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
 import org.junit.Before;
