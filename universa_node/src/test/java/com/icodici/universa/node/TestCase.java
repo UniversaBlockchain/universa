@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.contract.Contract;
+import org.hamcrest.MatcherAssert;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,7 +36,7 @@ public class TestCase {
         if (t1 == null && t2 == null)
             return;
         long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());
-        assertThat(delta, is(lessThan(expectedDelta)));
+        MatcherAssert.assertThat(delta, Matchers.is(Matchers.lessThan(expectedDelta)));
     }
 
     protected void assertSameRecords(StateRecord r, StateRecord r1) {

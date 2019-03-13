@@ -18,23 +18,17 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.AsyncEvent;
-import net.sergeych.utils.Bytes;
-import net.sergeych.utils.LogPrinter;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
 
 import java.io.File;
 import java.io.FileReader;
 import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
 @Ignore

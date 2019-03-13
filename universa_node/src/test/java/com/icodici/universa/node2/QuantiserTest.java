@@ -3,16 +3,11 @@ package com.icodici.universa.node2;
 
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 

@@ -10,17 +10,13 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.RevokePermission;
-import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.wallet.Wallet;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;

@@ -1,7 +1,6 @@
 package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractTestBase;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;

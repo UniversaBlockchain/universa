@@ -12,7 +12,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.boss.Boss;
-import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 import org.junit.Ignore;
 import org.junit.Test;

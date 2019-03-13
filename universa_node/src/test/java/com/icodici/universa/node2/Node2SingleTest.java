@@ -15,7 +15,6 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
-import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
 

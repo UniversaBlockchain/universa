@@ -9,13 +9,10 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

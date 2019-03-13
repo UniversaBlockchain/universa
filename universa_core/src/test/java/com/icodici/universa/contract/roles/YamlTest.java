@@ -4,20 +4,12 @@
 
 package com.icodici.universa.contract.roles;
 
-import com.icodici.crypto.AbstractKey;
-import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.node.network.TestKeys;
-import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.*;
 

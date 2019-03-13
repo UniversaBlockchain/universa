@@ -8,11 +8,9 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.SymmetricKey;
-import com.icodici.crypto.digest.Sha512;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
 import org.junit.Ignore;
@@ -21,7 +19,6 @@ import org.junit.Test;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Arrays.asList;

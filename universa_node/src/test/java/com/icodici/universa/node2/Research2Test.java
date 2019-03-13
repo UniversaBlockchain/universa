@@ -16,14 +16,12 @@ import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.FileTool;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

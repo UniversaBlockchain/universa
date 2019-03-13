@@ -9,8 +9,6 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
@@ -20,10 +18,7 @@ import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.StopWatch;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
 import org.yaml.snakeyaml.Yaml;
 
@@ -38,10 +33,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
-public class Node2LocalNetworkTest extends BaseNetworkTest {
+public class Node2PermanetNetworkTest extends BaseNetworkTest {
 
     private static TestLocalNetwork network_s = null;
     private static List<TestLocalNetwork> networks_s = new ArrayList<>();
@@ -97,7 +91,10 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(negCons);
         config_s.setResyncBreakConsensus(2);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-        config_s.setPermanetMode(false);
+        config_s.setPermanetMode(true);
+
+        assertTrue(config_s.isPermanetMode());
+
         //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         //        config_s.setPollTime(Duration.ofMillis(2500));
@@ -250,26 +247,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             }
         }
     }
-
-
-    // This test will no
-//    @Test(timeout = 300000)
-//    public void resync() throws Exception {
-//        Contract c = new Contract(TestKeys.privateKey(0));
-//        c.seal();
-//        addToAllLedgers(c, ItemState.APPROVED);
-//        nodesMap_s.values().forEach(n->{
-//            System.out.println(node.getLedger().getRecord(c.getId()));
-//        });
-//        node.getLedger().getRecord(c.getId()).destroy();
-//        assertEquals(ItemState.UNDEFINED,node.checkItem(c.getId()).state);
-//
-//        LogPrinter.showDebug(true);
-//        node.resync(c.getId()).await();
-//        System.out.println(node.checkItem(c.getId()));
-//    }
-
-
 
     private synchronized void addToAllLedgers(Contract c, ItemState state) {
         addToAllLedgers(c, state, null);
@@ -700,7 +677,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //        ItemResult r = node.waitItem(contract.getId(), 5000);
         ItemResult r = node.checkItem(contract.getId());
         // If resync broken but need more then oned nodes to decline, state should be PENDING_NEGATIVE
-        Assert.assertThat(r.state, anyOf(equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
+        Assert.assertThat(r.state, Matchers.anyOf(Matchers.equalTo(ItemState.PENDING_NEGATIVE), Matchers.equalTo(ItemState.DECLINED)));
 
         for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
@@ -1277,119 +1254,4 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 13000).state);
     }
-//
-//    @Test
-//    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
-//
-//        LogPrinter.showDebug(true);
-//
-//        AsyncEvent ae = new AsyncEvent();
-//
-//        int numSubContracts = 5;
-//        List<Contract> subContracts = new ArrayList<>();
-//        for (int i = 0; i < numSubContracts; i++) {
-//            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-//            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-//            assertTrue(c.check());
-//            c.seal();
-//
-//            if(i < config.getKnownSubContractsToResync())
-//                addToAllLedgers(c, ItemState.APPROVED);
-//            else
-//                addToAllLedgers(c, ItemState.APPROVED, node);
-//
-//            subContracts.add(c);
-//        }
-//
-//        for (int i = 0; i < numSubContracts; i++) {
-//            ItemResult r = node.checkItem(subContracts.get(i).getId());
-//            System.out.println("Contract: " + i + " state: " + r.state);
-//        }
-//
-//        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-//        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-//        assertTrue(contract.check());
-//
-//        for (int i = 0; i < numSubContracts; i++) {
-//            contract.addRevokingItems(subContracts.get(i));
-//        }
-//        contract.seal();
-//        contract.check();
-//        contract.traceErrors();
-//
-//        node.registerItem(contract);
-//
-//        Timer timer = new Timer();
-//        timer.scheduleAtFixedRate(new TimerTask() {
-//            @Override
-//            public void run() {
-//
-//                ItemResult r = node.checkItem(contract.getId());
-//                System.out.println("Complex contract state: " + r.state);
-//
-//                if(r.state == ItemState.APPROVED) ae.fire();
-//            }
-//        }, 0, 500);
-//
-//        try {
-//            ae.await(5000);
-//        } catch (TimeoutException e) {
-//            System.out.println("time is up");
-//        }
-//
-//        timer.cancel();
-//
-//        for (TestLocalNetwork ln : networks_s) {
-//            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
-//        }
-//
-//        ItemResult r = node.checkItem(contract.getId());
-//        assertEquals(ItemState.APPROVED, r.state);
-//    }
-
-//    @Test
-//    public void resyncFaked() throws Exception {
-//        AsyncEvent ae = new AsyncEvent();
-//        Contract c = new Contract(TestKeys.privateKey(0));
-//        c.seal();
-//        addToAllLedgers(c, ItemState.DECLINED);
-//
-//        node.getLedger().getRecord(c.getId()).setState(ItemState.APPROVED);
-//        assertEquals(ItemState.APPROVED, node.checkItem(c.getId()).state);
-//
-//        // Start checking nodes
-//        Timer timer = new Timer();
-//        timer.scheduleAtFixedRate(new TimerTask() {
-//            @Override
-//            public void run() {
-//
-//                boolean all_is_approved = true;
-//                for (Node n : nodesMap_s.values()) {
-////                    System.out.println(n.getLedger().getRecord(c.getId()));
-//                    ItemResult r = n.checkItem(c.getId());
-//                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
-//                    if(r.state != ItemState.DECLINED) {
-//                        all_is_approved = false;
-//                    }
-//                }
-//
-//                if(all_is_approved) ae.fire();
-//            }
-//        }, 0, 1000);
-//
-//        LogPrinter.showDebug(true);
-//        node.resync(c.getId());
-//
-//        try {
-//            ae.await(3000);
-//        } catch (TimeoutException e) {
-//            System.out.println("time is up");
-//        }
-//
-//        timer.cancel();
-//
-//        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
-//    }
-
 }

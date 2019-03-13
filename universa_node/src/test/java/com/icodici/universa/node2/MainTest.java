@@ -7,7 +7,6 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -18,12 +17,8 @@ import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Core;
 import com.icodici.universa.Decimal;
-import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
-import com.icodici.universa.contract.jsapi.JSApiAccessor;
-import com.icodici.universa.contract.jsapi.JSApiContract;
-import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -36,16 +31,14 @@ import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
-import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.units.qual.A;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.spongycastle.util.encoders.Hex;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -68,7 +61,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -1534,8 +1526,8 @@ public class MainTest {
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
         testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
         Contract contractMoney = ContractsService.createTokenContract(
-                new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
-                new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+                new HashSet<>(asList(TestKeys.privateKey(1))),
+                new HashSet<>(asList(TestKeys.publicKey(1))),
                 new BigDecimal("9000")
         );
         ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
@@ -1572,8 +1564,8 @@ public class MainTest {
         testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
 
         Contract contractMoney = ContractsService.createTokenContract(
-            new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
-            new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+            new HashSet<>(asList(TestKeys.privateKey(1))),
+            new HashSet<>(asList(TestKeys.publicKey(1))),
             new BigDecimal("9000")
         );
         ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
@@ -1748,9 +1740,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("1000000"));
         tokenContract.check();
@@ -1805,9 +1797,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract mintableTokenContract = ContractsService.createTokenContractWithEmission(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("300000000000"));
 
@@ -1864,9 +1856,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
-        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(asList(TestKeys.privateKey(2)));
 
         Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("100"));
         contractC.check();
@@ -1924,9 +1916,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract shareContract = ContractsService.createShareContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("100"));
 
@@ -1982,9 +1974,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract notaryContract = ContractsService.createNotaryContract(issuerPrivateKeys, ownerPublicKeys);
 
@@ -2026,9 +2018,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> martyPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PublicKey> stepaPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -2091,16 +2083,16 @@ public class MainTest {
         ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))), nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), nodeInfoProvider);
         slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
 
-        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         itemResult = client.register(stepaU.getPackedTransaction(), 5000);
         System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         Binder slotInfo = client.querySlotInfo(slotContract.getId());
         System.out.println("slot info is null: " + (slotInfo == null));
@@ -2275,16 +2267,16 @@ public class MainTest {
         ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))), nodeInfoProvider);
+        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), nodeInfoProvider);
         followerContract.setNodeInfoProvider(nodeInfoProvider);
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
 
-        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         itemResult = client.register(stepaU.getPackedTransaction(), 5000);
         System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), stepaU, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         Binder followerInfo = client.queryFollowerInfo(followerContract.getId());
         System.out.println("follower info is null: " + (followerInfo == null));
@@ -2341,9 +2333,9 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
 
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
         Contract sourceContract = ContractsService.createShareContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("100"));
 
@@ -2379,10 +2371,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> martyPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PublicKey> martyPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
-        Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PublicKey> martyPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
+        Set<PublicKey> stepaPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
 
         Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, new BigDecimal("100"), new BigDecimal("0.0001"));
@@ -2483,8 +2475,8 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> user1PrivateKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> user2PrivateKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> user1PrivateKeySet = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> user2PrivateKeySet = new HashSet<>(asList(TestKeys.privateKey(2)));
         Set<PublicKey> user1PublicKeySet = user1PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
         Set<PublicKey> user2PublicKeySet = user2PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
 
@@ -2654,13 +2646,13 @@ public class MainTest {
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();
 
-        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
         System.out.println("stepaU itemResult: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
         main.config.setIsFreeRegistrationsAllowedFromYaml(false);
 
-        Parcel parcel = ContractsService.createParcel(simpleContract, stepaU, 1, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createParcel(simpleContract, stepaU, 1, new HashSet<>(asList(TestKeys.privateKey(1))), false);
         client.registerParcelWithState(parcel.pack(), 5000);
         assertEquals(ItemState.APPROVED, client.getState(simpleContract.getId()).state);
 
@@ -4868,10 +4860,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -4982,10 +4974,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5095,10 +5087,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5204,10 +5196,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5314,10 +5306,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5427,10 +5419,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5540,10 +5532,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5659,10 +5651,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5777,10 +5769,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -5912,10 +5904,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -6051,10 +6043,10 @@ public class MainTest {
         main.config.setIsFreeRegistrationsAllowedFromYaml(true);
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(3)));
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
         for (PrivateKey pk : issuerPrivateKeys) {
@@ -6171,7 +6163,7 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> privateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : privateKeys) {
@@ -6351,7 +6343,7 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> privateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : privateKeys) {
@@ -6520,7 +6512,7 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> privateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : privateKeys) {
@@ -6581,7 +6573,7 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> privateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : privateKeys) {
@@ -6694,7 +6686,7 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> privateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> privateKeys = new HashSet<>(asList(TestKeys.privateKey(0)));
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : privateKeys) {
@@ -6812,9 +6804,9 @@ public class MainTest {
         main.config.setPermanetMode(false);
         assertTrue(main.config.isPermanetMode());
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
-        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(asList(TestKeys.privateKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(asList(TestKeys.privateKey(2)));
 
         List<Contract> splits = new ArrayList<>();
         Integer amountTokens = 1000;
@@ -6989,7 +6981,7 @@ public class MainTest {
         if (t1 == null && t2 == null)
             return;
         long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());
-        assertThat(delta, is(lessThan(expectedDelta)));
+        MatcherAssert.assertThat(delta, Matchers.is(Matchers.lessThan(expectedDelta)));
     }
 
     @Test
@@ -7039,12 +7031,12 @@ public class MainTest {
                 callbackKey.getPublicKey());
 
         // payment contract
-        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         ItemResult itemResult = testSpace.client.register(payment.getPackedTransaction(), 5000);
         System.out.println("payment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         followerContract.check();
         followerContract.traceErrors();
@@ -7418,12 +7410,12 @@ public class MainTest {
                 callbackKey.getPublicKey());
 
         // payment contract
-        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         ItemResult itemResult = testSpace.client.register(payment.getPackedTransaction(), 5000);
         System.out.println("payment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         followerContract.check();
         followerContract.traceErrors();
@@ -7703,7 +7695,7 @@ public class MainTest {
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
         newRevFollowerContract.seal();
 
-        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         newRevFollowerContract.check();
         newRevFollowerContract.traceErrors();
@@ -7824,12 +7816,12 @@ public class MainTest {
                 callbackKey.getPublicKey());
 
         // payment contract
-        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         ItemResult itemResult = testSpace.client.register(payment.getPackedTransaction(), 5000);
         System.out.println("payment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         followerContract.check();
         followerContract.traceErrors();
@@ -8080,7 +8072,7 @@ public class MainTest {
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
         newRevFollowerContract.seal();
 
-        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         newRevFollowerContract.check();
         newRevFollowerContract.traceErrors();
@@ -8170,12 +8162,12 @@ public class MainTest {
                 callbackKey.getPublicKey());
 
         // payment contract
-        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        Contract payment = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));
         ItemResult itemResult = testSpace.client.register(payment.getPackedTransaction(), 5000);
         System.out.println("payment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel payingParcel = ContractsService.createPayingParcel(followerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         followerContract.check();
         followerContract.traceErrors();
@@ -8433,7 +8425,7 @@ public class MainTest {
         newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
         newRevFollowerContract.seal();
 
-        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
 
         newRevFollowerContract.check();
         newRevFollowerContract.traceErrors();
