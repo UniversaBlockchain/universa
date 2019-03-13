@@ -458,9 +458,6 @@ public class FollowerContract extends NSmartContract {
 
             fs.changeMutedAt(deltaSeconds);
 
-            // save before start callback processor
-            me.save();
-
             // start callback processor
             CallbackService callbackService = ((ContractSubscription.ApprovedWithCallbackEvent) event).getCallbackService();
             callbackService.startCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
@@ -477,9 +474,6 @@ public class FollowerContract extends NSmartContract {
             int deltaSeconds = (int) (deltaDays * 24 * 3600);
 
             fs.changeMutedAt(deltaSeconds);
-
-            // save before start callback processor
-            me.save();
 
             // start callback processor
             CallbackService callbackService = ((ContractSubscription.RevokedWithCallbackEvent) event).getCallbackService();
