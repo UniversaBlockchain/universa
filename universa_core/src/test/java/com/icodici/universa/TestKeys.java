@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.universa.node.network;
+package com.icodici.universa;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
