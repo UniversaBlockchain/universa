@@ -10,6 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
+import com.icodici.universa.TestCase;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.TestKeys;

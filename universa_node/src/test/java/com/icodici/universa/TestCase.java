@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.StateRecord;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
@@ -39,6 +40,14 @@ public class TestCase {
             return;
         long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());
         MatcherAssert.assertThat(delta, Matchers.is(Matchers.lessThan(expectedDelta)));
+    }
+
+    protected void assertSameRecords(StateRecord r, StateRecord r1) {
+        assertEquals(r.getId(), r1.getId());
+        assertEquals(r.getState(), r1.getState());
+        assertAlmostSame(r.getCreatedAt(), r1.getCreatedAt());
+        assertEquals(r.getRecordId(), r1.getRecordId());
+        assertEquals(r.getLockedByRecordId(), r1.getLockedByRecordId());
     }
 
     protected void assertThrows(Class<? extends Exception> exClass, Callable<?> block) {
