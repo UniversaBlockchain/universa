@@ -12,7 +12,6 @@ import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node2.CallbackService;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiType;
@@ -460,14 +459,12 @@ public class FollowerContract extends NSmartContract {
             fs.changeMutedAt(deltaSeconds);
 
             // save before start callback processor
-            //TODO: save performed by node outside this funciton
-            ((MutableEnvironment) me).save();
+            me.save();
 
             // start callback processor
-            //TODO: callback service should be an interface inside  com.icodici.universa.contract.services. Implementation of this interface in module universa_node should have access to the actuall callback service
             CallbackService callbackService = ((ContractSubscription.ApprovedWithCallbackEvent) event).getCallbackService();
             callbackService.startCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
-                    ItemState.APPROVED, this, (MutableEnvironment) me);
+                    ItemState.APPROVED, this, me);
 
         } else if (event instanceof ContractSubscription.RevokedWithCallbackEvent) {
             if (fs.mutedAt().isBefore(ZonedDateTime.now()))
@@ -482,14 +479,12 @@ public class FollowerContract extends NSmartContract {
             fs.changeMutedAt(deltaSeconds);
 
             // save before start callback processor
-            //TODO: save performed by node outside this funciton
-            ((MutableEnvironment) me).save();
+            me.save();
 
             // start callback processor
-            //TODO: callback service should be an interface inside  com.icodici.universa.contract.services. Implementation of this interface in module universa_node should have access to the actuall callback service
             CallbackService callbackService = ((ContractSubscription.RevokedWithCallbackEvent) event).getCallbackService();
             callbackService.startCallbackProcessor(((ContractSubscription.RevokedWithCallbackEvent) event).getRevokingItem(),
-                    ItemState.REVOKED, this, (NMutableEnvironment) me);
+                    ItemState.REVOKED, this, me);
 
         } else if (event instanceof ContractSubscription.CompletedEvent) {
             fs.decreaseStartedCallbacks();

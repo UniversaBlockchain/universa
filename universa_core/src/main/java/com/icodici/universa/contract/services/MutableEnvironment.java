@@ -113,4 +113,9 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      * @param nameRecord is UNS name record
      */
     void destroyNameRecord(NameRecord nameRecord);
+
+    /**
+     * Save environment state
+     */
+    void save();
 }

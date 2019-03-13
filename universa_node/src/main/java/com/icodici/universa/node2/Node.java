@@ -98,7 +98,7 @@ public class Node {
     private final EnvCache envCache;
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
-    private final CallbackService callbackService;
+    private final NCallbackService callbackService;
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -210,7 +210,7 @@ public class Node {
         }
 
         // start callback service
-        callbackService = new CallbackService(this, config, myInfo, ledger, network, nodeKey, lowPrioExecutorService);
+        callbackService = new NCallbackService(this, config, myInfo, ledger, network, nodeKey, lowPrioExecutorService);
 
         pulseStartCleanup();
     }
@@ -1049,7 +1049,7 @@ public class Node {
         return ledger;
     }
 
-    public CallbackService getCallbackService() {
+    public NCallbackService getCallbackService() {
         return callbackService;
     }
 
@@ -2850,7 +2850,7 @@ public class Node {
 
                                             @Override
                                             public CallbackService getCallbackService() {
-                                                return callbackService;
+                                                return (CallbackService) callbackService;
                                             }
                                         });
                                     }
@@ -2869,7 +2869,7 @@ public class Node {
 
                                             @Override
                                             public CallbackService getCallbackService() {
-                                                return callbackService;
+                                                return (CallbackService) callbackService;
                                             }
                                         });
                                     }

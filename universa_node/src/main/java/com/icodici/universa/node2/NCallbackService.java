@@ -39,7 +39,7 @@ import java.util.concurrent.*;
  * Callback service runs on the Universa node. A node also calls methods for handling notifications when notifications
  * are received from the network and methods for synchronizing callbacks when a follower contract is refilled.
  */
-public class CallbackService {
+public class NCallbackService implements CallbackService {
 
     private final Node node;
     private final Config config;
@@ -72,8 +72,8 @@ public class CallbackService {
      * @param nodeKey is public key of node
      * @param executorService is executor service from node to run synchronization
      */
-    public CallbackService(Node node, Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey,
-                           ScheduledExecutorService executorService) {
+    public NCallbackService(Node node, Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey,
+                            ScheduledExecutorService executorService) {
         this.node = node;
         this.config = config;
         this.myInfo = myInfo;
@@ -152,10 +152,11 @@ public class CallbackService {
      * checks and obtains deferred callback notifications.
      *
      * @param updatingItem is new revision of following contract
+     * @param state is state of new revision of following contract
      * @param contract is follower contract
      * @param me is environment
      */
-    public void startCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract, NMutableEnvironment me) {
+    public void startCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract, MutableEnvironment me) {
 
         // initialize callback processor
         CallbackProcessor callback = new CallbackProcessor(updatingItem, state, contract, me.getId(), this);
@@ -351,9 +352,9 @@ public class CallbackService {
         private ScheduledFuture<?> executor;
         private boolean isItemSended;
         private ConcurrentSkipListSet<Integer> nodesSendCallback = new ConcurrentSkipListSet<>();
-        private final CallbackService callbackService;
+        private final NCallbackService callbackService;
 
-        public CallbackProcessor(Contract item, ItemState state, NSmartContract follower, long environmentId, CallbackService callbackService) {
+        public CallbackProcessor(Contract item, ItemState state, NSmartContract follower, long environmentId, NCallbackService callbackService) {
             // save item, environment and subscription
             itemId = item.getId();
             item.setTransactionPack(null);      // send only updated item without TransactionPack

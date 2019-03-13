@@ -118,6 +118,7 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         nameRecordsToDestroy.add((NNameRecord) nameRecord);
     }
 
+    @Override
     public void save() {
 
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());

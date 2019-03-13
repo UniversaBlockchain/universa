@@ -14,7 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.CallbackService;
+import com.icodici.universa.node2.NCallbackService;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Duration;
@@ -216,11 +216,11 @@ public interface Ledger {
 
     Set<Long> getSubscriptionEnviromentIds(HashId id);
 
-    CallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id);
+    NCallbackService.FollowerCallbackState getFollowerCallbackStateById(HashId id);
     Collection<CallbackRecord> getFollowerCallbacksToResyncByEnvId(long environmentId);
     Collection<CallbackRecord> getFollowerCallbacksToResync();
     void addFollowerCallback(HashId id, long environmentId, ZonedDateTime expiresAt, ZonedDateTime storedUntil);
-    void updateFollowerCallbackState(HashId id, CallbackService.FollowerCallbackState state);
+    void updateFollowerCallbackState(HashId id, NCallbackService.FollowerCallbackState state);
     void removeFollowerCallback(HashId id);
 
     void clearExpiredStorages();
