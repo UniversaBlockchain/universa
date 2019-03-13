@@ -15,6 +15,7 @@ import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node2.*;
+import net.sergeych.utils.Ut;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteOpenMode;
 
@@ -327,8 +328,8 @@ public class SqliteLedger implements Ledger {
                     ) {
                         statement.setBytes(1, stateRecord.getId().getDigest());
                         statement.setInt(2, stateRecord.getState().ordinal());
-                        statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
-                        statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
+                        statement.setLong(3, Ut.unixTime(stateRecord.getCreatedAt()));
+                        statement.setLong(4, Ut.unixTime(stateRecord.getExpiresAt()));
                         statement.setLong(5, stateRecord.getLockedByRecordId());
                         statement.executeUpdate();
                         try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -342,7 +343,7 @@ public class SqliteLedger implements Ledger {
                 } else {
                     db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
                               stateRecord.getState().ordinal(),
-                              StateRecord.unixTime(stateRecord.getExpiresAt()),
+                              Ut.unixTime(stateRecord.getExpiresAt()),
                               stateRecord.getLockedByRecordId(),
                               stateRecord.getRecordId()
                     );

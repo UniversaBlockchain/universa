@@ -7,7 +7,6 @@
 
 package com.icodici.universa.node;
 
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
@@ -19,6 +18,7 @@ import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Ut;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
@@ -526,8 +526,8 @@ public class PostgresLedger implements Ledger {
                 ) {
                     statement.setBytes(1, stateRecord.getId().getDigest());
                     statement.setInt(2, stateRecord.getState().ordinal());
-                    statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
-                    statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
+                    statement.setLong(3, Ut.unixTime(stateRecord.getCreatedAt()));
+                    statement.setLong(4, Ut.unixTime(stateRecord.getExpiresAt()));
                     statement.setLong(5, stateRecord.getLockedByRecordId());
                     db.updateWithStatement(statement);
                     try (ResultSet keys = statement.getGeneratedKeys()) {
@@ -544,7 +544,7 @@ public class PostgresLedger implements Ledger {
             } else {
                 db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
                         stateRecord.getState().ordinal(),
-                        StateRecord.unixTime(stateRecord.getExpiresAt()),
+                        Ut.unixTime(stateRecord.getExpiresAt()),
                         stateRecord.getLockedByRecordId(),
                         stateRecord.getRecordId()
                 );
@@ -889,7 +889,7 @@ public class PostgresLedger implements Ledger {
                 List<ContractSubscription> res = new ArrayList<>();
                 while (rs.next()) {
                     NContractSubscription css = new NContractSubscription(HashId.withDigest(rs.getBytes(1)),
-                            rs.getBoolean(2), StateRecord.getTime(rs.getLong(3)));
+                            rs.getBoolean(2), Ut.getTime(rs.getLong(3)));
                     css.setId(rs.getLong(4));
                     res.add(css);
                 }
@@ -922,7 +922,7 @@ public class PostgresLedger implements Ledger {
                     throw new Failure("getContractStorages failed: returning null");
                 List<ContractStorage> res = new ArrayList<>();
                 while (rs.next()) {
-                    NContractStorage cst = new NContractStorage(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    NContractStorage cst = new NContractStorage(rs.getBytes(1), Ut.getTime(rs.getLong(2)));
                     cst.setId(rs.getLong(3));
                     res.add(cst);
                 }
@@ -989,8 +989,8 @@ public class PostgresLedger implements Ledger {
                 NFollowerService fs = null;
                 if (rs.next())
                     fs = new NFollowerService(this,
-                        StateRecord.getTime(rs.getLong(1)),
-                        StateRecord.getTime(rs.getLong(2)),
+                        Ut.getTime(rs.getLong(1)),
+                        Ut.getTime(rs.getLong(2)),
                         environmentId,
                         rs.getDouble(3),
                         rs.getInt(4));
@@ -1083,7 +1083,7 @@ public class PostgresLedger implements Ledger {
                                     "UPDATE contract_subscription SET expires_at = ? WHERE id = ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(1, Ut.unixTime(expiresAt));
                 statement.setLong(2, subscriptionId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
@@ -1106,7 +1106,7 @@ public class PostgresLedger implements Ledger {
                                     "UPDATE contract_storage SET expires_at = ? WHERE id = ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(1, Ut.unixTime(expiresAt));
                 statement.setLong(2, storageId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
@@ -1132,8 +1132,8 @@ public class PostgresLedger implements Ledger {
                     )
             ) {
                 statement.setLong(1, environmentId);
-                statement.setLong(2, StateRecord.unixTime(expiresAt));
-                statement.setLong(3, StateRecord.unixTime(mutedAt));
+                statement.setLong(2, Ut.unixTime(expiresAt));
+                statement.setLong(3, Ut.unixTime(mutedAt));
                 statement.setDouble(4, spent);
                 statement.setInt(5, startedCallbacks);
                 statement.closeOnCompletion();
@@ -1157,7 +1157,7 @@ public class PostgresLedger implements Ledger {
                                     "UPDATE name_storage SET expires_at = ? WHERE id = ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(1, Ut.unixTime(expiresAt));
                 statement.setLong(2, nameRecordId);
                 statement.closeOnCompletion();
                 statement.executeUpdate();
@@ -1340,7 +1340,7 @@ public class PostgresLedger implements Ledger {
             ) {
                 statement.setBytes(1, hashId.getDigest());
                 statement.setBoolean(2, subscriptionOnChain);
-                statement.setLong(3, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, Ut.unixTime(expiresAt));
                 statement.setLong(4, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -1371,7 +1371,7 @@ public class PostgresLedger implements Ledger {
                                     "DELETE FROM contract_subscription WHERE expires_at < ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(now));
+                statement.setLong(1, Ut.unixTime(now));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1393,7 +1393,7 @@ public class PostgresLedger implements Ledger {
                                     "DELETE FROM contract_storage WHERE expires_at < ?"
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(now));
+                statement.setLong(1, Ut.unixTime(now));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1610,8 +1610,8 @@ public class PostgresLedger implements Ledger {
                 statement.setBytes(1, id.getDigest());
                 statement.setInt(2, CallbackService.FollowerCallbackState.STARTED.ordinal());
                 statement.setLong(3, environmentId);
-                statement.setLong(4, StateRecord.unixTime(expiresAt));
-                statement.setLong(5, StateRecord.unixTime(storedUntil));
+                statement.setLong(4, Ut.unixTime(expiresAt));
+                statement.setLong(5, Ut.unixTime(storedUntil));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1938,7 +1938,7 @@ public class PostgresLedger implements Ledger {
                 statement.setString(2, nameRecord.getName());
                 statement.setString(3, nameRecord.getDescription());
                 statement.setString(4, nameRecord.getUrl());
-                statement.setLong(5, StateRecord.unixTime(nameRecord.expiresAt()));
+                statement.setLong(5, Ut.unixTime(nameRecord.expiresAt()));
                 statement.setLong(6, nameRecord.getEnvironmentId());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -2034,7 +2034,7 @@ public class PostgresLedger implements Ledger {
             ) {
                 statement.setBytes(1, contractId.getDigest());
                 statement.setBytes(2, origin.getDigest());
-                statement.setLong(3, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, Ut.unixTime(expiresAt));
                 statement.setLong(4, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -2249,7 +2249,7 @@ public class PostgresLedger implements Ledger {
                                     "DELETE FROM name_storage WHERE expires_at < ? "
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(before));
+                statement.setLong(1, Ut.unixTime(before));
                 statement.closeOnCompletion();
                 statement.executeUpdate();
             }
@@ -2307,7 +2307,7 @@ public class PostgresLedger implements Ledger {
                         unsName.setUnsName(rs.getString("name_full"));
                         unsName.setUnsDescription(rs.getString("description"));
                         unsName.setUnsURL(rs.getString("url"));
-                        nameRecord_expiresAt = StateRecord.getTime(rs.getLong("expires_at"));
+                        nameRecord_expiresAt = Ut.getTime(rs.getLong("expires_at"));
                         nameRecord_environmentId = rs.getLong("environment_id");
                         firstRow = false;
                     }

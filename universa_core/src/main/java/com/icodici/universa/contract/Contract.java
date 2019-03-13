@@ -13,10 +13,8 @@ import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.*;
 import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
-import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -28,7 +26,6 @@ import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
-import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -1366,9 +1363,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private void basicCheck() throws Quantiser.QuantiserException {
 
         if ((transactional != null) && (transactional.validUntil != null)) {
-            if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now()))
+            if (Ut.getTime(transactional.validUntil).isBefore(ZonedDateTime.now()))
                 addError(BAD_VALUE, "transactional.valid_until", "time for register is over");
-            else if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds())))
+            else if (Ut.getTime(transactional.validUntil).isBefore(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds())))
                 addError(BAD_VALUE, "transactional.valid_until", "time for register ends");
         }
 

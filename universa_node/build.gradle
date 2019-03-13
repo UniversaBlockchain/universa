@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group 'com.icodici'
+version '3.8.10'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        url = "https://maven.universa.io/"
+    }
+
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile project(':universa_core')
+
+}

@@ -2,7 +2,6 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.node2.CallbackService;
 
 import java.time.ZonedDateTime;
 

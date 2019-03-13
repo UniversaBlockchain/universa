@@ -86,9 +86,9 @@ public class Client {
     public ItemResult setVerboseLevel(int node, int network, int udp) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("setVerbose",
-                    "node", DatagramAdapter.VerboseLevel.intToString(node),
-                    "network", DatagramAdapter.VerboseLevel.intToString(network),
-                    "udp", DatagramAdapter.VerboseLevel.intToString(udp));
+                    "node", VerboseLevel.intToString(node),
+                    "network", VerboseLevel.intToString(network),
+                    "udp", VerboseLevel.intToString(udp));
 
             Object ir = result.getOrThrow("itemResult");
             if (ir instanceof ItemResult)
@@ -395,7 +395,7 @@ public class Client {
                 Instant end = Instant.now().plusMillis(millisToWait);
                 try {
                     Parcel parcel = Parcel.unpack(packed);
-                    Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
+                    ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
                     int interval = 1000;
                     while (Instant.now().isBefore(end) && pState.isProcessing()) {
 //                        System.out.println("parcel state is: " + pState);
@@ -518,16 +518,16 @@ public class Client {
      * @return processing state of the parcel
      * @throws ClientError
      */
-    public Node.ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {
+    public ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getParcelProcessingState",
                     "parcelId", parcelId);
 
             Object ps = result.getOrThrow("processingState");
-            if (ps instanceof Node.ParcelProcessingState)
-                return (Node.ParcelProcessingState) ps;
+            if (ps instanceof ParcelProcessingState)
+                return (ParcelProcessingState) ps;
 
-            return Node.ParcelProcessingState.valueOf(result.getBinder("processingState").getStringOrThrow("state"));
+            return ParcelProcessingState.valueOf(result.getBinder("processingState").getStringOrThrow("state"));
         });
     }
 

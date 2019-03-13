@@ -70,7 +70,7 @@ public class ItemResult implements IExtDataBinder {
      * @param haveCopy true if the node has a copy of the {@link Approvable} item (e.g. one can try go call {@link
      *                 com.icodici.universa.node2.network.Network#getItem(HashId, NodeInfo, Duration)}  on it
      */
-    public ItemResult(StateRecord record, boolean haveCopy) {
+    public ItemResult(IStateRecord record, boolean haveCopy) {
 //        if( record == null ) {
 //            throw new IllegalStateException("record can not be null");
 //        }
@@ -85,7 +85,7 @@ public class ItemResult implements IExtDataBinder {
      *
      * @param record to get data from
      */
-    public ItemResult(StateRecord record) {
+    public ItemResult(IStateRecord record) {
         this(record, false);
     }
 

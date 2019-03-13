@@ -4,6 +4,9 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -408,5 +411,15 @@ public class Ut {
             testEnv = false;
         }
         return testEnv;
+    }
+
+    static public ZonedDateTime getTime(long unixTime) {
+        if (unixTime == 0)
+            return null;
+        return Instant.ofEpochSecond(unixTime).atZone(ZoneId.systemDefault());
+    }
+
+    static public long unixTime(ZonedDateTime time) {
+        return time == null ? 0 : time.toEpochSecond();
     }
 }

@@ -5,14 +5,13 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
+import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.ZoneId;
 
 /**
  * The state of some {@link HashId} - identifiable item (e.g. {@link Approvable} to be sotred in the {@link Ledger}
@@ -26,7 +25,7 @@ import java.time.ZoneId;
  * <p>
  * Created by sergeych on 16/07/2017.
  */
-public class StateRecord implements HashIdentifiable {
+public class StateRecord implements HashIdentifiable, IStateRecord {
 
     private static LogPrinter log = new LogPrinter("StateRecord");
 
@@ -51,8 +50,8 @@ public class StateRecord implements HashIdentifiable {
             throw new SQLException("failed to read hash from the recordset");
         }
         state = ItemState.values()[rs.getInt("state")];
-        createdAt = getTime(rs.getLong("created_at"));
-        expiresAt = getTime(rs.getLong("expires_at"));
+        createdAt = Ut.getTime(rs.getLong("created_at"));
+        expiresAt = Ut.getTime(rs.getLong("expires_at"));
         if(expiresAt == null) {
             // todo: what we should do with items without expiresAt?
             expiresAt = createdAt.plusMonths(3);
@@ -63,16 +62,6 @@ public class StateRecord implements HashIdentifiable {
     public StateRecord(Ledger ledger) {
         this.ledger = ledger;
         createdAt = ZonedDateTime.now();
-    }
-
-    static public ZonedDateTime getTime(long unixTime) {
-        if (unixTime == 0)
-            return null;
-        return Instant.ofEpochSecond(unixTime).atZone(ZoneId.systemDefault());
-    }
-
-    static public long unixTime(ZonedDateTime time) {
-        return time == null ? 0 : time.toEpochSecond();
     }
 
     public boolean isDirty() {
