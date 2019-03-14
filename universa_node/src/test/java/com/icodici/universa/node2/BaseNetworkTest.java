@@ -44,9 +44,7 @@ import java.sql.ResultSet;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static com.icodici.universa.contract.services.FollowerContract.FOLLOWER_ROLES_FIELD_NAME;
@@ -6268,10 +6266,21 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckDeclined(tp_after);
     }
 
+    public static double parallelize(ExecutorService es, int nThreads, Runnable r) throws ExecutionException, InterruptedException {
+        long t = System.nanoTime();
+        ArrayList<Future<?>> all = new ArrayList<>();
+        for( int i=0; i < nThreads; i++ ) {
+            all.add( es.submit(()->r.run()));
+        }
+        for(Future<?> f: all)
+            f.get();
+        return (System.nanoTime() - t) * 1e-9;
+    }
+
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {
-        ExtendedSignatureTest.parallelize(Executors.newCachedThreadPool(), 4, () -> {
+        parallelize(Executors.newCachedThreadPool(), 4, () -> {
             try {
                 Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
                 Set<PublicKey> stepaPublicKeys = new HashSet<>();

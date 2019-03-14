@@ -10,6 +10,7 @@ import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
+import net.sergeych.utils.Ut;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -188,8 +189,8 @@ public class JarNetworkTest extends TestCase {
         System.out.println("uno bin: " + Base64.encodeString(contract.getPackedTransaction()));
         System.out.println("uno hashId: " + Bytes.toHex(contract.getId().getDigest()).replace(" ", ""));
         System.out.println("approved ord: " + ItemState.APPROVED.ordinal());
-        System.out.println("getCreatedAt: " + StateRecord.unixTime(contract.getCreatedAt()));
-        System.out.println("getExpiresAt: " + StateRecord.unixTime(contract.getExpiresAt()));
+        System.out.println("getCreatedAt: " + Ut.unixTime(contract.getCreatedAt()));
+        System.out.println("getExpiresAt: " + Ut.unixTime(contract.getExpiresAt()));
 
         ItemResult itemResult = normalClient.getState(contract.getId());
         System.out.println("getState... done! itemResult: " + itemResult.state);

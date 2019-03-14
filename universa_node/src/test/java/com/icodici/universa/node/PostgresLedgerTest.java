@@ -11,6 +11,7 @@ import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeStats;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
+import net.sergeych.utils.Ut;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -501,7 +502,7 @@ public class PostgresLedgerTest extends TestCase {
                 try (PooledDb db = (PooledDb) ledger.getDb()) {
                     db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
                             ItemState.APPROVED.ordinal(),
-                            StateRecord.unixTime(sr.getExpiresAt()),
+                            Ut.unixTime(sr.getExpiresAt()),
                             0,
                             sr.getRecordId()
                     );
@@ -518,7 +519,7 @@ public class PostgresLedgerTest extends TestCase {
                             try (PooledDb db = (PooledDb) ledger.getDb()) {
                                 db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
                                         ItemState.APPROVED.ordinal(),
-                                        StateRecord.unixTime(sr.getExpiresAt()),
+                                        Ut.unixTime(sr.getExpiresAt()),
                                         0,
                                         sr.getRecordId()
                                 );
