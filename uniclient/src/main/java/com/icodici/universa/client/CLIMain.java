@@ -1068,9 +1068,9 @@ public class CLIMain {
         }
 
         try {
-            ItemResult ir = getClientNetwork().client.setVerboseLevel(DatagramAdapter.VerboseLevel.stringToInt(sources.get(0)),
-                    DatagramAdapter.VerboseLevel.stringToInt(sources.get(1)),
-                    DatagramAdapter.VerboseLevel.stringToInt(sources.get(2)));
+            ItemResult ir = getClientNetwork().client.setVerboseLevel(VerboseLevel.stringToInt(sources.get(0)),
+                    VerboseLevel.stringToInt(sources.get(1)),
+                    VerboseLevel.stringToInt(sources.get(2)));
             addErrors(ir.errors);
         } catch (ClientError clientError) {
             if (options.has("verbose"))

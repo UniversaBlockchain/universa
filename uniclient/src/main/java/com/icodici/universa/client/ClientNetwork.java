@@ -4,7 +4,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node2.Node;
+import com.icodici.universa.node2.ParcelProcessingState;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
@@ -122,7 +122,7 @@ public class ClientNetwork {
         return client.getState(id, reporter);
     }
 
-    public Node.ParcelProcessingState getParcelProcessingState(HashId id) throws ClientError {
+    public ParcelProcessingState getParcelProcessingState(HashId id) throws ClientError {
         return client.getParcelProcessingState(id);
     }
 
