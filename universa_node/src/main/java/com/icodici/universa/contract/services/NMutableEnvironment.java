@@ -147,9 +147,6 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
 
         ledger.clearExpiredStorageContractBinaries();
 
-        if (followerService != null)
-            followerService.save();
-
         List<String> addressList = new LinkedList<>();
         List<String> nameList = new LinkedList<>();
         List<HashId> originsList = new LinkedList<>();
@@ -210,6 +207,9 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         for (String key : kvStore.keySet()) {
             immutable.kvStore.set(key, kvStore.get(key));
         }
+
+        if (followerService != null)
+            followerService.save();
     }
 
     public Binder getKVStore() {

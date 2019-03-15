@@ -2851,9 +2851,10 @@ public class Node {
 
                                             @Override
                                             public CallbackService getCallbackService() {
-                                                return (CallbackService) callbackService;
+                                                return callbackService;
                                             }
                                         });
+                                        me.save();
                                     }
 
                                     if (updatingState == ItemState.REVOKED) {
@@ -2870,9 +2871,10 @@ public class Node {
 
                                             @Override
                                             public CallbackService getCallbackService() {
-                                                return (CallbackService) callbackService;
+                                                return callbackService;
                                             }
                                         });
+                                        me.save();
                                     }
                                 }
 

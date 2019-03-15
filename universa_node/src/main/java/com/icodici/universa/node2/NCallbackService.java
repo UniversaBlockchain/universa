@@ -157,9 +157,6 @@ public class NCallbackService implements CallbackService {
      * @param me is environment
      */
     public void startCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract, MutableEnvironment me) {
-        // save before start callback processor
-        ((NMutableEnvironment) me).save();
-
         // initialize callback processor
         CallbackProcessor callback = new CallbackProcessor(updatingItem, state, contract, ((NMutableEnvironment) me).getId(), this);
 
