@@ -8733,5 +8733,166 @@ public class MainTest {
 
 
 
+    public static final String ACC_TYPE_FIELD = "type";
+    public static final String ACC_TYPE_PERSONAL = "personal";
+    public static final String ACC_TYPE_BANK = "bank";
+
+    public static final String ACC_CURRENCY_FIELD = "currency";
+    public static final String ACC_CURRENCY_RUR = "RUR";
+    public static final String ACC_CURRENCY_EUR = "EUR";
+
+    public static final String ACC_COMMISSION_PERCENT_FIELD = "commission_percent";
+    public static final String ACC_COMMISSION_ACCOUNT_FIELD = "commission_account";
+
+    @Test
+    public void demo() throws Exception {
+        PrivateKey person1 = TestKeys.privateKey(1);
+        PrivateKey person2 = TestKeys.privateKey(2);
+        PrivateKey bank = TestKeys.privateKey(3);
+
+
+        Contract commissionAccRur = new Contract(bank);
+        Contract commissionAccEur = new Contract(bank);
+        commissionAccRur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
+        commissionAccEur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
+
+        commissionAccRur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+        commissionAccEur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
+
+        commissionAccRur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+        commissionAccEur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+
+        commissionAccRur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
+        commissionAccEur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
+
+        commissionAccRur.seal();
+        commissionAccEur.seal();
+
+
+        Contract account1rur = new Contract(person1);
+        Contract account2rur = new Contract(person2);
+        Contract account1eur = new Contract(person1);
+        Contract account2eur = new Contract(person2);
+
+        account1rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+        account2rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+        account1eur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+        account2eur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+
+        account1rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+        account2rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+        account1eur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
+        account2eur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
+
+        account1rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.01");
+        account2rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+        account1eur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+        account2eur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.02");
+
+        account1rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId());
+        account2rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId());
+        account1eur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccEur.getId());
+        account2eur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccEur.getId());
+
+        account1rur.seal();
+        account2rur.seal();
+        account1eur.seal();
+        account2eur.seal();
+
+
+        Contract rurToken = new Contract(bank);
+
+
+        SimpleRole tokenOwner = new SimpleRole("owner");
+        tokenOwner.addRequiredReference("canplayaccowner", Role.RequiredMode.ALL_OF);
+
+        rurToken.getStateData().put("account",account1rur.getId().toBase64String());
+        rurToken.getStateData().put("amount","100000");
+
+        RoleLink rl = new RoleLink("@owner", "owner");
+        rurToken.registerRole(rl);
+        SplitJoinPermission sjp =
+                new SplitJoinPermission(rl, Binder.of("field_name","amount",
+                        "join_match_fields",Do.listOf("state.origin","state.data.account")));
+        rurToken.addPermission(sjp);
+
+
+        ModifyDataPermission mdp =
+                new ModifyDataPermission(rl,Binder.of("fields",Binder.of("amount",null)));
+        rurToken.addPermission(mdp);
+
+
+        Reference canplayaccowner = new Reference(rurToken);
+        canplayaccowner.name = "canplayaccowner";
+        List<String> conditions = new ArrayList<>();
+        conditions.add("ref.id==this.state.data.account");
+        conditions.add("this can_play ref.owner");
+        canplayaccowner.setConditions(Binder.of("all_of",conditions));
+        rurToken.addReference(canplayaccowner);
+
+
+        Reference refAccount = new Reference(rurToken);
+        refAccount.name = "refAccount";
+        refAccount.setConditions(Binder.of("all_of",Do.listOf("this.state.data.account == ref.id")));
+        rurToken.addReference(refAccount);
+
+        Reference refParent = new Reference(rurToken);
+        refParent.name = "refParent";
+        refParent.setConditions(Binder.of("any_of",Do.listOf(
+                "this.parent == ref.id",
+                "this.parent undefined"
+        )));
+        rurToken.addReference(refParent);
+
+        Reference refParentAccount = new Reference(rurToken);
+        refParentAccount.name = "refParentAccount";
+        refParentAccount.setConditions(Binder.of("any_of",Do.listOf(
+                "refParent.state.data.account == ref.id",
+                "this.parent undefined"
+                )));
+        rurToken.addReference(refParentAccount);
+
+
+        Reference transferCheck = new Reference(rurToken);
+        transferCheck.name = "transferCheck";
+        transferCheck.setConditions(Binder.of("any_of",Do.listOf(
+                //root contract
+                "this.parent undefined",
+
+                //OR there was no transfer
+                "refParent.state.data.account == this.state.data.account",
+
+                //OR transfer is correct
+                Binder.of("all_of", Do.listOf(
+
+                        //transfer to account with same currency
+                        "refAccount.state.data."+ACC_CURRENCY_FIELD+" == refParentAccount.state.data."+ACC_CURRENCY_FIELD,
+
+                        //AND one of the cases
+                        Binder.of("any_of",Do.listOf(
+                                // contract is a commission itself
+                                Binder.of("all_of", Do.listOf(
+                                        "this.state.data.account==refParentAccount.state.data."+ACC_COMMISSION_ACCOUNT_FIELD
+                                )),
+
+                                // OR commission is set to zero
+                                Binder.of("all_of", Do.listOf(
+                                        "refParentAccount.state.data."+ACC_COMMISSION_PERCENT_FIELD+"==0.0"
+                                )),
+
+                                // OR commission exists in pack
+                                Binder.of("all_of", Do.listOf(
+                                        "ref.state.data.amount == this.state.data.amount * refParentAccount.state.data."+ACC_COMMISSION_PERCENT_FIELD,
+                                        "ref.state.data.account == refParentAccount.state.data."+ACC_COMMISSION_ACCOUNT_FIELD,
+                                        "ref.state.data.transfer_id == this.id"
+                                ))
+                        ))
+                ))
+        )));
+        rurToken.addReference(transferCheck);
+
+
+    }
+
 
 }
