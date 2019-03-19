@@ -8738,15 +8738,15 @@ public class MainTest {
     public static final String ACC_CURRENCY_RUR = "RUR";
     public static final String ACC_CURRENCY_EUR = "EUR";
 
-    public static final String ACC_COMMISSION_PERCENT_PATH = "state.data.commission_percent";
-    public static final String ACC_COMMISSION_ACCOUNT_PATH = "state.data.commission_account";
+    public static final String ACC_COMMISSION_PERCENT_PATH = "state.data.commission_percent::number";
+    public static final String ACC_COMMISSION_ACCOUNT_PATH = "state.data.commission_account::number";
 
 
     public static final String TOKEN_VALUE_FIELD = "amount";
     public static final String TOKEN_ACCOUNT_FIELD = "account";
 
-    public static final String TOKEN_ACCOUNT_PATH = "state.data."+TOKEN_ACCOUNT_FIELD;
-    public static final String TOKEN_VALUE_PATH = "state.data."+ TOKEN_VALUE_FIELD;
+    public static final String TOKEN_ACCOUNT_PATH = "state.data." + TOKEN_ACCOUNT_FIELD;
+    public static final String TOKEN_VALUE_PATH = "state.data." + TOKEN_VALUE_FIELD + "::number";
 
     @Test
     public void demo() throws Exception {

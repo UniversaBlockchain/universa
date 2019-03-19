@@ -192,6 +192,14 @@ public class Reference implements BiSerializable {
     final static int INHERIT = 12;
     final static int CAN_PLAY = 13;
 
+    //Operations
+    final static String[] operations = {"+", "-", "*", "/"};
+
+    final static int PLUS = 0;
+    final static int MINUS = 1;
+    final static int MULT = 2;
+    final static int DIV = 3;
+
     //Conversions
     final static int NO_CONVERSION = 0;
     final static int CONVERSION_BIG_DECIMAL = 1;  // ::number
@@ -199,7 +207,8 @@ public class Reference implements BiSerializable {
     enum compareOperandType {
         FIELD,
         CONSTSTR,
-        CONSTOTHER
+        CONSTOTHER,
+        EXPRESSION
     }
 
     private boolean isObjectMayCastToDouble(Object obj) throws Exception {
@@ -796,6 +805,12 @@ public class Reference implements BiSerializable {
         return packedCondition;
     }
 
+    private Binder parseExpression(String expression) {
+
+
+        return null;
+    }
+
     private Binder parseCondition(String condition) {
 
         int leftConversion = NO_CONVERSION;
@@ -823,7 +838,7 @@ public class Reference implements BiSerializable {
             int lastMarkPos = condition.lastIndexOf("\"");
 
             // Normal situation - operator without quotes
-            while ((operPos >= 0) && ((firstMarkPos >= 0) && (operPos > firstMarkPos) && (operPos < lastMarkPos)))
+            while ((firstMarkPos >= 0) && (operPos > firstMarkPos) && (operPos < lastMarkPos))
                 operPos = condition.indexOf(operators[i], operPos + 1);
 
             // Operator not found
@@ -842,6 +857,7 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for left operand.");
 
             String leftOperand;
+            Binder left = null;
             compareOperandType typeLeftOperand = compareOperandType.CONSTOTHER;
 
             if ((lmarkPos1 >= 0) && (lmarkPos1 != lmarkPos2)) {
@@ -850,12 +866,18 @@ public class Reference implements BiSerializable {
             }
             else {
                 leftOperand = subStrL.replaceAll("\\s+", "");
-                int firstPointPos;
-                if (((firstPointPos = leftOperand.indexOf(".")) > 0) &&
-                        (leftOperand.length() > firstPointPos + 1) &&
-                        ((leftOperand.charAt(firstPointPos + 1) < '0') ||
-                                (leftOperand.charAt(firstPointPos + 1) > '9')))
-                    typeLeftOperand = compareOperandType.FIELD;
+
+                if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+                    left = parseExpression(leftOperand);
+                    typeLeftOperand = compareOperandType.EXPRESSION;
+                } else {
+                    int firstPointPos;
+                    if (((firstPointPos = leftOperand.indexOf(".")) > 0) &&
+                            (leftOperand.length() > firstPointPos + 1) &&
+                            ((leftOperand.charAt(firstPointPos + 1) < '0') ||
+                                    (leftOperand.charAt(firstPointPos + 1) > '9')))
+                        typeLeftOperand = compareOperandType.FIELD;
+                }
             }
 
             // Parsing right operand
@@ -870,6 +892,7 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for rigth operand.");
 
             String rightOperand;
+            Binder right = null;
             compareOperandType typeRightOperand = compareOperandType.CONSTOTHER;
 
             if ((rmarkPos1 >= 0) && (rmarkPos1 != rmarkPos2)) {
@@ -878,12 +901,18 @@ public class Reference implements BiSerializable {
             }
             else {
                 rightOperand = subStrR.replaceAll("\\s+", "");
-                int firstPointPos;
-                if (((firstPointPos = rightOperand.indexOf(".")) > 0) &&
-                        (rightOperand.length() > firstPointPos + 1) &&
-                        ((rightOperand.charAt(firstPointPos + 1) < '0') ||
-                                (rightOperand.charAt(firstPointPos + 1) > '9')))
-                    typeRightOperand = compareOperandType.FIELD;
+
+                if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+                    right = parseExpression(rightOperand);
+                    typeRightOperand = compareOperandType.EXPRESSION;
+                } else {
+                    int firstPointPos;
+                    if (((firstPointPos = rightOperand.indexOf(".")) > 0) &&
+                            (rightOperand.length() > firstPointPos + 1) &&
+                            ((rightOperand.charAt(firstPointPos + 1) < '0') ||
+                                    (rightOperand.charAt(firstPointPos + 1) > '9')))
+                        typeRightOperand = compareOperandType.FIELD;
+                }
             }
 
             //if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
