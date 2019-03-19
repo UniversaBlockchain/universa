@@ -200,7 +200,6 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("queryNameContract", this::queryNameContract);
         addSecureEndpoint("getBody", this::getBody);
         addSecureEndpoint("getContract", this::getContract);
-        addSecureEndpoint("getChildren", this::getChildren);
 
         addSecureEndpoint("followerGetRate", this::followerGetRate);
         addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
@@ -321,15 +320,36 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (!node.getConfig().isPermanetMode())
             return res;
 
-        HashId origin = (HashId) params.get("origin");
-        int limit = params.getInt("limit", 100);
+        if(params.containsKey("origin") && params.containsKey("parent") || !params.containsKey("origin") && !params.containsKey("parent")) {
+            throw new IllegalArgumentException("Invalid params. Should contain ether origin or parent");
+        }
+
+        HashId id = null;
+        String getBy = null;
+        if(params.containsKey("origin")) {
+            id = (HashId) params.get("origin");
+            getBy = "state.origin";
+        }
+
+        if(params.containsKey("parent")) {
+            id = (HashId) params.get("parent");
+            getBy = "state.parent";
+        }
+
+        int limit = params.getInt("limit", node.getConfig().getQueryContractsLimit());
 
         if (limit > node.getConfig().getQueryContractsLimit())
             limit = node.getConfig().getQueryContractsLimit();
         if (limit < 1)
             limit = 1;
 
-        Object keeping = node.getLedger().getKeepingByOrigin(origin, limit);
+        int offset = params.getInt("offset", 0);
+
+        String sortBy = params.getString("sortBy", "state.createdAt");
+        String sortOrder = params.getString("sortOrder", "ASC");
+
+
+        Object keeping = node.getLedger().getKeepingBy(getBy,id, limit, offset,sortBy,sortOrder);
         if (keeping == null)
             return res;
 
@@ -338,34 +358,16 @@ public class ClientHTTPServer extends BasicHttpServer {
         else if (keeping instanceof List)
             res.put("contractIds", keeping);
 
-        return res;
-    }
+        if(getBy.equals("state.origin")) {
+            res.put("origin",id);
+        } else if(getBy.equals("state.parent")) {
+            res.put("parent",id);
+        }
 
-    private Binder getChildren(Binder params, Session session) throws IOException {
-
-        checkNode(session, true);
-
-        Binder res = new Binder();
-
-        if (!node.getConfig().isPermanetMode())
-            return res;
-
-        HashId parent = (HashId) params.get("parent");
-        int limit = params.getInt("limit", 100);
-
-        if (limit > node.getConfig().getQueryContractsLimit())
-            limit = node.getConfig().getQueryContractsLimit();
-        if (limit < 1)
-            limit = 1;
-
-        Object keeping = node.getLedger().getKeepingByParent(parent, limit);
-        if (keeping == null)
-            return res;
-
-        if (keeping instanceof byte[])
-            res.put("packedContract", keeping);
-        else if (keeping instanceof List)
-            res.put("contractIds", keeping);
+        res.put("limit",limit);
+        res.put("offset",offset);
+        res.put("sortBy",sortBy);
+        res.put("sortOrder",sortOrder);
 
         return res;
     }

@@ -31,6 +31,7 @@ import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -233,7 +234,7 @@ public class MainTest {
     }
 
     Main createMain(String name, boolean nolog) throws InterruptedException {
-        return createMain(name,"",nolog);
+        return createMain(name, "", nolog);
     }
 
     Main createMain(String name, String postfix, boolean nolog) throws InterruptedException {
@@ -276,7 +277,7 @@ public class MainTest {
     }
 
     Main createMainFromDb(String dbUrl, boolean nolog) throws InterruptedException {
-        String[] args = new String[]{"--test","--database", dbUrl, nolog ? "--nolog" : ""};
+        String[] args = new String[]{"--test", "--database", dbUrl, nolog ? "--nolog" : ""};
 
         List<Main> mm = new ArrayList<>();
 
@@ -318,10 +319,10 @@ public class MainTest {
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            mm.add(createMain("node" + (i + 1),"_dynamic_test", false));
+            mm.add(createMain("node" + (i + 1), "_dynamic_test", false));
         }
         //shutdown nodes
-        for(Main m : mm) {
+        for (Main m : mm) {
             m.shutdown();
         }
         mm.clear();
@@ -359,7 +360,7 @@ public class MainTest {
             if (!rr.state.isPending())
                 break;
         }
-        assertEquals(rr.state,ItemState.PENDING_POSITIVE);
+        assertEquals(rr.state, ItemState.PENDING_POSITIVE);
 
         contract = new Contract(universaKey);
         contract.seal();
@@ -374,10 +375,10 @@ public class MainTest {
             if (!rr.state.isPending())
                 break;
         }
-        assertEquals(rr.state,ItemState.APPROVED);
+        assertEquals(rr.state, ItemState.APPROVED);
 
         //Make 4th node KNOWN to other nodes
-        for(int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) {
             mm.get(i).node.addNode(main.myInfo);
         }
 
@@ -395,12 +396,12 @@ public class MainTest {
             if (!rr.state.isPending())
                 break;
         }
-        assertEquals(rr.state,ItemState.APPROVED);
+        assertEquals(rr.state, ItemState.APPROVED);
 //        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
 //        mm.get(0).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
 
         //Make 4th node UNKNOWN to other nodes
-        for(int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) {
             mm.get(i).node.removeNode(main.myInfo);
         }
 
@@ -417,7 +418,7 @@ public class MainTest {
             if (!rr.state.isPending())
                 break;
         }
-        assertEquals(rr.state,ItemState.PENDING_POSITIVE);
+        assertEquals(rr.state, ItemState.PENDING_POSITIVE);
 
         contract = new Contract(universaKey);
         contract.seal();
@@ -431,9 +432,9 @@ public class MainTest {
             if (!rr.state.isPending())
                 break;
         }
-        assertEquals(rr.state,ItemState.APPROVED);
+        assertEquals(rr.state, ItemState.APPROVED);
 
-        for(Main m : mm) {
+        for (Main m : mm) {
             m.shutdown();
         }
     }
@@ -486,7 +487,7 @@ public class MainTest {
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
             clientSleeps.add(rand.nextInt(100));
-            Parcel parcel = createParcelWithFreshU(client,contract,Do.listOf(myKey));
+            Parcel parcel = createParcelWithFreshU(client, contract, Do.listOf(myKey));
             parcels.add(parcel);
         }
 
@@ -532,7 +533,7 @@ public class MainTest {
             Thread th = new Thread(() -> {
                 try {
                     //Thread.sleep(nodeSleeps.get(finalI));
-                    Thread.sleep(nodeSleeps.get(finalI)  );
+                    Thread.sleep(nodeSleeps.get(finalI));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
@@ -584,7 +585,7 @@ public class MainTest {
         List<PrivateKey> nodeKeysNew = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             mm.add(createMain("node" + (i + 1), "_dynamic_test", false));
-            if(i < 3)
+            if (i < 3)
                 nodeKeys.add(new PrivateKey(Do.read("./src/test_node_config_v2_dynamic_test/node" + (i + 1) + "/tmp/node2_" + (i + 1) + ".private.unikey")));
             nodeKeysNew.add(new PrivateKey(Do.read("./src/test_node_config_v2_dynamic_test/node" + (i + 1) + "/tmp/node2_" + (i + 1) + ".private.unikey")));
         }
@@ -597,7 +598,7 @@ public class MainTest {
         }
         mm.clear();
 
-        Contract configContract = createNetConfigContract(netConfig,issuerKey);
+        Contract configContract = createNetConfigContract(netConfig, issuerKey);
 
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
@@ -611,8 +612,8 @@ public class MainTest {
 
         Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
 
-        Parcel parcel = createParcelWithFreshU(client, configContract,Do.listOf(issuerKey));
-        client.registerParcelWithState(parcel.pack(),15000);
+        Parcel parcel = createParcelWithFreshU(client, configContract, Do.listOf(issuerKey));
+        client.registerParcelWithState(parcel.pack(), 15000);
 
         ItemResult rr;
         while (true) {
@@ -624,10 +625,10 @@ public class MainTest {
         }
         assertEquals(rr.state, ItemState.APPROVED);
 
-        configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
+        configContract = createNetConfigContract(configContract, netConfigNew, nodeKeys);
 
-        parcel = createParcelWithFreshU(client, configContract,nodeKeys);
-        client.registerParcelWithState(parcel.pack(),15000);
+        parcel = createParcelWithFreshU(client, configContract, nodeKeys);
+        client.registerParcelWithState(parcel.pack(), 15000);
         while (true) {
 
             rr = client.getState(configContract.getId());
@@ -640,10 +641,10 @@ public class MainTest {
         for (Main m : mm) {
             assertEquals(m.config.getPositiveConsensus(), 3);
         }
-        configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
+        configContract = createNetConfigContract(configContract, netConfig, nodeKeys);
 
-        parcel = createParcelWithFreshU(client, configContract,nodeKeys);
-        client.registerParcelWithState(parcel.pack(),15000);
+        parcel = createParcelWithFreshU(client, configContract, nodeKeys);
+        client.registerParcelWithState(parcel.pack(), 15000);
         while (true) {
 
             rr = client.getState(configContract.getId());
@@ -665,17 +666,17 @@ public class MainTest {
     private Contract createNetConfigContract(Contract contract, List<NodeInfo> netConfig, Collection<PrivateKey> currentConfigKeys) throws IOException {
         contract = contract.createRevision();
         ListRole listRole = new ListRole("owner");
-        for(NodeInfo ni: netConfig) {
+        for (NodeInfo ni : netConfig) {
             SimpleRole role = new SimpleRole(ni.getName());
             contract.registerRole(role);
             role.addKeyRecord(new KeyRecord(ni.getPublicKey()));
             listRole.addRole(role);
         }
-        listRole.setQuorum(netConfig.size()-1);
+        listRole.setQuorum(netConfig.size() - 1);
         contract.registerRole(listRole);
-        contract.getStateData().set("net_config",netConfig);
+        contract.getStateData().set("net_config", netConfig);
         List<KeyRecord> creatorKeys = new ArrayList<>();
-        for(PrivateKey key : currentConfigKeys) {
+        for (PrivateKey key : currentConfigKeys) {
             creatorKeys.add(new KeyRecord(key.getPublicKey()));
             contract.addSignerKey(key);
         }
@@ -684,29 +685,29 @@ public class MainTest {
         return contract;
     }
 
-    private Contract createNetConfigContract(List<NodeInfo> netConfig,PrivateKey issuerKey) throws IOException {
+    private Contract createNetConfigContract(List<NodeInfo> netConfig, PrivateKey issuerKey) throws IOException {
         Contract contract = new Contract();
         contract.setIssuerKeys(issuerKey.getPublicKey());
         contract.registerRole(new RoleLink("creator", "issuer"));
         ListRole listRole = new ListRole("owner");
-        for(NodeInfo ni: netConfig) {
+        for (NodeInfo ni : netConfig) {
             SimpleRole role = new SimpleRole(ni.getName());
             contract.registerRole(role);
             role.addKeyRecord(new KeyRecord(ni.getPublicKey()));
             listRole.addRole(role);
         }
-        listRole.setQuorum(netConfig.size()-1);
+        listRole.setQuorum(netConfig.size() - 1);
         contract.registerRole(listRole);
-        RoleLink ownerLink = new RoleLink("ownerlink","owner");
+        RoleLink ownerLink = new RoleLink("ownerlink", "owner");
         ChangeOwnerPermission changeOwnerPermission = new ChangeOwnerPermission(ownerLink);
-        HashMap<String,Object> fieldsMap = new HashMap<>();
-        fieldsMap.put("net_config",null);
-        Binder modifyDataParams = Binder.of("fields",fieldsMap);
-        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink,modifyDataParams);
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("net_config", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
         contract.addPermission(changeOwnerPermission);
         contract.addPermission(modifyDataPermission);
         contract.setExpiresAt(ZonedDateTime.now().plusYears(40));
-        contract.getStateData().set("net_config",netConfig);
+        contract.getStateData().set("net_config", netConfig);
         contract.addSignerKey(issuerKey);
         contract.seal();
         return contract;
@@ -731,13 +732,13 @@ public class MainTest {
         }
         System.out.println("---------- verbose nothing ---------------");
 
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
 
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract, Do.listOf(myKey));
         client.registerParcelWithState(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -747,12 +748,12 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
+        Parcel parcel2 = createParcelWithFreshU(client, testContract2, Do.listOf(myKey));
         client.registerParcelWithState(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
-        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getVerboseLevel());
-        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.node.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.BASE, main.network.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.BASE, main.node.getVerboseLevel());
 
         main.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         System.out.println("---------- verbose nothing ---------------");
@@ -760,12 +761,12 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
+        Parcel parcel3 = createParcelWithFreshU(client, testContract3, Do.listOf(myKey));
         client.registerParcelWithState(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
 
         mm.forEach(x -> x.shutdown());
     }
@@ -788,12 +789,12 @@ public class MainTest {
         }
         System.out.println("---------- verbose nothing ---------------");
 
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
 
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract, Do.listOf(myKey));
         client.registerParcelWithState(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -803,11 +804,11 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
+        Parcel parcel2 = createParcelWithFreshU(client, testContract2, Do.listOf(myKey));
         client.registerParcelWithState(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
-        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getUDPVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.BASE, main.network.getUDPVerboseLevel());
 
         main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
 
@@ -817,11 +818,11 @@ public class MainTest {
         Contract testContract4 = new Contract(myKey);
         testContract4.seal();
         assertTrue(testContract4.isOk());
-        Parcel parcel4 = createParcelWithFreshU(client, testContract4,Do.listOf(myKey));
+        Parcel parcel4 = createParcelWithFreshU(client, testContract4, Do.listOf(myKey));
         client.registerParcelWithState(parcel4.pack(), 1000);
         ItemResult itemResult4 = client.getState(parcel4.getPayloadContract().getId());
 
-        assertEquals (DatagramAdapter.VerboseLevel.DETAILED, main.network.getUDPVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.DETAILED, main.network.getUDPVerboseLevel());
 
         main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         System.out.println("---------- verbose nothing ---------------");
@@ -829,11 +830,11 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
+        Parcel parcel3 = createParcelWithFreshU(client, testContract3, Do.listOf(myKey));
         client.registerParcelWithState(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
-        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
+        assertEquals(DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
 
         mm.forEach(x -> x.shutdown());
     }
@@ -862,7 +863,7 @@ public class MainTest {
         }
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract, Do.listOf(myKey));
         client.registerParcelWithState(parcel.pack(), 5000);
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
@@ -891,8 +892,8 @@ public class MainTest {
         }
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
-        assertEquals (ItemState.APPROVED, itemResult.state);
-        assertEquals (ItemState.APPROVED, itemResult2.state);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertEquals(ItemState.APPROVED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
     }
@@ -911,7 +912,7 @@ public class MainTest {
             } catch (Exception e) {
             }
         });
-        for (int i=0; i < 50; i++) {
+        for (int i = 0; i < 50; i++) {
             checkShutdown();
             System.out.println("iteration " + i);
             Thread.sleep(5000);
@@ -949,7 +950,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
 
-        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract, Do.listOf(myKey));
         client.registerParcel(parcel.pack());
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
@@ -980,15 +981,15 @@ public class MainTest {
         itemResult = client.getState(parcel.getPayloadContract().getId());
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
-        assertEquals (ItemState.APPROVED, itemResult.state);
-        assertEquals (ItemState.APPROVED, itemResult2.state);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertEquals(ItemState.APPROVED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
     }
 
     public synchronized Parcel createParcelWithFreshU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
         Set<PublicKey> ownerKeys = new HashSet();
-        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
+        keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
         Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
         stepaU.check();
         stepaU.traceErrors();
@@ -1071,6 +1072,7 @@ public class MainTest {
     }
 
     private static final int MAX_PACKET_SIZE = 512;
+
     protected void sendBlock(UDPAdapter.Packet packet, DatagramSocket socket, NodeInfo destination) throws InterruptedException {
 
         byte[] out = packet.makeByteArray();
@@ -1125,7 +1127,7 @@ public class MainTest {
 
     @Ignore
     @Test
-    public void udpDisruptionTest() throws Exception{
+    public void udpDisruptionTest() throws Exception {
         List<Main> mm = new ArrayList<>();
         final int NODE_COUNT = 4;
         final int PORT_BASE = 12000;
@@ -1150,15 +1152,15 @@ public class MainTest {
                 try {
                     NodeInfo source = mm.get(finalI).myInfo;
                     NodeInfo destination = mm.get(finalJ).myInfo;
-                    DatagramSocket socket = new DatagramSocket(PORT_BASE+ finalI*NODE_COUNT+finalJ);
+                    DatagramSocket socket = new DatagramSocket(PORT_BASE + finalI * NODE_COUNT + finalJ);
 
                     while (alive) {
                         if (TEST_MODE == UDPAdapter.PacketTypes.HELLO)
-                            sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                            sendHello(source, destination, mm.get(finalI).network.getUDPAdapter(), socket);
                         else if (TEST_MODE == UDPAdapter.PacketTypes.WELCOME)
-                            sendWelcome(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                            sendWelcome(source, destination, mm.get(finalI).network.getUDPAdapter(), socket);
                         else
-                            sendDataGarbage(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                            sendDataGarbage(source, destination, mm.get(finalI).network.getUDPAdapter(), socket);
                         Thread.sleep(4);
                     }
                 } catch (Exception e) {
@@ -1169,21 +1171,21 @@ public class MainTest {
 
         List<Thread> threadsList = new ArrayList<>();
         List<TestRunnable> runnableList = new ArrayList<>();
-        for(int i = 0; i < NODE_COUNT; i++) {
-            for(int j = 0; j < NODE_COUNT;j++) {
-                if(j == i)
+        for (int i = 0; i < NODE_COUNT; i++) {
+            for (int j = 0; j < NODE_COUNT; j++) {
+                if (j == i)
                     continue;
                 final int finalI = i;
                 final int finalJ = j;
                 TestRunnable runnableSingle = new TestRunnable();
                 runnableList.add(runnableSingle);
                 threadsList.add(
-                new Thread(() -> {
-                    runnableSingle.finalI = finalI;
-                    runnableSingle.finalJ = finalJ;
-                    runnableSingle.run();
+                        new Thread(() -> {
+                            runnableSingle.finalI = finalI;
+                            runnableSingle.finalJ = finalJ;
+                            runnableSingle.run();
 
-                }));
+                        }));
             }
         }
 
@@ -1193,17 +1195,17 @@ public class MainTest {
         Thread.sleep(5000);
 
         PrivateKey myKey = TestKeys.privateKey(0);
-        Client client = new Client(myKey,mm.get(0).myInfo,null);
+        Client client = new Client(myKey, mm.get(0).myInfo, null);
 
         Contract contract = new Contract(myKey);
         contract.seal();
 
-        Parcel parcel = createParcelWithFreshU(client,contract,Do.listOf(myKey));
-        client.registerParcelWithState(parcel.pack(),60000);
+        Parcel parcel = createParcelWithFreshU(client, contract, Do.listOf(myKey));
+        client.registerParcelWithState(parcel.pack(), 60000);
         ItemResult rr;
-        while(true) {
+        while (true) {
             rr = client.getState(contract.getId());
-            if(!rr.state.isPending())
+            if (!rr.state.isPending())
                 break;
         }
 
@@ -1246,14 +1248,14 @@ public class MainTest {
         List<Contract> newContracts = new ArrayList<>();
 
         final int N = 100;
-        for(int i = 0; i < N; i++) {
+        for (int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
             origins.add(origin);
 
             Contract newRevision = origin.createRevision(myKey);
 
-            if(i < N/2) {
+            if (i < N / 2) {
                 //ACCEPTED
                 newRevision.setOwnerKeys(TestKeys.privateKey(NODE_COUNT + 1).getPublicKey());
             } else {
@@ -1267,16 +1269,16 @@ public class MainTest {
 
             newContracts.add(newContract);
             newRevisions.add(newRevision);
-            int unfinishedNodesCount = random.nextInt(2)+1;
+            int unfinishedNodesCount = random.nextInt(2) + 1;
             Set<Integer> unfinishedNodesNumbers = new HashSet<>();
-            while(unfinishedNodesCount > unfinishedNodesNumbers.size()) {
-                unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT)+1);
+            while (unfinishedNodesCount > unfinishedNodesNumbers.size()) {
+                unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT) + 1);
             }
 
-            System.out.println("item# "+ newRevision.getId().toBase64String().substring(0,6) + " nodes " + unfinishedNodesNumbers.toString());
+            System.out.println("item# " + newRevision.getId().toBase64String().substring(0, 6) + " nodes " + unfinishedNodesNumbers.toString());
             int finalI = i;
-            for(int j = 0; j < NODE_COUNT;j++) {
-                boolean finished = !unfinishedNodesNumbers.contains(j+1);
+            for (int j = 0; j < NODE_COUNT; j++) {
+                boolean finished = !unfinishedNodesNumbers.contains(j + 1);
                 Ledger ledger = ledgers.get(j);
 
 
@@ -1292,8 +1294,8 @@ public class MainTest {
                 newContractRecord.setExpiresAt(newContract.getExpiresAt());
                 newContractRecord.setCreatedAt(newContract.getCreatedAt());
 
-                if(finished) {
-                    if(finalI < N/2) {
+                if (finished) {
+                    if (finalI < N / 2) {
                         originRecord.setState(ItemState.REVOKED);
                         newContractRecord.setState(ItemState.APPROVED);
                         newRevisionRecord.setState(ItemState.APPROVED);
@@ -1307,14 +1309,14 @@ public class MainTest {
                     originRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
                     newContractRecord.setState(ItemState.LOCKED_FOR_CREATION);
                     newContractRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
-                    newRevisionRecord.setState(finalI < N/2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+                    newRevisionRecord.setState(finalI < N / 2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
                 }
 
                 originRecord.save();
-                ledger.putItem(originRecord,origin, Instant.now().plusSeconds(3600*24));
+                ledger.putItem(originRecord, origin, Instant.now().plusSeconds(3600 * 24));
                 newRevisionRecord.save();
-                ledger.putItem(newRevisionRecord,newRevision, Instant.now().plusSeconds(3600*24));
-                if(newContractRecord.getState() == ItemState.UNDEFINED) {
+                ledger.putItem(newRevisionRecord, newRevision, Instant.now().plusSeconds(3600 * 24));
+                if (newContractRecord.getState() == ItemState.UNDEFINED) {
                     newContractRecord.destroy();
                 } else {
                     newContractRecord.save();
@@ -1336,13 +1338,13 @@ public class MainTest {
 
         while (true) {
             try {
-                for(int i =0; i < NODE_COUNT; i++) {
+                for (int i = 0; i < NODE_COUNT; i++) {
                     clients.get(i).getState(newRevisions.get(0));
                 }
                 break;
             } catch (ClientError e) {
                 Thread.sleep(1000);
-                mm.stream().forEach( m -> System.out.println("node#" +m.myInfo.getNumber() + " is " +  (m.node.isSanitating() ? "" : "not ") + "sanitating"));
+                mm.stream().forEach(m -> System.out.println("node#" + m.myInfo.getNumber() + " is " + (m.node.isSanitating() ? "" : "not ") + "sanitating"));
             }
         }
 
@@ -1351,10 +1353,10 @@ public class MainTest {
         ItemResult ir = clients.get(0).register(contract.getPackedTransaction(), 10000);
         ir.errors.toString();
 
-        for(int i = 0; i < N; i++) {
-            ItemResult rr = clients.get(i%NODE_COUNT).getState(newRevisions.get(i).getId());
-            ItemState targetState = i < N/2 ? ItemState.APPROVED : ItemState.DECLINED;
-            assertEquals(rr.state,targetState);
+        for (int i = 0; i < N; i++) {
+            ItemResult rr = clients.get(i % NODE_COUNT).getState(newRevisions.get(i).getId());
+            ItemState targetState = i < N / 2 ? ItemState.APPROVED : ItemState.DECLINED;
+            assertEquals(rr.state, targetState);
         }
         Thread.sleep(1000);
         mm.stream().forEach(m -> m.shutdown());
@@ -1373,7 +1375,7 @@ public class MainTest {
 
     private void clearLedger(String url) throws Exception {
         Properties properties = new Properties();
-        try(DbPool dbPool = new DbPool(url, properties, 64)) {
+        try (DbPool dbPool = new DbPool(url, properties, 64)) {
             try (PooledDb db = dbPool.db()) {
                 try (PreparedStatement statement = db.statement("delete from items;")
                 ) {
@@ -1393,16 +1395,16 @@ public class MainTest {
     public void test123() throws Exception {
         ZonedDateTime now = ZonedDateTime.now();
         DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
-        builder.appendValue(ChronoField.DAY_OF_MONTH,2);
+        builder.appendValue(ChronoField.DAY_OF_MONTH, 2);
         builder.appendLiteral("/");
-        builder.appendValue(ChronoField.MONTH_OF_YEAR,2);
+        builder.appendValue(ChronoField.MONTH_OF_YEAR, 2);
         builder.appendLiteral("/");
-        builder.appendValue(ChronoField.YEAR,4);
+        builder.appendValue(ChronoField.YEAR, 4);
 
         System.out.println(now.format(builder.toFormatter()));
         System.out.println(now.truncatedTo(ChronoUnit.DAYS).format(builder.toFormatter()));
-        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth()-1).format(builder.toFormatter()));
-        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth()-1).minusMonths(1).format(builder.toFormatter()));
+        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth() - 1).format(builder.toFormatter()));
+        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth() - 1).minusMonths(1).format(builder.toFormatter()));
     }
 
     @Ignore
@@ -1420,7 +1422,7 @@ public class MainTest {
         //testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
         testSpace.nodes.get(0).config.getAddressesWhiteList().add(new KeyAddress(issuerKey.getPublicKey(), 0, true));
 
-        while(testSpace.client.getStats(null).getIntOrThrow("uptime") >= uptime) {
+        while (testSpace.client.getStats(null).getIntOrThrow("uptime") >= uptime) {
             Thread.sleep(500);
         }
 
@@ -1428,17 +1430,17 @@ public class MainTest {
             Instant now = Instant.now();
             Contract contract = new Contract(issuerKey);
             contract.seal();
-            testSpace.client.register(contract.getPackedTransaction(),1500);
+            testSpace.client.register(contract.getPackedTransaction(), 1500);
             contract = new Contract(issuerKey);
             contract.seal();
-            testSpace.client.register(contract.getPackedTransaction(),1500);
+            testSpace.client.register(contract.getPackedTransaction(), 1500);
 
-            Thread.sleep(4000-(Instant.now().toEpochMilli()-now.toEpochMilli()));
+            Thread.sleep(4000 - (Instant.now().toEpochMilli() - now.toEpochMilli()));
             Binder binder = testSpace.client.getStats(90);
 
-            assertEquals(binder.getIntOrThrow("smallIntervalApproved"),2);
-            int target = i < 15 ? (i+1)*2 : 30;
-            assertTrue(binder.getIntOrThrow("bigIntervalApproved") <= target && binder.getIntOrThrow("bigIntervalApproved") >= target-2);
+            assertEquals(binder.getIntOrThrow("smallIntervalApproved"), 2);
+            int target = i < 15 ? (i + 1) * 2 : 30;
+            assertTrue(binder.getIntOrThrow("bigIntervalApproved") <= target && binder.getIntOrThrow("bigIntervalApproved") >= target - 2);
         }
 
         testSpace.nodes.forEach(x -> x.shutdown());
@@ -1452,23 +1454,23 @@ public class MainTest {
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         //shutdown one of nodes
-        int absentNode = testSpace.nodes.size()-1;
+        int absentNode = testSpace.nodes.size() - 1;
         testSpace.nodes.get(absentNode).shutdown();
         testSpace.nodes.remove(absentNode);
 
         //register contract in non full network
         Contract contract = new Contract(issuerKey);
         contract.seal();
-        testSpace.client.register(contract.getPackedTransaction(),1500);
-        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+        testSpace.client.register(contract.getPackedTransaction(), 1500);
+        assertEquals(testSpace.client.getState(contract.getId()).state, ItemState.APPROVED);
 
 
         //recreate network and make sure contract is still APPROVED
-        testSpace.nodes.forEach(n->n.shutdown());
+        testSpace.nodes.forEach(n -> n.shutdown());
         Thread.sleep(2000);
         testSpace = prepareTestSpace(issuerKey);
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(contract.getId()).state, ItemState.APPROVED);
 
 
         StateRecord r0 = testSpace.nodes.get(0).node.getLedger().getRecord(contract.getId());
@@ -1481,26 +1483,25 @@ public class MainTest {
         r1.save();
 
         //create client with absent node and check the contract
-        Client absentNodeClient = new Client(testSpace.myKey,testSpace.nodes.get(absentNode).myInfo,null);
-        assertEquals(absentNodeClient.getState(contract.getId()).state,ItemState.UNDEFINED);
+        Client absentNodeClient = new Client(testSpace.myKey, testSpace.nodes.get(absentNode).myInfo, null);
+        assertEquals(absentNodeClient.getState(contract.getId()).state, ItemState.UNDEFINED);
 
         //start resync with a command
         absentNodeClient.resyncItem(contract.getId());
 
         //make sure resync didn't affect others
-        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(contract.getId()).state, ItemState.APPROVED);
 
 
         //wait for new status
         ItemResult rr;
-        while(true) {
+        while (true) {
             rr = absentNodeClient.getState(contract.getId());
-            if(!rr.state.isPending())
+            if (!rr.state.isPending())
                 break;
             Thread.sleep(500);
         }
-        assertEquals(rr.state,ItemState.APPROVED);
-
+        assertEquals(rr.state, ItemState.APPROVED);
 
 
         Average createdAverage = new Average();
@@ -1515,8 +1516,8 @@ public class MainTest {
         expiredAverage.update(ir1.expiresAt.toEpochSecond());
         expiredAverage.update(ir2.expiresAt.toEpochSecond());
 
-        assertEquals(rr.createdAt.toEpochSecond(),(long)createdAverage.average());
-        assertEquals(rr.expiresAt.toEpochSecond(),(long)expiredAverage.average());
+        assertEquals(rr.createdAt.toEpochSecond(), (long) createdAverage.average());
+        assertEquals(rr.expiresAt.toEpochSecond(), (long) expiredAverage.average());
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
@@ -1526,7 +1527,7 @@ public class MainTest {
     public void resyncFromClient() throws Exception {
         TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.get(testSpace.nodes.size() - 1).shutdown();
         Contract contractMoney = ContractsService.createTokenContract(
                 new HashSet<>(asList(TestKeys.privateKey(1))),
                 new HashSet<>(asList(TestKeys.publicKey(1))),
@@ -1536,39 +1537,39 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, ir1.state);
 
         //recreate nodes
-        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+        for (int i = 0; i < testSpace.nodes.size() - 1; ++i)
             testSpace.nodes.get(i).shutdown();
         Thread.sleep(2000);
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         System.out.println("\n========== resyncing ==========\n");
-        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(contractMoney.getId());
+        testSpace.nodes.get(testSpace.clients.size() - 1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        testSpace.clients.get(testSpace.clients.size() - 1).resyncItem(contractMoney.getId());
         long millisToWait = 60000;
         long waitPeriod = 2000;
         ItemResult ir = null;
         while (millisToWait > 0) {
             Thread.sleep(waitPeriod);
             millisToWait -= waitPeriod;
-            ir = testSpace.clients.get(testSpace.clients.size()-1).getState(contractMoney.getId());
+            ir = testSpace.clients.get(testSpace.clients.size() - 1).getState(contractMoney.getId());
             if (ir.state == ItemState.APPROVED)
                 break;
         }
         assertEquals(ItemState.APPROVED, ir.state);
-        testSpace.nodes.forEach(n->n.shutdown());
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
     @Test
     public void resyncSubItemsTest() throws Exception {
         TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.get(testSpace.nodes.size() - 1).shutdown();
 
         Contract contractMoney = ContractsService.createTokenContract(
-            new HashSet<>(asList(TestKeys.privateKey(1))),
-            new HashSet<>(asList(TestKeys.publicKey(1))),
-            new BigDecimal("9000")
+                new HashSet<>(asList(TestKeys.privateKey(1))),
+                new HashSet<>(asList(TestKeys.publicKey(1))),
+                new BigDecimal("9000")
         );
         ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, ir1.state);
@@ -1607,13 +1608,13 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.client.getState(contractMoney.getId()).state);
 
         //recreate nodes
-        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+        for (int i = 0; i < testSpace.nodes.size() - 1; ++i)
             testSpace.nodes.get(i).shutdown();
         Thread.sleep(2000);
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
-        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(splitNest.getId());
+        testSpace.clients.get(testSpace.clients.size() - 1).resyncItem(splitNest.getId());
         Thread.sleep(2000);
 
         for (Contract c : splitBatch.getNew()) {
@@ -1631,7 +1632,7 @@ public class MainTest {
         }
 
         //now join all
-        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        testSpace.nodes.get(testSpace.clients.size() - 1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         Contract joinAll = splitNest.createRevision();
         joinAll.getStateData().set("amount", "9000");
         splittedList.forEach(c -> joinAll.addRevokingItems(c));
@@ -1640,8 +1641,8 @@ public class MainTest {
             joinSum = joinSum.add(new Decimal(c.getStateData().getStringOrThrow("amount")));
         joinAll.addSignerKey(TestKeys.privateKey(1));
         joinAll.seal();
-        System.out.println("client: " + testSpace.clients.get(testSpace.clients.size()-1).getUrl());
-        ItemResult irJoin = testSpace.clients.get(testSpace.clients.size()-1).register(joinAll.getPackedTransaction(), 5000);
+        System.out.println("client: " + testSpace.clients.get(testSpace.clients.size() - 1).getUrl());
+        ItemResult irJoin = testSpace.clients.get(testSpace.clients.size() - 1).register(joinAll.getPackedTransaction(), 5000);
         Thread.sleep(1000);
         assertEquals(ItemState.APPROVED, irJoin.state);
         System.out.println("joinAll amount: " + joinAll.getStateData().getStringOrThrow("amount"));
@@ -1666,12 +1667,12 @@ public class MainTest {
 
         Contract contract = new Contract(TestKeys.privateKey(3));
         contract.seal();
-        testSpace.client.register(contract.getPackedTransaction(),8000);
+        testSpace.client.register(contract.getPackedTransaction(), 8000);
         Thread.sleep(2000);
-        testSpace.client.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING,DatagramAdapter.VerboseLevel.DETAILED,DatagramAdapter.VerboseLevel.NOTHING);
+        testSpace.client.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING);
         contract = new Contract(TestKeys.privateKey(3));
         contract.seal();
-        testSpace.client.register(contract.getPackedTransaction(),8000);
+        testSpace.client.register(contract.getPackedTransaction(), 8000);
 
         testSpace.nodes.forEach(x -> x.shutdown());
     }
@@ -1746,7 +1747,7 @@ public class MainTest {
         Set<PublicKey> issuerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(1)));
         Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
 
-        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("1000000"));
+        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("1000000"));
         tokenContract.check();
         tokenContract.traceErrors();
 
@@ -1770,7 +1771,7 @@ public class MainTest {
         assertEquals(splitJoinParams.get("min_unit"), "0.01");
         assertEquals(splitJoinParams.get("field_name"), "amount");
         assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
-        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+        assertEquals(((List) splitJoinParams.get("join_match_fields")).get(0), "state.origin");
 
         assertTrue(tokenContract.isPermitted("revoke", ownerPublicKeys));
         assertTrue(tokenContract.isPermitted("revoke", issuerPublicKeys));
@@ -1824,7 +1825,7 @@ public class MainTest {
         assertEquals(splitJoinParams.get("min_unit"), "0.01");
         assertEquals(splitJoinParams.get("field_name"), "amount");
         assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
-        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+        assertEquals(((List) splitJoinParams.get("join_match_fields")).get(0), "state.origin");
 
 
         assertTrue(emittedContract.isPermitted("revoke", ownerPublicKeys));
@@ -1862,7 +1863,7 @@ public class MainTest {
         Set<PublicKey> ownerPublicKeys = new HashSet<>(asList(TestKeys.publicKey(2)));
         Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(asList(TestKeys.privateKey(2)));
 
-        Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, new BigDecimal("100"));
+        Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys, ownerPublicKeys, new BigDecimal("100"));
         contractC.check();
         contractC.traceErrors();
 
@@ -1947,7 +1948,7 @@ public class MainTest {
         assertEquals(splitJoinParams.get("min_unit"), 1);
         assertEquals(splitJoinParams.get("field_name"), "amount");
         assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
-        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+        assertEquals(((List) splitJoinParams.get("join_match_fields")).get(0), "state.origin");
 
         assertTrue(shareContract.isPermitted("revoke", ownerPublicKeys));
         assertTrue(shareContract.isPermitted("revoke", issuerPublicKeys));
@@ -2140,7 +2141,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach( m -> {
+        testSpace.nodes.forEach(m -> {
             m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
             m.config.setIsFreeRegistrationsAllowedFromYaml(true);
         });
@@ -2304,9 +2305,9 @@ public class MainTest {
         System.out.println("callback_rate: " + followerInfo.getString("callback_rate", ""));
 
         assertNotNull(followerInfo);
-        assertEquals(followerInfo.size(),9);
+        assertEquals(followerInfo.size(), 9);
 
-        assertEquals(followerInfo.getInt("paid_U", 0),followerContract.getStateData().get("paid_U"));
+        assertEquals(followerInfo.getInt("paid_U", 0), followerContract.getStateData().get("paid_U"));
         assertTrue(followerInfo.getDouble("prepaid_OD") == followerContract.getPrepaidOriginsDays().doubleValue());
         assertEquals(followerInfo.getLong("prepaid_from", 0), followerContract.getStateData().get("prepaid_from"));
         assertEquals(followerInfo.getInt("followed_origins", 0), followerContract.getStateData().get("followed_origins"));
@@ -2361,7 +2362,7 @@ public class MainTest {
 
         mm.forEach(x -> x.shutdown());
 
-     }
+    }
 
     @Test
     public void testSwapContractsApi() throws Exception {
@@ -2443,10 +2444,10 @@ public class MainTest {
         Contract newDelorean = null;
         Contract newLamborghini = null;
         for (Contract c : swapContract.getNew()) {
-            if(c.getParent().equals(delorean.getId())) {
+            if (c.getParent().equals(delorean.getId())) {
                 newDelorean = c;
             }
-            if(c.getParent().equals(lamborghini.getId())) {
+            if (c.getParent().equals(lamborghini.getId())) {
                 newLamborghini = c;
             }
         }
@@ -2578,8 +2579,8 @@ public class MainTest {
         Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
-        Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
-        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> llcPrivateKeys = new HashSet<>(); //issuer
+        Set<PrivateKey> thirdPartyPrivateKeys = new HashSet<>();
 
         llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -2609,7 +2610,7 @@ public class MainTest {
 
         Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
 
-        List <String> listConditions = new ArrayList<>();
+        List<String> listConditions = new ArrayList<>();
         listConditions.add("ref.definition.issuer == \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5\n" +
                 "          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M\n" +
                 "          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+\n" +
@@ -2661,6 +2662,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
 
     }
+
     protected static final String ROOT_PATH = "./src/test_contracts/";
 
 
@@ -2684,7 +2686,7 @@ public class MainTest {
                     //assertEquals(ItemState.APPROVED, itemResult.state);
                     if (itemResult.state != ItemState.APPROVED) {
                         System.out.println("U: node " + m.node + " result: " + itemResult);
-                        needRecreateUContractNum ++;
+                        needRecreateUContractNum++;
                     }
                 } catch (TimeoutException e) {
                     System.out.println("ping ");
@@ -2693,11 +2695,11 @@ public class MainTest {
 //                    System.out.println(n.traceParcelProcessors());
 //                    System.out.println(n.traceItemProcessors());
                     System.out.println("U: node " + m.node + " timeout: ");
-                    needRecreateUContractNum ++;
+                    needRecreateUContractNum++;
                 }
             }
             int recreateBorder = testSpace.nodes.size() - testSpace.node.config.getPositiveConsensus() - 1;
-            if(recreateBorder < 0)
+            if (recreateBorder < 0)
                 recreateBorder = 0;
             if (needRecreateUContractNum > recreateBorder) {
                 testSpace.uContract = null;
@@ -2712,6 +2714,7 @@ public class MainTest {
 
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
         Config config = configForProvider;
+
         @Override
         public Set<KeyAddress> getUIssuerKeys() {
             return config.getUIssuerKeys();
@@ -2741,7 +2744,7 @@ public class MainTest {
         @Override
         public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
             Set<PublicKey> set = new HashSet<>();
-            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+            if (extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
                 set.add(config.getAuthorizedNameServiceCenterKey());
             }
             return set;
@@ -2764,211 +2767,9 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
 
-        String name = "test"+Instant.now().getEpochSecond();
-
-
-        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
-        uns.addSignerKey(authorizedNameServiceKey);
-
-        UnsName unsName = new UnsName(name, "test description", "http://test.com");
-        unsName.setUnsReducedName(name);
-        UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
-        unsName.addUnsRecord(unsRecord);
-        uns.addUnsName(unsName);
-
-        uns.setNodeInfoProvider(nodeInfoProvider);
-        uns.seal();
-        uns.addSignatureToSeal(randomPrivKey1);
-        uns.addSignatureToSeal(TestKeys.privateKey(8));
-        uns.check();
-        uns.traceErrors();
-
-
-        UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
-        uns2.addSignerKey(authorizedNameServiceKey);
-
-        UnsName unsName2 = new UnsName( name, "test description", "http://test.com");
-        unsName2.setUnsReducedName(name);
-        UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
-        unsName2.addUnsRecord(unsRecord2);
-        uns2.addUnsName(unsName2);
-
-        uns2.setNodeInfoProvider(nodeInfoProvider);
-        uns2.seal();
-        uns2.addSignatureToSeal(randomPrivKey2);
-        uns2.addSignatureToSeal(TestKeys.privateKey(8));
-        uns2.check();
-        uns2.traceErrors();
-
-        UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
-        uns3.addSignerKey(authorizedNameServiceKey);
-
-        UnsName unsName3 = new UnsName( name, "test description", "http://test.com");
-        unsName3.setUnsReducedName(name);
-        UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
-        unsName3.addUnsRecord(unsRecord3);
-        uns3.addUnsName(unsName3);
-
-        uns3.setNodeInfoProvider(nodeInfoProvider);
-        uns3.seal();
-        uns3.addSignatureToSeal(randomPrivKey3);
-        uns3.addSignatureToSeal(TestKeys.privateKey(8));
-        uns3.check();
-        uns3.traceErrors();
-
-        //REGISTER UNS1
-        Contract paymentContract = getApprovedUContract(testSpace);
-
-
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
-
-        testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.uContractLock) {
-            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
-
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
-
-
-        //REVOKE UNS1
-        Contract revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
-        revokingContract.addRevokingItems(uns);
-        revokingContract.seal();
-
-        paymentContract = getApprovedUContract(testSpace);
-        Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
-
-        testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.uContractLock) {
-            testSpace.uContract = parcel.getPaymentContract();
-        }
-        // wait parcel
-        testSpace.node.node.waitParcel(parcel.getId(), 8000);
-
-        ItemResult ir = testSpace.node.node.waitItem(parcel.getPayload().getContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, ir.state);
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(uns.getId(), 8000).state);
-
-        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
-
-        //REGISTER UNS2
-        paymentContract = getApprovedUContract(testSpace);
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
-
-        testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.uContractLock) {
-            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
-
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
-
-        //SHUTDOWN LAST NODE
-        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
-        Thread.sleep(4000);
-
-        //REVOKE UNS2
-        revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
-        revokingContract.addRevokingItems(uns2);
-        revokingContract.seal();
-
-        paymentContract = getApprovedUContract(testSpace);
-        parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
-
-        testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.uContractLock) {
-            testSpace.uContract = parcel.getPaymentContract();
-        }
-        // wait parcel
-        testSpace.node.node.waitParcel(parcel.getId(), 8000);
-
-        ir = testSpace.node.node.waitItem(parcel.getPayload().getContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, ir.state);
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(uns2.getId(), 8000).state);
-
-
-        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
-        //RECREATE NODES
-        testSpace.nodes.forEach(m->m.shutdown());
-        Thread.sleep(4000);
-        testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
-
-        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
-        //LAST NODE MISSED UNS2 REVOKE
-        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName()));
-
-        //REGISTER UNS3
-        paymentContract = getApprovedUContract(testSpace);
-
-        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
-
-        testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.uContractLock) {
-            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
-
-        NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
-        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
-        assertEquals(nrm.getEntries().size(),1);
-        assertEquals(nrmLast.getEntries().size(),1);
-        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
-        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
-
-        Thread.sleep(4000);
-
-        nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
-
-        assertEquals(nrm.getEntries().size(),1);
-        assertEquals(nrmLast.getEntries().size(),1);
-        assertEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
-        assertEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
-
-        testSpace.nodes.forEach(m->m.shutdown());
-
-    }
-
-
-    @Test
-    public void checkUnsNodeMissedRevision() throws Exception {
-
-
-        PrivateKey randomPrivKey1 = new PrivateKey(2048);
-        PrivateKey randomPrivKey2 = new PrivateKey(2048);
-        PrivateKey randomPrivKey3 = new PrivateKey(2048);
-        PrivateKey randomPrivKey4 = new PrivateKey(2048);
-
-
-        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
-        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
-
-        TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-
-        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
-
-        String name = "test"+Instant.now().getEpochSecond();
+        String name = "test" + Instant.now().getEpochSecond();
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
@@ -3037,7 +2838,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(), 1);
 
 
         //REVOKE UNS1
@@ -3077,32 +2878,20 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(), 1);
 
         //SHUTDOWN LAST NODE
-        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.remove(testSpace.nodes.size() - 1).shutdown();
         Thread.sleep(4000);
 
-        //UPDATE UNS2
+        //REVOKE UNS2
+        revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
+        revokingContract.addRevokingItems(uns2);
+        revokingContract.seal();
 
-        Set<PrivateKey> keys = new HashSet<>();
-        keys.add(TestKeys.privateKey(2));
-        keys.add(randomPrivKey4);
-        keys.add(manufacturePrivateKeys.iterator().next());
-        keys.add(authorizedNameServiceKey);
+        paymentContract = getApprovedUContract(testSpace);
+        parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
 
-        uns2 = (UnsContract) uns2.createRevision(keys);
-        uns2.removeName(name);
-        UnsName unsName2_1 = new UnsName(name+"2", "test description", "http://test.com");
-        unsName2_1.setUnsReducedName(name+"2");
-        UnsRecord unsRecord2_1 = new UnsRecord(randomPrivKey4.getPublicKey());
-        unsName2_1.addUnsRecord(unsRecord2_1);
-        uns2.addUnsName(unsName2_1);
-
-        uns2.setNodeInfoProvider(nodeInfoProvider);
-        uns2.seal();
-
-        parcel = ContractsService.createParcel(uns2,getApprovedUContract(testSpace),1,manufacturePrivateKeys);
         testSpace.node.node.registerParcel(parcel);
         synchronized (testSpace.uContractLock) {
             testSpace.uContract = parcel.getPaymentContract();
@@ -3110,21 +2899,22 @@ public class MainTest {
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
 
-        ir = testSpace.node.node.waitItem(uns2.getId(), 8000);
+        ir = testSpace.node.node.waitItem(parcel.getPayload().getContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(uns2.getId(), 8000).state);
+
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
-
         //RECREATE NODES
-        testSpace.nodes.forEach(m->m.shutdown());
+        testSpace.nodes.forEach(m -> m.shutdown());
         Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
-        //LAST NODE MISSED UNS2 REVISION
-        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName()));
+        //LAST NODE MISSED UNS2 REVOKE
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //REGISTER UNS3
         paymentContract = getApprovedUContract(testSpace);
@@ -3138,39 +2928,39 @@ public class MainTest {
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        ir = testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
         NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
-        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
-        assertEquals(nrm.getEntries().size(),1);
-        assertEquals(nrmLast.getEntries().size(),1);
-        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
-        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
+        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.getEntries().size(), 1);
+        assertEquals(nrmLast.getEntries().size(), 1);
+        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(), nrmLast.getEntries().iterator().next().getShortAddress());
+        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(), nrmLast.getEntries().iterator().next().getLongAddress());
 
         Thread.sleep(4000);
 
-        nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+        nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName());
 
-        assertEquals(nrm.getEntries().size(),1);
-        assertEquals(nrmLast.getEntries().size(),1);
-        assertEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
-        assertEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
+        assertEquals(nrm.getEntries().size(), 1);
+        assertEquals(nrmLast.getEntries().size(), 1);
+        assertEquals(nrm.getEntries().iterator().next().getShortAddress(), nrmLast.getEntries().iterator().next().getShortAddress());
+        assertEquals(nrm.getEntries().iterator().next().getLongAddress(), nrmLast.getEntries().iterator().next().getLongAddress());
 
-        testSpace.nodes.forEach(m->m.shutdown());
+        testSpace.nodes.forEach(m -> m.shutdown());
 
     }
 
 
     @Test
-    public void checkUnsNodeMissedSelfRevision() throws Exception {
+    public void checkUnsNodeMissedRevision() throws Exception {
 
 
         PrivateKey randomPrivKey1 = new PrivateKey(2048);
         PrivateKey randomPrivKey2 = new PrivateKey(2048);
         PrivateKey randomPrivKey3 = new PrivateKey(2048);
+        PrivateKey randomPrivKey4 = new PrivateKey(2048);
 
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
@@ -3179,10 +2969,9 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
 
-        String name = "test"+Instant.now().getEpochSecond();
-        String name2 = "test2"+Instant.now().getEpochSecond();
+        String name = "test" + Instant.now().getEpochSecond();
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
@@ -3202,6 +2991,37 @@ public class MainTest {
         uns.traceErrors();
 
 
+        UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns2.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName2 = new UnsName(name, "test description", "http://test.com");
+        unsName2.setUnsReducedName(name);
+        UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
+        unsName2.addUnsRecord(unsRecord2);
+        uns2.addUnsName(unsName2);
+
+        uns2.setNodeInfoProvider(nodeInfoProvider);
+        uns2.seal();
+        uns2.addSignatureToSeal(randomPrivKey2);
+        uns2.addSignatureToSeal(TestKeys.privateKey(8));
+        uns2.check();
+        uns2.traceErrors();
+
+        UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns3.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName3 = new UnsName(name, "test description", "http://test.com");
+        unsName3.setUnsReducedName(name);
+        UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
+        unsName3.addUnsRecord(unsRecord3);
+        uns3.addUnsName(unsName3);
+
+        uns3.setNodeInfoProvider(nodeInfoProvider);
+        uns3.seal();
+        uns3.addSignatureToSeal(randomPrivKey3);
+        uns3.addSignatureToSeal(TestKeys.privateKey(8));
+        uns3.check();
+        uns3.traceErrors();
 
         //REGISTER UNS1
         Contract paymentContract = getApprovedUContract(testSpace);
@@ -3220,11 +3040,193 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(), 1);
+
+
+        //REVOKE UNS1
+        Contract revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
+        revokingContract.addRevokingItems(uns);
+        revokingContract.seal();
+
+        paymentContract = getApprovedUContract(testSpace);
+        Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ItemResult ir = testSpace.node.node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(uns.getId(), 8000).state);
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //REGISTER UNS2
+        paymentContract = getApprovedUContract(testSpace);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(), 1);
+
+        //SHUTDOWN LAST NODE
+        testSpace.nodes.remove(testSpace.nodes.size() - 1).shutdown();
+        Thread.sleep(4000);
+
+        //UPDATE UNS2
+
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(TestKeys.privateKey(2));
+        keys.add(randomPrivKey4);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(authorizedNameServiceKey);
+
+        uns2 = (UnsContract) uns2.createRevision(keys);
+        uns2.removeName(name);
+        UnsName unsName2_1 = new UnsName(name + "2", "test description", "http://test.com");
+        unsName2_1.setUnsReducedName(name + "2");
+        UnsRecord unsRecord2_1 = new UnsRecord(randomPrivKey4.getPublicKey());
+        unsName2_1.addUnsRecord(unsRecord2_1);
+        uns2.addUnsName(unsName2_1);
+
+        uns2.setNodeInfoProvider(nodeInfoProvider);
+        uns2.seal();
+
+        parcel = ContractsService.createParcel(uns2, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ir = testSpace.node.node.waitItem(uns2.getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //RECREATE NODES
+        testSpace.nodes.forEach(m -> m.shutdown());
+        Thread.sleep(4000);
+        testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+        //LAST NODE MISSED UNS2 REVISION
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //REGISTER UNS3
+        paymentContract = getApprovedUContract(testSpace);
+
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        ir = testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
+
+        NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
+        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.getEntries().size(), 1);
+        assertEquals(nrmLast.getEntries().size(), 1);
+        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(), nrmLast.getEntries().iterator().next().getShortAddress());
+        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(), nrmLast.getEntries().iterator().next().getLongAddress());
+
+        Thread.sleep(4000);
+
+        nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(unsName.getUnsName());
+
+        assertEquals(nrm.getEntries().size(), 1);
+        assertEquals(nrmLast.getEntries().size(), 1);
+        assertEquals(nrm.getEntries().iterator().next().getShortAddress(), nrmLast.getEntries().iterator().next().getShortAddress());
+        assertEquals(nrm.getEntries().iterator().next().getLongAddress(), nrmLast.getEntries().iterator().next().getLongAddress());
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+
+    }
+
+
+    @Test
+    public void checkUnsNodeMissedSelfRevision() throws Exception {
+
+
+        PrivateKey randomPrivKey1 = new PrivateKey(2048);
+        PrivateKey randomPrivKey2 = new PrivateKey(2048);
+        PrivateKey randomPrivKey3 = new PrivateKey(2048);
+
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+
+        TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        String name = "test" + Instant.now().getEpochSecond();
+        String name2 = "test2" + Instant.now().getEpochSecond();
+
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName = new UnsName(name, "test description", "http://test.com");
+        unsName.setUnsReducedName(name);
+        UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
+        unsName.addUnsRecord(unsRecord);
+        uns.addUnsName(unsName);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey1);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+
+        //REGISTER UNS1
+        Contract paymentContract = getApprovedUContract(testSpace);
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(), 1);
 
 
         //SHUTDOWN LAST NODE
-        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.remove(testSpace.nodes.size() - 1).shutdown();
         Thread.sleep(4000);
 
         //UPDATE UNS
@@ -3261,16 +3263,16 @@ public class MainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //RECREATE NODES
-        testSpace.nodes.forEach(m->m.shutdown());
+        testSpace.nodes.forEach(m -> m.shutdown());
         Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(name));
         assertNotNull(testSpace.node.node.getLedger().getNameRecord(name2));
         //LAST NODE MISSED UNS REVISION
-        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
-        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name2));
 
         //REGISTER UNS
 
@@ -3311,26 +3313,25 @@ public class MainTest {
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(name2));
         assertNotNull(testSpace.node.node.getLedger().getNameRecord(name));
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long3.toString());
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(), long3.toString());
 
         //LAST NODE MISSED UNS REVISION
-        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
-        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
-        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long1.toString());
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name2));
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(), long1.toString());
 
         Thread.sleep(4000);
-        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
-        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
-        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long3.toString());
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name2));
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(), long3.toString());
 
 
-
-        testSpace.nodes.forEach(m->m.shutdown());
+        testSpace.nodes.forEach(m -> m.shutdown());
 
     }
 
     @Test
-    public void environmentSerializationTest() throws Exception{
+    public void environmentSerializationTest() throws Exception {
         UnsName unsName = new UnsName();
         unsName.setUnsName("test");
         unsName.setUnsReducedName("test");
@@ -3355,12 +3356,12 @@ public class MainTest {
         NNameRecord nnr2 = Boss.load(Boss.pack(nnr));
 
         assertTrue(nnr2.getEntries().stream().anyMatch(nre -> unsName.getUnsRecords().stream().anyMatch(ur -> ur.equalsTo(nre))));
-        assertEquals(nnr2.getEntries().size(),unsName.getRecordsCount());
-        assertEquals(nnr2.getName(),unsName.getUnsName());
-        assertEquals(nnr2.getNameReduced(),unsName.getUnsReducedName());
-        assertEquals(nnr2.getDescription(),unsName.getUnsDescription());
-        assertEquals(nnr2.getUrl(),unsName.getUnsURL());
-        assertEquals(nnr.expiresAt().toEpochSecond(),nnr2.expiresAt().toEpochSecond());
+        assertEquals(nnr2.getEntries().size(), unsName.getRecordsCount());
+        assertEquals(nnr2.getName(), unsName.getUnsName());
+        assertEquals(nnr2.getNameReduced(), unsName.getUnsReducedName());
+        assertEquals(nnr2.getDescription(), unsName.getUnsDescription());
+        assertEquals(nnr2.getUrl(), unsName.getUnsURL());
+        assertEquals(nnr.expiresAt().toEpochSecond(), nnr2.expiresAt().toEpochSecond());
 
         NContractSubscription sub = Boss.load(Boss.pack(new NContractSubscription(contract.getOrigin(), true, now)));
         assertTrue(sub.getOrigin().equals(contract.getOrigin()));
@@ -3385,12 +3386,12 @@ public class MainTest {
         assertTrue(followerService.getStartedCallbacks() == 3);
 
         Binder kvStore = new Binder();
-        kvStore.put("test","test1");
+        kvStore.put("test", "test1");
         NImmutableEnvironment environment = new NImmutableEnvironment(
-                smartContract,kvStore,Do.listOf(sub),Do.listOf(storage),Do.listOf(nnr2),followerService,null);
+                smartContract, kvStore, Do.listOf(sub), Do.listOf(storage), Do.listOf(nnr2), followerService, null);
 
         environment = Boss.load(Boss.pack(environment));
-        assertEquals(environment.get("test",null),"test1");
+        assertEquals(environment.get("test", null), "test1");
     }
 
     @Test
@@ -3407,7 +3408,7 @@ public class MainTest {
 
         ArrayList<Contract> contractsToJoin = new ArrayList<>();
 
-        for(int k = 0; k < 4; k++) {
+        for (int k = 0; k < 4; k++) {
             if (doShutdown) {
                 //shutdown one of nodes
                 if (k < 3) {
@@ -3418,18 +3419,18 @@ public class MainTest {
             }
 
             Contract contract = new Contract(issuerKey);
-            contract.getDefinition().getData().set("test","test1");
-            contract.getStateData().set("amount","100");
-            Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.issuer"));
-            Role ownerLink = new RoleLink("@owner_link","owner");
+            contract.getDefinition().getData().set("test", "test1");
+            contract.getStateData().set("amount", "100");
+            Binder params = Binder.of("field_name", "amount", "join_match_fields", asList("definition.issuer"));
+            Role ownerLink = new RoleLink("@owner_link", "owner");
             contract.registerRole(ownerLink);
-            SplitJoinPermission splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+            SplitJoinPermission splitJoinPermission = new SplitJoinPermission(ownerLink, params);
             contract.addPermission(splitJoinPermission);
             contract.seal();
-            testSpace.client.register(contract.getPackedTransaction(),1500);
-            assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+            testSpace.client.register(contract.getPackedTransaction(), 1500);
+            assertEquals(testSpace.client.getState(contract.getId()).state, ItemState.APPROVED);
 
-            if(doShutdown) {
+            if (doShutdown) {
                 testSpace.nodes.forEach(n -> n.shutdown());
                 Thread.sleep(2000);
                 testSpace = prepareTestSpace(issuerKey);
@@ -3444,7 +3445,7 @@ public class MainTest {
             int count = 0;
             for (Main main : finalTestSpace.nodes) {
                 try {
-                    if(main.node.waitItem(c.getId(),4000).state != ItemState.APPROVED) {
+                    if (main.node.waitItem(c.getId(), 4000).state != ItemState.APPROVED) {
                         count++;
                     }
                 } catch (TimeoutException e) {
@@ -3458,12 +3459,12 @@ public class MainTest {
 
         Contract c = contractsToJoin.remove(Do.randomInt(contractsToJoin.size()));
         Contract main = c.createRevision(issuerKey);
-        main.getStateData().set("amount","400");
-        main.addRevokingItems(contractsToJoin.get(0),contractsToJoin.get(1),contractsToJoin.get(2));
+        main.getStateData().set("amount", "400");
+        main.addRevokingItems(contractsToJoin.get(0), contractsToJoin.get(1), contractsToJoin.get(2));
         main.addSignerKey(issuerKey);
         main.seal();
         contractsToJoin.add(c);
-        testSpace.client.register(main.getPackedTransaction(),1500);
+        testSpace.client.register(main.getPackedTransaction(), 1500);
         ItemResult ir;
         do {
             ir = testSpace.client.getState(main.getId());
@@ -3476,7 +3477,7 @@ public class MainTest {
             int count = 0;
             for (Main main1 : finalTestSpace.nodes) {
                 try {
-                    if(main1.node.waitItem(c1.getId(),4000).state != ItemState.APPROVED) {
+                    if (main1.node.waitItem(c1.getId(), 4000).state != ItemState.APPROVED) {
                         count++;
                     }
                 } catch (TimeoutException e) {
@@ -3488,7 +3489,7 @@ public class MainTest {
             System.out.println("Contract " + c.getId() + " is unknown to " + count + "node(s)");
         });
 
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
@@ -3496,21 +3497,21 @@ public class MainTest {
 
     //@Test
     public void asdasd123() throws Exception {
-        Map<HashId,Map<ItemState,Set<Integer>>> results = new HashMap<>();
-        Map<HashId,Map<ItemState,Set<Integer>>> resultsRevoking = new HashMap<>();
-        Map<HashId,Map<ItemState,Set<Integer>>> resultsNew  = new HashMap<>();
+        Map<HashId, Map<ItemState, Set<Integer>>> results = new HashMap<>();
+        Map<HashId, Map<ItemState, Set<Integer>>> resultsRevoking = new HashMap<>();
+        Map<HashId, Map<ItemState, Set<Integer>>> resultsNew = new HashMap<>();
         TransactionPack tp = TransactionPack.unpack(Do.read("/Users/romanu/Downloads/ru/token106.unicon"));
         tp.getContract().check();
         System.out.println("Processing cost " + tp.getContract().getProcessedCostU());
 
 
-        results.put(tp.getContract().getId(),new HashMap<>());
+        results.put(tp.getContract().getId(), new HashMap<>());
         tp.getContract().getRevokingItems().forEach(a -> {
-            resultsRevoking.put(a.getId(),new HashMap<>());
+            resultsRevoking.put(a.getId(), new HashMap<>());
         });
 
         tp.getContract().getNewItems().forEach(a -> {
-            resultsNew.put(a.getId(),new HashMap<>());
+            resultsNew.put(a.getId(), new HashMap<>());
         });
 
         PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
@@ -3523,12 +3524,10 @@ public class MainTest {
 
         }*/
 
-       //System.out.println(clients.getClient(30).resyncItem(HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE")));
+        //System.out.println(clients.getClient(30).resyncItem(HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE")));
 
 
-
-
-        for(int i = 0; i < 33;i++) {
+        for (int i = 0; i < 33; i++) {
             try {
 
                 Client c = clients.getClient(i);
@@ -3539,11 +3538,11 @@ public class MainTest {
 
                     try {
                         ItemResult ir = c.getState(id);
-                        System.out.println("this " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if(!results.get(id).containsKey(ir.state)) {
-                            results.get(id).put(ir.state,new HashSet<>());
+                        System.out.println("this " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if (!results.get(id).containsKey(ir.state)) {
+                            results.get(id).put(ir.state, new HashSet<>());
                         }
-                        results.get(id).get(ir.state).add(finalI+1);
+                        results.get(id).get(ir.state).add(finalI + 1);
 
                     } catch (ClientError clientError) {
                         clientError.printStackTrace();
@@ -3554,11 +3553,11 @@ public class MainTest {
 
                     try {
                         ItemResult ir = c.getState(id);
-                        System.out.println("revoking " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if(!resultsRevoking.get(id).containsKey(ir.state)) {
-                            resultsRevoking.get(id).put(ir.state,new HashSet<>());
+                        System.out.println("revoking " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if (!resultsRevoking.get(id).containsKey(ir.state)) {
+                            resultsRevoking.get(id).put(ir.state, new HashSet<>());
                         }
-                        resultsRevoking.get(id).get(ir.state).add(finalI+1);
+                        resultsRevoking.get(id).get(ir.state).add(finalI + 1);
                     } catch (ClientError clientError) {
                         clientError.printStackTrace();
                     }
@@ -3568,11 +3567,11 @@ public class MainTest {
 
                     try {
                         ItemResult ir = c.getState(id);
-                        System.out.println("new " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if(!resultsNew.get(id).containsKey(ir.state)) {
-                            resultsNew.get(id).put(ir.state,new HashSet<>());
+                        System.out.println("new " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if (!resultsNew.get(id).containsKey(ir.state)) {
+                            resultsNew.get(id).put(ir.state, new HashSet<>());
                         }
-                        resultsNew.get(id).get(ir.state).add(finalI+1);
+                        resultsNew.get(id).get(ir.state).add(finalI + 1);
                     } catch (ClientError clientError) {
                         clientError.printStackTrace();
                     }
@@ -3603,7 +3602,7 @@ public class MainTest {
         resultsNew.keySet().forEach(id -> {
             System.out.println(id);
             resultsNew.get(id).keySet().forEach(state -> {
-                System.out.println(state + ": " + resultsNew.get(id).get(state).size() + " "+ resultsNew.get(id).get(state));
+                System.out.println(state + ": " + resultsNew.get(id).get(state).size() + " " + resultsNew.get(id).get(state));
             });
         });
 
@@ -3617,16 +3616,16 @@ public class MainTest {
         Set<PublicKey> owners = new HashSet<>();
         owners.add(key.getPublicKey());
         TestSpace testSpace = prepareTestSpace();
-        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        for(int i = 109; i < 110; i++) {
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        for (int i = 109; i < 110; i++) {
             Contract c = ContractsService.createTokenContract(issuers, owners, new BigDecimal("100000.9"), new BigDecimal("0.01"));
             c.setIssuerKeys(key.getPublicKey().getShortAddress());
             c.setCreatorKeys(key.getPublicKey().getShortAddress());
             c.setExpiresAt(ZonedDateTime.now().plusDays(10));
             c.seal();
-            new FileOutputStream("/Users/romanu/Downloads/ru/token"+i+".unicon").write(c.getPackedTransaction());
+            new FileOutputStream("/Users/romanu/Downloads/ru/token" + i + ".unicon").write(c.getPackedTransaction());
 
-            assertEquals(testSpace.client.register(Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/ru/token"+i+".unicon")).getPackedTransaction(),10000).state,ItemState.APPROVED);
+            assertEquals(testSpace.client.register(Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/ru/token" + i + ".unicon")).getPackedTransaction(), 10000).state, ItemState.APPROVED);
 
 
         }
@@ -3642,7 +3641,7 @@ public class MainTest {
         PrivateKey key = TestKeys.privateKey(1);
         TestSpace testSpace = prepareTestSpace(key);
 
-        testSpace.nodes.forEach( m -> {
+        testSpace.nodes.forEach(m -> {
             m.config.setIsFreeRegistrationsAllowedFromYaml(true);
         });
 
@@ -3665,9 +3664,9 @@ public class MainTest {
         ref.setName(origin.toString());
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + origin.toBase64String());
         conditionsList.add(REFERENCE_CONDITION2);
-        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         ref.setConditions(conditions);
 
 
@@ -3676,9 +3675,9 @@ public class MainTest {
         ref2.setName(origin2.toString());
 
         List<Object> conditionsList2 = new ArrayList<>();
-        conditionsList2.add(REFERENCE_CONDITION_PREFIX+origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX + origin2.toBase64String());
         conditionsList2.add(REFERENCE_CONDITION2);
-        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList2);
+        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList2);
         ref2.setConditions(conditions2);
 
 
@@ -3694,7 +3693,7 @@ public class MainTest {
         ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //NO matching item for issuer reference in transaction pack
-        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.state, ItemState.DECLINED);
 
         contract.seal();
         contract.getTransactionPack().addReferencedItem(contractMark);
@@ -3702,10 +3701,10 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //matching item for issuer reference is not APPROVED
-        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.state, ItemState.DECLINED);
 
 
-        if(refAsNew) {
+        if (refAsNew) {
             contract.addNewItems(contractMark);
             contract.addNewItems(contractMark2);
         } else {
@@ -3721,7 +3720,7 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //all ok
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
 
         //no markContract is required referenced items of transaction pack
@@ -3733,7 +3732,7 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
         //all ok
 
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
         testSpace.nodes.forEach(n -> n.shutdown());
     }
@@ -3745,7 +3744,7 @@ public class MainTest {
         PrivateKey key = TestKeys.privateKey(1);
         TestSpace testSpace = prepareTestSpace(key);
 
-        testSpace.nodes.forEach( m -> {
+        testSpace.nodes.forEach(m -> {
             m.config.setIsFreeRegistrationsAllowedFromYaml(true);
         });
 
@@ -3780,9 +3779,9 @@ public class MainTest {
         ref.setName(origin.toString());
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + origin.toBase64String());
         conditionsList.add(REFERENCE_CONDITION2);
-        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         ref.setConditions(conditions);
 
         contract.addReference(ref);
@@ -3794,11 +3793,11 @@ public class MainTest {
         ref2.setName(origin2.toString());
 
         List<Object> conditionsList2 = new ArrayList<>();
-        conditionsList2.add(REFERENCE_CONDITION_PREFIX+origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX + origin2.toBase64String());
         conditionsList2.add(REFERENCE_CONDITION2);
-        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList2);
+        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList2);
         ref2.setConditions(conditions2);
-        
+
         contract.addReference(ref2);
         issuer.addRequiredReference(ref2, Role.RequiredMode.ALL_OF);
 
@@ -3808,9 +3807,9 @@ public class MainTest {
         ref3.setName(origin3.toString());
 
         List<Object> conditionsList3 = new ArrayList<>();
-        conditionsList3.add(REFERENCE_CONDITION_PREFIX+origin3.toBase64String());
+        conditionsList3.add(REFERENCE_CONDITION_PREFIX + origin3.toBase64String());
         conditionsList3.add(REFERENCE_CONDITION2);
-        Binder conditions3 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList3);
+        Binder conditions3 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList3);
         ref3.setConditions(conditions3);
 
         contract.addReference(ref3);
@@ -3821,9 +3820,9 @@ public class MainTest {
         ref4.setName(origin4.toString());
 
         List<Object> conditionsList4 = new ArrayList<>();
-        conditionsList4.add(REFERENCE_CONDITION_PREFIX+origin4.toBase64String());
+        conditionsList4.add(REFERENCE_CONDITION_PREFIX + origin4.toBase64String());
         conditionsList4.add(REFERENCE_CONDITION2);
-        Binder conditions4 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList4);
+        Binder conditions4 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList4);
         ref4.setConditions(conditions4);
 
         contract.addReference(ref4);
@@ -3835,16 +3834,14 @@ public class MainTest {
         ref5.setName(origin5.toString());
 
         List<Object> conditionsList5 = new ArrayList<>();
-        conditionsList5.add(REFERENCE_CONDITION_PREFIX+origin5.toBase64String());
+        conditionsList5.add(REFERENCE_CONDITION_PREFIX + origin5.toBase64String());
         conditionsList5.add(REFERENCE_CONDITION2);
-        Binder conditions5 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList5);
+        Binder conditions5 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList5);
         ref5.setConditions(conditions5);
 
         contract.addReference(ref5);
         issuer.addRequiredReference(ref5, Role.RequiredMode.ALL_OF);
-        
-        
-        
+
 
         contract.registerRole(issuer);
         contract.setOwnerKeys(key);
@@ -3852,7 +3849,7 @@ public class MainTest {
         ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //NO matching item for issuer reference in transaction pack
-        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.state, ItemState.DECLINED);
 
         contract.seal();
         contract.getTransactionPack().addReferencedItem(contractMark);
@@ -3860,15 +3857,15 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //matching item for issuer reference is not APPROVED
-        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.state, ItemState.DECLINED);
 
 
-            contract.addNewItems(contractMark);
-            contract.addNewItems(contractMark2);
-            contract.addNewItems(contractMark3);
+        contract.addNewItems(contractMark);
+        contract.addNewItems(contractMark2);
+        contract.addNewItems(contractMark3);
 
-            testSpace.client.register(contractMark4.getPackedTransaction(), 5000);
-            testSpace.client.register(contractMark5.getPackedTransaction(), 5000);
+        testSpace.client.register(contractMark4.getPackedTransaction(), 5000);
+        testSpace.client.register(contractMark5.getPackedTransaction(), 5000);
 
         contract.seal();
 
@@ -3878,7 +3875,7 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //all ok
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
 
         //no markContract is required referenced items of transaction pack
@@ -3890,7 +3887,7 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
         //all ok
 
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
         testSpace.nodes.forEach(n -> n.shutdown());
     }
@@ -3921,7 +3918,7 @@ public class MainTest {
         Contract utnContract = ContractsService.createTokenContract(utnIssuer, ownerKeys, new BigDecimal("100000"));
         @NonNull ItemResult ir = testSpace.client.register(utnContract.getPackedTransaction());
 
-        while(ir.state.isPending()) {
+        while (ir.state.isPending()) {
             Thread.sleep(500);
             ir = testSpace.client.getState(utnContract.getId());
         }
@@ -3933,13 +3930,13 @@ public class MainTest {
 
 
         //CREATE COMPOUND
-        Contract compound = ContractsService.createSplit(utnContract, new BigDecimal("150"), "amount", new HashSet<>(),true);
+        Contract compound = ContractsService.createSplit(utnContract, new BigDecimal("150"), "amount", new HashSet<>(), true);
         Contract paymentInUTNs = (Contract) compound.getNewItems().iterator().next();
         paymentInUTNs.setOwnerKeys(universaAdminKey);
 
         //CALCULATE AMOUNT OF U
         BigDecimal utnsPayed = new BigDecimal(paymentInUTNs.getStateData().getString("amount"));
-        int unitsToIssue = utnsPayed.intValue()*100;
+        int unitsToIssue = utnsPayed.intValue() * 100;
 
         //CREATE U CONTRACT
         //Create standart U contract
@@ -3959,12 +3956,12 @@ public class MainTest {
 
         //attempt to register
         ir = testSpace.client.register(compound.getPackedTransaction());
-        while(ir.state.isPending()) {
+        while (ir.state.isPending()) {
             Thread.sleep(500);
             ir = testSpace.client.getState(compound.getId());
         }
         //blocked by uIssueBlocker reference
-        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.state, ItemState.DECLINED);
 
 
         compound.seal();
@@ -3977,56 +3974,54 @@ public class MainTest {
         //reseal compound
         //attempt to register (uIssueBlocker reference is now valid)
         ir = testSpace.client.register(batch.getPackedTransaction());
-        while(ir.state.isPending()) {
+        while (ir.state.isPending()) {
             Thread.sleep(500);
             ir = testSpace.client.getState(batch.getId());
         }
         //so everything is fine
-        assertEquals(ir.state,ItemState.APPROVED);
-
+        assertEquals(ir.state, ItemState.APPROVED);
 
 
         //REGISTER SAMPLE CONTRACT WITH PAYMENT
         //Try to register new contract and use uContract as payment
         Contract sampleContract = new Contract(userKey);
         sampleContract.seal();
-        Parcel parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcelWithState(parcel.pack(),5000);
+        Parcel parcel = ContractsService.createParcel(sampleContract, uContract, 1, userKeys);
+        testSpace.client.registerParcelWithState(parcel.pack(), 5000);
         do {
             Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
         } while (ir.state.isPending());
         //so everything is fine
         ItemResult pr = testSpace.client.getState(parcel.getPaymentContract().getId());
-        assertEquals(pr.state,ItemState.APPROVED);
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(pr.state, ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
         uContract = parcel.getPaymentContract();
 
 
         //REVOKE consent
         Contract revocation = ContractsService.createRevocation(consent, universaAdminKey);
         ir = testSpace.client.register(revocation.getPackedTransaction());
-        while(ir.state.isPending()) {
+        while (ir.state.isPending()) {
             Thread.sleep(500);
             ir = testSpace.client.getState(revocation.getId());
         }
         //uIssueBlocker is revoked
-        assertEquals(ir.state,ItemState.APPROVED);
-
+        assertEquals(ir.state, ItemState.APPROVED);
 
 
         //REGISTER ANOTHER SAMPLE CONTRACT WITH PAYMENT
         //Try to register new contract and use uContract as payment
         sampleContract = new Contract(userKey);
         sampleContract.seal();
-        parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcelWithState(parcel.pack(),5000);
+        parcel = ContractsService.createParcel(sampleContract, uContract, 1, userKeys);
+        testSpace.client.registerParcelWithState(parcel.pack(), 5000);
         do {
             Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
         } while (ir.state.isPending());
         //so everything should be fine so revokation of uIssueBlocker should not affect later usage of U
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
         testSpace.nodes.forEach(n -> n.shutdown());
     }
@@ -4046,13 +4041,13 @@ public class MainTest {
         contract3.addNewItems(contract4);
 
         Reference reference = new Reference();
-        reference.name = "consent_"+contract4.getId();
+        reference.name = "consent_" + contract4.getId();
         reference.type = Reference.TYPE_EXISTING_STATE;
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX+contract4.getId().toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + contract4.getId().toBase64String());
         conditionsList.add(REFERENCE_CONDITION2);
-        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         reference.setConditions(conditions);
 
 
@@ -4067,25 +4062,24 @@ public class MainTest {
 
 
         TestSpace testSpace = prepareTestSpace();
-        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         ItemResult ir = testSpace.client.register(c.getPackedTransaction(), 10000);
         while (ir.state.isPending()) {
             ir = testSpace.client.getState(c.getId());
         }
 
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state, ItemState.APPROVED);
 
         testSpace.nodes.forEach(n -> n.shutdown());
     }
-
 
 
     @Test
     public void randomReferences() throws Exception {
         Random random = new Random();
         TestSpace testSpace = prepareTestSpace();
-        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         final int CONTRACTS_IN_BATCH = 20;
         final int REFS_COUNT = 1000;
@@ -4097,7 +4091,7 @@ public class MainTest {
         List<Contract> contracts100 = new ArrayList<>();
         for (int i = 0; i < CONTRACTS_IN_BATCH; ++i) {
             Contract c = new Contract(keys100.get(i));
-            c.getStateData().put("some_value", 9000+random.nextInt(1000));
+            c.getStateData().put("some_value", 9000 + random.nextInt(1000));
             contracts100.add(c);
         }
 
@@ -4110,18 +4104,18 @@ public class MainTest {
             switch (refCase) {
                 case 0:
                     ref.type = Reference.TYPE_EXISTING_STATE;
-                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(),asList("ref.issuer=="+keys100.get(random.nextInt(keys100.size())).getPublicKey().getShortAddress())));
+                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(), asList("ref.issuer==" + keys100.get(random.nextInt(keys100.size())).getPublicKey().getShortAddress())));
                     break;
                 case 1:
                     ref.type = Reference.TYPE_EXISTING_DEFINITION;
-                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(),asList("ref.owner=="+keys100.get(random.nextInt(keys100.size())).getPublicKey().getLongAddress())));
+                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(), asList("ref.owner==" + keys100.get(random.nextInt(keys100.size())).getPublicKey().getLongAddress())));
                     break;
                 case 2:
                     ref.type = Reference.TYPE_EXISTING_STATE;
                     ref.setConditions(Binder.of(
                             Reference.conditionsModeType.all_of.name(),
                             asList(
-                                    "ref.state.data.some_value=="+contracts100.get(random.nextInt(contracts100.size())).getStateData().getStringOrThrow("some_value")
+                                    "ref.state.data.some_value==" + contracts100.get(random.nextInt(contracts100.size())).getStateData().getStringOrThrow("some_value")
                             )));
                     break;
                 case 3:
@@ -4170,7 +4164,7 @@ public class MainTest {
         int i = 0;
         for (Approvable a : contract.getNewItems()) {
             Contract nc = (Contract) a;
-            System.out.println("------- errors n"+i+" ----");
+            System.out.println("------- errors n" + i + " ----");
             System.out.println("  check: " + nc.check());
             nc.traceErrors();
             ++i;
@@ -4192,10 +4186,10 @@ public class MainTest {
     public void getStateWithNoLedgerCache() throws Exception {
         TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        testSpace.nodes.forEach(m -> ((PostgresLedger)m.node.getLedger()).enableCache(false));
+        testSpace.nodes.forEach(m -> ((PostgresLedger) m.node.getLedger()).enableCache(false));
 
         //SHUTDOWN LAST NODE
-        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.remove(testSpace.nodes.size() - 1).shutdown();
         Thread.sleep(4000);
 
         Contract rev1 = new Contract(TestKeys.privateKey(0));
@@ -4222,8 +4216,8 @@ public class MainTest {
     public void resyncWithNoLedgerCache() throws Exception {
         TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        testSpace.nodes.forEach(m -> ((PostgresLedger)m.node.getLedger()).enableCache(false));
-        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+        testSpace.nodes.forEach(m -> ((PostgresLedger) m.node.getLedger()).enableCache(false));
+        testSpace.nodes.get(testSpace.nodes.size() - 1).shutdown();
 
         NSmartContract rev1 = new NSmartContract(TestKeys.privateKey(0));
         rev1.getStateData().set("field1", 33);
@@ -4243,36 +4237,36 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, ir1.state);
 
         //recreate nodes
-        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+        for (int i = 0; i < testSpace.nodes.size() - 1; ++i)
             testSpace.nodes.get(i).shutdown();
         Thread.sleep(2000);
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         //put some environment for rev1
-        Ledger ledger = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger();
+        Ledger ledger = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger();
         assertNull(ledger.getEnvironment(rev1.getId()));
-        NImmutableEnvironment environment = new NImmutableEnvironment(rev1,new Binder(),Do.listOf(),Do.listOf(),Do.listOf(),null,null);
+        NImmutableEnvironment environment = new NImmutableEnvironment(rev1, new Binder(), Do.listOf(), Do.listOf(), Do.listOf(), null, null);
         ledger.saveEnvironment(environment);
         assertNotNull(ledger.getEnvironment(rev1.getId()));
 
         System.out.println("\n========== resyncing ==========\n");
-        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(rev1.getId());
+        testSpace.nodes.get(testSpace.clients.size() - 1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        testSpace.clients.get(testSpace.clients.size() - 1).resyncItem(rev1.getId());
         long millisToWait = 60000;
         long waitPeriod = 2000;
         ItemResult ir = null;
         while (millisToWait > 0) {
             Thread.sleep(waitPeriod);
             millisToWait -= waitPeriod;
-            ir = testSpace.clients.get(testSpace.clients.size()-1).getState(rev1.getId());
+            ir = testSpace.clients.get(testSpace.clients.size() - 1).getState(rev1.getId());
             if (ir.state == ItemState.REVOKED)
                 break;
         }
         assertEquals(ItemState.REVOKED, ir.state);
         assertNull(ledger.getEnvironment(rev1.getId()));
 
-        testSpace.nodes.forEach(n->n.shutdown());
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
     @Test
@@ -4300,12 +4294,12 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
 
-        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract, Do.listOf(myKey));
         ItemResult itemResult = client.registerParcelWithState(parcel.pack(), 15000);
 
         System.out.println(">> state: " + itemResult);
 
-        assertEquals (ItemState.APPROVED, itemResult.state);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
     }
@@ -4343,7 +4337,7 @@ public class MainTest {
 
         Set<PublicKey> ownerKeys = new HashSet();
         Collection<PrivateKey> keys = Do.listOf(myKey);
-        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
+        keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
         Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
         stepaU.check();
         stepaU.traceErrors();
@@ -4415,7 +4409,7 @@ public class MainTest {
 
         Set<PublicKey> ownerKeys = new HashSet();
         Collection<PrivateKey> keys = Do.listOf(myKey);
-        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
+        keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
         Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
         stepaU.check();
         stepaU.traceErrors();
@@ -4686,7 +4680,7 @@ public class MainTest {
 
         System.out.println();
 
-        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
+        assertEquals((itemResult.errors.get(0).getMessage()), "Payment for setting unlimited requests" +
                 " must be 5U");
 
         itemResult = client.getState(unlimitContract.getId());
@@ -4701,7 +4695,7 @@ public class MainTest {
 
         System.out.println();
 
-        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
+        assertEquals((itemResult.errors.get(0).getMessage()), "Payment for setting unlimited requests" +
                 " must be 5U");
 
         itemResult = client.getState(unlimitContract1.getId());
@@ -4747,14 +4741,14 @@ public class MainTest {
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
         Contract unlimitContract = ContractsService.createRateLimitDisablingContract(
-                    myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment(), keys);
+                myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment(), keys);
 
         // get unlimited key
         byte[] packedKey = unlimitContract.getTransactional().getData().getBinary("unlimited_key");
         PublicKey key = new PublicKey(packedKey);
 
         // invalid format of key for unlimited requests
-        assertFalse((packedKey == null)||((key == null)));
+        assertFalse((packedKey == null) || ((key == null)));
 
         // check payment
         assertEquals(unlimitContract.getRevoking().get(0).getStateData().getIntOrThrow("transaction_units") -
@@ -6325,7 +6319,7 @@ public class MainTest {
         HashSet<PrivateKey> own = new HashSet<>(Do.listOf(manufacturePrivateKey));
         // create revision
         Contract rootContract = ContractsService.createTokenContract(own,
-                new HashSet<>(Do.listOf(manufacturePrivateKey.getPublicKey())),"10000");
+                new HashSet<>(Do.listOf(manufacturePrivateKey.getPublicKey())), "10000");
         rootContract.seal();
 
 
@@ -6337,10 +6331,11 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
 
-        List<Contract> splitres = ContractsService.createSplitJoin(Do.listOf(rootContract), Do.listOf("100", "200", "300"), Do.listOf(
+        List<Contract> splitres = ContractsService.createSplitJoin(Do.listOf(rootContract), Do.listOf("100", "200", "300","400"), Do.listOf(
                 TestKeys.publicKey(1).getShortAddress(),
                 TestKeys.publicKey(2).getShortAddress(),
-                TestKeys.publicKey(3).getShortAddress()), own, "amount");
+                TestKeys.publicKey(3).getShortAddress(),
+                TestKeys.publicKey(4).getShortAddress()), own, "amount");
 
         parcel = createParcelWithFreshU(client, splitres.get(0), privateKeys);
         client.registerParcelWithState(parcel.pack(), 8000);
@@ -6350,12 +6345,21 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
 
-
-
-        List<HashId> ids = client.getChildren(rootContract.getId(),5).getListOrThrow("ids");
+        List<HashId> ids = client.getChildren(rootContract.getId(), 5).getListOrThrow("ids");
         System.out.println("children : " + ids);
 
-        assertEquals(ids.size(),splitres.size());
+
+        List<HashId> ids2 = client.getChildren(rootContract.getId(), 3).getListOrThrow("ids");
+
+        List<HashId> ids3 = client.getChildren(rootContract.getId(), 3,3).getListOrThrow("ids");
+
+        HashSet set1 = new HashSet(ids);
+        HashSet set2 = new HashSet(ids2);
+        set2.addAll(ids3);
+
+        assertEquals(set1, set2);
+
+        assertEquals(ids.size(), splitres.size());
 
         assertTrue(splitres.stream().allMatch(c -> ids.contains(c.getId())));
 
@@ -6641,7 +6645,7 @@ public class MainTest {
         HashId origin = parcelContract.getId();
 
         // delete body from node db
-        Db db  = ((PostgresLedger) main.node.getLedger()).getDb();
+        Db db = ((PostgresLedger) main.node.getLedger()).getDb();
         try (PreparedStatement statement = db.statement("delete from keeping_items where origin = ?")) {
             statement.setBytes(1, origin.getDigest());
             db.updateWithStatement(statement);
@@ -6937,12 +6941,11 @@ public class MainTest {
     }
 
 
-
     @Test
     public void joinFromDifferentOwners() throws Exception {
 
         TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(m->m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        ts.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         Thread.sleep(2000);
 
@@ -6952,7 +6955,7 @@ public class MainTest {
         PrivateKey owner3 = TestKeys.privateKey(14);
 
         Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(issuer)), new HashSet<>(Do.listOf(owner1.getPublicKey())), new BigDecimal("3000"));
-        assertEquals(ts.client.register(token.getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(token.getPackedTransaction(), 15000).state, ItemState.APPROVED);
 
         Contract part1 = token.createRevision(owner1);
         Contract[] parts = part1.split(2);
@@ -6961,11 +6964,11 @@ public class MainTest {
 
 
         part1.setOwnerKey(owner1.getPublicKey());
-        part1.getStateData().set("amount","1000");
+        part1.getStateData().set("amount", "1000");
         part2.setOwnerKey(owner2.getPublicKey());
-        part2.getStateData().set("amount","1000");
+        part2.getStateData().set("amount", "1000");
         part3.setOwnerKey(owner3.getPublicKey());
-        part3.getStateData().set("amount","1000");
+        part3.getStateData().set("amount", "1000");
 
         part2.seal();
         part3.seal();
@@ -6975,9 +6978,9 @@ public class MainTest {
 
         ItemResult rr = ts.client.register(part1.getPackedTransaction(), 15000);
         System.out.println(rr.errors);
-        assertEquals(rr.state,ItemState.APPROVED);
-        assertEquals(ts.client.getState(part2.getId()).state,ItemState.APPROVED);
-        assertEquals(ts.client.getState(part3.getId()).state,ItemState.APPROVED);
+        assertEquals(rr.state, ItemState.APPROVED);
+        assertEquals(ts.client.getState(part2.getId()).state, ItemState.APPROVED);
+        assertEquals(ts.client.getState(part3.getId()).state, ItemState.APPROVED);
 
 
         part1 = Contract.fromPackedTransaction(part1.getPackedTransaction());
@@ -6988,26 +6991,26 @@ public class MainTest {
         Contract badJoin = part1.createRevision(owner1);
         badJoin.addRevokingItems(part2);
         badJoin.addRevokingItems(part3);
-        badJoin.getStateData().set("amount","3000");
+        badJoin.getStateData().set("amount", "3000");
         badJoin.seal();
         badJoin.check();
-        assertEquals(ts.client.register(badJoin.getPackedTransaction(),15000).state,ItemState.DECLINED);
+        assertEquals(ts.client.register(badJoin.getPackedTransaction(), 15000).state, ItemState.DECLINED);
 
-        Contract goodJoin = part1.createRevision(owner1, owner2,owner3);
+        Contract goodJoin = part1.createRevision(owner1, owner2, owner3);
         goodJoin.addRevokingItems(part2);
         goodJoin.addRevokingItems(part3);
-        goodJoin.getStateData().set("amount","3000");
+        goodJoin.getStateData().set("amount", "3000");
         goodJoin.seal();
-        assertEquals(ts.client.register(goodJoin.getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(goodJoin.getPackedTransaction(), 15000).state, ItemState.APPROVED);
 
 
-        ts.nodes.forEach(m->m.shutdown());
+        ts.nodes.forEach(m -> m.shutdown());
 
     }
-    
-    Contract createComplexConctract(PrivateKey key,int subcontracts) {
+
+    Contract createComplexConctract(PrivateKey key, int subcontracts) {
         Contract root = new Contract(key);
-        for(int i = 0; i < subcontracts; i++) {
+        for (int i = 0; i < subcontracts; i++) {
             Contract c = new Contract(key);
             c.getKeysToSignWith().clear();
             root.addNewItems(c);
@@ -7058,7 +7061,7 @@ public class MainTest {
         assertTrue(simpleContract.isOk());
 
         testSpace.client.register(simpleContract.getPackedTransaction(), 3000);
-        assertEquals(testSpace.client.getState(simpleContract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContract.getId()).state, ItemState.APPROVED);
 
         // callback key
         PrivateKey callbackKey = new PrivateKey(2048);
@@ -7105,8 +7108,8 @@ public class MainTest {
         seconds = (long) (callbackRate * 24 * 3600);
 
         Set<Long> envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
@@ -7138,10 +7141,10 @@ public class MainTest {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
@@ -7195,8 +7198,8 @@ public class MainTest {
 
         // check callbacks completed in non full network
         envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 assertTrue(testSpace.node.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
@@ -7228,10 +7231,10 @@ public class MainTest {
         }
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -7268,13 +7271,13 @@ public class MainTest {
         Thread.sleep(2000);
         testSpace = prepareTestSpace(issuerKey);
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state, ItemState.APPROVED);
 
         // check callbacks completed in full network (except absent node)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -7335,7 +7338,7 @@ public class MainTest {
         Thread.sleep(18000 + 3000 * testSpace.nodes.size());
 
         // check expired callbacks (on absent node)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             if (absentNodeNumber == networkNode.node.getNumber()) {
                 envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
                 if (envs.size() > 0) {
@@ -7356,10 +7359,10 @@ public class MainTest {
         Thread.sleep(40000);
 
         // check callbacks completed in full network
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -7437,7 +7440,7 @@ public class MainTest {
         assertTrue(simpleContract.isOk());
 
         testSpace.client.register(simpleContract.getPackedTransaction(), 3000);
-        assertEquals(testSpace.client.getState(simpleContract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContract.getId()).state, ItemState.APPROVED);
 
         // callback key
         PrivateKey callbackKey = new PrivateKey(2048);
@@ -7487,8 +7490,8 @@ public class MainTest {
         seconds = (long) (callbackRate * 24 * 3600);
 
         Set<Long> envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
@@ -7520,10 +7523,10 @@ public class MainTest {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
@@ -7575,8 +7578,8 @@ public class MainTest {
 
         // check callbacks expired in non full network
         envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 Collection<CallbackRecord> callbacks = testSpace.node.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                 assertEquals(callbacks.size(), 2);
                 Iterator<CallbackRecord> it = callbacks.iterator();
@@ -7612,10 +7615,10 @@ public class MainTest {
         }
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                     assertEquals(callbacks.size(), 2);
                     Iterator<CallbackRecord> it = callbacks.iterator();
@@ -7659,10 +7662,10 @@ public class MainTest {
         assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state, ItemState.APPROVED);
 
         // check callbacks expired in full network (except absent node)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     Collection<CallbackRecord> callbacks = networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId);
                     assertEquals(callbacks.size(), 2);
                     Iterator<CallbackRecord> it = callbacks.iterator();
@@ -7764,10 +7767,10 @@ public class MainTest {
         Thread.sleep(10000);
 
         // check callbacks failed in full network
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -7843,7 +7846,7 @@ public class MainTest {
         assertTrue(simpleContract.isOk());
 
         testSpace.client.register(simpleContract.getPackedTransaction(), 3000);
-        assertEquals(testSpace.client.getState(simpleContract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContract.getId()).state, ItemState.APPROVED);
 
         // callback key
         PrivateKey callbackKey = new PrivateKey(2048);
@@ -7893,8 +7896,8 @@ public class MainTest {
         seconds = (long) (callbackRate * 24 * 3600);
 
         Set<Long> envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
@@ -7926,10 +7929,10 @@ public class MainTest {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
@@ -7985,8 +7988,8 @@ public class MainTest {
 
         // check callbacks completed on 0 node
         envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 assertTrue(testSpace.node.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
@@ -8022,13 +8025,13 @@ public class MainTest {
         Thread.sleep(2000);
         testSpace = prepareTestSpace(issuerKey);
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state, ItemState.APPROVED);
 
         // check callbacks completed in full network (except absent nodes)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -8089,7 +8092,7 @@ public class MainTest {
         Thread.sleep(18000 + 3000 * testSpace.nodes.size());
 
         // check expired callbacks (on absent nodes)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             if (absentNodeNumbers.contains(networkNode.node.getNumber())) {
                 envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
                 if (envs.size() > 0) {
@@ -8133,7 +8136,7 @@ public class MainTest {
         Thread.sleep(25000);
 
         // check callback records remove after synchronization is impossible
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if (envs.size() > 0) {
                 for (Long envId : envs)
@@ -8189,7 +8192,7 @@ public class MainTest {
         assertTrue(simpleContract.isOk());
 
         testSpace.client.register(simpleContract.getPackedTransaction(), 3000);
-        assertEquals(testSpace.client.getState(simpleContract.getId()).state,ItemState.APPROVED);
+        assertEquals(testSpace.client.getState(simpleContract.getId()).state, ItemState.APPROVED);
 
         // callback key
         PrivateKey callbackKey = new PrivateKey(2048);
@@ -8239,8 +8242,8 @@ public class MainTest {
         seconds = (long) (callbackRate * 24 * 3600);
 
         Set<Long> envs = testSpace.node.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-        if(envs.size() > 0) {
-            for(Long envId : envs) {
+        if (envs.size() > 0) {
+            for (Long envId : envs) {
                 NImmutableEnvironment environment = testSpace.node.node.getLedger().getEnvironment(envId);
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("expected: " + calculateExpires);
@@ -8272,10 +8275,10 @@ public class MainTest {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires);
@@ -8330,10 +8333,10 @@ public class MainTest {
         Thread.sleep(15000);
 
         // check callbacks completed on 2 nodes
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("expected: " + calculateExpires.minusSeconds(seconds * 2));
@@ -8377,10 +8380,10 @@ public class MainTest {
         testSpace.nodes.remove(absentNode);
 
         // check callbacks completed in full network (except absent nodes)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     NImmutableEnvironment environment = networkNode.node.getLedger().getEnvironment(envId);
@@ -8441,7 +8444,7 @@ public class MainTest {
         Thread.sleep(37000 + 6000 * testSpace.nodes.size());
 
         // check expired callbacks (on absent nodes)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
@@ -8494,7 +8497,7 @@ public class MainTest {
         Thread.sleep(25000);
 
         // check expired callbacks (on absent node)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
@@ -8520,7 +8523,7 @@ public class MainTest {
         assertEquals(testSpace.client.getState(simpleContractRevision.getId()).state, ItemState.APPROVED);
 
         // check expired callbacks (on absent nodes)
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
             if (envs.size() > 0) {
                 for (Long envId : envs) {
@@ -8542,10 +8545,10 @@ public class MainTest {
         Thread.sleep(70000);
 
         // check callbacks completed (synchronized) in full network
-        for (Main networkNode: testSpace.nodes) {
+        for (Main networkNode : testSpace.nodes) {
             envs = networkNode.node.getLedger().getSubscriptionEnviromentIds(simpleContract.getOrigin());
-            if(envs.size() > 0) {
-                for(Long envId : envs) {
+            if (envs.size() > 0) {
+                for (Long envId : envs) {
                     assertTrue(networkNode.node.getLedger().getFollowerCallbacksToResyncByEnvId(envId).isEmpty());
 
                     if (absentNodeNumber != networkNode.node.getNumber()) {
@@ -8594,7 +8597,7 @@ public class MainTest {
     @Test
     public void splitJoinCaseTest() throws Exception {
         TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        ts.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         Set<PrivateKey> issuersPriv = new HashSet<>();
         Set<PublicKey> ownersPub = new HashSet<>();
@@ -8602,11 +8605,11 @@ public class MainTest {
         issuersPriv.add(TestKeys.privateKey(1));
         ownersPub.add(TestKeys.publicKey(2));
         ownersPriv.add(TestKeys.privateKey(2));
-        Contract token = ContractsService.createTokenContract(issuersPriv,ownersPub,new BigDecimal("10000"));
+        Contract token = ContractsService.createTokenContract(issuersPriv, ownersPub, new BigDecimal("10000"));
         assertTrue(token.check());
-        assertEquals(ts.client.register(token.getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(token.getPackedTransaction(), 15000).state, ItemState.APPROVED);
 
-        Contract token1 = ContractsService.createSplit(token,new BigDecimal("5000"),"amount",ownersPriv,true);
+        Contract token1 = ContractsService.createSplit(token, new BigDecimal("5000"), "amount", ownersPriv, true);
         assertTrue(token1.check());
         Contract token2 = (Contract) token1.getNewItems().iterator().next();
 
@@ -8614,8 +8617,8 @@ public class MainTest {
         token2 = Contract.fromPackedTransaction(token2.getPackedTransaction());
 
 
-        assertEquals(ts.client.register(token1.getPackedTransaction(),15000).state,ItemState.APPROVED);
-        assertEquals(ts.client.getState(token2.getId()).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(token1.getPackedTransaction(), 15000).state, ItemState.APPROVED);
+        assertEquals(ts.client.getState(token2.getId()).state, ItemState.APPROVED);
 
 
         List<Contract> contracts = ContractsService.createSplitJoin(Do.listOf(token1, token2),
@@ -8624,18 +8627,18 @@ public class MainTest {
                 ownersPriv, "amount");
 
 
-        assertEquals(ts.client.register(contracts.get(0).getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(contracts.get(0).getPackedTransaction(), 15000).state, ItemState.APPROVED);
 
     }
 
     @Test
     public void fakeParent() throws Exception {
         TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        ts.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
         Contract contract = new Contract(TestKeys.privateKey(1));
         contract.seal();
-        assertEquals(ts.client.register(contract.getPackedTransaction(),15000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(contract.getPackedTransaction(), 15000).state, ItemState.APPROVED);
 
 
         Contract contract2 = new Contract(TestKeys.privateKey(2));
@@ -8643,8 +8646,8 @@ public class MainTest {
         contract2.getState().setParent(contract.getId());
         contract2.seal();
 
-        assertEquals(ts.client.register(contract2.getPackedTransaction(),15000).state,ItemState.DECLINED);
-        assertEquals(ts.client.getState(contract.getId()).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(contract2.getPackedTransaction(), 15000).state, ItemState.DECLINED);
+        assertEquals(ts.client.getState(contract.getId()).state, ItemState.APPROVED);
 
     }
 
@@ -8660,8 +8663,8 @@ public class MainTest {
         Contract c = new Contract(TestKeys.privateKey(1));
         Binder s = BossBiMapper.serialize(c);
         ZonedDateTime cr = ZonedDateTime.now().minusMonths(1);
-        s.getBinder("definition").set("created_at",cr);
-        s.getBinder("state").set("created_at",cr);
+        s.getBinder("definition").set("created_at", cr);
+        s.getBinder("state").set("created_at", cr);
         c = BossBiMapper.deserialize(s);
         c.getKeysToSignWith().add(TestKeys.privateKey(1));
         c.seal();
@@ -8679,7 +8682,7 @@ public class MainTest {
 
         //Case 3: insufficient payment - U spent
         c = new Contract(TestKeys.privateKey(1));
-        for(int i = 0; i < 20; i++) {
+        for (int i = 0; i < 20; i++) {
             c.addNewItems(new Contract(TestKeys.privateKey(1)));
         }
         c.seal();
@@ -8727,4 +8730,8 @@ public class MainTest {
         //payment = parcel.getPayment().getContract();
 
     }
+
+
+
+
 }

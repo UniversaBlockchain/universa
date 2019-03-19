@@ -304,6 +304,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    @Deprecated
     public Object getKeepingByOrigin(HashId origin, int limit) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow(
@@ -331,11 +332,40 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Object getKeepingByParent(HashId parent, int limit) {
+    public Object getKeepingBy(String field, HashId id, int limit, int offset, String sortBy, String sortOrder) {
+        String searchColumn;
+
+        if(field.equals("state.origin")) {
+            searchColumn = "keeping_items.origin";
+        } else if(field.equals("state.parent")) {
+            searchColumn = "keeping_items.parent";
+        } else {
+            throw new IllegalArgumentException("Can't get contracts by '" + field +"'. Should be either state.origin or state.parent");
+        }
+
+        String orderColumn;
+        if(sortBy.equals("")) {
+            orderColumn = "ledger.id";
+        } else  if(sortBy.equals("state.createdAt")) {
+            orderColumn = "ledger.created_at";
+        } else if(sortBy.equals("state.expiresAt")) {
+            orderColumn = "ledger.expires_at";
+        } else {
+            throw new IllegalArgumentException("Can't order contracts by '" + sortBy +"'. Should be either state.createdAt or state.expiresAt");
+        }
+
+        if(!sortOrder.equalsIgnoreCase("asc") && !sortOrder.equalsIgnoreCase("desc")) {
+            throw new IllegalArgumentException("Invalid sort order: '" + sortOrder +"'. Should be either ASC or DESC");
+        }
+
+
+        final String query = "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and " + searchColumn + " = ? and ledger.state = ? order by " + orderColumn + " " + sortOrder + "  limit ? offset ?";
+
+
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow(
-                    "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and parent = ? and state = ? order by keeping_items.id desc limit ?",
-                    parent.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
+                    query,
+                    id.getDigest(), ItemState.APPROVED.ordinal(), limit,offset))) {
                 if (rs == null)
                     return null;
 
@@ -356,6 +386,8 @@ public class PostgresLedger implements Ledger {
             }
         });
     }
+
+
 
     @Override
     public void putKeepingItem(StateRecord record, Approvable item) {

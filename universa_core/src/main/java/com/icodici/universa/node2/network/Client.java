@@ -795,12 +795,13 @@ public class Client {
      * List of IDs contracts contains contract hash digests as byte arrays.
      * @param origin contract origin
      * @param limit of list items
+     * @param offset of list items
      * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
-    public Binder getContract(HashId origin, int limit) throws ClientError {
+    public Binder getContract(HashId origin, int limit, int offset) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getContract", "origin", origin, "limit", limit);
+            Binder result = httpClient.command("getContract", "origin", origin, "limit", limit, "offset", offset);
             if (result.size() > 0) {
                 if (result.containsKey("contractIds")) {
                     List<byte[]> contractIds = new ArrayList<>();
@@ -818,6 +819,18 @@ public class Client {
         });
     }
 
+    /**
+     * Get the body of active contract with the given origin (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
+     * @param origin contract origin
+     * @param limit of list items
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getContract(HashId origin, int limit) throws ClientError {
+        return getContract(origin,limit,0);
+    }
 
     /**
      * Get the body of active contract with the given parent (if one active contract is returned),
@@ -825,12 +838,13 @@ public class Client {
      * List of IDs contracts contains contract hash digests as byte arrays.
      * @param parent id of parent contract
      * @param limit of list items
+     * @param offset of list items
      * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
-    public Binder getChildren(HashId parent, int limit) throws ClientError {
+    public Binder getChildren(HashId parent, int limit, int offset) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getChildren", "parent", parent, "limit", limit);
+            Binder result = httpClient.command("getContract", "parent", parent, "limit", limit,"offset", offset);
             if (result.size() > 0) {
                 if (result.containsKey("contractIds")) {
                     List<HashId> ids = new ArrayList<>();
@@ -842,6 +856,19 @@ public class Client {
             } else
                 return null;
         });
+    }
+
+    /**
+     * Get the body of active contract with the given parent (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
+     * @param parent id of parent contract
+     * @param limit of list items
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getChildren(HashId parent, int limit) throws ClientError {
+        return getChildren(parent,limit,0);
     }
 
     /**

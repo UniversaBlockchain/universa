@@ -202,10 +202,13 @@ public interface Ledger {
 
     byte[] getKeepingItem(HashId itemId);
 
-    Object getKeepingByParent(HashId parent, int limit);
 
     void putKeepingItem(StateRecord record, Approvable item);
+    @Deprecated
     Object getKeepingByOrigin(HashId origin, int limit);
+
+
+    Object getKeepingBy(String field, HashId id, int limit, int offset, String sortBy, String sortOrder);
 
     NImmutableEnvironment getEnvironment(long environmentId);
     NImmutableEnvironment getEnvironment(HashId contractId);
