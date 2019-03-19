@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.ItemState;
 
 import java.time.ZonedDateTime;
 
@@ -81,6 +82,18 @@ public interface FollowerService {
      * Decrement number of started callbacks of follower service
      */
     void decreaseStartedCallbacks();
+
+    /**
+     * Schedule callback processor for one callback.
+     *
+     * @param updatingItem is new revision of following contract
+     * @param state is state of new revision of following contract
+     * @param contract is follower contract
+     * @param me is environment
+     * @param callbackService is node callback service
+     */
+    void scheduleCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract,
+                                   MutableEnvironment me, CallbackService callbackService);
 
     /**
      * Save changes in follower service to ledger

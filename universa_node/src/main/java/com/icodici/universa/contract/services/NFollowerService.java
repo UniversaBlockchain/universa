@@ -1,5 +1,7 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -21,6 +23,12 @@ public class NFollowerService implements FollowerService, BiSerializable {
     private double spent = 0;
     private int startedCallbacks = 0;
     private Ledger ledger;
+
+    private Contract updatingItem = null;
+    private ItemState state = ItemState.UNDEFINED;
+    private NSmartContract contract = null;
+    private MutableEnvironment me = null;
+    private CallbackService callbackService = null;
 
     public NFollowerService() {}
 
@@ -111,7 +119,23 @@ public class NFollowerService implements FollowerService, BiSerializable {
     }
 
     @Override
+    public void scheduleCallbackProcessor(Contract updatingItem, ItemState state, NSmartContract contract,
+                                          MutableEnvironment me, CallbackService callbackService) {
+        this.callbackService = callbackService;
+        this.updatingItem = updatingItem;
+        this.state = state;
+        this.contract = contract;
+        this.me = me;
+    }
+
+    @Override
     public void save() {
         ledger.saveFollowerEnvironment(environmentId, expiresAt, mutedAt, spent, startedCallbacks);
+
+        if (callbackService != null) {
+            // start scheduled callback processor
+            callbackService.startCallbackProcessor(updatingItem, state, contract, me);
+            callbackService = null;
+        }
     }
 }

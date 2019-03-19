@@ -458,10 +458,10 @@ public class FollowerContract extends NSmartContract {
 
             fs.changeMutedAt(deltaSeconds);
 
-            // start callback processor
+            // schedule callback processor
             CallbackService callbackService = ((ContractSubscription.ApprovedWithCallbackEvent) event).getCallbackService();
-            callbackService.startCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
-                    ItemState.APPROVED, this, me);
+            fs.scheduleCallbackProcessor(((ContractSubscription.ApprovedWithCallbackEvent) event).getNewRevision(),
+                    ItemState.APPROVED, this, me, callbackService);
 
         } else if (event instanceof ContractSubscription.RevokedWithCallbackEvent) {
             if (fs.mutedAt().isBefore(ZonedDateTime.now()))
@@ -475,10 +475,10 @@ public class FollowerContract extends NSmartContract {
 
             fs.changeMutedAt(deltaSeconds);
 
-            // start callback processor
+            // schedule callback processor
             CallbackService callbackService = ((ContractSubscription.RevokedWithCallbackEvent) event).getCallbackService();
-            callbackService.startCallbackProcessor(((ContractSubscription.RevokedWithCallbackEvent) event).getRevokingItem(),
-                    ItemState.REVOKED, this, me);
+            fs.scheduleCallbackProcessor(((ContractSubscription.RevokedWithCallbackEvent) event).getRevokingItem(),
+                    ItemState.REVOKED, this, me, callbackService);
 
         } else if (event instanceof ContractSubscription.CompletedEvent) {
             fs.decreaseStartedCallbacks();
