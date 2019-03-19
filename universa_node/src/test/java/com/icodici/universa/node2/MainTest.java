@@ -31,14 +31,12 @@ import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
-import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -68,7 +66,6 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.*;
 
 @Ignore("start it manually")
@@ -8733,16 +8730,23 @@ public class MainTest {
 
 
 
-    public static final String ACC_TYPE_FIELD = "type";
+    public static final String ACC_TYPE_PATH = "type";
     public static final String ACC_TYPE_PERSONAL = "personal";
     public static final String ACC_TYPE_BANK = "bank";
 
-    public static final String ACC_CURRENCY_FIELD = "currency";
+    public static final String ACC_CURRENCY_PATH = "state.data.currency";
     public static final String ACC_CURRENCY_RUR = "RUR";
     public static final String ACC_CURRENCY_EUR = "EUR";
 
-    public static final String ACC_COMMISSION_PERCENT_FIELD = "commission_percent";
-    public static final String ACC_COMMISSION_ACCOUNT_FIELD = "commission_account";
+    public static final String ACC_COMMISSION_PERCENT_PATH = "state.data.commission_percent";
+    public static final String ACC_COMMISSION_ACCOUNT_PATH = "state.data.commission_account";
+
+
+    public static final String TOKEN_VALUE_FIELD = "amount";
+    public static final String TOKEN_ACCOUNT_FIELD = "account";
+
+    public static final String TOKEN_ACCOUNT_PATH = "state.data."+TOKEN_ACCOUNT_FIELD;
+    public static final String TOKEN_VALUE_PATH = "state.data."+ TOKEN_VALUE_FIELD;
 
     @Test
     public void demo() throws Exception {
@@ -8753,17 +8757,17 @@ public class MainTest {
 
         Contract commissionAccRur = new Contract(bank);
         Contract commissionAccEur = new Contract(bank);
-        commissionAccRur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
-        commissionAccEur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
+        commissionAccRur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_BANK);
+        commissionAccEur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_BANK);
 
-        commissionAccRur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
-        commissionAccEur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
+        commissionAccRur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
+        commissionAccEur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
 
-        commissionAccRur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
-        commissionAccEur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+        commissionAccRur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
+        commissionAccEur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
 
-        commissionAccRur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
-        commissionAccEur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
+        commissionAccRur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,null);
+        commissionAccEur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,null);
 
         commissionAccRur.seal();
         commissionAccEur.seal();
@@ -8774,25 +8778,25 @@ public class MainTest {
         Contract account1eur = new Contract(person1);
         Contract account2eur = new Contract(person2);
 
-        account1rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
-        account2rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
-        account1eur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
-        account2eur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+        account1rur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
+        account2rur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
+        account1eur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
+        account2eur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
 
-        account1rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
-        account2rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
-        account1eur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
-        account2eur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
+        account1rur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
+        account2rur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
+        account1eur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
+        account2eur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
 
-        account1rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.01");
-        account2rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
-        account1eur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
-        account2eur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.02");
+        account1rur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.01");
+        account2rur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
+        account1eur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
+        account2eur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.02");
 
-        account1rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId());
-        account2rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId());
-        account1eur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccEur.getId());
-        account2eur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccEur.getId());
+        account1rur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccRur.getId());
+        account2rur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccRur.getId());
+        account1eur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccEur.getId());
+        account2eur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccEur.getId());
 
         account1rur.seal();
         account2rur.seal();
@@ -8807,25 +8811,25 @@ public class MainTest {
         tokenOwner.addRequiredReference("canplayaccowner", Role.RequiredMode.ALL_OF);
 
         rurToken.getStateData().put("account",account1rur.getId().toBase64String());
-        rurToken.getStateData().put("amount","100000");
+        rurToken.getStateData().put(TOKEN_VALUE_FIELD,"100000");
 
         RoleLink rl = new RoleLink("@owner", "owner");
         rurToken.registerRole(rl);
         SplitJoinPermission sjp =
-                new SplitJoinPermission(rl, Binder.of("field_name","amount",
-                        "join_match_fields",Do.listOf("state.origin","state.data.account")));
+                new SplitJoinPermission(rl, Binder.of("field_name", TOKEN_VALUE_FIELD,
+                        "join_match_PATHs",Do.listOf("state.origin",TOKEN_ACCOUNT_PATH)));
         rurToken.addPermission(sjp);
 
 
         ModifyDataPermission mdp =
-                new ModifyDataPermission(rl,Binder.of("fields",Binder.of("amount",null)));
+                new ModifyDataPermission(rl,Binder.of("fields",Binder.of(TOKEN_ACCOUNT_FIELD,null)));
         rurToken.addPermission(mdp);
 
 
         Reference canplayaccowner = new Reference(rurToken);
         canplayaccowner.name = "canplayaccowner";
         List<String> conditions = new ArrayList<>();
-        conditions.add("ref.id==this.state.data.account");
+        conditions.add("ref.id==this."+TOKEN_ACCOUNT_PATH);
         conditions.add("this can_play ref.owner");
         canplayaccowner.setConditions(Binder.of("all_of",conditions));
         rurToken.addReference(canplayaccowner);
@@ -8833,7 +8837,7 @@ public class MainTest {
 
         Reference refAccount = new Reference(rurToken);
         refAccount.name = "refAccount";
-        refAccount.setConditions(Binder.of("all_of",Do.listOf("this.state.data.account == ref.id")));
+        refAccount.setConditions(Binder.of("all_of",Do.listOf("this."+TOKEN_ACCOUNT_PATH+" == ref.id")));
         rurToken.addReference(refAccount);
 
         Reference refParent = new Reference(rurToken);
@@ -8847,7 +8851,7 @@ public class MainTest {
         Reference refParentAccount = new Reference(rurToken);
         refParentAccount.name = "refParentAccount";
         refParentAccount.setConditions(Binder.of("any_of",Do.listOf(
-                "refParent.state.data.account == ref.id",
+                "refParent."+TOKEN_ACCOUNT_PATH+" == ref.id",
                 "this.parent undefined"
                 )));
         rurToken.addReference(refParentAccount);
@@ -8860,30 +8864,30 @@ public class MainTest {
                 "this.parent undefined",
 
                 //OR there was no transfer
-                "refParent.state.data.account == this.state.data.account",
+                "refParent."+TOKEN_ACCOUNT_PATH+" == this."+TOKEN_ACCOUNT_PATH,
 
                 //OR transfer is correct
                 Binder.of("all_of", Do.listOf(
 
                         //transfer to account with same currency
-                        "refAccount.state.data."+ACC_CURRENCY_FIELD+" == refParentAccount.state.data."+ACC_CURRENCY_FIELD,
+                        "refAccount."+ACC_CURRENCY_PATH+" == refParentAccount."+ACC_CURRENCY_PATH,
 
                         //AND one of the cases
                         Binder.of("any_of",Do.listOf(
                                 // contract is a commission itself
                                 Binder.of("all_of", Do.listOf(
-                                        "this.state.data.account==refParentAccount.state.data."+ACC_COMMISSION_ACCOUNT_FIELD
+                                        "this."+TOKEN_ACCOUNT_PATH+"==refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH
                                 )),
 
                                 // OR commission is set to zero
                                 Binder.of("all_of", Do.listOf(
-                                        "refParentAccount.state.data."+ACC_COMMISSION_PERCENT_FIELD+"==0.0"
+                                        "refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"==0.0"
                                 )),
 
                                 // OR commission exists in pack
                                 Binder.of("all_of", Do.listOf(
-                                        "ref.state.data.amount == this.state.data.amount * refParentAccount.state.data."+ACC_COMMISSION_PERCENT_FIELD,
-                                        "ref.state.data.account == refParentAccount.state.data."+ACC_COMMISSION_ACCOUNT_FIELD,
+                                        "ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
+                                        "ref."+TOKEN_ACCOUNT_PATH+" == refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH,
                                         "ref.state.data.transfer_id == this.id"
                                 ))
                         ))
