@@ -200,6 +200,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("queryNameContract", this::queryNameContract);
         addSecureEndpoint("getBody", this::getBody);
         addSecureEndpoint("getContract", this::getContract);
+        addSecureEndpoint("getChildren", this::getChildren);
 
         addSecureEndpoint("followerGetRate", this::followerGetRate);
         addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
@@ -329,6 +330,35 @@ public class ClientHTTPServer extends BasicHttpServer {
             limit = 1;
 
         Object keeping = node.getLedger().getKeepingByOrigin(origin, limit);
+        if (keeping == null)
+            return res;
+
+        if (keeping instanceof byte[])
+            res.put("packedContract", keeping);
+        else if (keeping instanceof List)
+            res.put("contractIds", keeping);
+
+        return res;
+    }
+
+    private Binder getChildren(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Binder res = new Binder();
+
+        if (!node.getConfig().isPermanetMode())
+            return res;
+
+        HashId parent = (HashId) params.get("parent");
+        int limit = params.getInt("limit", 100);
+
+        if (limit > node.getConfig().getQueryContractsLimit())
+            limit = node.getConfig().getQueryContractsLimit();
+        if (limit < 1)
+            limit = 1;
+
+        Object keeping = node.getLedger().getKeepingByParent(parent, limit);
         if (keeping == null)
             return res;
 

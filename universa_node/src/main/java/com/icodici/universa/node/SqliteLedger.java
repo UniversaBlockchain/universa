@@ -253,6 +253,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Object getKeepingByParent(HashId parent, int limit) {
+        return null;
+    }
+
+    @Override
     public Object getKeepingByOrigin(HashId origin, int limit)  {
         return null;
     }

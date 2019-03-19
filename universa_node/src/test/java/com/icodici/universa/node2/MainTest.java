@@ -140,6 +140,7 @@ public class MainTest {
             System.gc();
         }
     }
+    /*
     @Before
     public void beforeMainTest() throws Exception {
         // clearLedgers
@@ -161,7 +162,7 @@ public class MainTest {
 
         // add U issuer test key
         configForProvider.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-    }
+    }*/
 
     @After
     public void tearDown() throws Exception {
@@ -6320,6 +6321,43 @@ public class MainTest {
             assertTrue(Arrays.equals(revisionContract.getPackedTransaction(), keeping_revision));
             assertTrue(Arrays.equals(revokeContract.getPackedTransaction(), keeping_revoke));
         }
+
+        HashSet<PrivateKey> own = new HashSet<>(Do.listOf(manufacturePrivateKey));
+        // create revision
+        Contract rootContract = ContractsService.createTokenContract(own,
+                new HashSet<>(Do.listOf(manufacturePrivateKey.getPublicKey())),"10000");
+        rootContract.seal();
+
+
+        parcel = createParcelWithFreshU(client, rootContract, privateKeys);
+        client.registerParcelWithState(parcel.pack(), 8000);
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("root : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+        List<Contract> splitres = ContractsService.createSplitJoin(Do.listOf(rootContract), Do.listOf("100", "200", "300"), Do.listOf(
+                TestKeys.publicKey(1).getShortAddress(),
+                TestKeys.publicKey(2).getShortAddress(),
+                TestKeys.publicKey(3).getShortAddress()), own, "amount");
+
+        parcel = createParcelWithFreshU(client, splitres.get(0), privateKeys);
+        client.registerParcelWithState(parcel.pack(), 8000);
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println("split : " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+
+
+        List<HashId> ids = client.getChildren(rootContract.getId(),5).getListOrThrow("ids");
+        System.out.println("children : " + ids);
+
+        assertEquals(ids.size(),splitres.size());
+
+        assertTrue(splitres.stream().allMatch(c -> ids.contains(c.getId())));
 
         mm.forEach(x -> x.shutdown());
     }

@@ -331,13 +331,40 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public Object getKeepingByParent(HashId parent, int limit) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow(
+                    "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and parent = ? and state = ? order by keeping_items.id desc limit ?",
+                    parent.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
+                if (rs == null)
+                    return null;
+
+                byte[] packed = rs.getBytes("packed");
+                List<byte[]> contractIds = new ArrayList<>();
+                contractIds.add(rs.getBytes("hash"));
+
+                while (rs.next())
+                    contractIds.add(rs.getBytes("hash"));
+
+                if (contractIds.size() > 1)
+                    return contractIds;
+                else
+                    return packed;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
     public void putKeepingItem(StateRecord record, Approvable item) {
         if (item instanceof Contract) {
             try (PooledDb db = dbPool.db()) {
                 try (
                         PreparedStatement statement =
                                 db.statement(
-                                        "insert into keeping_items (id,hash,origin,packed) values(?,?,?,?);"
+                                        "insert into keeping_items (id,hash,origin,parent,packed) values(?,?,?,?,?);"
                                 )
                 ) {
                     if (record != null)
@@ -346,7 +373,14 @@ public class PostgresLedger implements Ledger {
                         statement.setNull(1, Types.INTEGER);
                     statement.setBytes(2, ((Contract) item).getId().getDigest());
                     statement.setBytes(3, ((Contract) item).getOrigin().getDigest());
-                    statement.setBytes(4, ((Contract) item).getPackedTransaction());
+
+                    if(((Contract) item).getParent() != null)
+                        statement.setBytes(4, ((Contract) item).getParent().getDigest());
+                    else
+                        statement.setNull(4, Types.VARBINARY);
+
+                    statement.setBytes(5, ((Contract) item).getPackedTransaction());
+
                     db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();

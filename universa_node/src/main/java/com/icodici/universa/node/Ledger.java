@@ -201,6 +201,9 @@ public interface Ledger {
     void putItem(StateRecord record, Approvable item, Instant keepTill);
 
     byte[] getKeepingItem(HashId itemId);
+
+    Object getKeepingByParent(HashId parent, int limit);
+
     void putKeepingItem(StateRecord record, Approvable item);
     Object getKeepingByOrigin(HashId origin, int limit);
 

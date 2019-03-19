@@ -804,9 +804,39 @@ public class Client {
             if (result.size() > 0) {
                 if (result.containsKey("contractIds")) {
                     List<byte[]> contractIds = new ArrayList<>();
-                    for (Object id: result.getListOrThrow(("contractIds")))
-                        contractIds.add(((Bytes)id).getData());
+                    List<HashId> ids = new ArrayList<>();
+                    for (Object id: result.getListOrThrow(("contractIds"))) {
+                        contractIds.add(((Bytes) id).getData());
+                        ids.add(HashId.withDigest(((Bytes) id).getData()));
+                    }
                     result.put("contractIds", contractIds);
+                    result.put("ids", ids);
+                }
+                return result;
+            } else
+                return null;
+        });
+    }
+
+
+    /**
+     * Get the body of active contract with the given parent (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
+     * @param parent id of parent contract
+     * @param limit of list items
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getChildren(HashId parent, int limit) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getChildren", "parent", parent, "limit", limit);
+            if (result.size() > 0) {
+                if (result.containsKey("contractIds")) {
+                    List<HashId> ids = new ArrayList<>();
+                    for (Object id: result.getListOrThrow(("contractIds")))
+                        ids.add(HashId.withDigest(((Bytes)id).getData()));
+                    result.put("ids", ids);
                 }
                 return result;
             } else
