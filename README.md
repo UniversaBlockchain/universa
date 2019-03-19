@@ -67,11 +67,11 @@ Then you can build it.
 
 Universa node may be built either in multi-jar configuration (suggested),..
 
-     gradle :universa_core:buildMultiJar -x test
+     gradle :universa_node:buildMultiJar -x test
 
 ... or as a “fat jar”:
 
-    gradle :universa_core:fatJar
+    gradle :universa_node:fatJar
 
 Uniclient (CLI interface to Universa) is built as “fat jar” only:
 
@@ -85,11 +85,11 @@ After building launch Universa components.
 
 Launching the node, built in “multi-jar” configuration:
 
-    java -jar universa_core/build/output/uninode.jar
+    java -jar universa_node/build/output/uninode.jar
 
 Launching the node, built in “fat jar” configuration:
 
-    java -jar universa_core/build/libs/uninode-all.jar
+    java -jar universa_node/build/libs/uninode-all.jar
 
 Launching uniclient:
 
@@ -99,10 +99,10 @@ Launching uniclient:
 
 To build Universa under Windows, you need to install the Oracle JDK and Gradle from the binary distributions, and use them similarly. You will need to pass an extra `-Dfile.encoding=utf-8` option to `gradle`; so the build commands
 
-    gradle :universa_core:jar
+    gradle :universa_node:jar
     gradle :uniclient:fatJar
 
 become
 
-    gradle -Dfile.encoding=utf-8 :universa_core:fatJar
+    gradle -Dfile.encoding=utf-8 :universa_node:fatJar
     gradle -Dfile.encoding=utf-8 :uniclient:fatJar
