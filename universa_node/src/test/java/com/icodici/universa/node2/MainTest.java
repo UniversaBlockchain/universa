@@ -8740,7 +8740,7 @@ public class MainTest {
     public static final String ACC_CURRENCY_PATH = "state.data."+ACC_CURRENCY_FIELD;
     public static final String ACC_CURRENCY_RUR = "RUR";
     public static final String ACC_CURRENCY_EUR = "EUR";
-    
+
     public static final String ACC_COMMISSION_PERCENT_FIELD = "commission_percent";
     public static final String ACC_COMMISSION_ACCOUNT_FIELD = "commission_account";
 
@@ -8792,7 +8792,7 @@ public class MainTest {
 
         transfer = transfer.createRevision(keysToSignTransferWith);
         transfer.getStateData().set(TOKEN_ACCOUNT_FIELD,toAccount.getId().toBase64String());
-        transfer.getKeysToSignWith().clear();
+//        transfer.getKeysToSignWith().clear();
         transfer.seal();
         System.out.println("tran(sent) " + transfer.getId());
 
@@ -8822,8 +8822,6 @@ public class MainTest {
 
 
 
-        transfer.seal();
-        transfer.addSignatureToSeal(keysToSignTransferWith);
         transfer.getTransactionPack().addReferencedItem(fromAccount);
         transfer.getTransactionPack().addReferencedItem(toAccount);
         transfer.getTransactionPack().addReferencedItem(commission);
@@ -8831,14 +8829,14 @@ public class MainTest {
         System.out.println(ir.errors);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        assertTrue(false);
+/*        assertTrue(false);
 
         batch.getTransactionPack().addReferencedItem(fromAccount);
         batch.getTransactionPack().addReferencedItem(toAccount);
         batch.getTransactionPack().addReferencedItem(commissionAccount);
         ir = client.register(batch.getPackedTransaction(),8000);
         System.out.println(ir.errors);
-        assertEquals(ir.state,ItemState.APPROVED);
+        assertEquals(ir.state,ItemState.APPROVED);*/
 
         return new Contract[] {token,transfer, commission};
     }
@@ -8982,9 +8980,9 @@ public class MainTest {
                                 // OR commission exists in pack
                                 Binder.of("all_of", Do.listOf(
                                         //"ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
-                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
                                         "ref."+TOKEN_ACCOUNT_PATH+" == refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH,
-                                        "ref.transactional.data.transfer_id == this.id"
+                                        "ref.transactional.data.transfer_id == this.id",
+                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number"
                                 ))
                         ))
                 ))

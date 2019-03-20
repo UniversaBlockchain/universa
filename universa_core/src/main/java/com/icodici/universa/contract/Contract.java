@@ -2596,8 +2596,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     case "validUntil":
                         return (T) transactional.validUntil;
                     default:
-                        if (name.startsWith("data."))
+                        if (name.startsWith("data.")) {
+                            if (transactional.data == null)
+                                return null;
                             return transactional.data.getOrNull(name.substring(5));
+                        }
                         if (name.startsWith("references."))
                             return (T) findReferenceByName(name.substring(11), "transactional");
                 }
