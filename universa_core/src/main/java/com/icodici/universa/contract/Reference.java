@@ -295,10 +295,9 @@ public class Reference implements BiSerializable {
         return val;
     }
 
-    private Object evaluateOperand(String operand, compareOperandType typeOfOperand, Contract refContract,
+    private Object evaluateOperand(String operand, compareOperandType typeOfOperand, int conversion, Contract refContract,
                                    Collection<Contract> contracts, int iteration) throws Exception {
         Contract operandContract = null;
-        Object result;
         int firstPointPos;
 
         if (operand == null)
@@ -333,12 +332,15 @@ public class Reference implements BiSerializable {
             } else
                 throw new IllegalArgumentException("Invalid format of left operand in expression: " + operand + ". Missing contract field.");
 
-            result = operandContract.get(operand);
+            return operandContract.get(operand);
         } else {
-            result = null;
+            if (conversion == CONVERSION_BIG_DECIMAL)
+                return new BigDecimal(operand);
+            else if (operand.contains("."))
+                return Double.parseDouble(operand);
+            else
+                return Long.parseLong(operand);
         }
-
-        return result;
     }
 
     private Object evaluateExpression(Binder expression, Contract refContract, Collection<Contract> contracts, int iteration) {
@@ -371,12 +373,12 @@ public class Reference implements BiSerializable {
             if (typeOfLeftOperand == compareOperandType.EXPRESSION)
                 left = evaluateExpression(leftExpression, refContract, contracts, iteration);
             else
-                left = evaluateOperand(leftOperand, typeOfLeftOperand, refContract, contracts, iteration);
+                left = evaluateOperand(leftOperand, typeOfLeftOperand, leftConversion, refContract, contracts, iteration);
 
             if (typeOfRightOperand == compareOperandType.EXPRESSION)
                 right = evaluateExpression(rightExpression, refContract, contracts, iteration);
             else
-                right = evaluateOperand(rightOperand, typeOfRightOperand, refContract, contracts, iteration);
+                right = evaluateOperand(rightOperand, typeOfRightOperand, rightConversion, refContract, contracts, iteration);
 
             // evaluate expression
             if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
@@ -676,10 +678,10 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
-                        if (typeOfLeftOperand == compareOperandType.FIELD && left == null && !rightOperand.equals("null"))
+                        if (typeOfLeftOperand == compareOperandType.FIELD && left == null && (rightOperand == null || !rightOperand.equals("null")))
                             break;
 
-                        if (typeOfRightOperand == compareOperandType.FIELD && right == null && !leftOperand.equals("null"))
+                        if (typeOfRightOperand == compareOperandType.FIELD && right == null && (leftOperand == null || !leftOperand.equals("null")))
                             break;
 
 

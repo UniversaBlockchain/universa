@@ -8770,7 +8770,7 @@ public class MainTest {
                 .subtract(new BigDecimal(transfer.getStateData().getString(TOKEN_VALUE_FIELD)));
 
         if(commission != null) {
-            commission.getStateData().set(TOKEN_VALUE_FIELD,fromAccount.get(ACC_COMMISSION_PERCENT_PATH));//fixed commission for now
+            commission.getStateData().set(TOKEN_VALUE_FIELD, new BigDecimal(fromAccount.get(ACC_COMMISSION_PERCENT_PATH).toString()).multiply(amount));
             commission.getKeysToSignWith().clear();
             rest = rest.subtract(new BigDecimal(commission.getStateData().getString(TOKEN_VALUE_FIELD)));
         }
@@ -8951,8 +8951,8 @@ public class MainTest {
 
                                 // OR commission exists in pack
                                 Binder.of("all_of", Do.listOf(
-                                        //"ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
-                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
+                                        "ref."+TOKEN_VALUE_PATH+"::number == this."+TOKEN_VALUE_PATH+"::number * refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
+                                        //"ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
                                         "ref."+TOKEN_ACCOUNT_PATH+" == refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH,
                                         "ref.transactional.data.transfer_id == this.id"
 
