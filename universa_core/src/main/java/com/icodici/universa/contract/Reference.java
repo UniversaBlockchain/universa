@@ -1121,7 +1121,10 @@ public class Reference implements BiSerializable {
             else {
                 leftOperand = subStrL.replaceAll("\\s+", "");
 
-                if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+                if (baseContract == null)
+                    System.out.println("WARNING: Need base contract to check API level. Capabilities API level 4 and above disabled.");
+
+                if (baseContract != null && baseContract.getApiLevel() >= 4 && Arrays.stream(operations).anyMatch(leftOperand::contains)) {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in left operand.");
 
@@ -1153,7 +1156,10 @@ public class Reference implements BiSerializable {
             else {
                 rightOperand = subStrR.replaceAll("\\s+", "");
 
-                if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+                if (baseContract == null)
+                    System.out.println("WARNING: Need base contract to check API level. Capabilities API level 4 and above disabled.");
+
+                if (baseContract != null && baseContract.getApiLevel() >= 4 && Arrays.stream(operations).anyMatch(rightOperand::contains)) {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in right operand.");
 
