@@ -8825,6 +8825,9 @@ public class MainTest {
         transfer.getTransactionPack().addReferencedItem(fromAccount);
         transfer.getTransactionPack().addReferencedItem(toAccount);
         transfer.getTransactionPack().addReferencedItem(commission);
+
+        assertTrue(transfer.check());
+
         ir = client.register(transfer.getPackedTransaction(),8000);
         System.out.println(ir.errors);
         assertEquals(ir.state,ItemState.APPROVED);
@@ -8980,9 +8983,10 @@ public class MainTest {
                                 // OR commission exists in pack
                                 Binder.of("all_of", Do.listOf(
                                         //"ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
+                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
                                         "ref."+TOKEN_ACCOUNT_PATH+" == refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH,
-                                        "ref.transactional.data.transfer_id == this.id",
-                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number"
+                                        "ref.transactional.data.transfer_id == this.id"
+
                                 ))
                         ))
                 ))
