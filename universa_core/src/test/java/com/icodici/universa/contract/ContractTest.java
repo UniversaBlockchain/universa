@@ -1156,7 +1156,7 @@ public class ContractTest extends ContractTestBase {
      */
     @Test
     public void checkReferenceSerialization() throws Exception {
-        Contract contract = Contract.fromDslFile(rootPath + "simple_root_contract_with_references.yml");
+        Contract contract = Contract.fromDslFile(rootPath + "references/simple_root_contract_with_references.yml");
 
         assertEquals(contract.findReferenceByName("ref_cont").getComment(), "ref_comment");
 

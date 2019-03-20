@@ -441,7 +441,7 @@ public class PermissionsTest extends ContractTestBase {
         jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
         jobCertificate.seal();
 
-        Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         c.addNewItems(jobCertificate);
 
@@ -512,7 +512,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract referencedItem = new Contract();
         referencedItem.seal();
-        Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         c.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
 
@@ -590,7 +590,7 @@ public class PermissionsTest extends ContractTestBase {
         jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
         jobCertificate.seal();
 
-        Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/TokenWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         c.addNewItems(jobCertificate);
 
@@ -668,7 +668,7 @@ public class PermissionsTest extends ContractTestBase {
         jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
         jobCertificate.seal();
 
-        Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/AbonementWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         c.addNewItems(jobCertificate);
 
