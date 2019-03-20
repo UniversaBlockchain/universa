@@ -278,16 +278,160 @@ public class Reference implements BiSerializable {
         if ((obj == null) && (typeOfOperand == compareOperandType.FIELD))
             throw new IllegalArgumentException("Error getting operand: " + operand);
 
+        if ((obj != null) && obj.getClass().getName().endsWith("BigDecimal"))
+            return (BigDecimal) obj;
+
         if ((obj != null) && obj.getClass().getName().endsWith("String"))
             val = new BigDecimal((String) obj);
         else if ((obj != null) && isObjectMayCastToLong(obj))
             val = new BigDecimal(objectCastToLong(obj));
+        else if ((obj != null) && isObjectMayCastToDouble(obj))
+            val = new BigDecimal(objectCastToDouble(obj));
         else if ((typeOfOperand == compareOperandType.CONSTSTR) || (typeOfOperand == compareOperandType.CONSTOTHER))
             val = new BigDecimal(operand);
         else
-            throw new IllegalArgumentException("Error parsing DateTime from operand: " + operand);
+            throw new IllegalArgumentException("Error parsing BigDecimal from operand: " + operand);
 
         return val;
+    }
+
+    private Object evaluateOperand(String operand, compareOperandType typeOfOperand, Contract refContract,
+                                   Collection<Contract> contracts, int iteration) throws Exception {
+        Contract operandContract = null;
+        Object result;
+        int firstPointPos;
+
+        if (operand == null)
+            throw new IllegalArgumentException("Error evaluate null operand");
+
+        if (typeOfOperand == compareOperandType.FIELD) {
+            if (operand.startsWith("ref.")) {
+                operand = operand.substring(4);
+                operandContract = refContract;
+            } else if (operand.startsWith("this.")) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use left operand in expression: " + operand + ". But this contract not initialized.");
+
+                operand = operand.substring(5);
+                operandContract = baseContract;
+            } else if ((firstPointPos = operand.indexOf(".")) > 0) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use left operand in expression: " + operand + ". But this contract not initialized.");
+
+                Reference ref = baseContract.findReferenceByName(operand.substring(0, firstPointPos));
+                if (ref == null)
+                    throw new IllegalArgumentException("Not found reference: " + operand.substring(0, firstPointPos));
+
+                for (Contract checkedContract : contracts)
+                    if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                        operandContract = checkedContract;
+
+                if (operandContract == null)
+                    throw new IllegalArgumentException("Not found referenced contract for reference: " + operand.substring(0, firstPointPos));
+
+                operand = operand.substring(firstPointPos + 1);
+            } else
+                throw new IllegalArgumentException("Invalid format of left operand in expression: " + operand + ". Missing contract field.");
+
+            result = operandContract.get(operand);
+        } else {
+            result = null;
+        }
+
+        return result;
+    }
+
+    private Object evaluateExpression(Binder expression, Contract refContract, Collection<Contract> contracts, int iteration) {
+        Object left;
+        Object right;
+        Object result;
+        compareOperandType typeOfLeftOperand;
+        compareOperandType typeOfRightOperand;
+
+        // unpack expression
+        String leftOperand = expression.getString("leftOperand", null);
+        String rightOperand = expression.getString("rightOperand", null);
+
+        Binder leftExpression = expression.getBinder("left", null);
+        Binder rightExpression = expression.getBinder("right", null);
+
+        int operation = expression.getIntOrThrow("operation");
+
+        int typeLeftOperand = expression.getIntOrThrow("typeOfLeftOperand");
+        int typeRightOperand = expression.getIntOrThrow("typeOfRightOperand");
+
+        typeOfLeftOperand = compareOperandType.values()[typeLeftOperand];
+        typeOfRightOperand = compareOperandType.values()[typeRightOperand];
+
+        int leftConversion = expression.getInt("leftConversion", NO_CONVERSION);
+        int rightConversion = expression.getInt("rightConversion", NO_CONVERSION);
+
+        try {
+            // evaluate operands
+            if (typeOfLeftOperand == compareOperandType.EXPRESSION)
+                left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+            else
+                left = evaluateOperand(leftOperand, typeOfLeftOperand, refContract, contracts, iteration);
+
+            if (typeOfRightOperand == compareOperandType.EXPRESSION)
+                right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+            else
+                right = evaluateOperand(rightOperand, typeOfRightOperand, refContract, contracts, iteration);
+
+            // evaluate expression
+            if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
+                    left.getClass().getName().endsWith("BigDecimal") || right.getClass().getName().endsWith("BigDecimal")) {
+                // BigDecimals
+                if (operation == PLUS)
+                    result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).add(
+                             objectCastToBigDecimal(right, null, compareOperandType.FIELD));
+                else if (operation == MINUS)
+                    result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).subtract(
+                             objectCastToBigDecimal(right, null, compareOperandType.FIELD));
+                else if (operation == MULT)
+                    result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).multiply(
+                             objectCastToBigDecimal(right, null, compareOperandType.FIELD));
+                else if (operation == DIV)
+                    result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).divide(
+                             objectCastToBigDecimal(right, null, compareOperandType.FIELD));
+                else
+                    throw new IllegalArgumentException("Unknown operation: " + operation);
+
+            } else if (isObjectMayCastToDouble(left) || isObjectMayCastToDouble(right)) {
+                // Doubles
+                if (operation == PLUS)
+                    result = objectCastToDouble(left) + objectCastToDouble(right);
+                else if (operation == MINUS)
+                    result = objectCastToDouble(left) - objectCastToDouble(right);
+                else if (operation == MULT)
+                    result = objectCastToDouble(left) * objectCastToDouble(right);
+                else if (operation == DIV)
+                    result = objectCastToDouble(left) / objectCastToDouble(right);
+                else
+                    throw new IllegalArgumentException("Unknown operation: " + operation);
+
+            } else if (isObjectMayCastToLong(left) || isObjectMayCastToLong(right)) {
+                // Long integers
+                if (operation == PLUS)
+                    result = objectCastToLong(left) + objectCastToLong(right);
+                else if (operation == MINUS)
+                    result = objectCastToLong(left) - objectCastToLong(right);
+                else if (operation == MULT)
+                    result = objectCastToLong(left) * objectCastToLong(right);
+                else if (operation == DIV)
+                    result = objectCastToLong(left) / objectCastToLong(right);
+                else
+                    throw new IllegalArgumentException("Unknown operation: " + operation);
+
+            } else
+                throw new IllegalArgumentException("Incompatible operand types. Left: " + left.getClass().getName() +
+                        ". Right: " + right.getClass().getName());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new IllegalArgumentException("Error evaluate expression: " + e.getMessage());
+        }
+
+        return result;
     }
 
     /**
@@ -332,6 +476,7 @@ public class Reference implements BiSerializable {
         boolean isRightDouble = false;
         int firstPointPos;
 
+        // get operands
         if (leftOperand != null) {
             if (typeOfLeftOperand == compareOperandType.FIELD) {
                 if (leftOperand.startsWith("ref.")) {
@@ -356,7 +501,7 @@ public class Reference implements BiSerializable {
                             leftOperandContract = checkedContract;
 
                     if (leftOperandContract == null)
-                        return false;
+                        throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand.substring(0, firstPointPos));
 
                     leftOperand = leftOperand.substring(firstPointPos + 1);
                 } else
@@ -383,7 +528,7 @@ public class Reference implements BiSerializable {
                                 leftOperandContract = checkedContract;
 
                         if (leftOperandContract == null)
-                            return false;
+                            throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand);
                     }
                 } else if (leftOperand.equals("now"))
                     left = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -409,7 +554,7 @@ public class Reference implements BiSerializable {
                     if (ref == null)
                         throw new IllegalArgumentException("Not found reference: " + rightOperand.substring(0, firstPointPos));
 
-                    for (Contract checkedContract: contracts)
+                    for (Contract checkedContract : contracts)
                         if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
                             rightOperandContract = checkedContract;
 
@@ -417,19 +562,34 @@ public class Reference implements BiSerializable {
                         return false;
 
                     rightOperand = rightOperand.substring(firstPointPos + 1);
-                }
-                else
+                } else
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
             } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {
                 if (rightOperand.equals("now"))
                     right = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             }
+        }
 
-            if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
-                left = leftOperandContract.get(leftOperand);
-            if (rightOperandContract != null)
-                right = rightOperandContract.get(rightOperand);
+        if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
+            left = leftOperandContract.get(leftOperand);
+        if (rightOperandContract != null)
+            right = rightOperandContract.get(rightOperand);
 
+        if (leftExpression != null) {
+            left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+            typeOfLeftOperand = compareOperandType.FIELD;
+            if (left.getClass().getName().endsWith("BigDecimal"))
+                isBigDecimalConversion = true;
+        }
+        if (rightExpression != null) {
+            right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+            typeOfRightOperand = compareOperandType.FIELD;
+            if (right.getClass().getName().endsWith("BigDecimal"))
+                isBigDecimalConversion = true;
+        }
+
+        // check operator
+        if (rightOperand != null || rightExpression != null) {
             try {
                 switch (indxOperator) {
                     case LESS:
@@ -766,7 +926,7 @@ public class Reference implements BiSerializable {
                 e.printStackTrace();
                 throw new IllegalArgumentException("Error compare operands in condition: " + e.getMessage());
             }
-        } else {       // if rightOperand == null, then operation: defined / undefined
+        } else {       // if rightOperand == null && rightExpression == null, then operation: defined / undefined
             if (indxOperator == DEFINED) {
                 try {
                     if (leftOperandContract.get(leftOperand) != null)
@@ -968,6 +1128,9 @@ public class Reference implements BiSerializable {
                 leftOperand = subStrL.replaceAll("\\s+", "");
 
                 if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+                    if (i > EQUAL)
+                        throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in left operand.");
+
                     left = parseExpression(leftOperand);
                     typeLeftOperand = compareOperandType.EXPRESSION;
                 } else if (isFieldOperand(leftOperand))
@@ -983,7 +1146,7 @@ public class Reference implements BiSerializable {
             int rmarkPos2 = subStrR.lastIndexOf("\"");
 
             if ((rmarkPos1 >= 0) && (rmarkPos1 == rmarkPos2))
-                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for rigth operand.");
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for right operand.");
 
             String rightOperand;
             Binder right = null;
@@ -997,6 +1160,9 @@ public class Reference implements BiSerializable {
                 rightOperand = subStrR.replaceAll("\\s+", "");
 
                 if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+                    if (i > EQUAL)
+                        throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in right operand.");
+
                     right = parseExpression(rightOperand);
                     typeRightOperand = compareOperandType.EXPRESSION;
                 } else if (isFieldOperand(rightOperand))
@@ -1074,8 +1240,8 @@ public class Reference implements BiSerializable {
      */
     private boolean checkCondition(Binder condition, Contract ref, Collection<Contract> contracts, int iteration) {
 
-        Reference.compareOperandType typeOfLeftOperand;
-        Reference.compareOperandType typeOfRightOperand;
+        compareOperandType typeOfLeftOperand;
+        compareOperandType typeOfRightOperand;
 
         String leftOperand = condition.getString("leftOperand", null);
         String rightOperand = condition.getString("rightOperand", null);
