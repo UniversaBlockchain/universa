@@ -37,6 +37,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -138,7 +139,7 @@ public class MainTest {
             System.gc();
         }
     }
-    /*
+
     @Before
     public void beforeMainTest() throws Exception {
         // clearLedgers
@@ -160,7 +161,7 @@ public class MainTest {
 
         // add U issuer test key
         configForProvider.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-    }*/
+    }
 
     @After
     public void tearDown() throws Exception {
@@ -8730,16 +8731,22 @@ public class MainTest {
 
 
 
-    public static final String ACC_TYPE_PATH = "type";
+    public static final String ACC_TYPE_FIELD = "type";
+    public static final String ACC_TYPE_PATH = "state.data."+ACC_TYPE_FIELD;
     public static final String ACC_TYPE_PERSONAL = "personal";
     public static final String ACC_TYPE_BANK = "bank";
 
-    public static final String ACC_CURRENCY_PATH = "state.data.currency";
+    public static final String ACC_CURRENCY_FIELD = "currency";
+    public static final String ACC_CURRENCY_PATH = "state.data."+ACC_CURRENCY_FIELD;
     public static final String ACC_CURRENCY_RUR = "RUR";
     public static final String ACC_CURRENCY_EUR = "EUR";
 
-    public static final String ACC_COMMISSION_PERCENT_PATH = "state.data.commission_percent";
-    public static final String ACC_COMMISSION_ACCOUNT_PATH = "state.data.commission_account";
+
+    public static final String ACC_COMMISSION_PERCENT_FIELD = "commission_percent";
+    public static final String ACC_COMMISSION_ACCOUNT_FIELD = "commission_account";
+
+    public static final String ACC_COMMISSION_PERCENT_PATH = "state.data."+ACC_COMMISSION_PERCENT_FIELD;
+    public static final String ACC_COMMISSION_ACCOUNT_PATH = "state.data."+ACC_COMMISSION_ACCOUNT_FIELD;
 
 
     public static final String TOKEN_VALUE_FIELD = "amount";
@@ -8747,6 +8754,95 @@ public class MainTest {
 
     public static final String TOKEN_ACCOUNT_PATH = "state.data."+TOKEN_ACCOUNT_FIELD;
     public static final String TOKEN_VALUE_PATH = "state.data."+ TOKEN_VALUE_FIELD;
+
+    public Contract[] makeTransfer(Contract token, BigDecimal amount, Contract fromAccount, Contract toAccount, Contract commissionAccount, Set<PrivateKey> keysToSignTransferWith, Client client) throws ClientError, Quantiser.QuantiserException {
+        assertEquals(token.get(TOKEN_ACCOUNT_PATH),fromAccount.getId().toBase64String());
+        assertEquals(fromAccount.get(ACC_COMMISSION_ACCOUNT_PATH),commissionAccount.getId().toBase64String());
+        assertTrue(fromAccount.getOwner().isAllowedForKeys(keysToSignTransferWith));
+        token = token.createRevision(keysToSignTransferWith);
+        int partsCount = new BigDecimal(fromAccount.get(ACC_COMMISSION_PERCENT_PATH).toString()).compareTo(new BigDecimal("0")) > 0 ? 2 : 1;
+        Contract[] parts = token.split(partsCount);
+        Contract transfer = parts[0];
+        Contract commission = partsCount > 1 ? parts[1] : null;
+
+        transfer.getStateData().set(TOKEN_VALUE_FIELD,amount);
+        transfer.getKeysToSignWith().clear();
+        BigDecimal rest = new BigDecimal(token.getStateData().getString(TOKEN_VALUE_FIELD))
+                .subtract(new BigDecimal(transfer.getStateData().getString(TOKEN_VALUE_FIELD)));
+
+        if(commission != null) {
+            commission.getStateData().set(TOKEN_VALUE_FIELD,fromAccount.get(ACC_COMMISSION_PERCENT_PATH));//fixed commission for now
+            commission.getKeysToSignWith().clear();
+            rest = rest.subtract(new BigDecimal(commission.getStateData().getString(TOKEN_VALUE_FIELD)));
+        }
+
+        token.getStateData().set(TOKEN_VALUE_FIELD,rest);
+        token.seal();
+        token.getTransactionPack().addReferencedItem(fromAccount);
+        assertTrue(token.check());
+
+        System.out.println("com " + commission.getId());
+        System.out.println("tran " + transfer.getId());
+        System.out.println("rest " + token.getId());
+
+
+        ItemResult ir = client.register(token.getPackedTransaction(), 8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        transfer = transfer.createRevision(keysToSignTransferWith);
+        transfer.getStateData().set(TOKEN_ACCOUNT_FIELD,toAccount.getId().toBase64String());
+        transfer.getKeysToSignWith().clear();
+        transfer.seal();
+        System.out.println("tran(sent) " + transfer.getId());
+
+        Contract batch;
+
+        if(commission != null) {
+            commission = commission.createRevision(keysToSignTransferWith);
+            commission.getStateData().set(TOKEN_ACCOUNT_FIELD,fromAccount.get(ACC_COMMISSION_ACCOUNT_PATH));
+            commission.getTransactionalData().set("transfer_id",transfer.getId().toBase64String());
+            commission.getKeysToSignWith().clear();
+
+            batch = ContractsService.createBatch(keysToSignTransferWith,transfer,commission);
+        } else {
+            batch = ContractsService.createBatch(keysToSignTransferWith,transfer);
+        }
+
+        System.out.println("com(sent) " + commission.getId());
+        System.out.println("tran(sent) " + transfer.getId());
+
+        commission.seal();
+        commission.addSignatureToSeal(keysToSignTransferWith);
+        commission.getTransactionPack().addReferencedItem(fromAccount);
+        commission.getTransactionPack().addReferencedItem(commissionAccount);
+        ir = client.register(commission.getPackedTransaction(),8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+        transfer.seal();
+        transfer.addSignatureToSeal(keysToSignTransferWith);
+        transfer.getTransactionPack().addReferencedItem(fromAccount);
+        transfer.getTransactionPack().addReferencedItem(toAccount);
+        transfer.getTransactionPack().addReferencedItem(commission);
+        ir = client.register(transfer.getPackedTransaction(),8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        assertTrue(false);
+
+        batch.getTransactionPack().addReferencedItem(fromAccount);
+        batch.getTransactionPack().addReferencedItem(toAccount);
+        batch.getTransactionPack().addReferencedItem(commissionAccount);
+        ir = client.register(batch.getPackedTransaction(),8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        return new Contract[] {token,transfer, commission};
+    }
 
     @Test
     public void demo() throws Exception {
@@ -8757,17 +8853,17 @@ public class MainTest {
 
         Contract commissionAccRur = new Contract(bank);
         Contract commissionAccEur = new Contract(bank);
-        commissionAccRur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_BANK);
-        commissionAccEur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_BANK);
+        commissionAccRur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
+        commissionAccEur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_BANK);
 
-        commissionAccRur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
-        commissionAccEur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
+        commissionAccRur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+        commissionAccEur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
 
-        commissionAccRur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
-        commissionAccEur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
+        commissionAccRur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+        commissionAccEur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
 
-        commissionAccRur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,null);
-        commissionAccEur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,null);
+        commissionAccRur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
+        commissionAccEur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,null);
 
         commissionAccRur.seal();
         commissionAccEur.seal();
@@ -8775,32 +8871,32 @@ public class MainTest {
 
         Contract account1rur = new Contract(person1);
         Contract account2rur = new Contract(person2);
-        Contract account1eur = new Contract(person1);
+
         Contract account2eur = new Contract(person2);
 
-        account1rur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
-        account2rur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
-        account1eur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
-        account2eur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
+        account1rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+        account2rur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
+//        account1eur.getStateData().put(ACC_TYPE_PATH,ACC_TYPE_PERSONAL);
+        account2eur.getStateData().put(ACC_TYPE_FIELD,ACC_TYPE_PERSONAL);
 
-        account1rur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
-        account2rur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_RUR);
-        account1eur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
-        account2eur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
+        account1rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+        account2rur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_RUR);
+//        account1eur.getStateData().put(ACC_CURRENCY_PATH,ACC_CURRENCY_EUR);
+        account2eur.getStateData().put(ACC_CURRENCY_FIELD,ACC_CURRENCY_EUR);
 
-        account1rur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.01");
-        account2rur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
-        account1eur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
-        account2eur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.02");
+        account1rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.1");
+        account2rur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.0");
+//        account1eur.getStateData().put(ACC_COMMISSION_PERCENT_PATH,"0.0");
+        account2eur.getStateData().put(ACC_COMMISSION_PERCENT_FIELD,"0.2");
 
-        account1rur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccRur.getId());
-        account2rur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccRur.getId());
-        account1eur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccEur.getId());
-        account2eur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccEur.getId());
+        account1rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId().toBase64String());
+        account2rur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccRur.getId().toBase64String());
+//        account1eur.getStateData().put(ACC_COMMISSION_ACCOUNT_PATH,commissionAccEur.getId());
+        account2eur.getStateData().put(ACC_COMMISSION_ACCOUNT_FIELD,commissionAccEur.getId().toBase64String());
 
         account1rur.seal();
         account2rur.seal();
-        account1eur.seal();
+//        account1eur.seal();
         account2eur.seal();
 
 
@@ -8809,7 +8905,7 @@ public class MainTest {
 
         SimpleRole tokenOwner = new SimpleRole("owner");
         tokenOwner.addRequiredReference("canplayaccowner", Role.RequiredMode.ALL_OF);
-
+        rurToken.registerRole(tokenOwner);
         rurToken.getStateData().put("account",account1rur.getId().toBase64String());
         rurToken.getStateData().put(TOKEN_VALUE_FIELD,"100000");
 
@@ -8817,7 +8913,7 @@ public class MainTest {
         rurToken.registerRole(rl);
         SplitJoinPermission sjp =
                 new SplitJoinPermission(rl, Binder.of("field_name", TOKEN_VALUE_FIELD,
-                        "join_match_PATHs",Do.listOf("state.origin",TOKEN_ACCOUNT_PATH)));
+                        "join_match_fields",Do.listOf("state.origin",TOKEN_ACCOUNT_PATH)));
         rurToken.addPermission(sjp);
 
 
@@ -8843,8 +8939,8 @@ public class MainTest {
         Reference refParent = new Reference(rurToken);
         refParent.name = "refParent";
         refParent.setConditions(Binder.of("any_of",Do.listOf(
-                "this.parent == ref.id",
-                "this.parent undefined"
+                "this.state.parent == ref.id",
+                "this.state.parent undefined"
         )));
         rurToken.addReference(refParent);
 
@@ -8852,7 +8948,7 @@ public class MainTest {
         refParentAccount.name = "refParentAccount";
         refParentAccount.setConditions(Binder.of("any_of",Do.listOf(
                 "refParent."+TOKEN_ACCOUNT_PATH+" == ref.id",
-                "this.parent undefined"
+                "this.state.parent undefined"
                 )));
         rurToken.addReference(refParentAccount);
 
@@ -8861,7 +8957,7 @@ public class MainTest {
         transferCheck.name = "transferCheck";
         transferCheck.setConditions(Binder.of("any_of",Do.listOf(
                 //root contract
-                "this.parent undefined",
+                "this.state.parent undefined",
 
                 //OR there was no transfer
                 "refParent."+TOKEN_ACCOUNT_PATH+" == this."+TOKEN_ACCOUNT_PATH,
@@ -8881,20 +8977,54 @@ public class MainTest {
 
                                 // OR commission is set to zero
                                 Binder.of("all_of", Do.listOf(
-                                        "refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"==0.0"
+                                        "refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number==0.0"
                                 )),
 
                                 // OR commission exists in pack
                                 Binder.of("all_of", Do.listOf(
-                                        "ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
+                                        //"ref."+TOKEN_VALUE_PATH+" == this."+TOKEN_VALUE_PATH+" * refParentAccount."+ACC_COMMISSION_PERCENT_PATH,
+                                        "ref."+TOKEN_VALUE_PATH+"::number == refParentAccount."+ACC_COMMISSION_PERCENT_PATH+"::number",
                                         "ref."+TOKEN_ACCOUNT_PATH+" == refParentAccount."+ACC_COMMISSION_ACCOUNT_PATH,
-                                        "ref.state.data.transfer_id == this.id"
+                                        "ref.transactional.data.transfer_id == this.id"
                                 ))
                         ))
                 ))
         )));
         rurToken.addReference(transferCheck);
+        rurToken.seal();
 
+
+        // init network in permanet mode
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), "_permanet", false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        main.config.getKeysWhiteList().add(TestKeys.publicKey(20));
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        assertTrue(main.config.isPermanetMode());
+        for (int i = 1; i < 4; i++)
+            assertTrue(mm.get(i).config.isPermanetMode());
+
+
+        assertEquals(client.register(commissionAccEur.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(client.register(commissionAccRur.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(client.register(account1rur.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(client.register(account2rur.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(client.register(account2eur.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        rurToken.getTransactionPack().addReferencedItem(account1rur);
+        ItemResult ir = client.register(rurToken.getPackedTransaction(), 8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        System.out.println("acc1 " + account1rur.getId());
+        System.out.println("acc2 " + account2rur.getId());
+        System.out.println("token " + rurToken.getId());
+        System.out.println("com_acc " + commissionAccRur.getId());
+
+        Contract[] result = makeTransfer(rurToken,new BigDecimal("1000"),account1rur,account2rur,commissionAccRur,new HashSet<>(Do.listOf(person1)),client);
 
     }
 

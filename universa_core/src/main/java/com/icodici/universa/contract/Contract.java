@@ -829,14 +829,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.size() == 0;
     }
 
+
     private void setEffectiveKeys(Map<PublicKey, ExtendedSignature> additionalSignatures) {
+        setEffectiveKeys(additionalSignatures,true);
+    }
+
+    private void setEffectiveKeys(Map<PublicKey, ExtendedSignature> additionalSignatures, boolean useSealedBy) {
         //TODO: if we want to filter by creator keys -> do it here. it is the best place
-        effectiveKeys = new HashMap<>(sealedByKeys);
+        effectiveKeys = useSealedBy ? new HashMap<>(sealedByKeys) : new HashMap<>();
+
         if(additionalSignatures != null) {
             effectiveKeys.putAll(additionalSignatures);
         }
 
         newItems.forEach(c -> c.setEffectiveKeys(effectiveKeys));
+        revokingItems.forEach(c -> c.setEffectiveKeys(effectiveKeys,false));
 
     }
 
