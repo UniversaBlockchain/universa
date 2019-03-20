@@ -1,0 +1,120 @@
+---
+__type: SmartContract
+
+# minimum Universa smart contract API level required to process this contract
+api_level: 3
+
+# this is an required and immutable section that must be copied between states. it defines main contract
+# properties and permissions.
+definition:
+
+  issuer:
+   # required. contract must have issuer (or issuers). on creation, the root contract must be signed by
+   # all issuers.
+
+     key: >
+          HggcAQABxAABucfLG7o8MIDQiylUlWFBOZ7GuxVWeLhy3JdYn4OOoLeYnrupHUWhbycvYeAm
+          eNSdqcIvKcu295+XYPMD7VxYJydjO9MytYJq+1TqJhTpF7ZMXWD3SfvjLyZSFgSmXm540XiF
+          Tc17cesr/jE56eAkT1g6Ha4b2kHKjEIrGTVLES5FAq2qolVFMzmp/dHzH/r+VEwu7vF1ybQa
+          J1zpwEJNCK0+ooiZo6KfcJ6To98cdeAZqx/ggk3/JNpdtCKgPKd5YUH9twJc+XRvLP6a3TZE
+          mKI3ZxUo6YGsQM7vBaqeNo9W2pcQ5BBqMkYW0Dtv74BB88zaFHTRv2OsKODxBGlj9w==
+     # u_key.public.unikey
+
+     # to show to the user
+     description: >
+       U.
+
+  # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
+  # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
+  # which will be substituted by the creation time on issuing client:
+
+  # will keep the time of root contract creation
+  created_at: now()
+
+  # required key, can be empty if the contract uses only standard roles, issues and creator.
+  roles:
+   # no extra roles, issuer and owner are predefined, so empty list.
+
+  # required key, if left empty, the contract can not be changed or revoked. Be careful.
+  permissions:
+     # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
+     # will have permission to change owner. It is very important to allow it, so the owner can pay with a coin, or
+     # split a part of it for another beneficiary
+    change_owner: owner
+
+    # who can revoke the contract: owner, and issuer altogether. Usually it means - when the issuer posess the contract
+    # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
+    # by its owner - but we require also issuer signature on it:
+    revoke:
+      - issuer
+      - owner
+#      - role:
+#        name: list_role
+#        type: ALL_OF
+#        roles:
+#          - issuer
+#          - owner
+
+
+    decrement_permission:
+      - role: owner
+        min_value: 0
+        max_step: -1
+        field_name: transaction_units
+
+  # required section, could be empty. Any immutable structured data issuer might need to include into the contract
+  # this data will be also copied without change during any contract changes.
+  data:
+    # optional, but almost always needed name or four currency
+    name: U
+
+    # required for U
+    issuerName: "Universa Reserve System"
+
+    description: U.
+
+# required section. Data that represent current contract state, could be modified in accordance with
+# 'permissions' section above
+state:
+ # required. most often, we should specify contract owner. we could specify 'issuer' or provide a key
+  owner:
+    # we create contract to be owned by another person, so we must provide a key:
+    key:
+          HggcAQABxAABucfLG7o8MIDQiylUlWFBOZ7GuxVWeLhy3JdYn4OOoLeYnrupHUWhbycvYeAm
+          eNSdqcIvKcu295+XYPMD7VxYJydjO9MytYJq+1TqJhTpF7ZMXWD3SfvjLyZSFgSmXm540XiF
+          Tc17cesr/jE56eAkT1g6Ha4b2kHKjEIrGTVLES5FAq2qolVFMzmp/dHzH/r+VEwu7vF1ybQa
+          J1zpwEJNCK0+ooiZo6KfcJ6To98cdeAZqx/ggk3/JNpdtCKgPKd5YUH9twJc+XRvLP6a3TZE
+          mKI3ZxUo6YGsQM7vBaqeNo9W2pcQ5BBqMkYW0Dtv74BB88zaFHTRv2OsKODxBGlj9w==
+
+
+  # required. who has created this document. for the root contract it is always the issues, for changed
+  # states it is almost always the owner. The contract should be signed by this key.
+  created_by: issuer
+
+   # required. must be in distant future.
+  expires_at:
+    __t: unixtime
+    seconds: 1659720337
+
+  # required. revision increments on any contract edit. the root contract has always revision of 1
+  revision: 1
+
+  # required. the contract based on which has created this one. it could be previous state of the contract in the
+  # case of the edit or another contract that generates child contract and so on. this time it is a new chain
+  # root so it is empty:
+  parent: ~
+
+  # required. the contract origin. when the contract state changes, the origin should always point to the root
+  # contract, to which it is empty. This field mutates once, so it is part of the state, not definition.
+  # this is a root contract, so:
+  origin: ~
+
+  # required except root contracts. creation time of this revision (e.g. state). As it is a root contract, we
+  # leave it empty:
+  created_at: ~
+
+  # required section. any application data that could be changed.
+  data:
+    transaction_units : 1
+
+

@@ -1,0 +1,118 @@
+---
+__type: SmartContract
+
+# minimum Universa smart contract API level required to process this contract
+api_level: 2
+
+# this is an required and immutable section that must be copied between states. it defines main contract
+# properties and permissions.
+definition:
+
+ issuer:
+   # required. contract must have issuer (or issuers). on creation, the root contract must be signed by
+   # all issuers.
+
+   key: HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+        a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+        z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+        BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+        vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+        Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+        hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+        LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+        MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
+   # _xer0yfe2nn1xthc.unikey
+
+   # issuer name, optional
+   name: Universa
+
+ # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
+ # consult current Universa state, maximum delayed contract creation time varies.
+ created_at:
+   now()
+   # as yaml has no time type, this notion allow use different formats of time. unix time is number of second
+   # from the unix epoch, in GMT zone (UTC+00:00):
+#   __type: unixtime
+#   seconds: 1501953889
+
+ # required. must be in future.
+ expires_at:
+   __t: unixtime
+   seconds: 1659720337
+
+ # required key, can be empty if the contract uses only standard roles, issues and creator.
+ roles:
+   # no extra roles, issuer and owner are predefined, so empty list.
+
+ # required key, if left empty, the contract can not be changed or revoked. Be careful.
+ permissions:
+   # permission consist of the action name and the role allowed to perform it
+   # (standard ror mentioned in roles),
+
+   # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
+   # will have permission to change owner, which contract type is of little use
+   change_owner: owner
+
+   # who can revoke the contract
+   revoke: owner
+
+ # required section, could be empty. Any immutable structured data issuer might need to include into the contract
+ # this data will be also copied without change during any contract changes.
+ data:
+   # sample data
+   type: access certificate
+
+   active_since: # note we can issue contract with other activity period
+     __type: unixtime
+     seconds: 1501953889
+
+   description: this documents certifies the right of holder (owner) to access all readonly Universa services
+                within the period starting at 'active since' and ending at the time of contract expiration.
+
+# required section. Data that represent current contract state, could be modified in accordance with
+# 'permissions' section above
+state:
+ # required. most often, we should specify contract owner. we could specify 'issuer' or provide a key
+ owner:
+   # we create contract to be owned by another person, so we must provide a key:
+   key: HggcAQABxAACmracE0XoeiS+Da/HmT1SjEuBdBGPWOLRLW+0w8XmPRch+mdwPfUz2h3d1Q6cjC2gjP
+        Z70ExINtkuNxhKt06uPgSDSomXuNMfJx8wWPqPxlkhLTq5JI2WSXSgIhQ5BMEXtzEHM/zvnVA7Lmio
+        358SPNooHNzVdlq3NirUVpTA6kiQWCdgjMKhRFiowHkDJweWvzf0ZNLB5URyEuEJSc3twqLo0gHczC
+        /Fm9bq58BPBw8N41gLJ3ViWh6j180cbb/MkY+QTzlSGNbGWKLvrnqo+N7o21MUNbMPSX/m5gibZB1D
+        ZPY+AprU3gcB9uMG9G2xfeK6dtp1/IN74bLjhApq7SoPJiDvzHKYfbEq/Ac3+n+j+7IcoSjxn8TVRz
+        hTr3xmQM4ShfKnVJxCyQp+hiVRWhvAUACxkOU0G42c7CQAf8HNj4R4sD3P1g6TqqRIrCyj8XeeU4WC
+        hnQRrndXcN4mRAXd4acYbo8yF1O702D/RtJn46MKOJ1GB+xaHPD5wKfEVYWchFrw10dvtR9z4jE+d9
+        yRiTRvgve4RF0e7D9AHrVKAiW2VR0OQJT6aWvh5ETyLdmdegU9OBXNV/Tg84Nab3aWAjhedXh4ix7s
+        okXakPa1Uv+I1rx447jS/BkT7IQE3gVTuHx4+VOCol86VXO7/8LFRhHIATxR3DtNKLN+JgU=
+   # the rest is optional and application-specific
+   name:
+     salutation: Mr.
+     first: Vasiliy
+     last: Pupkin
+
+ # required. who has created this document. for the root contract it is always the issues, for changed
+ # states it is almost always the owner. The contract should be signed by this key.
+ created_by: issuer
+
+ # required. revision increments on any contract edit. the root contract has always revision of 1
+ revision: 1
+
+ # required. the contract based on which has created this one. it could be previous state of the contract in the
+ # case of the edit or another contract that generates child contract and so on. this time it is a new chain
+ # root so it is empty:
+ parent: ~
+
+ # required. the contract origin. when the contract state changes, the origin should always point to the root
+ # contract, to which it is empty. This field mutates once, so it is part of the state, not definition.
+ # this is a root contract, so:
+ origin: ~
+
+ # required except root contracs. creation time of this revision (e.g. state). As it is a root contract, we
+ # leave it empty:
+ created_at: ~
+
+ # required section. any application data that could be changed.
+ data:
+   amount: 1000
+   price: 14.033
+

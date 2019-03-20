@@ -8740,8 +8740,7 @@ public class MainTest {
     public static final String ACC_CURRENCY_PATH = "state.data."+ACC_CURRENCY_FIELD;
     public static final String ACC_CURRENCY_RUR = "RUR";
     public static final String ACC_CURRENCY_EUR = "EUR";
-
-
+    
     public static final String ACC_COMMISSION_PERCENT_FIELD = "commission_percent";
     public static final String ACC_COMMISSION_ACCOUNT_FIELD = "commission_account";
 
@@ -8752,8 +8751,8 @@ public class MainTest {
     public static final String TOKEN_VALUE_FIELD = "amount";
     public static final String TOKEN_ACCOUNT_FIELD = "account";
 
-    public static final String TOKEN_ACCOUNT_PATH = "state.data."+TOKEN_ACCOUNT_FIELD;
-    public static final String TOKEN_VALUE_PATH = "state.data."+ TOKEN_VALUE_FIELD;
+    public static final String TOKEN_ACCOUNT_PATH = "state.data." + TOKEN_ACCOUNT_FIELD;
+    public static final String TOKEN_VALUE_PATH = "state.data." + TOKEN_VALUE_FIELD + "::number";
 
     public Contract[] makeTransfer(Contract token, BigDecimal amount, Contract fromAccount, Contract toAccount, Contract commissionAccount, Set<PrivateKey> keysToSignTransferWith, Client client) throws ClientError, Quantiser.QuantiserException {
         assertEquals(token.get(TOKEN_ACCOUNT_PATH),fromAccount.getId().toBase64String());
