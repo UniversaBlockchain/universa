@@ -193,7 +193,8 @@ public class Reference implements BiSerializable {
     final static int CAN_PLAY = 13;
 
     //Operations
-    final static String[] operations = {"+", "-", "*", "/"};
+    //final static String[] operations = {"+", "-", "*", "/"};
+    final static String[] operations = {"?", "?", "*", "?"};
 
     final static int PLUS = 0;
     final static int MINUS = 1;
@@ -293,10 +294,12 @@ public class Reference implements BiSerializable {
      *The comparison method for finding reference contract
      *
      * @param refContract contract to check for matching
-     * @param leftOperand field_selector
-     * @param rightOperand right operand  (constant | field_selector), constant = ("null" | number | string | true | false)
-     * @param typeOfRightOperand type of left operand (constant | field_selector), constant = ("null" | number | string | true | false)
-     * @param typeOfRightOperand type of right operand (constant | field_selector), constant = ("null" | number | string | true | false)
+     * @param leftOperand left operand (constant | field_selector), constant = ("null" | number | string | true | false)
+     * @param rightOperand right operand (constant | field_selector), constant = ("null" | number | string | true | false)
+     * @param leftExpression parsed left expression to evaluate
+     * @param rightExpression parsed right expression to evaluate
+     * @param typeOfRightOperand type of left operand
+     * @param typeOfRightOperand type of right operand
      * @param indxOperator index operator in array of operators
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
@@ -305,6 +308,8 @@ public class Reference implements BiSerializable {
     private boolean compareOperands(Contract refContract,
                                    String leftOperand,
                                    String rightOperand,
+                                   Binder leftExpression,
+                                   Binder rightExpression,
                                    compareOperandType typeOfLeftOperand,
                                    compareOperandType typeOfRightOperand,
                                    boolean isBigDecimalConversion,
@@ -772,43 +777,128 @@ public class Reference implements BiSerializable {
         return ret;
     }
 
-    private Binder packCondition(int operator,
+    private Binder packOperands(String leftOperand,
+                                String rightOperand,
+                                Binder left,
+                                Binder right,
+                                compareOperandType typeOfLeftOperand,
+                                compareOperandType typeOfRightOperand,
+                                int leftConversion,
+                                int rightConversion) {
+        Binder packed = new Binder();
+
+        if (left != null)
+            packed.set("left", left);
+        else
+            packed.set("leftOperand", leftOperand);
+
+        if (right != null)
+            packed.set("right", right);
+        else
+            packed.set("rightOperand", rightOperand);
+
+        packed.set("typeOfLeftOperand", typeOfLeftOperand.ordinal());
+        packed.set("typeOfRightOperand", typeOfRightOperand.ordinal());
+
+        packed.set("leftConversion", leftConversion);
+        packed.set("rightConversion", rightConversion);
+
+        return packed;
+    }
+
+    private Binder packExpression(int operation,
                                  String leftOperand,
                                  String rightOperand,
+                                 Binder left,
+                                 Binder right,
                                  compareOperandType typeOfLeftOperand,
                                  compareOperandType typeOfRightOperand,
                                  int leftConversion,
                                  int rightConversion) {
-        Binder packedCondition = new Binder();
+        Binder packedExpression = packOperands(leftOperand, rightOperand, left, right, typeOfLeftOperand,
+                typeOfRightOperand, leftConversion, rightConversion);
+
+        packedExpression.set("operation", operation);
+
+        return packedExpression;
+    }
+
+    private Binder packCondition(int operator,
+                                 String leftOperand,
+                                 String rightOperand,
+                                 Binder left,
+                                 Binder right,
+                                 compareOperandType typeOfLeftOperand,
+                                 compareOperandType typeOfRightOperand,
+                                 int leftConversion,
+                                 int rightConversion) {
+        Binder packedCondition = packOperands(leftOperand, rightOperand, left, right, typeOfLeftOperand,
+                typeOfRightOperand, leftConversion, rightConversion);
 
         packedCondition.set("operator", operator);
-        packedCondition.set("leftOperand", leftOperand);
-        packedCondition.set("rightOperand", rightOperand);
-
-        if (typeOfLeftOperand == Reference.compareOperandType.FIELD)
-            packedCondition.set("typeOfLeftOperand", 0);
-        else if (typeOfLeftOperand == Reference.compareOperandType.CONSTSTR)
-            packedCondition.set("typeOfLeftOperand", 1);
-        else
-            packedCondition.set("typeOfLeftOperand", 2);
-
-        if (typeOfRightOperand == Reference.compareOperandType.FIELD)
-            packedCondition.set("typeOfRightOperand", 0);
-        else if (typeOfRightOperand == Reference.compareOperandType.CONSTSTR)
-            packedCondition.set("typeOfRightOperand", 1);
-        else
-            packedCondition.set("typeOfRightOperand", 2);
-
-        packedCondition.set("leftConversion", leftConversion);
-        packedCondition.set("rightConversion", rightConversion);
 
         return packedCondition;
     }
 
+    private boolean isFieldOperand(String operand) {
+        int firstPointPos;
+        return ((firstPointPos = operand.indexOf(".")) > 0) &&
+                (operand.length() > firstPointPos + 1) &&
+                ((operand.charAt(firstPointPos + 1) < '0') ||
+                 (operand.charAt(firstPointPos + 1) > '9'));
+    }
+
     private Binder parseExpression(String expression) {
+        int opPos;
+        int i = 0;
+        while ((opPos = expression.indexOf(operations[i])) < 0 && i < DIV)
+            i++;
 
+        if (opPos < 0)
+            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found operation.");
 
-        return null;
+        String leftOperand = expression.substring(0, opPos);
+        if (leftOperand.length() == 0)
+            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Missing left operand.");
+
+        compareOperandType typeLeftOperand = compareOperandType.CONSTOTHER;
+        Binder left = null;
+
+        if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+            left = parseExpression(leftOperand);
+            typeLeftOperand = compareOperandType.EXPRESSION;
+        } else {
+            if (isFieldOperand(leftOperand))
+                typeLeftOperand = compareOperandType.FIELD;
+        }
+
+        String rightOperand = expression.substring(opPos + operations[i].length());
+        if (rightOperand.length() == 0)
+            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Missing right operand.");
+
+        compareOperandType typeRightOperand = compareOperandType.CONSTOTHER;
+        Binder right = null;
+
+        if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+            right = parseExpression(rightOperand);
+            typeRightOperand = compareOperandType.EXPRESSION;
+        } else if (isFieldOperand(rightOperand))
+            typeRightOperand = compareOperandType.FIELD;
+
+        int leftConversion = NO_CONVERSION;
+        int rightConversion = NO_CONVERSION;
+
+        if ((typeLeftOperand == compareOperandType.FIELD) && (leftOperand.endsWith("::number"))) {
+            leftConversion = CONVERSION_BIG_DECIMAL;
+            leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
+        }
+
+        if ((typeRightOperand == compareOperandType.FIELD) && (rightOperand.endsWith("::number"))) {
+            rightConversion = CONVERSION_BIG_DECIMAL;
+            rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
+        }
+
+        return packExpression(i, leftOperand, rightOperand, left, right, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
     }
 
     private Binder parseCondition(String condition) {
@@ -828,7 +918,7 @@ public class Reference implements BiSerializable {
                     leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
                 }
 
-                return packCondition(i, leftOperand, null, compareOperandType.FIELD, compareOperandType.CONSTOTHER, leftConversion, rightConversion);
+                return packCondition(i, leftOperand, null, null, null, compareOperandType.FIELD, compareOperandType.CONSTOTHER, leftConversion, rightConversion);
             }
         }
 
@@ -870,14 +960,8 @@ public class Reference implements BiSerializable {
                 if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
                     left = parseExpression(leftOperand);
                     typeLeftOperand = compareOperandType.EXPRESSION;
-                } else {
-                    int firstPointPos;
-                    if (((firstPointPos = leftOperand.indexOf(".")) > 0) &&
-                            (leftOperand.length() > firstPointPos + 1) &&
-                            ((leftOperand.charAt(firstPointPos + 1) < '0') ||
-                                    (leftOperand.charAt(firstPointPos + 1) > '9')))
-                        typeLeftOperand = compareOperandType.FIELD;
-                }
+                } else if (isFieldOperand(leftOperand))
+                    typeLeftOperand = compareOperandType.FIELD;
             }
 
             // Parsing right operand
@@ -905,14 +989,8 @@ public class Reference implements BiSerializable {
                 if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
                     right = parseExpression(rightOperand);
                     typeRightOperand = compareOperandType.EXPRESSION;
-                } else {
-                    int firstPointPos;
-                    if (((firstPointPos = rightOperand.indexOf(".")) > 0) &&
-                            (rightOperand.length() > firstPointPos + 1) &&
-                            ((rightOperand.charAt(firstPointPos + 1) < '0') ||
-                                    (rightOperand.charAt(firstPointPos + 1) > '9')))
-                        typeRightOperand = compareOperandType.FIELD;
-                }
+                } else if (isFieldOperand(rightOperand))
+                    typeRightOperand = compareOperandType.FIELD;
             }
 
             //if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
@@ -928,7 +1006,7 @@ public class Reference implements BiSerializable {
                 rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
             }
 
-            return packCondition(i, leftOperand, rightOperand, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
+            return packCondition(i, leftOperand, rightOperand, left, right, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
         }
 
         for (int i = INHERITS; i <= INHERIT; i++) {
@@ -946,7 +1024,7 @@ public class Reference implements BiSerializable {
                     rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
                 }
 
-                return packCondition(i, null, rightOperand, compareOperandType.FIELD, compareOperandType.FIELD, leftConversion, rightConversion);
+                return packCondition(i, null, rightOperand, null, null, compareOperandType.FIELD, compareOperandType.FIELD, leftConversion, rightConversion);
             }
         }
 
@@ -967,14 +1045,10 @@ public class Reference implements BiSerializable {
 
             // Parsing right operand
             String rightOperand = subStrR.replaceAll("\\s+", "");
-            int firstPointPos;
-            if (!(((firstPointPos = rightOperand.indexOf(".")) > 0) &&
-                  (rightOperand.length() > firstPointPos + 1) &&
-                  ((rightOperand.charAt(firstPointPos + 1) < '0') ||
-                   (rightOperand.charAt(firstPointPos + 1) > '9'))))
+            if (!isFieldOperand(rightOperand))
                 throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Right operand must be a role field.");
 
-            return packCondition(CAN_PLAY, leftOperand, rightOperand, compareOperandType.CONSTOTHER, compareOperandType.FIELD, leftConversion, rightConversion);
+            return packCondition(CAN_PLAY, leftOperand, rightOperand, null, null, compareOperandType.CONSTOTHER, compareOperandType.FIELD, leftConversion, rightConversion);
         }
 
         throw new IllegalArgumentException("Invalid format of condition: " + condition);
@@ -995,31 +1069,24 @@ public class Reference implements BiSerializable {
 
         String leftOperand = condition.getString("leftOperand", null);
         String rightOperand = condition.getString("rightOperand", null);
+
+        Binder left = condition.getBinder("left", null);
+        Binder right = condition.getBinder("right", null);
+
         int operator = condition.getIntOrThrow("operator");
 
         int typeLeftOperand = condition.getIntOrThrow("typeOfLeftOperand");
         int typeRightOperand = condition.getIntOrThrow("typeOfRightOperand");
 
-        if (typeLeftOperand == 0)
-            typeOfLeftOperand = Reference.compareOperandType.FIELD;
-        else if (typeLeftOperand == 1)
-            typeOfLeftOperand = Reference.compareOperandType.CONSTSTR;
-        else
-            typeOfLeftOperand = Reference.compareOperandType.CONSTOTHER;
-
-        if (typeRightOperand == 0)
-            typeOfRightOperand = Reference.compareOperandType.FIELD;
-        else if (typeRightOperand == 1)
-            typeOfRightOperand = Reference.compareOperandType.CONSTSTR;
-        else
-            typeOfRightOperand = Reference.compareOperandType.CONSTOTHER;
+        typeOfLeftOperand = compareOperandType.values()[typeLeftOperand];
+        typeOfRightOperand = compareOperandType.values()[typeRightOperand];
 
         int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
         int rightConversion = condition.getInt("rightConversion", NO_CONVERSION);
 
         boolean isBigDecimalConversion = (leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL);
 
-        return compareOperands(ref, leftOperand, rightOperand, typeOfLeftOperand, typeOfRightOperand, isBigDecimalConversion, operator, contracts, iteration);
+        return compareOperands(ref, leftOperand, rightOperand, left, right, typeOfLeftOperand, typeOfRightOperand, isBigDecimalConversion, operator, contracts, iteration);
     }
 
     /**
