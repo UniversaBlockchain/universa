@@ -18043,7 +18043,7 @@ public class BaseNetworkTest extends TestCase {
         Contract contract1 = new Contract(key);
 
         List<String> listConditions = new ArrayList<>();
-        listConditions.add("ref.id==" + contract2.getId().toBase64String());
+        listConditions.add("ref.id==\"" + contract2.getId().toBase64String() + "\"");
         listConditions.add("this can_play ref.issuer");
         listConditions.add("ref can_play this.owner");
 
