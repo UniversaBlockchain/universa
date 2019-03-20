@@ -207,6 +207,8 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_parent").matchingItems.contains(contract3));
         System.out.println("Check can_play conditions");
         assertTrue(refContract.getReferences().get("ref_can_play").matchingItems.contains(contract2));
+        System.out.println("Check arithmetic conditions");
+        assertTrue(refContract.getReferences().get("ref_arithmetic").matchingItems.contains(contract2));
     }
 
     @Test
@@ -400,7 +402,7 @@ public class ReferenceConditionsTest {
 
     @Test(timeout = 60000)
     public void checkReferencesContractsAPILevel4() throws Exception {
-        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "references/Referenced_contract1_4.yml");
+        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "references/Referenced_contract1_v4.yml");
         Contract contract2 = Contract.fromDslFile(ROOT_PATH + "references/Referenced_contract2.yml");
         Contract contract3 = Contract.fromDslFile(ROOT_PATH + "references/Referenced_contract3.yml");
         contract1.seal();

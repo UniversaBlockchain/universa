@@ -973,7 +973,7 @@ definition:
      where:
        all_of:
          - ref.state.parent == this.state.data.contract3_parent
-         - ref.state.parent != oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3
+         - ref.state.parent != "oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3"
          - this.state.data.contract3_parent == ref.state.parent
          - ref.state.parent defined
          - ref.state.parent!=this.state.data.string5
@@ -1102,18 +1102,16 @@ state:
          - this.state.data.contract2_origin == ref.state.origin
          - this.id defined
          - this.id != ref.id
-         - this.id != EAewHEvdkUJY4UQOB+OAF+V3zdMyryXBCnVtPfqZDUTUX2iUaldvl09/4etdb7ArZrVyP+Iq3E31tSUtm8dAOpxxwocEDybiFa/DCLKFmvv3ELsBc/vNMU+lTJ8XQQpb
+         - this.id != "EAewHEvdkUJY4UQOB+OAF+V3zdMyryXBCnVtPfqZDUTUX2iUaldvl09/4etdb7ArZrVyP+Iq3E31tSUtm8dAOpxxwocEDybiFa/DCLKFmvv3ELsBc/vNMU+lTJ8XQQpb"
          - this.id != this.state.data.string5
          - this.state.data.contract2_id == ref.id
          - ref.state.origin == this.state.data.contract2_origin
-         - ref.state.origin != oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3
+         - ref.state.origin != "oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3"
          - this.state.data.contract2_origin == ref.state.origin
          - ref.state.origin defined
 
-         - oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3 != ref.state.origin
          - ref.state.origin == this.state.data.contract2_origin
          - ref.id != this.id
-         - EAewHEvdkUJY4UQOB+OAF+V3zdMyryXBCnVtPfqZDUTUX2iUaldvl09/4etdb7ArZrVyP+Iq3E31tSUtm8dAOpxxwocEDybiFa/DCLKFmvv3ELsBc/vNMU+lTJ8XQQpb != this.id
          - this.state.data.string5 != this.id
          - ref.id == this.state.data.contract2_id
 
@@ -1168,30 +1166,30 @@ state:
          - 4 == 1*1+3
          - 11 > 2*3+4
          - 18 >= 3*4+6
-         - this.state.data.int4 == ref.state.data.int3*10
-         - this.state.data.int3 >= this.state.data.double3*1000
+         - this.state.data.int5 == ref.state.data.int3*10
+         - this.state.data.int3 < this.state.data.double3*1000
          - this.state.data.amount <= ref.state.data.bigdecimal2::number*10
          - this.state.data.amount*ref.state.data.bigdecimal2::number >= ref.state.data.bigdecimal2::number+this.state.data.int4
          - this.state.data.int4+2 != ref.state.data.int4*2+100
          - this.state.data.int4 == ref.state.data.int4*1
-         - ref.state.data.int4 == this.state.data.float4
+         - ref.state.data.int4 != this.state.data.float3
          - this.state.data.long2 == 143434433230090548*10
          - this.state.data.long2 > ref.state.data.long1*2
          - 540809613457836009 <= ref.state.data.long1*1
-         - this.state.data.double3 < this.state.data.double3+1
-         - this.state.data.double2 <= this.state.data.double2+ref.state.data.bigdecimal2::number
+         - this.state.data.double3 <= this.state.data.double3+1
+         - this.state.data.double2 < this.state.data.double2+ref.state.data.bigdecimal2::number
          - this.state.data.double2+this.state.data.double1 != ref.state.data.double2*3
-         - this.state.data.int2 > ref.state.data.int2+this.state.data.double2*1
-         - 905403309310398882034989390090914246789283284338888398980001111290943204920940290078452983729*10 <= ref.state.data.bigdecimal1::number
-         - this.state.data.bigdecimal1::number == ref.state.data.bigdecimal1::number
-         - this.state.data.bigdecimal1::number != ref.state.data.bigdecimal2::number
+         #- this.state.data.int2 > ref.state.data.int2+this.state.data.double2*1
+         - 905403309310398882034989390090914246789283284338888398980001111290943204920940290078452983729*73 <= ref.state.data.bigdecimal1::number
+         - this.state.data.bigdecimal1::number == ref.state.data.bigdecimal2::number
+         - this.state.data.bigdecimal1::number != ref.state.data.bigdecimal1::number
          - this.state.data.bigdecimal1::number < ref.state.data.bigdecimal2::number+this.state.data.int3
          - this.state.data.bigdecimal2::number*3 > this.state.data.bigdecimal2::number*2+5
-         - ref.state.data.bigdecimal2::number*2 >= this.state.data.bigdecimal2::number*2+this.state.data.float4
-         - this.state.data.bigdecimal2::number+ref.state.data.long1 <= ref.state.data.bigdecimal2::number*2+this.state.data.long1
-         - this.state.data.bigdecimal1::number+100500 == ref.state.data.bigdecimal1::number+100500
-
-
+         - ref.state.data.bigdecimal2::number*2 >= this.state.data.bigdecimal1::number*2-this.state.data.float4
+         - this.state.data.bigdecimal1::number+ref.state.data.long1 <= ref.state.data.bigdecimal2::number*2+this.state.data.long1
+         - this.state.data.bigdecimal1::number+100500 == ref.state.data.bigdecimal2::number+100500
+         - ref.state.data.bigdecimal2::number / 98401804310430918418409810948390180 == this.state.data.bigdecimal1::number / 98401804310430918418409810948390180
+         - -554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number == -554454.02193092103920101293012902 * this.state.data.bigdecimal1::number
 
          # mirroring ===========================================================================================\\
 
@@ -1203,27 +1201,27 @@ state:
          - 2*3+4 < 11
          - 3*4+6 <= 18
 
-         - ref.state.data.int3*10 == this.state.data.int4
-         - this.state.data.double3*1000 <= this.state.data.int3
-         - ref.state.data.bigdecimal2::number*10 >= this.state.data.amount
-         - ref.state.data.bigdecimal2::number+this.state.data.int4 <= this.state.data.amount*ref.state.data.bigdecimal2::number
-         - ref.state.data.int4*2+100 != this.state.data.int4+2
-         - ref.state.data.int4*1 == this.state.data.int4
-         - this.state.data.float4 == ref.state.data.int4
-         - 143434433230090548*10 == this.state.data.long2
-         - ref.state.data.long1*2 < this.state.data.long2
-         - ref.state.data.long1*1 >= 540809613457836009
-         - this.state.data.double3+1 > this.state.data.double3
-         - this.state.data.double2+ref.state.data.bigdecimal2::number >= this.state.data.double2
-         - ref.state.data.double2*3 != this.state.data.double2+this.state.data.double1
-         - ref.state.data.int2+this.state.data.double2*1 < this.state.data.int2
-         - ref.state.data.bigdecimal1::number <= 905403309310398882034989390090914246789283284338888398980001111290943204920940290078452983729*10
-         - ref.state.data.bigdecimal1::number == this.state.data.bigdecimal1::number
-         - ref.state.data.bigdecimal2::number != this.state.data.bigdecimal1::number
-         - ref.state.data.bigdecimal2::number+this.state.data.int3 > this.state.data.bigdecimal1::number
-         - this.state.data.bigdecimal2::number*2+5 < this.state.data.bigdecimal2::number*3
-         - this.state.data.bigdecimal2::number*2+this.state.data.float4 <= ref.state.data.bigdecimal2::number*2
-         - ref.state.data.bigdecimal2::number*2+this.state.data.long1 >= this.state.data.bigdecimal2::number+ref.state.data.long1
+         #- ref.state.data.int3*10 == this.state.data.int5
+         #- this.state.data.double3*1000 <= this.state.data.int3
+         #- ref.state.data.bigdecimal2::number*10 >= this.state.data.amount
+         #- ref.state.data.bigdecimal2::number+this.state.data.int4 <= this.state.data.amount*ref.state.data.bigdecimal2::number
+         #- ref.state.data.int4*2+100 != this.state.data.int4+2
+         #- ref.state.data.int4*1 == this.state.data.int4
+         #- this.state.data.float4 == ref.state.data.int4
+         #- 143434433230090548*10 == this.state.data.long2
+         #- ref.state.data.long1*2 < this.state.data.long2
+         #- ref.state.data.long1*1 >= 540809613457836009
+         #- this.state.data.double3+1 > this.state.data.double3
+         #- this.state.data.double2+ref.state.data.bigdecimal2::number >= this.state.data.double2
+         #- ref.state.data.double2*3 != this.state.data.double2+this.state.data.double1
+         #- ref.state.data.int2+this.state.data.double2*1 < this.state.data.int2
+         #- ref.state.data.bigdecimal1::number <= 905403309310398882034989390090914246789283284338888398980001111290943204920940290078452983729*10
+         #- ref.state.data.bigdecimal1::number == this.state.data.bigdecimal1::number
+         #- ref.state.data.bigdecimal2::number != this.state.data.bigdecimal1::number
+         #- ref.state.data.bigdecimal2::number+this.state.data.int3 > this.state.data.bigdecimal1::number
+         #- this.state.data.bigdecimal2::number*2+5 < this.state.data.bigdecimal2::number*3
+         #- this.state.data.bigdecimal2::number*2+this.state.data.float4 <= ref.state.data.bigdecimal2::number*2
+         #- ref.state.data.bigdecimal2::number*2+this.state.data.long1 >= this.state.data.bigdecimal2::number+ref.state.data.long1
 
          # mirroring ===========================================================================================//
 
