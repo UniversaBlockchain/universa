@@ -682,22 +682,14 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD && right == null && !leftOperand.equals("null"))
                             break;
 
-                        System.out.println("lo = " + leftOperand + ", ro = " + rightOperand);
 
                         if (isBigDecimalConversion) {
                             leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
                             rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
 
-                            int b = 0;
-                            b++;
                             if (((indxOperator == EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) == 0)) ||
                                 ((indxOperator == NOT_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) != 0)))
                                 ret = true;
-
-                            if(!ret) {
-                                int a = 0;
-                                 a++;
-                            }
 
                         } else if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
                             ((right != null) && right.getClass().getName().endsWith("HashId"))) {

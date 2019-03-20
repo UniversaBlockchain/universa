@@ -8752,7 +8752,7 @@ public class MainTest {
     public static final String TOKEN_ACCOUNT_FIELD = "account";
 
     public static final String TOKEN_ACCOUNT_PATH = "state.data." + TOKEN_ACCOUNT_FIELD;
-    public static final String TOKEN_VALUE_PATH = "state.data." + TOKEN_VALUE_FIELD + "::number";
+    public static final String TOKEN_VALUE_PATH = "state.data." + TOKEN_VALUE_FIELD;
 
     public Contract[] makeTransfer(Contract token, BigDecimal amount, Contract fromAccount, Contract toAccount, Contract commissionAccount, Set<PrivateKey> keysToSignTransferWith, Client client) throws ClientError, Quantiser.QuantiserException {
         assertEquals(token.get(TOKEN_ACCOUNT_PATH),fromAccount.getId().toBase64String());
@@ -8780,21 +8780,15 @@ public class MainTest {
         token.getTransactionPack().addReferencedItem(fromAccount);
         assertTrue(token.check());
 
-        System.out.println("com " + commission.getId());
-        System.out.println("tran " + transfer.getId());
-        System.out.println("rest " + token.getId());
-
 
         ItemResult ir = client.register(token.getPackedTransaction(), 8000);
-        System.out.println(ir.errors);
         assertEquals(ir.state,ItemState.APPROVED);
 
 
         transfer = transfer.createRevision(keysToSignTransferWith);
         transfer.getStateData().set(TOKEN_ACCOUNT_FIELD,toAccount.getId().toBase64String());
-//        transfer.getKeysToSignWith().clear();
+        transfer.getKeysToSignWith().clear();
         transfer.seal();
-        System.out.println("tran(sent) " + transfer.getId());
 
         Contract batch;
 
@@ -8809,37 +8803,12 @@ public class MainTest {
             batch = ContractsService.createBatch(keysToSignTransferWith,transfer);
         }
 
-        System.out.println("com(sent) " + commission.getId());
-        System.out.println("tran(sent) " + transfer.getId());
-
-        commission.seal();
-        commission.addSignatureToSeal(keysToSignTransferWith);
-        commission.getTransactionPack().addReferencedItem(fromAccount);
-        commission.getTransactionPack().addReferencedItem(commissionAccount);
-        ir = client.register(commission.getPackedTransaction(),8000);
-        System.out.println(ir.errors);
-        assertEquals(ir.state,ItemState.APPROVED);
-
-
-
-        transfer.getTransactionPack().addReferencedItem(fromAccount);
-        transfer.getTransactionPack().addReferencedItem(toAccount);
-        transfer.getTransactionPack().addReferencedItem(commission);
-
-        assertTrue(transfer.check());
-
-        ir = client.register(transfer.getPackedTransaction(),8000);
-        System.out.println(ir.errors);
-        assertEquals(ir.state,ItemState.APPROVED);
-
-/*        assertTrue(false);
 
         batch.getTransactionPack().addReferencedItem(fromAccount);
         batch.getTransactionPack().addReferencedItem(toAccount);
         batch.getTransactionPack().addReferencedItem(commissionAccount);
         ir = client.register(batch.getPackedTransaction(),8000);
-        System.out.println(ir.errors);
-        assertEquals(ir.state,ItemState.APPROVED);*/
+        assertEquals(ir.state,ItemState.APPROVED);
 
         return new Contract[] {token,transfer, commission};
     }
@@ -9020,13 +8989,16 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
 
-        System.out.println("acc1 " + account1rur.getId());
-        System.out.println("acc2 " + account2rur.getId());
-        System.out.println("token " + rurToken.getId());
-        System.out.println("com_acc " + commissionAccRur.getId());
 
-        Contract[] result = makeTransfer(rurToken,new BigDecimal("1000"),account1rur,account2rur,commissionAccRur,new HashSet<>(Do.listOf(person1)),client);
+        Contract[] result = makeTransfer(rurToken,new BigDecimal("5000"),account1rur,account2rur,commissionAccRur,new HashSet<>(Do.listOf(person1)),client);
+        //commmission exists
+        assertNotNull(result[2]);
 
+        result = makeTransfer(result[1],new BigDecimal("2000"),account2rur,account1rur,commissionAccRur,new HashSet<>(Do.listOf(person2)),client);
+        //transfer w/o commission
+        assertNull(result[2]);
+
+        
     }
 
 
