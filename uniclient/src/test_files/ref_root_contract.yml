@@ -2,7 +2,7 @@
 __type: SmartContract
 
 # minimum Universa smart contract API level required to process this contract
-api_level: 2
+api_level: 4
 
 # this is an required and immutable section that must be copied between states. it defines main contract
 # properties and permissions.
@@ -165,6 +165,23 @@ state:
        - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939==this.state.data.bigdecimal_val::number
        - this.state.data.bigdecimal_val::number >= "123980111893281903812098390128320192830219821321321321123910849732682917138291"
        - this.state.references.test_ref2 is_a this.state.references.test_ref1
+ - reference:
+     name: test_ref_arithmetic
+     where:
+       any_of:
+         - this.state.data.double_val * this.state.data.int_val <= this.state.data.bigdecimal_val::number - 734291738921738179832719873921873920100219.83912839289189189
+         - -67029039209309103.09204932 < this.state.data.double_val / 382138291832182819.391291092190901
+         - all_of:
+             - this.state.data.int_val < this.state.data.long_val + 37
+             - any_of:
+                 - this.state.data.int_val == 1 * this.state.data.int_val
+                 - this.state.data.long_val == this.state.data.long_val / 1 + 78 - 78
+                 - all_of:
+                     - this.state.data.long_val<=154*7836
+                     - -67029039209309103.09204932>this.state.data.double_val - 231892.293207
+                     - any_of:
+                         - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298300000 + 72939 ==this.state.data.bigdecimal_val::number
+                         - this.state.data.bigdecimal_val::number >= 1239801118932819038120 * 1123910849732682917138291 - 8938291839218928 / 382
 
  # required section. any application data that could be changed.
  data:

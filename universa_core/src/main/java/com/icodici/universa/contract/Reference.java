@@ -51,6 +51,7 @@ public class Reference implements BiSerializable {
     public static final int TYPE_EXISTING_DEFINITION = 2;
     public static final int TYPE_EXISTING_STATE = 3;
 
+    @Deprecated
     public Reference() {}
 
     /**
@@ -227,7 +228,7 @@ public class Reference implements BiSerializable {
         if (isObjectMayCastToDouble(obj))
             val = (double) obj;
         else if (isObjectMayCastToLong(obj))
-            val = (long) obj;
+            val = objectCastToLong(obj);
         else
             throw new IllegalArgumentException("Expected floating point number operand in condition.");
 
@@ -1650,6 +1651,50 @@ public class Reference implements BiSerializable {
     }
 
     /**
+     * Assembly expression of reference condition
+     * @param expression is binder of parsed expression
+     * @return result {@link String} with assembled expression
+     */
+    private String assemblyExpression(Binder expression) {
+        String result = "";
+
+        // get parsed data
+        String leftOperand = expression.getString("leftOperand", null);
+        String rightOperand = expression.getString("rightOperand", null);
+
+        Binder left = expression.getBinder("left", null);
+        Binder right = expression.getBinder("right", null);
+
+        int operation = expression.getIntOrThrow("operation");
+
+        int leftConversion = expression.getInt("leftConversion", NO_CONVERSION);
+        int rightConversion = expression.getInt("rightConversion", NO_CONVERSION);
+
+        // assembly expression
+        if (leftOperand != null) {
+            result += leftOperand;
+
+            if (leftConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+
+        } else if (left != null)
+            result += assemblyExpression(left);
+
+        result += operations[operation];
+
+        if (rightOperand != null) {
+            result += rightOperand;
+
+            if (rightConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+
+        } else if (right != null)
+            result += assemblyExpression(right);
+
+        return result;
+    }
+
+    /**
      * Assembly condition of reference
      * @param condition is binder of parsed condition
      * @return result {@link String} with assembled condition
@@ -1664,6 +1709,10 @@ public class Reference implements BiSerializable {
         // get parsed data
         String leftOperand = condition.getString("leftOperand", null);
         String rightOperand = condition.getString("rightOperand", null);
+
+        Binder left = condition.getBinder("left", null);
+        Binder right = condition.getBinder("right", null);
+
         int operator = condition.getIntOrThrow("operator");
 
         int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
@@ -1684,7 +1733,9 @@ public class Reference implements BiSerializable {
 
             if (leftConversion == CONVERSION_BIG_DECIMAL)
                 result += "::number";
-        }
+
+        } else if (left != null)
+            result += assemblyExpression(left);
 
         result += operators[operator];
 
@@ -1699,7 +1750,9 @@ public class Reference implements BiSerializable {
 
             if (rightConversion == CONVERSION_BIG_DECIMAL)
                 result += "::number";
-        }
+
+        } else if (right != null)
+            result += assemblyExpression(right);
 
         return result;
     }

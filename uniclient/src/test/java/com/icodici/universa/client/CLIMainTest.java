@@ -49,7 +49,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
-import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
+import static com.icodici.universa.contract.Reference.conditionsModeType.*;
 import static org.junit.Assert.*;
 
 public class CLIMainTest {
@@ -839,6 +839,35 @@ public class CLIMainTest {
         assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 0);
         assertEquals(parsed.getIntOrThrow("operator"), 7);
 
+        // check parsing expressions
+        conditions = refContract.getReferences().get("test_ref_arithmetic").getConditions();
+        condList = conditions.getList(any_of.name(), null);
+
+        parsed = ((Binder)condList.get(0));
+        Binder left = parsed.getBinder("left", null);
+        Binder right = parsed.getBinder("right", null);
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 3);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 3);
+        assertEquals(parsed.getIntOrThrow("operator"), 2);
+
+        assertEquals(left.getString("leftOperand", ""), "this.state.data.double_val");
+        assertEquals(left.getString("rightOperand", ""), "this.state.data.int_val");
+        assertEquals(left.getIntOrThrow("rightConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfLeftOperand"), 0);
+        assertEquals(left.getIntOrThrow("leftConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfRightOperand"), 0);
+        assertEquals(left.getIntOrThrow("operation"), 2);
+
+        assertEquals(right.getString("leftOperand", ""), "this.state.data.bigdecimal_val");
+        assertEquals(right.getString("rightOperand", ""), "734291738921738179832719873921873920100219.83912839289189189");
+        assertEquals(right.getIntOrThrow("rightConversion"), 0);
+        assertEquals(right.getIntOrThrow("typeOfLeftOperand"), 0);
+        assertEquals(right.getIntOrThrow("leftConversion"), 1);
+        assertEquals(right.getIntOrThrow("typeOfRightOperand"), 2);
+        assertEquals(right.getIntOrThrow("operation"), 1);
+
         refContract.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         refContract.seal();
         refContract.check();
@@ -907,6 +936,16 @@ public class CLIMainTest {
         assertTrue((list.contains("      - '\"string\"!=this.state.data.string3'")));
         assertTrue((list.contains("      - '\"==INFORMATION==\"==this.state.data.string2'")));
         assertTrue((list.contains("      - '\"string\"==this.state.data.string4'")));
+
+        assertTrue((list.contains("      - this.state.data.double_val*this.state.data.int_val<=this.state.data.bigdecimal_val::number-734291738921738179832719873921873920100219.83912839289189189")));
+        assertTrue((list.contains("      - -67029039209309103.09204932<this.state.data.double_val/382138291832182819.391291092190901")));
+        assertTrue((list.contains("        - this.state.data.int_val<this.state.data.long_val+37")));
+        assertTrue((list.contains("          - this.state.data.int_val==1*this.state.data.int_val")));
+        assertTrue((list.contains("          - this.state.data.long_val==this.state.data.long_val/1+78-78")));
+        assertTrue((list.contains("            - this.state.data.long_val<=154*7836")));
+        assertTrue((list.contains("            - -67029039209309103.09204932>this.state.data.double_val-231892.293207")));
+        assertTrue((list.contains("              - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298300000+72939==this.state.data.bigdecimal_val::number")));
+        assertTrue((list.contains("              - this.state.data.bigdecimal_val::number>=1239801118932819038120*1123910849732682917138291-8938291839218928/382")));
     }
 
     @Test
