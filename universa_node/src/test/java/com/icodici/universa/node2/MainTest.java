@@ -9053,4 +9053,100 @@ public class MainTest {
         ts.shutdown();
     }
 
+    @Test
+    public void multipleRevisionsRollback() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract c1 = new Contract(TestKeys.privateKey(1));
+        c1.seal();
+        ts.client.register(c1.getPackedTransaction(),8000);
+
+        ts.clients.forEach(cl -> {
+            try {
+                assertEquals(cl.getState(c1.getId()).state, ItemState.APPROVED);
+            } catch (ClientError clientError) {
+                clientError.printStackTrace();
+                assertTrue(false);
+            }
+        });
+
+        Contract c2 = c1.createRevision(TestKeys.privateKey(1));
+        c2.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        c2.getKeysToSignWith().clear();
+        c2.seal();
+
+
+        Contract c3 = c2.createRevision(TestKeys.privateKey(2));
+        c3.setOwnerKeys(TestKeys.privateKey(3).getPublicKey());
+        c3.getKeysToSignWith().clear();
+        c3.seal();
+
+        Contract unregistered = new Contract(TestKeys.privateKey(10));
+        RoleLink rl = new RoleLink("@revoke", "owner");
+        unregistered.registerRole(rl);
+        unregistered.addPermission(new RevokePermission(rl));
+        unregistered.getSealedByKeys().clear();
+        unregistered.seal();
+
+        //registerAndCheckApproved(unregistered);
+
+        System.out.println("==============================================");
+
+
+        Contract revokesUnregistered = new Contract(TestKeys.privateKey(10));
+        revokesUnregistered.addRevokingItems(unregistered);
+        revokesUnregistered.seal();
+
+        //manual tweaking the status of unregistered contract
+        ts.nodes.get(0).node.getLedger().findOrCreate(unregistered.getId()).setState(ItemState.APPROVED).save();
+        ts.nodes.get(1).node.getLedger().findOrCreate(unregistered.getId()).setState(ItemState.REVOKED).save();
+
+
+        Contract batch = ContractsService.createBatch(Do.listOf(TestKeys.privateKey(1), TestKeys.privateKey(2), TestKeys.privateKey(3)), c2,c3,revokesUnregistered);
+        ItemResult ir = ts.client.register(batch.getPackedTransaction(), 8000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        ts.clients.forEach(cl -> {
+            try {
+                assertEquals(cl.getState(c1.getId()).state, ItemState.APPROVED);
+                assertEquals(cl.getState(c2.getId()).state, ItemState.UNDEFINED);
+                assertEquals(cl.getState(c3.getId()).state, ItemState.UNDEFINED);
+            } catch (ClientError clientError) {
+                clientError.printStackTrace();
+                assertTrue(false);
+            }
+        });
+        ts.shutdown();
+    }
+
+    @Test
+    public void dupesTest() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+
+        Contract c = new Contract(TestKeys.privateKey(1));
+        c.seal();
+        assertEquals(ts.client.register(c.getPackedTransaction(),9000).state,ItemState.APPROVED);
+
+
+        Contract c1 = c.createRevision(TestKeys.privateKey(1));
+        c1.setOwnerKeys(TestKeys.privateKey(2));
+        c1.getState().setBranchNumber(1);
+
+        Contract c2 = c.createRevision(TestKeys.privateKey(1));
+        c2.setOwnerKeys(TestKeys.privateKey(2));
+        c2.getState().setBranchNumber(2);
+
+        Contract batch = ContractsService.createBatch(Do.listOf(TestKeys.privateKey(1)),c1,c2);
+        ItemResult ir = ts.client.register(batch.getPackedTransaction(), 9000);
+        System.out.println(ir.errors);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        ts.shutdown();
+
+    }
 }

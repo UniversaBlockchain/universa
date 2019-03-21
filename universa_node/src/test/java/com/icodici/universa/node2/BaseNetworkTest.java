@@ -557,8 +557,8 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> listConditionsGood = new ArrayList<>();
         List <String> listConditionsBad = new ArrayList<>();
-        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
-        listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
+        listConditionsGood.add("ref.state.origin==\""+goodReferencedContract.getId().toBase64String()+"\"");
+        listConditionsBad.add("ref.state.origin==\""+badReferencedContract.getId().toBase64String()+"\"");
 
         Binder goodConditions = new Binder();
         Binder badConditions = new Binder();
@@ -18204,6 +18204,47 @@ public class BaseNetworkTest extends TestCase {
         Contract batch = ContractsService.createBatch(Do.listOf(TestKeys.privateKey(1), TestKeys.privateKey(2), TestKeys.privateKey(3)), c2,c3);
 
         registerAndCheckApproved(batch);
+
+    }
+
+    @Test
+    public void multipleRevisionsRollback() throws Exception {
+
+        Contract c1 = new Contract(TestKeys.privateKey(1));
+        c1.seal();
+
+        registerAndCheckApproved(c1);
+
+        Contract c2 = c1.createRevision(TestKeys.privateKey(1));
+        c2.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        c2.getKeysToSignWith().clear();
+        c2.seal();
+
+
+        Contract c3 = Contract.fromPackedTransaction(c2.getPackedTransaction()).createRevision(TestKeys.privateKey(2));
+        c3.setOwnerKeys(TestKeys.privateKey(3).getPublicKey());
+        c3.getKeysToSignWith().clear();
+        c3.seal();
+
+
+
+        Contract unregistered = new Contract(TestKeys.privateKey(10));
+        RoleLink rl = new RoleLink("@revoke", "owner");
+        unregistered.registerRole(rl);
+        unregistered.addPermission(new RevokePermission(rl));
+        unregistered.getSealedByKeys().clear();
+        unregistered.seal();
+
+        //registerAndCheckApproved(unregistered);
+
+
+        Contract revokesUnregistered = new Contract(TestKeys.privateKey(10));
+        revokesUnregistered.addRevokingItems(unregistered);
+        revokesUnregistered.seal();
+
+        Contract batch = ContractsService.createBatch(Do.listOf(TestKeys.privateKey(1), TestKeys.privateKey(2), TestKeys.privateKey(3)), c2,c3,revokesUnregistered);
+
+        registerAndCheckDeclined(batch);
 
     }
 }

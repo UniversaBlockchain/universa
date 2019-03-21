@@ -226,7 +226,8 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
                 // it's ok, we can lock it
                 break;
             case LOCKED_FOR_CREATION:
-                if( !checkLockedRecord(lockedRecord) )
+                //the only possible situation is that records is locked by us.
+                if(lockedRecord.getLockedByRecordId() != recordId)
                     return null;
                 targetState = ItemState.LOCKED_FOR_CREATION_REVOKED;
                 break;
@@ -240,40 +241,6 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
         lockedRecord.save();
 
         return lockedRecord;
-    }
-
-    /**
-     * It might happen that the locked record is locked by a zombie or by us which is ok (the latter requires us to reset
-     * lock to us).
-     *
-     * @param lockedRecord
-     * @return true if the lock could be acquired
-     */
-    private boolean checkLockedRecord(StateRecord lockedRecord) {
-        // It is locked bu us
-
-        if(lockedRecord.getLockedByRecordId() == recordId )
-            return true;
-
-        StateRecord currentOwner = ledger.getLockOwnerOf(lockedRecord);
-        // we can acquire the lock - it is dead
-        if( currentOwner == null )
-            return true;
-
-        // valid lock
-        if( currentOwner.state.isPending() )
-            return false;
-
-        // This section process data structure errors than can opccur due to unhandled exceptions, data corruption and like
-        // in a safe manner:
-
-        // The locker is bad?
-        if( currentOwner.state == ItemState.DECLINED || currentOwner.state == ItemState.DISCARDED )
-            return true;
-
-        // report inconsistent data. We are not 100% sure this lock could be reacquired, further exploration
-        // needed. As for now, we can't lock it.
-        return false;
     }
 
     /**

@@ -128,7 +128,7 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(ItemState.LOCKED_FOR_CREATION, r1.getState());
         assertEquals(owner.getRecordId(), r1.getLockedByRecordId());
         StateRecord r2 = owner.createOutputLockRecord(id);
-        assertSame(r2, r1);
+        assertNull(r2);
         assertNull(owner.createOutputLockRecord(other.getId()));
         // And hacked low level operation must fail too
         assertNull(ledger.createOutputLockRecord(owner.getRecordId(), other.getId()));
@@ -222,14 +222,9 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(ItemState.LOCKED, existing.getState());
         assertEquals(r.getRecordId(), existing.getLockedByRecordId());
 
-        // we lock again the same record, everything should be still ok:
+        // we lock again the same record it should fail:
         StateRecord r2 = r.lockToRevoke(existing.getId());
-        assertNotNull(r2);
-        existing.reload();
-        r.reload();
-        assertSameRecords(existing, r1);
-        assertSameRecords(existing, r2);
-        assertSame(r1, r2);
+        assertNull(r2);
         assertEquals(ItemState.LOCKED, existing.getState());
         assertEquals(r.getRecordId(), existing.getLockedByRecordId());
 
@@ -238,6 +233,24 @@ public class PostgresLedgerTest extends TestCase {
         assertSameRecords(existing2, r3);
         assertEquals(ItemState.LOCKED, existing2.getState());
         assertEquals(r.getRecordId(), existing2.getLockedByRecordId());
+    }
+
+
+    @Test
+    public void lockForCreationRevoked() throws Exception {
+        ledger.enableCache(true);
+
+        StateRecord r = ledger.findOrCreate(HashId.createRandom());
+        StateRecord r1 = r.createOutputLockRecord(HashId.createRandom());
+        assertEquals(ItemState.LOCKED_FOR_CREATION, r1.getState());
+        assertEquals(r.getRecordId(), r1.getLockedByRecordId());
+        StateRecord r2 = r.lockToRevoke(r1.getId());
+        assertEquals(ItemState.LOCKED_FOR_CREATION_REVOKED, r2.getState());
+        r1.reload();
+        assertSameRecords(r2, r1);
+        r.reload();
+        assertEquals(r.getRecordId(), r1.getLockedByRecordId());
+
     }
 
     @Test
