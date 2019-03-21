@@ -500,13 +500,13 @@ public class BaseNetworkTest extends TestCase {
 
             Contract contract = new Contract(key);
 
-            Reference goodReference = new Reference();
+            Reference goodReference = new Reference(contract);
             goodReference.name = "good";
             goodReference.type = Reference.TYPE_EXISTING_STATE;
             goodReference.setConditions(goodConditions);
             contract.addReference(goodReference);
 
-            Reference badReference = new Reference();
+            Reference badReference = new Reference(contract);
             badReference.name = "bad";
             badReference.type = Reference.TYPE_EXISTING_STATE;
             badReference.setConditions(badConditions);
@@ -574,13 +574,13 @@ public class BaseNetworkTest extends TestCase {
 
         contract.addNewItems(newItem1,newItem2);
 
-        Reference goodReference = new Reference();
+        Reference goodReference = new Reference(contract);
         goodReference.name = "good";
         goodReference.type = Reference.TYPE_EXISTING_STATE;
         goodReference.setConditions(goodConditions);
         contract.addReference(goodReference);
 
-        Reference badReference = new Reference();
+        Reference badReference = new Reference(contract);
         badReference.name = "bad";
         badReference.type = Reference.TYPE_EXISTING_STATE;
         badReference.setConditions(badConditions);
@@ -636,7 +636,7 @@ public class BaseNetworkTest extends TestCase {
 
         contract.addNewItems(newItem1,newItem2);
 
-        Reference goodReference = new Reference();
+        Reference goodReference = new Reference(contract);
         goodReference.name = "good";
         goodReference.type = Reference.TYPE_EXISTING_STATE;
         goodReference.setConditions(goodConditions);
@@ -690,13 +690,13 @@ public class BaseNetworkTest extends TestCase {
 
         Contract contract = new Contract(key);
 
-        Reference goodReference = new Reference();
+        Reference goodReference = new Reference(contract);
         goodReference.name = "good";
         goodReference.type = Reference.TYPE_EXISTING_STATE;
         goodReference.setConditions(goodConditions);
         contract.addReference(goodReference);
 
-        Reference badReference = new Reference();
+        Reference badReference = new Reference(contract);
         badReference.name = "bad";
         badReference.type = Reference.TYPE_EXISTING_STATE;
         badReference.setConditions(badConditions);
@@ -6616,7 +6616,7 @@ public class BaseNetworkTest extends TestCase {
 
         // create references for contracts that point to each other and asks correct signs
 
-        Reference reference1 = new Reference();
+        Reference reference1 = new Reference(newContract1);
         reference1.transactional_id = transactional2.getId();
         reference1.type = Reference.TYPE_TRANSACTIONAL;
         reference1.required = true;
@@ -6624,7 +6624,7 @@ public class BaseNetworkTest extends TestCase {
         reference1.signed_by.add(ownerFrom);
         reference1.signed_by.add(creatorTo);
 
-        Reference reference2 = new Reference();
+        Reference reference2 = new Reference(newContract2);
         reference2.transactional_id = transactional1.getId();
         reference2.type = Reference.TYPE_TRANSACTIONAL;
         reference2.required = true;

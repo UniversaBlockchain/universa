@@ -217,7 +217,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
@@ -240,7 +240,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
@@ -263,7 +263,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
@@ -289,7 +289,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
@@ -313,7 +313,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
@@ -337,7 +337,7 @@ public class ReferenceConditionsTest {
         contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
-        Reference ref = new Reference();
+        Reference ref = new Reference(contractB);
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),

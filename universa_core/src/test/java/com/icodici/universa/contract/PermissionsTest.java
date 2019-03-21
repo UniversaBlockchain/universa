@@ -559,7 +559,7 @@ public class PermissionsTest extends ContractTestBase {
         // good contract change: creator is an owner
 
         Contract c3 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
-        Reference ref = new Reference();
+        Reference ref = new Reference(c3);
         ref.name = "certification_contract";
         ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.addMatchingItem(new Contract());

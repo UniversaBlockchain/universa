@@ -4038,7 +4038,7 @@ public class MainTest {
         contract1.addNewItems(contract2);
         contract3.addNewItems(contract4);
 
-        Reference reference = new Reference();
+        Reference reference = new Reference(contract2);
         reference.name = "consent_" + contract4.getId();
         reference.type = Reference.TYPE_EXISTING_STATE;
 
@@ -4098,7 +4098,7 @@ public class MainTest {
             int refForContract = random.nextInt(keys100.size());
             int refCase = random.nextInt(4);
             refsCasesCounter.put(refCase, refsCasesCounter.getOrDefault(refCase, 0) + 1);
-            Reference ref = new Reference();
+            Reference ref = new Reference(contracts100.get(refForContract));
             switch (refCase) {
                 case 0:
                     ref.type = Reference.TYPE_EXISTING_STATE;

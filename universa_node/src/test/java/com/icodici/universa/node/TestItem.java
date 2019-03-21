@@ -74,7 +74,7 @@ public class TestItem implements Approvable {
         newItems.addAll(Do.listOf(items));
     }
 
-    public void addReferencedItems(Approvable... items) {
+    /*public void addReferencedItems(Approvable... items) {
         Stream.of(items).forEach(i -> {
             Reference refModel = new Reference();
             refModel.name = i.getId().toBase64String();
@@ -82,7 +82,7 @@ public class TestItem implements Approvable {
             refModel.addMatchingItem(i);
             references.put(refModel.name, refModel);
         });
-    }
+    }*/
 
     @Override
     public Set<Approvable> getReferencedItems() {

@@ -75,7 +75,7 @@ public class ContractsServiceTest extends ContractTestBase {
         delorean.traceErrors();
 
         Contract.Transactional transactional = delorean.createTransactionalSection();
-        Reference reference = new Reference();
+        Reference reference = new Reference(delorean);
 //        reference.setName("transactional_example");
         transactional.addReference(reference);
         Contract deloreanTransactional = delorean.createRevision(transactional);
