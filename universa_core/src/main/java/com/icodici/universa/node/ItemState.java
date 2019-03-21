@@ -80,12 +80,18 @@ public enum ItemState {
      */
     DISCARDED,
     /**
-     * Special state: locked by another mending item that will create and approce this item if approved by the
+     * Special state: locked by another mending item that will create and approve this item if approved by the
      * consensus. This state is separated from others to detect attempt to create same item by different racing items
      * being voted, so only one os them will succeed, as only one of them will succeed to lock for creation its output
      * documents.
      */
-    LOCKED_FOR_CREATION;
+    LOCKED_FOR_CREATION,
+
+    /**
+     * Special state: LOCKED_FOR_CREATION item being revoke within the same transaction. This state differs from LOCKED
+     * as the it transfers into UNDERFINED rather than APPROVED in case of transaction rollback.
+     */
+    LOCKED_FOR_CREATION_REVOKED;
 
     /**
      * Check that either positive or negative consensus was found

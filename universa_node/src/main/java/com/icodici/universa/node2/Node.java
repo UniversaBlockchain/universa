@@ -2075,14 +2075,12 @@ public class Node {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
 
-                    // check referenced items
-                    //checkReferencesOf(checkingItem);
+                    // check all new new items in tree
+                    checkNewsOf(checkingItem);
 
-                    // check revoking items
+                    // check revoking items in tree
                     checkRevokesOf(checkingItem);
 
-                    // check new items
-                    checkNewsOf(checkingItem);
                 }
             }
         }
@@ -2108,6 +2106,15 @@ public class Node {
 
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
+                    // check new items
+                    for (Approvable newItem : checkingItem.getNewItems()) {
+                        checkRevokesOf(newItem);
+
+                        for (ErrorRecord er : newItem.getErrors()) {
+                            checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: " + er);
+                        }
+                    }
+
                     // check revoking items
                     for (Approvable revokingItem : checkingItem.getRevokingItems()) {
 
@@ -2151,6 +2158,10 @@ public class Node {
                                     } else {
                                         if (!lockedToRevoke.contains(r))
                                             lockedToRevoke.add(r);
+
+                                        if(r.getState() == ItemState.LOCKED_FOR_CREATION_REVOKED) {
+                                            lockedToCreate.remove(r);
+                                        }
                                     }
                                     return null;
                                 });
@@ -2170,7 +2181,7 @@ public class Node {
                     // check new items
                     for (Approvable newItem : checkingItem.getNewItems()) {
 
-                        checkSubItemsOf(newItem);
+                        checkNewsOf(newItem);
 
                         // if new item is smart contract we check it additionally
                         if(newItem instanceof NSmartContract) {
@@ -2191,7 +2202,9 @@ public class Node {
                         }
 
                         if (!newItem.getErrors().isEmpty()) {
-                            checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+                            for (ErrorRecord er : newItem.getErrors()) {
+                                checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: " + er);
+                            }
                         } else {
                             synchronized (mutex) {
                                 try {
@@ -2476,55 +2489,8 @@ public class Node {
         }
 
         // commit subitems of given item to the ledger (recursively)
-        private void downloadAndCommitSubItemsOf(Approvable commitingItem) {
+        private void downloadAndCommitNewItemsOf(Approvable commitingItem) {
             if(processingState.canContinue()) {
-                for (Approvable revokingItem : commitingItem.getRevokingItems()) {
-                    // The record may not exist due to ledger desync, so we create it if need
-                    try {
-                        itemLock.synchronize(revokingItem.getId(), lock -> {
-                            StateRecord r = ledger.findOrCreate(revokingItem.getId());
-                            r.setState(ItemState.REVOKED);
-                            r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
-                            try {
-                                r.save();
-                                ItemProcessor revokingProcessor = processors.get(revokingItem.getId());
-                                if (revokingProcessor != null)
-                                    revokingProcessor.forceRemoveSelf();
-                                // if revoking item is smart contract node calls method onRevoked
-                                if(revokingItem instanceof NSmartContract) {
-
-                                    if(!searchNewItemWithParent(item,revokingItem.getId())) {
-                                        ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
-                                        NImmutableEnvironment ime = getEnvironment((NSmartContract)revokingItem);
-                                        if (ime != null) {
-                                            // and run onRevoked
-                                            ((NSmartContract) revokingItem).onRevoked(ime);
-                                            removeEnvironment(revokingItem.getId());
-                                        }
-                                    }
-                                }
-
-                                notifyContractSubscribers(revokingItem, r.getState());
-
-                                synchronized (cache) {
-                                    ItemResult rr = new ItemResult(r);
-                                    rr.extraDataBinder = null;
-                                    if(cache.get(r.getId()) == null) {
-                                        cache.put(revokingItem, rr);
-                                    } else {
-                                        cache.update(r.getId(), rr);
-                                    }
-                                }
-                            } catch (Ledger.Failure failure) {
-                                emergencyBreak();
-                                return null;
-                            }
-                            return null;
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
 
                 for (Approvable newItem : commitingItem.getNewItems()) {
                     // The record may not exist due to ledger desync too, so we create it if need
@@ -2595,7 +2561,64 @@ public class Node {
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(newItem),100,TimeUnit.MILLISECONDS);
 
 
-                    downloadAndCommitSubItemsOf(newItem);
+                    downloadAndCommitNewItemsOf(newItem);
+                }
+            }
+        }
+
+        // commit subitems of given item to the ledger (recursively)
+        private void downloadAndCommitRevokesOf(Approvable commitingItem) {
+            if(processingState.canContinue()) {
+                for (Approvable revokingItem : commitingItem.getRevokingItems()) {
+                    // The record may not exist due to ledger desync, so we create it if need
+                    try {
+                        itemLock.synchronize(revokingItem.getId(), lock -> {
+                            StateRecord r = ledger.findOrCreate(revokingItem.getId());
+                            r.setState(ItemState.REVOKED);
+                            r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
+                            try {
+                                r.save();
+                                ItemProcessor revokingProcessor = processors.get(revokingItem.getId());
+                                if (revokingProcessor != null)
+                                    revokingProcessor.forceRemoveSelf();
+                                // if revoking item is smart contract node calls method onRevoked
+                                if(revokingItem instanceof NSmartContract) {
+
+                                    if(!searchNewItemWithParent(item,revokingItem.getId())) {
+                                        ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
+                                        NImmutableEnvironment ime = getEnvironment((NSmartContract)revokingItem);
+                                        if (ime != null) {
+                                            // and run onRevoked
+                                            ((NSmartContract) revokingItem).onRevoked(ime);
+                                            removeEnvironment(revokingItem.getId());
+                                        }
+                                    }
+                                }
+
+                                notifyContractSubscribers(revokingItem, r.getState());
+
+                                synchronized (cache) {
+                                    ItemResult rr = new ItemResult(r);
+                                    rr.extraDataBinder = null;
+                                    if(cache.get(r.getId()) == null) {
+                                        cache.put(revokingItem, rr);
+                                    } else {
+                                        cache.update(r.getId(), rr);
+                                    }
+                                }
+                            } catch (Ledger.Failure failure) {
+                                emergencyBreak();
+                                return null;
+                            }
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                for (Approvable newItem : commitingItem.getNewItems()) {
+                    downloadAndCommitRevokesOf(newItem);
                 }
             }
         }
@@ -2632,8 +2655,11 @@ public class Node {
                     // yields. We just clean them up afterwards:
 
                     synchronized (mutex) {
-                        // first, commit all subitems of our item
-                        downloadAndCommitSubItemsOf(item);
+                        // first, commit all new items
+                        downloadAndCommitNewItemsOf(item);
+
+                        // then, commit all revokes
+                        downloadAndCommitRevokesOf(item);
 
                         lockedToCreate.clear();
                         lockedToRevoke.clear();

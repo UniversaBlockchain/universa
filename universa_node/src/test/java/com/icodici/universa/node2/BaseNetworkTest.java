@@ -20,6 +20,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.TestKeys;
+import com.icodici.universa.node2.network.ClientError;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.FollowerCallback;
 import com.icodici.universa.node2.network.Network;
@@ -18168,5 +18169,41 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(revisionAfter.isOk());
 
         registerAndCheckApproved(revisionAfter);
+    }
+
+
+    @Test
+    public void multipleRevisions() throws Exception {
+
+        Contract c1 = new Contract(TestKeys.privateKey(1));
+        c1.seal();
+
+        registerAndCheckApproved(c1);
+
+        Contract c2 = c1.createRevision(TestKeys.privateKey(1));
+        c2.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        c2.getKeysToSignWith().clear();
+        c2.seal();
+
+        Contract cRev2 = new Contract(TestKeys.privateKey(2));
+        cRev2.getKeysToSignWith().clear();
+        cRev2.addRevokingItems(c2);
+        cRev2.seal();
+
+
+        Contract cRev2_2 = new Contract(TestKeys.privateKey(2));
+        cRev2_2.getKeysToSignWith().clear();
+        cRev2_2.addRevokingItems(c2);
+        cRev2_2.seal();
+
+        Contract c3 = Contract.fromPackedTransaction(c2.getPackedTransaction()).createRevision(TestKeys.privateKey(2));
+        c3.setOwnerKeys(TestKeys.privateKey(3).getPublicKey());
+        c3.getKeysToSignWith().clear();
+        c3.seal();
+
+        Contract batch = ContractsService.createBatch(Do.listOf(TestKeys.privateKey(1), TestKeys.privateKey(2), TestKeys.privateKey(3)), c2,c3);
+
+        registerAndCheckApproved(batch);
+
     }
 }

@@ -217,15 +217,18 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
         StateRecord lockedRecord = ledger.getRecord(idToRevoke);
         if (lockedRecord == null)
             return null;
+        ItemState targetState = ItemState.LOCKED;
 
         switch (lockedRecord.getState()) {
             case LOCKED:
-                // if it is locked by us, it's ok
-                if( !checkLockedRecord(lockedRecord) )
-                    return null;
-                break;
+                return null;
             case APPROVED:
                 // it's ok, we can lock it
+                break;
+            case LOCKED_FOR_CREATION:
+                if( !checkLockedRecord(lockedRecord) )
+                    return null;
+                targetState = ItemState.LOCKED_FOR_CREATION_REVOKED;
                 break;
             default:
                 // wrong state, can't lock it
@@ -233,7 +236,7 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
         }
 
         lockedRecord.setLockedByRecordId(recordId);
-        lockedRecord.setState(ItemState.LOCKED);
+        lockedRecord.setState(targetState);
         lockedRecord.save();
 
         return lockedRecord;
@@ -285,6 +288,7 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
                 setLockedByRecordId(0);
                 break;
             case LOCKED_FOR_CREATION:
+            case LOCKED_FOR_CREATION_REVOKED:
                 destroy();
                 break;
             default:
@@ -341,11 +345,7 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
             throw new IllegalStateException("wrong state to createOutputLockRecord: " + state);
         StateRecord newRecord = ledger.getRecord(id);
         if (newRecord != null) {
-            // if it is not locked for approval - failure
-            if (newRecord.state != ItemState.LOCKED_FOR_CREATION)
-                return null;
-            // it it is locked by us, ok
-            return newRecord.lockedByRecordId == recordId ? newRecord : null;
+            return null;
         }
         newRecord = ledger.createOutputLockRecord(recordId, id);
         return newRecord;

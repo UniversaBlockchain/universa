@@ -52,11 +52,12 @@ public class ChangeOwnerPermission extends Permission {
         if( x != null ) {
             stateChanges.remove("owner");
             if( !(x instanceof MapDelta) )
-                contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
+                changed.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             else {
                 Delta<Role, Role> ci = (Delta<Role, Role>) x;
-                if( !(ci.newValue() instanceof Role) )
-                    contract.addError(Errors.BAD_VALUE, "state.owner", "improper change (new value not a role)");
+                if( !(ci.newValue() instanceof Role || (ci.newValue() instanceof Map && DefaultBiMapper.deserialize((Map)ci.newValue()) instanceof Role)) ) {
+                    changed.addError(Errors.BAD_VALUE, "state.owner", "improper change (new value not a role)");
+                }
             }
         }
     }
