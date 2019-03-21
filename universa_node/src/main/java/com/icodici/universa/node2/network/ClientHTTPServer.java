@@ -346,7 +346,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         int offset = params.getInt("offset", 0);
 
         String sortBy = params.getString("sortBy", "state.createdAt");
-        String sortOrder = params.getString("sortOrder", "ASC");
+        String sortOrder = params.getString("sortOrder", "DESC");
 
 
         Object keeping = node.getLedger().getKeepingBy(getBy,id, limit, offset,sortBy,sortOrder);

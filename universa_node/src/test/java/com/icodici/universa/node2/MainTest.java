@@ -1595,10 +1595,8 @@ public class MainTest {
         System.out.println("splitNest amount: " + splitNest.getStateData().getStringOrThrow("amount"));
 
         Contract splitBatch = new Contract(TestKeys.privateKey(1));
-        splitBatch.addRevokingItems(contractMoney);
         splitNest.seal();
         splitBatch.addNewItems(splitNest);
-        splittedList.forEach(c -> splitBatch.addNewItems(c));
         splitBatch.seal();
 
         ItemResult irSplitBatch = testSpace.client.register(splitBatch.getPackedTransaction(), 5000);
