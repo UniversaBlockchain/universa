@@ -18247,4 +18247,82 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckDeclined(batch);
 
     }
+
+    @Test
+    public void multipleRevisionsInBatch() throws Exception {
+
+        Contract c1 = new Contract(TestKeys.privateKey(1));
+        c1.seal();
+
+        registerAndCheckApproved(c1);
+
+        ArrayList<PrivateKey> keyList = new ArrayList<>();
+        ArrayList<Contract> contractsList = new ArrayList<>();
+        keyList.add(TestKeys.privateKey(1));
+        Contract rev = c1;
+
+        for (int i = 0; i < 10; i++) {
+            rev = rev.createRevision(TestKeys.privateKey(1));
+            rev.setOwnerKeys(TestKeys.privateKey(i + 2).getPublicKey());
+            rev.registerRole(new RoleLink("creator","issuer"));
+            rev.seal();
+            contractsList.add(rev);
+            keyList.add(TestKeys.privateKey(i + 2));
+        }
+
+        Contract batch = new Contract();
+        batch.setIssuerKeys(keyList);
+        batch.registerRole(new RoleLink("creator","issuer"));
+        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
+
+        for(Contract c : contractsList) {
+            batch.addNewItems(c);
+        }
+
+        batch.addSignerKeys(keyList);
+        batch.seal();
+
+        registerAndCheckApproved(batch);
+    }
+
+    @Test
+    public void multipleRevisionsInvalidInBatch() throws Exception {
+
+        Contract c1 = new Contract(TestKeys.privateKey(1));
+        c1.seal();
+
+        registerAndCheckApproved(c1);
+
+        ArrayList<PrivateKey> keyList = new ArrayList<>();
+        ArrayList<Contract> contractsList = new ArrayList<>();
+        keyList.add(TestKeys.privateKey(1));
+        Contract rev = c1;
+
+        for (int i = 0; i < 10; i++) {
+            rev = rev.createRevision(TestKeys.privateKey(1));
+            if (i != 4) {
+                rev.setOwnerKeys(TestKeys.privateKey(i + 2).getPublicKey());
+                keyList.add(TestKeys.privateKey(i + 2));
+            }
+            rev.registerRole(new RoleLink("creator","issuer"));
+            rev.seal();
+            contractsList.add(rev);
+        }
+
+        Contract batch = new Contract();
+        batch.setIssuerKeys(keyList);
+        batch.registerRole(new RoleLink("creator","issuer"));
+        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
+
+        for(Contract c : contractsList) {
+            batch.addNewItems(c);
+        }
+
+        batch.addSignerKeys(keyList);
+        batch.seal();
+
+        registerAndCheckDeclined(batch);
+    }
 }
