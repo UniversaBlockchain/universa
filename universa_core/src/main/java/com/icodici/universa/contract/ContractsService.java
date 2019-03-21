@@ -2068,7 +2068,7 @@ public class ContractsService {
         customerRef.name = "return_payment_to_customer";
         customerRef.type =  Reference.TYPE_TRANSACTIONAL;
         List<String> listCustomerConditions = new ArrayList<>();
-        listCustomerConditions.add("ref.origin == " + escrowOrigin);
+        listCustomerConditions.add("ref.origin == " + "\"" + escrowOrigin + "\"" );
         listCustomerConditions.add("ref.state.data.status == \"canceled\"");
         Binder customerConditions = new Binder();
         customerConditions.set("all_of", listCustomerConditions);
@@ -2078,7 +2078,7 @@ public class ContractsService {
         executorRef.name = "send_payment_to_executor";
         executorRef.type =  Reference.TYPE_TRANSACTIONAL;
         List<String> listExecutorConditions = new ArrayList<>();
-        listExecutorConditions.add("ref.origin == " + escrowOrigin);
+        listExecutorConditions.add("ref.origin == " + "\"" + escrowOrigin + "\"" );
         listExecutorConditions.add("ref.state.data.status == \"completed\"");
         Binder executorConditions = new Binder();
         executorConditions.set("all_of", listExecutorConditions);

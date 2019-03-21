@@ -490,8 +490,8 @@ public class BaseNetworkTest extends TestCase {
 
             List <String> listConditionsGood = new ArrayList<>();
             List <String> listConditionsBad = new ArrayList<>();
-            listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
-            listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
+            listConditionsGood.add("ref.state.origin==" + "\"" + goodReferencedContract.getId().toBase64String() + "\"");
+            listConditionsBad.add("ref.state.origin==" + "\"" +badReferencedContract.getId().toBase64String() + "\"");
 
             Binder goodConditions = new Binder();
             Binder badConditions = new Binder();
@@ -621,7 +621,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         List <String> listConditionsGood = new ArrayList<>();
-        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
+        listConditionsGood.add("ref.state.origin==" + "\"" + goodReferencedContract.getId().toBase64String() + "\"");
 
         Binder goodConditions = new Binder();
         goodConditions.set("all_of", listConditionsGood);
@@ -680,8 +680,8 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> listConditionsGood = new ArrayList<>();
         List <String> listConditionsBad = new ArrayList<>();
-        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
-        listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
+        listConditionsGood.add("ref.state.origin==" + "\"" + goodReferencedContract.getId().toBase64String() + "\"");
+        listConditionsBad.add("ref.state.origin==" + "\"" + badReferencedContract.getId().toBase64String() + "\"");
 
         Binder goodConditions = new Binder();
         Binder badConditions = new Binder();
