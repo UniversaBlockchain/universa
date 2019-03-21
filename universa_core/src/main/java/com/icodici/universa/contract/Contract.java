@@ -48,7 +48,7 @@ import static java.util.Arrays.asList;
 @BiType(name = "UniversaContract")
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
-    private static final int MAX_API_LEVEL = 3;
+    private static final int MAX_API_LEVEL = 4;
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private final Map<String, Role> roles = new HashMap<>();

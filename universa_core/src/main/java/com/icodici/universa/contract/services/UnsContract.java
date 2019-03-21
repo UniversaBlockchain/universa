@@ -637,7 +637,7 @@ public class UnsContract extends NSmartContract {
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setName(origin.toString());
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + "\"" + origin.toBase64String() + "\"");
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
         ref.setConditions(conditions);
         if(originContracts.containsKey(origin))

@@ -3666,7 +3666,7 @@ public class MainTest {
         ref.setName(origin.toString());
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX + origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + "\"" + origin.toBase64String() + "\"");
         conditionsList.add(REFERENCE_CONDITION2);
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         ref.setConditions(conditions);
@@ -3677,7 +3677,7 @@ public class MainTest {
         ref2.setName(origin2.toString());
 
         List<Object> conditionsList2 = new ArrayList<>();
-        conditionsList2.add(REFERENCE_CONDITION_PREFIX + origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX + "\"" + origin2.toBase64String() + "\"");
         conditionsList2.add(REFERENCE_CONDITION2);
         Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList2);
         ref2.setConditions(conditions2);
@@ -3781,7 +3781,7 @@ public class MainTest {
         ref.setName(origin.toString());
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX + origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + "\"" + origin.toBase64String() + "\"");
         conditionsList.add(REFERENCE_CONDITION2);
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         ref.setConditions(conditions);
@@ -3795,7 +3795,7 @@ public class MainTest {
         ref2.setName(origin2.toString());
 
         List<Object> conditionsList2 = new ArrayList<>();
-        conditionsList2.add(REFERENCE_CONDITION_PREFIX + origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX + "\"" + origin2.toBase64String() + "\"");
         conditionsList2.add(REFERENCE_CONDITION2);
         Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList2);
         ref2.setConditions(conditions2);
@@ -3809,7 +3809,7 @@ public class MainTest {
         ref3.setName(origin3.toString());
 
         List<Object> conditionsList3 = new ArrayList<>();
-        conditionsList3.add(REFERENCE_CONDITION_PREFIX + origin3.toBase64String());
+        conditionsList3.add(REFERENCE_CONDITION_PREFIX + "\"" + origin3.toBase64String() + "\"");
         conditionsList3.add(REFERENCE_CONDITION2);
         Binder conditions3 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList3);
         ref3.setConditions(conditions3);
@@ -3822,7 +3822,7 @@ public class MainTest {
         ref4.setName(origin4.toString());
 
         List<Object> conditionsList4 = new ArrayList<>();
-        conditionsList4.add(REFERENCE_CONDITION_PREFIX + origin4.toBase64String());
+        conditionsList4.add(REFERENCE_CONDITION_PREFIX + "\"" + origin4.toBase64String() + "\"");
         conditionsList4.add(REFERENCE_CONDITION2);
         Binder conditions4 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList4);
         ref4.setConditions(conditions4);
@@ -3836,7 +3836,7 @@ public class MainTest {
         ref5.setName(origin5.toString());
 
         List<Object> conditionsList5 = new ArrayList<>();
-        conditionsList5.add(REFERENCE_CONDITION_PREFIX + origin5.toBase64String());
+        conditionsList5.add(REFERENCE_CONDITION_PREFIX + "\"" + origin5.toBase64String() + "\"");
         conditionsList5.add(REFERENCE_CONDITION2);
         Binder conditions5 = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList5);
         ref5.setConditions(conditions5);
@@ -4042,12 +4042,12 @@ public class MainTest {
         contract1.addNewItems(contract2);
         contract3.addNewItems(contract4);
 
-        Reference reference = new Reference();
+        Reference reference = new Reference(contract2);
         reference.name = "consent_" + contract4.getId();
         reference.type = Reference.TYPE_EXISTING_STATE;
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX + contract4.getId().toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX + "\"" + contract4.getId().toBase64String() + "\"");
         conditionsList.add(REFERENCE_CONDITION2);
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(), conditionsList);
         reference.setConditions(conditions);
@@ -4102,7 +4102,7 @@ public class MainTest {
             int refForContract = random.nextInt(keys100.size());
             int refCase = random.nextInt(4);
             refsCasesCounter.put(refCase, refsCasesCounter.getOrDefault(refCase, 0) + 1);
-            Reference ref = new Reference();
+            Reference ref = new Reference(contracts100.get(refForContract));
             switch (refCase) {
                 case 0:
                     ref.type = Reference.TYPE_EXISTING_STATE;

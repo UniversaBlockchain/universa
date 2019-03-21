@@ -49,7 +49,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -65,7 +65,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref1");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract2.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract2.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.getIssuer().addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
@@ -93,7 +93,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -109,7 +109,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref1");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract2.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract2.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.seal();
@@ -134,7 +134,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -150,7 +150,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref2");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.seal();
@@ -171,7 +171,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -186,7 +186,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref2");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.seal();
@@ -209,7 +209,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -230,7 +230,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref1");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract2.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract2.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.getIssuer().addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
@@ -268,7 +268,7 @@ public class RoleReferencesTest {
         Reference revokeReference = new Reference(revokingContract);
         revokeReference.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         revokeReference.setConditions(Binder.of("all_of",revokeCondtitions));
         revokingContract.addReference(revokeReference);
         SimpleRole role = new SimpleRole("@revoke");
@@ -289,7 +289,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref2");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.getIssuer().addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
@@ -326,7 +326,7 @@ public class RoleReferencesTest {
         Reference newContractRef = new Reference(newContract);
         newContractRef.setName("ref1");
         ArrayList<String> revokeCondtitions = new ArrayList<>();
-        revokeCondtitions.add("ref.id=="+referencedContract.getId().toBase64String());
+        revokeCondtitions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         newContractRef.setConditions(Binder.of("all_of",revokeCondtitions));
         newContract.addReference(newContractRef);
         newContract.getIssuer().addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
@@ -338,7 +338,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref1");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract2.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract2.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.getIssuer().addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
@@ -363,7 +363,7 @@ public class RoleReferencesTest {
         Reference newReference = new Reference(newContract);
         newReference.setName("ref1");
         ArrayList<String> newConditions = new ArrayList<>();
-        newConditions.add("ref.id=="+referencedContract.getId().toBase64String());
+        newConditions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         newReference.setConditions(Binder.of("all_of",newConditions));
         newContract.addReference(newReference);
         newContract.getIssuer().addRequiredReference(newReference.getName(), Role.RequiredMode.ALL_OF);
@@ -374,7 +374,7 @@ public class RoleReferencesTest {
         Reference rootReference = new Reference(transactionRoot);
         rootReference.setName("ref2");
         ArrayList<String> rootConditions = new ArrayList<>();
-        rootConditions.add("ref.id=="+referencedContract.getId().toBase64String());
+        rootConditions.add("ref.id==\""+referencedContract.getId().toBase64String()+"\"");
         rootReference.setConditions(Binder.of("all_of",rootConditions));
         transactionRoot.addReference(rootReference);
         transactionRoot.seal();

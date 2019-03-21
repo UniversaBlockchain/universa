@@ -15,6 +15,7 @@ import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -50,6 +51,7 @@ public class Reference implements BiSerializable {
     public static final int TYPE_EXISTING_DEFINITION = 2;
     public static final int TYPE_EXISTING_STATE = 3;
 
+    @Deprecated
     public Reference() {}
 
     /**
@@ -193,8 +195,7 @@ public class Reference implements BiSerializable {
     final static int CAN_PLAY = 13;
 
     //Operations
-    //final static String[] operations = {"+", "-", "*", "/"};
-    final static String[] operations = {"?", "?", "*", "?"};
+    final static String[] operations = {"+", "-", "*", "/"};
 
     final static int PLUS = 0;
     final static int MINUS = 1;
@@ -224,9 +225,10 @@ public class Reference implements BiSerializable {
     private double objectCastToDouble(Object obj) throws Exception {
         double val;
 
-        if (obj.getClass().getName().endsWith("Float") ||
-            obj.getClass().getName().endsWith("Double"))
+        if (isObjectMayCastToDouble(obj))
             val = (double) obj;
+        else if (isObjectMayCastToLong(obj))
+            val = objectCastToLong(obj);
         else
             throw new IllegalArgumentException("Expected floating point number operand in condition.");
 
@@ -334,7 +336,7 @@ public class Reference implements BiSerializable {
 
             return operandContract.get(operand);
         } else {
-            if (conversion == CONVERSION_BIG_DECIMAL)
+            if (conversion == CONVERSION_BIG_DECIMAL || operand.length() > 9)   // 10 symbols > int32 => operand * operand > int64(long). Use BigDecimal.
                 return new BigDecimal(operand);
             else if (operand.contains("."))
                 return Double.parseDouble(operand);
@@ -380,9 +382,12 @@ public class Reference implements BiSerializable {
             else
                 right = evaluateOperand(rightOperand, typeOfRightOperand, rightConversion, refContract, contracts, iteration);
 
+            if (left == null || right == null)
+                return null;
+
             // evaluate expression
             if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
-                    left.getClass().getName().endsWith("BigDecimal") || right.getClass().getName().endsWith("BigDecimal")) {
+                left.getClass().getName().endsWith("BigDecimal") || right.getClass().getName().endsWith("BigDecimal")) {
                 // BigDecimals
                 if (operation == PLUS)
                     result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).add(
@@ -395,7 +400,7 @@ public class Reference implements BiSerializable {
                              objectCastToBigDecimal(right, null, compareOperandType.FIELD));
                 else if (operation == DIV)
                     result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).divide(
-                             objectCastToBigDecimal(right, null, compareOperandType.FIELD));
+                             objectCastToBigDecimal(right, null, compareOperandType.FIELD), RoundingMode.HALF_UP);
                 else
                     throw new IllegalArgumentException("Unknown operation: " + operation);
 
@@ -580,13 +585,13 @@ public class Reference implements BiSerializable {
         if (leftExpression != null) {
             left = evaluateExpression(leftExpression, refContract, contracts, iteration);
             typeOfLeftOperand = compareOperandType.FIELD;
-            if (left.getClass().getName().endsWith("BigDecimal"))
+            if (left != null && left.getClass().getName().endsWith("BigDecimal"))
                 isBigDecimalConversion = true;
         }
         if (rightExpression != null) {
             right = evaluateExpression(rightExpression, refContract, contracts, iteration);
             typeOfRightOperand = compareOperandType.FIELD;
-            if (right.getClass().getName().endsWith("BigDecimal"))
+            if (right != null && right.getClass().getName().endsWith("BigDecimal"))
                 isBigDecimalConversion = true;
         }
 
@@ -796,13 +801,12 @@ public class Reference implements BiSerializable {
                                         isNumbers = false;
                                 }
 
-                                if (isNumbers && ((isLeftDouble && !isRightDouble) || (!isLeftDouble && isRightDouble))) {
+                                if (isNumbers) {
                                     if (((indxOperator == NOT_EQUAL) && ((isLeftDouble ? leftValD : leftValL) != (isRightDouble ? rightValD : rightValL))) ||
-                                            ((indxOperator == EQUAL) && ((isLeftDouble ? leftValD : leftValL) == (isRightDouble ? rightValD : rightValL))))
+                                        ((indxOperator == EQUAL) && ((isLeftDouble ? leftValD : leftValL) == (isRightDouble ? rightValD : rightValL))))
                                         ret = true;
-                                }
-                                else if (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
-                                         ((indxOperator == EQUAL) && left.equals(right)))
+                                } else if (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
+                                           ((indxOperator == EQUAL) && left.equals(right)))
                                     ret = true;
                             }
                         } else {
@@ -1012,13 +1016,21 @@ public class Reference implements BiSerializable {
                  (operand.charAt(firstPointPos + 1) > '9'));
     }
 
+    private boolean isExpression(String operand) {
+        if (baseContract == null)
+            System.out.println("WARNING: Need base contract to check API level. Capabilities API level 4 and above disabled.");
+
+        return baseContract != null && baseContract.getApiLevel() >= 4 && Arrays.stream(operations).anyMatch(op ->
+                operand.contains(op) && (!op.equals(operations[MINUS]) || operand.lastIndexOf(op) > 0));
+    }
+
     private Binder parseExpression(String expression) {
         int opPos;
         int i = 0;
-        while ((opPos = expression.indexOf(operations[i])) < 0 && i < DIV)
+        while ((opPos = expression.indexOf(operations[i])) <= 0 && i < DIV)
             i++;
 
-        if (opPos < 0)
+        if (opPos <= 0)
             throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found operation.");
 
         String leftOperand = expression.substring(0, opPos);
@@ -1028,7 +1040,7 @@ public class Reference implements BiSerializable {
         compareOperandType typeLeftOperand = compareOperandType.CONSTOTHER;
         Binder left = null;
 
-        if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+        if (isExpression(leftOperand)) {
             left = parseExpression(leftOperand);
             typeLeftOperand = compareOperandType.EXPRESSION;
         } else {
@@ -1043,7 +1055,7 @@ public class Reference implements BiSerializable {
         compareOperandType typeRightOperand = compareOperandType.CONSTOTHER;
         Binder right = null;
 
-        if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+        if (isExpression(rightOperand)) {
             right = parseExpression(rightOperand);
             typeRightOperand = compareOperandType.EXPRESSION;
         } else if (isFieldOperand(rightOperand))
@@ -1121,7 +1133,7 @@ public class Reference implements BiSerializable {
             else {
                 leftOperand = subStrL.replaceAll("\\s+", "");
 
-                if (Arrays.stream(operations).anyMatch(leftOperand::contains)) {
+                if (isExpression(leftOperand)) {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in left operand.");
 
@@ -1153,7 +1165,7 @@ public class Reference implements BiSerializable {
             else {
                 rightOperand = subStrR.replaceAll("\\s+", "");
 
-                if (Arrays.stream(operations).anyMatch(rightOperand::contains)) {
+                if (isExpression(rightOperand)) {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in right operand.");
 
@@ -1639,6 +1651,50 @@ public class Reference implements BiSerializable {
     }
 
     /**
+     * Assembly expression of reference condition
+     * @param expression is binder of parsed expression
+     * @return result {@link String} with assembled expression
+     */
+    private String assemblyExpression(Binder expression) {
+        String result = "";
+
+        // get parsed data
+        String leftOperand = expression.getString("leftOperand", null);
+        String rightOperand = expression.getString("rightOperand", null);
+
+        Binder left = expression.getBinder("left", null);
+        Binder right = expression.getBinder("right", null);
+
+        int operation = expression.getIntOrThrow("operation");
+
+        int leftConversion = expression.getInt("leftConversion", NO_CONVERSION);
+        int rightConversion = expression.getInt("rightConversion", NO_CONVERSION);
+
+        // assembly expression
+        if (leftOperand != null) {
+            result += leftOperand;
+
+            if (leftConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+
+        } else if (left != null)
+            result += assemblyExpression(left);
+
+        result += operations[operation];
+
+        if (rightOperand != null) {
+            result += rightOperand;
+
+            if (rightConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+
+        } else if (right != null)
+            result += assemblyExpression(right);
+
+        return result;
+    }
+
+    /**
      * Assembly condition of reference
      * @param condition is binder of parsed condition
      * @return result {@link String} with assembled condition
@@ -1653,6 +1709,10 @@ public class Reference implements BiSerializable {
         // get parsed data
         String leftOperand = condition.getString("leftOperand", null);
         String rightOperand = condition.getString("rightOperand", null);
+
+        Binder left = condition.getBinder("left", null);
+        Binder right = condition.getBinder("right", null);
+
         int operator = condition.getIntOrThrow("operator");
 
         int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
@@ -1673,7 +1733,9 @@ public class Reference implements BiSerializable {
 
             if (leftConversion == CONVERSION_BIG_DECIMAL)
                 result += "::number";
-        }
+
+        } else if (left != null)
+            result += assemblyExpression(left);
 
         result += operators[operator];
 
@@ -1688,7 +1750,9 @@ public class Reference implements BiSerializable {
 
             if (rightConversion == CONVERSION_BIG_DECIMAL)
                 result += "::number";
-        }
+
+        } else if (right != null)
+            result += assemblyExpression(right);
 
         return result;
     }

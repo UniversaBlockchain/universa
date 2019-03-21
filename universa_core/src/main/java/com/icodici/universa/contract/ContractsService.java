@@ -1841,7 +1841,7 @@ public class ContractsService {
         consent.getTransactional().setId(HashId.createRandom().toBase64String());
         consent.seal();
 
-        Reference reference = new Reference();
+        Reference reference = new Reference(source);
         reference.setName("consent_"+consent.getId());
         reference.type = Reference.TYPE_TRANSACTIONAL;
         reference.transactional_id = consent.getTransactional().getId();
@@ -2064,21 +2064,21 @@ public class ContractsService {
             Collection<PublicKey> executorKeys) {
 
         // Build payment contracts owner role
-        Reference customerRef = new Reference();
+        Reference customerRef = new Reference(payment);
         customerRef.name = "return_payment_to_customer";
         customerRef.type =  Reference.TYPE_TRANSACTIONAL;
         List<String> listCustomerConditions = new ArrayList<>();
-        listCustomerConditions.add("ref.origin == " + escrowOrigin);
+        listCustomerConditions.add("ref.origin == " + "\"" + escrowOrigin + "\"" );
         listCustomerConditions.add("ref.state.data.status == \"canceled\"");
         Binder customerConditions = new Binder();
         customerConditions.set("all_of", listCustomerConditions);
         customerRef.setConditions(customerConditions);
 
-        Reference executorRef = new Reference();
+        Reference executorRef = new Reference(payment);
         executorRef.name = "send_payment_to_executor";
         executorRef.type =  Reference.TYPE_TRANSACTIONAL;
         List<String> listExecutorConditions = new ArrayList<>();
-        listExecutorConditions.add("ref.origin == " + escrowOrigin);
+        listExecutorConditions.add("ref.origin == " + "\"" + escrowOrigin + "\"" );
         listExecutorConditions.add("ref.state.data.status == \"completed\"");
         Binder executorConditions = new Binder();
         executorConditions.set("all_of", listExecutorConditions);
