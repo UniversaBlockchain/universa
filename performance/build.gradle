@@ -53,7 +53,7 @@ task fatJar(type: Jar) {
 }
 
 
-task fatJarDemo1(type: Jar) {
+task demo1Jar(type: Jar) {
     manifest {
         attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
                 'Implementation-Version': version,
