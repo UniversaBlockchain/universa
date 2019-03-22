@@ -51,3 +51,29 @@ task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
+
+
+task fatJarDemo1(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
+                'Implementation-Version': version,
+                'Main-Class': 'com.icodici.universa_demo1.MainClass'
+    }
+    archiveName = 'unidemo1.jar'
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    // Remove some redundant files from universa_core which are actually not used.
+    exclude 'migrations/**', 'COPYING.LIBGMP'
+    exclude 'META-INF/nanohttpd/**', 'META-INF/LICENSE',
+            'META-INF/maven/org.postgresql/**', 'META-INF/maven/org.postgresql/**',
+            'META-INF/maven/com.ongres.scram/**', 'META-INF/maven/org.xerial/**'
+    exclude 'org/postgresql/**', 'org/sqlite/**', 'org/checkerframework/**'
+    // Remove GMP native code optimization for SunOS; can be reenabled if there are any users.
+    exclude 'sunos-x86-64/**'
+    // Prevent duplicates
+    duplicatesStrategy 'exclude'
+    // Safer with too many files in the archive
+    zip64 true
+    // Fat-Jar primary logic
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
