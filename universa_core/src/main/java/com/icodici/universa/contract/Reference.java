@@ -952,7 +952,9 @@ public class Reference implements BiSerializable {
                                 compareOperandType typeOfLeftOperand,
                                 compareOperandType typeOfRightOperand,
                                 int leftConversion,
-                                int rightConversion) {
+                                int rightConversion,
+                                boolean leftParentheses,
+                                boolean rightParentheses) {
         Binder packed = new Binder();
 
         if (left != null)
@@ -971,20 +973,27 @@ public class Reference implements BiSerializable {
         packed.set("leftConversion", leftConversion);
         packed.set("rightConversion", rightConversion);
 
+        if (leftParentheses)
+            packed.set("leftParentheses", true);
+        if (rightParentheses)
+            packed.set("rightParentheses", true);
+
         return packed;
     }
 
     private Binder packExpression(int operation,
-                                 String leftOperand,
-                                 String rightOperand,
-                                 Binder left,
-                                 Binder right,
-                                 compareOperandType typeOfLeftOperand,
-                                 compareOperandType typeOfRightOperand,
-                                 int leftConversion,
-                                 int rightConversion) {
+                                  String leftOperand,
+                                  String rightOperand,
+                                  Binder left,
+                                  Binder right,
+                                  compareOperandType typeOfLeftOperand,
+                                  compareOperandType typeOfRightOperand,
+                                  int leftConversion,
+                                  int rightConversion,
+                                  boolean leftParentheses,
+                                  boolean rightParentheses) {
         Binder packedExpression = packOperands(leftOperand, rightOperand, left, right, typeOfLeftOperand,
-                typeOfRightOperand, leftConversion, rightConversion);
+                typeOfRightOperand, leftConversion, rightConversion, leftParentheses, rightParentheses);
 
         packedExpression.set("operation", operation);
 
@@ -1001,7 +1010,7 @@ public class Reference implements BiSerializable {
                                  int leftConversion,
                                  int rightConversion) {
         Binder packedCondition = packOperands(leftOperand, rightOperand, left, right, typeOfLeftOperand,
-                typeOfRightOperand, leftConversion, rightConversion);
+                typeOfRightOperand, leftConversion, rightConversion, false, false);
 
         packedCondition.set("operator", operator);
 
@@ -1024,14 +1033,85 @@ public class Reference implements BiSerializable {
                 operand.contains(op) && (!op.equals(operations[MINUS]) || operand.lastIndexOf(op) > 0));
     }
 
-    private Binder parseExpression(String expression) {
-        int opPos;
-        int i = 0;
-        while ((opPos = expression.indexOf(operations[i])) <= 0 && i < DIV)
+    private int countCommonParentheses(String expression) {
+        int commonLevel = 0;
+        while (expression.charAt(commonLevel) == '(')
+            commonLevel++;
+
+        if (commonLevel == 0)
+            return 0;
+
+        int pos = commonLevel;
+        int level = commonLevel;
+        while (pos < expression.length() - commonLevel) {
+            if (expression.charAt(pos) == '(')
+                level++;
+
+            if (expression.charAt(pos) == ')') {
+                level--;
+                if (level == 0)
+                    return 0;
+
+                if (level < commonLevel)
+                    commonLevel = level;
+            }
+
+            pos++;
+        }
+
+        if (commonLevel > 0) {
+            if (commonLevel != level)
+                throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Expected ')'.");
+
+            while (pos < expression.length()) {
+                if (expression.charAt(pos) != ')')
+                    throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Expected ')'.");
+                pos++;
+            }
+        }
+
+        return commonLevel;
+    }
+
+    private boolean isTopLevelOperation(String expression, int opPos) {
+        int pos = 0;
+        int level = 0;
+        while (pos < expression.length()) {
+            if (pos == opPos)
+                return level == 0;
+
+            if (expression.charAt(pos) == '(')
+                level++;
+
+            if (expression.charAt(pos) == ')') {
+                level--;
+                if (level < 0)
+                    throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not expected ')'.");
+            }
+
+            pos++;
+        }
+
+        throw new IllegalArgumentException("Internal parsing error in expression: " + expression + ". opPos not reached.");
+    }
+
+    private Binder parseExpression(String expression, boolean topLevel) {
+        if (topLevel) {
+            // remove top-level parentheses
+            int countParentheses = countCommonParentheses(expression);
+            if (countParentheses > 0)
+                expression = expression.substring(countParentheses, expression.length() - countParentheses);
+        }
+
+        int opPos = -1;
+        int i = -1;
+        do {
             i++;
+            while ((opPos = expression.indexOf(operations[i], opPos + 1)) > 0 && !isTopLevelOperation(expression, opPos));
+        } while (opPos <= 0 && i < DIV);
 
         if (opPos <= 0)
-            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found operation.");
+            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found top-level operation.");
 
         String leftOperand = expression.substring(0, opPos);
         if (leftOperand.length() == 0)
@@ -1039,9 +1119,16 @@ public class Reference implements BiSerializable {
 
         compareOperandType typeLeftOperand = compareOperandType.CONSTOTHER;
         Binder left = null;
+        boolean leftParentheses = false;
+
+        int countParentheses = countCommonParentheses(leftOperand);
+        if (countParentheses > 0) {
+            leftOperand = leftOperand.substring(countParentheses, leftOperand.length() - countParentheses);
+            leftParentheses = true;
+        }
 
         if (isExpression(leftOperand)) {
-            left = parseExpression(leftOperand);
+            left = parseExpression(leftOperand, false);
             typeLeftOperand = compareOperandType.EXPRESSION;
         } else {
             if (isFieldOperand(leftOperand))
@@ -1054,9 +1141,16 @@ public class Reference implements BiSerializable {
 
         compareOperandType typeRightOperand = compareOperandType.CONSTOTHER;
         Binder right = null;
+        boolean rightParentheses = false;
+
+        countParentheses = countCommonParentheses(rightOperand);
+        if (countParentheses > 0) {
+            rightOperand = rightOperand.substring(countParentheses, rightOperand.length() - countParentheses);
+            rightParentheses = true;
+        }
 
         if (isExpression(rightOperand)) {
-            right = parseExpression(rightOperand);
+            right = parseExpression(rightOperand, false);
             typeRightOperand = compareOperandType.EXPRESSION;
         } else if (isFieldOperand(rightOperand))
             typeRightOperand = compareOperandType.FIELD;
@@ -1074,7 +1168,8 @@ public class Reference implements BiSerializable {
             rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
         }
 
-        return packExpression(i, leftOperand, rightOperand, left, right, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
+        return packExpression(i, leftOperand, rightOperand, left, right, typeLeftOperand, typeRightOperand,
+                leftConversion, rightConversion, leftParentheses, rightParentheses);
     }
 
     private Binder parseCondition(String condition) {
@@ -1137,7 +1232,7 @@ public class Reference implements BiSerializable {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in left operand.");
 
-                    left = parseExpression(leftOperand);
+                    left = parseExpression(leftOperand, true);
                     typeLeftOperand = compareOperandType.EXPRESSION;
                 } else if (isFieldOperand(leftOperand))
                     typeLeftOperand = compareOperandType.FIELD;
@@ -1169,7 +1264,7 @@ public class Reference implements BiSerializable {
                     if (i > EQUAL)
                         throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Operator incompatible with expression in right operand.");
 
-                    right = parseExpression(rightOperand);
+                    right = parseExpression(rightOperand, true);
                     typeRightOperand = compareOperandType.EXPRESSION;
                 } else if (isFieldOperand(rightOperand))
                     typeRightOperand = compareOperandType.FIELD;
@@ -1670,7 +1765,13 @@ public class Reference implements BiSerializable {
         int leftConversion = expression.getInt("leftConversion", NO_CONVERSION);
         int rightConversion = expression.getInt("rightConversion", NO_CONVERSION);
 
+        boolean leftParentheses = expression.containsKey("leftParentheses");
+        boolean rightParentheses = expression.containsKey("rightParentheses");
+
         // assembly expression
+        if (leftParentheses)
+            result += "(";
+
         if (leftOperand != null) {
             result += leftOperand;
 
@@ -1680,7 +1781,13 @@ public class Reference implements BiSerializable {
         } else if (left != null)
             result += assemblyExpression(left);
 
+        if (leftParentheses)
+            result += ")";
+
         result += operations[operation];
+
+        if (rightParentheses)
+            result += "(";
 
         if (rightOperand != null) {
             result += rightOperand;
@@ -1690,6 +1797,9 @@ public class Reference implements BiSerializable {
 
         } else if (right != null)
             result += assemblyExpression(right);
+
+        if (rightParentheses)
+            result += ")";
 
         return result;
     }
