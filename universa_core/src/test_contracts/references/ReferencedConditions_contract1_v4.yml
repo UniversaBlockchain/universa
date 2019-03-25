@@ -1209,6 +1209,8 @@ state:
          - ((((12 + ((4 * ((10 + 5)))))))) == 72
          - ((((((((-5)+2))))))) < 0
          - ((-10) - (-20)) >= (2 * (-10))
+         - this.state.data.bigdecimal1::number * (this.state.data.bigdecimal1::number + this.state.data.bigdecimal1::number) >  this.state.data.long1
+         - 554454.02193092 * (ref.state.data.bigdecimal1::number - this.state.data.bigdecimal1::number) + 1 > this.state.data.bigdecimal1::number
          - ((-10) - (-20) - ref.state.data.long2) >= (ref.state.data.long1 * (-10))
          - (this.state.data.int3 - 7) / (70 + 7) * (this.state.data.float3 - 775) - 1 == ((((ref.state.data.float4 - 7) / 10 - 7) / 10 - 7) / 10 + 12)
          - (3 + 4) * 2 == ((13 + 1) / (5 - 4))
@@ -1271,6 +1273,8 @@ state:
          - 72 <= ((((12 + ((4 * ((10 + 5))))))))
          - 0 > ((((((((-5)+2)))))))
          - (2 * (-10)) <= ((-10) - (-20))
+         - this.state.data.long1 < this.state.data.bigdecimal1::number * (this.state.data.bigdecimal1::number + this.state.data.bigdecimal1::number)
+         - this.state.data.bigdecimal1::number < 554454.02193092 * (ref.state.data.bigdecimal1::number - this.state.data.bigdecimal1::number) + 1
          - (ref.state.data.long1 * (-10)) <= ((-10) - (-20) - ref.state.data.long2)
          - ((((ref.state.data.float4 - 7) / 10 - 7) / 10 - 7) / 10 + 12) <= (this.state.data.int3 - 7) / (70 + 7) * (this.state.data.float3 - 775) - 1
          - ((13 + 1) / (5 - 4)) <= (3 + 4) * 2
