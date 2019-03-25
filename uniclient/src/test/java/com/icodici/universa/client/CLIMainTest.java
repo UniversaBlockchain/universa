@@ -868,6 +868,51 @@ public class CLIMainTest {
         assertEquals(right.getIntOrThrow("typeOfRightOperand"), 2);
         assertEquals(right.getIntOrThrow("operation"), 1);
 
+        conditions = ((Binder)condList.get(3));
+        condList = conditions.getList(all_of.name(), null);
+
+        //12 + 4 * (10 + 5) == 72
+        parsed = ((Binder)condList.get(0));
+        left = parsed.getBinder("left", null);
+        assertEquals(parsed.getString("rightOperand", ""), "72");
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 3);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 2);
+        assertEquals(parsed.getIntOrThrow("operator"), 7);
+        assertFalse(parsed.containsKey("leftParentheses"));
+        assertFalse(parsed.containsKey("rightParentheses"));
+
+        assertEquals(left.getString("leftOperand", ""), "12");
+        right = left.getBinder("right", null);
+        assertEquals(left.getIntOrThrow("rightConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfLeftOperand"), 2);
+        assertEquals(left.getIntOrThrow("leftConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfRightOperand"), 3);
+        assertEquals(left.getIntOrThrow("operation"), 0);
+        assertFalse(left.containsKey("leftParentheses"));
+        assertFalse(left.containsKey("rightParentheses"));
+
+        assertEquals(right.getString("leftOperand", ""), "4");
+        assertEquals(right.getIntOrThrow("rightConversion"), 0);
+        assertEquals(right.getIntOrThrow("typeOfLeftOperand"), 2);
+        assertEquals(right.getIntOrThrow("leftConversion"), 0);
+        assertEquals(right.getIntOrThrow("typeOfRightOperand"), 3);
+        assertEquals(right.getIntOrThrow("operation"), 2);
+        assertFalse(right.containsKey("leftParentheses"));
+        assertTrue(right.containsKey("rightParentheses"));
+        right = right.getBinder("right", null);
+
+        assertEquals(right.getString("leftOperand", ""), "10");
+        assertEquals(right.getString("rightOperand", ""), "5");
+        assertEquals(right.getIntOrThrow("rightConversion"), 0);
+        assertEquals(right.getIntOrThrow("typeOfLeftOperand"), 2);
+        assertEquals(right.getIntOrThrow("leftConversion"), 0);
+        assertEquals(right.getIntOrThrow("typeOfRightOperand"), 2);
+        assertEquals(right.getIntOrThrow("operation"), 0);
+        assertFalse(right.containsKey("leftParentheses"));
+        assertFalse(right.containsKey("rightParentheses"));
+
         refContract.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         refContract.seal();
         refContract.check();
@@ -946,6 +991,12 @@ public class CLIMainTest {
         assertTrue((list.contains("            - -67029039209309103.09204932>this.state.data.double_val-231892.293207")));
         assertTrue((list.contains("              - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298300000+72939==this.state.data.bigdecimal_val::number")));
         assertTrue((list.contains("              - this.state.data.bigdecimal_val::number>=1239801118932819038120*1123910849732682917138291-8938291839218928/382")));
+
+        assertTrue((list.contains("        - 12+4*(10+5)==72")));
+        assertTrue((list.contains("        - 12+(4)*(10+5)==72")));
+        assertTrue((list.contains("        - 12+(4*(10+5))==72")));
+        assertTrue((list.contains("        - (-5)+2<0")));
+        assertTrue((list.contains("        - (this.state.data.int_val-5)/(43+7)*20==((this.state.data.int_val-5)/10-5)+20")));
     }
 
     @Test
