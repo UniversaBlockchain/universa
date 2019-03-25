@@ -182,6 +182,12 @@ state:
                      - any_of:
                          - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298300000 + 72939 ==this.state.data.bigdecimal_val::number
                          - this.state.data.bigdecimal_val::number >= 1239801118932819038120 * 1123910849732682917138291 - 8938291839218928 / 382
+         - all_of:
+             - (12 + 4 * (10 + 5)) == 72
+             - (((12 + ((4)) * (10 + 5)))) == 72
+             - ((((12 + ((4 * ((10 + 5)))))))) == 72
+             - ((((((((-5)+2))))))) < 0
+             - (this.state.data.int_val - 5) / (43 + 7) * 20 == ((((this.state.data.int_val - 5) / 10 - 5) + 20))
 
  # required section. any application data that could be changed.
  data:
