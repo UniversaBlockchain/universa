@@ -193,7 +193,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         });
 
 
-        addEndpoint("/network_signed", (Binder params, Result result) -> {
+        addEndpoint("/netsigned", (Binder params, Result result) -> {
             if (networkData == null) {
                 List<Binder> nodes = new ArrayList<Binder>();
                 result.putAll(

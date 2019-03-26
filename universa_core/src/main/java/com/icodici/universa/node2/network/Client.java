@@ -288,17 +288,10 @@ public class Client {
     }
 
     private void loadNetworkFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
-        URL url = new URL(someNodeUrl + "/network");
+        URL url = new URL(someNodeUrl + "/" + (verifyWith == null ? "network" : "netsigned"));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
-        if(verifyWith != null) {
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setRequestProperty("content-type", "application/x-www-form-urlencoded");
-            connection.getOutputStream().write(("requestData64=" + Base64.encodeString(Boss.dump(Binder.of("sign", true)).getData())).getBytes());
-        } else {
-            connection.setRequestMethod("GET");
-        }
+        connection.setRequestMethod("GET");
         if (connection.getResponseCode() != 200)
             throw new IOException("failed to access " + url + ", reponseCode " + connection.getResponseCode());
 
