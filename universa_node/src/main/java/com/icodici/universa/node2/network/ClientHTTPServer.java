@@ -179,7 +179,8 @@ public class ClientHTTPServer extends BasicHttpServer {
                         nodes.add(Binder.of(
                                 "url", node.publicUrlString(),
                                 "key", node.getPublicKey().pack(),
-                                "number", node.getNumber()
+                                "number", node.getNumber(),
+                                "IP", node.getServerHost()
                         ));
                     });
                 }
@@ -205,7 +206,8 @@ public class ClientHTTPServer extends BasicHttpServer {
                         nodes.add(Binder.of(
                                 "url", node.publicUrlString(),
                                 "key", node.getPublicKey().pack(),
-                                "number", node.getNumber()
+                                "number", node.getNumber(),
+                                "IP", node.getServerHost()
                         ));
                     });
                 }
