@@ -3,7 +3,7 @@ Universa Docker containers
 
 This Docker configuration allows you to configure and execute a local environment of Universa Blockchain nodes, for various development/debug purposes.
 
-See more details in our Knowledge Base article on Universa docker images: [kb.universa.io/universa_docker_images/92](https://kb.universa.io/universa_docker_images/92).
+See more details in our Knowledge Base article on Universa docker images: [kb.utoken.io/universa_docker_images/92](https://kb.utoken.io/universa_docker_images/92).
 
 
 ## Prerequirements
@@ -33,4 +33,4 @@ docker build --tag universa/node:latest --compress .
 
 ---
 
-For other documentation on Universa please consult the Universa Knowledge Base at [kb.universa.io](https://kb.universa.io). For a visual guide on the documentation topics, visit the Universa Development Map at [lnd.im/UniversaDevelopmentMap](https://lnd.im/UniversaDevelopmentMap).
+For other documentation on Universa please consult the Universa Knowledge Base at [kb.utoken.io](https://kb.utoken.io). For a visual guide on the documentation topics, visit the Universa Development Map at [lnd.im/UniversaDevelopmentMap](https://lnd.im/UniversaDevelopmentMap).

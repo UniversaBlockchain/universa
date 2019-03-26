@@ -3515,7 +3515,7 @@ public class MainTest {
         });
 
         PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
-        Client clients = new Client("http://node-" + 1 + "-com.universa.io:8080", key, null, false);
+        Client clients = new Client("http://node-" + 1 + "-com.utoken.io:8080", key, null, false);
         System.out.println(clients.getVersion());
 
        /* for (int i = 0; i < 33;i++) {

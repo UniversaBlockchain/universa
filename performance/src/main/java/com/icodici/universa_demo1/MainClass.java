@@ -359,7 +359,7 @@ public class MainClass {
 
     private static Client checkDevKeyForNetwork(PrivateKey key, String network) {
         try {
-            Client client = new Client("http://node-1-"+network+".universa.io", key, null);
+            Client client = new Client("http://node-1-"+network+".utoken.io", key, null);
             Binder res = client.getStats();
             if(res.containsKey("itemResult")) {
                 return ((ItemResult)res.get("itemResult")).errors.isEmpty() ? client : null;

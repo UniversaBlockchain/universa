@@ -6,6 +6,6 @@ http_server_port: 2082
 udp_server_port: 2700
 node_number: 4
 public_host: localhost
-node_name: node-4-local.universa.io
+node_name: node-4-local.utoken.io
 ip:
 - 10.6.0.14

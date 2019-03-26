@@ -67,7 +67,7 @@ public class ResearchTest extends TestCase {
         clients = new ArrayList<>();
         for (int i = 0; i < 10; ++i) {
             int n = i+1;
-            String nodeUrl = "http://node-"+n+"-pro.universa.io:8080";
+            String nodeUrl = "http://node-"+n+"-pro.utoken.io:8080";
             PrivateKey clientKey = TestKeys.privateKey(i);
             Client client = new Client(nodeUrl, clientKey, null, false);
             clients.add(client);

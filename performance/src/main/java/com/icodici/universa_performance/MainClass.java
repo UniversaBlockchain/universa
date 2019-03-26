@@ -276,7 +276,7 @@ public class MainClass {
         final int PACKS_IN_BUNCH = 5;
 
         System.out.println("Connecting to nodes...");
-        String nodeUrl = "http://node-1-test.universa.io:8080";
+        String nodeUrl = "http://node-1-test.utoken.io:8080";
         Client client = new Client(nodeUrl,TestKeys.privateKey(0),null);
 
         System.out.println("Network version: " + client.getVersion());

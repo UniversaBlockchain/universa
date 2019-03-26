@@ -41,9 +41,9 @@ public class JarNetworkTest extends TestCase {
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        String nodeUrl = "http://node-1-pro.universa.io:8080";
+        String nodeUrl = "http://node-1-pro.utoken.io:8080";
         String dbUrl = "jdbc:postgresql://localhost:15432/universa_node?user=universa&password=fuSleaphs8";
-        tunnelProcess = Runtime.getRuntime().exec("ssh -N -L 15432:127.0.0.1:5432 deploy@dd.node-1-pro.universa.io -p 54324");
+        tunnelProcess = Runtime.getRuntime().exec("ssh -N -L 15432:127.0.0.1:5432 deploy@dd.node-1-pro.utoken.io -p 54324");
         int attempts = 10;
         while(true) {
             Thread.sleep(500);
@@ -64,7 +64,7 @@ public class JarNetworkTest extends TestCase {
         paymentContractPrivKey = new PrivateKey(Base64.decodeLines(uno_flint004_privKey_b64));
 
         for(int i = 0; i < NODES_COUNT;i++) {
-            normalClients.add(new Client("http://node-"+(i+1)+"-pro.universa.io:8080",new PrivateKey(2048),null));
+            normalClients.add(new Client("http://node-"+(i+1)+"-pro.utoken.io:8080",new PrivateKey(2048),null));
         }
         config = new Config();
         config.setConsensusConfigUpdater((config, n) -> {
@@ -250,7 +250,7 @@ public class JarNetworkTest extends TestCase {
     private Client createWhiteClient() {
         try {
             int nodeNumber = ThreadLocalRandom.current().nextInt(1, 11);
-            String nodeUrl = "http://node-" + nodeNumber + "-pro.universa.io:8080";
+            String nodeUrl = "http://node-" + nodeNumber + "-pro.utoken.io:8080";
             PrivateKey clientKey = TestKeys.privateKey(nodeNumber-1);
             return new Client(nodeUrl, clientKey, null, false);
         } catch (Exception e) {

@@ -42,7 +42,7 @@ services:
     networks:
       main:
         aliases:
-          - node-1-local.universa.io
+          - node-1-local.utoken.io
         ipv4_address: 10.6.0.11
   node-2-local:
     image: universa/node:latest
@@ -67,7 +67,7 @@ services:
     networks:
       main:
         aliases:
-          - node-2-local.universa.io
+          - node-2-local.utoken.io
         ipv4_address: 10.6.0.12
   node-3-local:
     image: universa/node:latest
@@ -92,7 +92,7 @@ services:
     networks:
       main:
         aliases:
-          - node-3-local.universa.io
+          - node-3-local.utoken.io
         ipv4_address: 10.6.0.13
   node-4-local:
     image: universa/node:latest
@@ -117,7 +117,7 @@ services:
     networks:
       main:
         aliases:
-          - node-4-local.universa.io
+          - node-4-local.utoken.io
         ipv4_address: 10.6.0.14
       
 networks:

@@ -6,7 +6,7 @@ http_server_port: 2082
 udp_server_port: 2700
 database: jdbc:postgresql://db:5432/node2db?user=node2user&password=uniPass
 node_number: 2
-public_host: node-2-local.universa.io
-node_name: node-2-local.universa.io
+public_host: node-2-local.utoken.io
+node_name: node-2-local.utoken.io
 ip:
 - 10.6.0.12

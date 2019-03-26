@@ -32,7 +32,7 @@ public class ClientNetwork {
             try {
                 client = new Client("http://node-" +
                         Do.randomIntInRange(1, 10) +
-                        "-com.universa.io:8080", CLIMain.getPrivateKey(), session, delayedStart);
+                        "-com.utoken.io:8080", CLIMain.getPrivateKey(), session, delayedStart);
                 break;
             } catch (IOException e) {
                 reporter.warning("failed to read network from node " + i);

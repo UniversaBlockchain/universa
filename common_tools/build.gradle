@@ -36,7 +36,7 @@ publishing {
 
     repositories {
         maven {
-            url = "https://maven.universa.io/"
+            url = "https://maven.utoken.io/"
             credentials {
                 username System.getProperty("user")
                 password System.getProperty("password")
