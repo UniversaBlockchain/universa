@@ -37,7 +37,7 @@ publishing {
 
     repositories {
         maven {
-            url = "https://maven.utoken.io/"
+            url = "https://maven.glmp.me/"
             credentials {
                 username System.getProperty("user")
                 password System.getProperty("password")
@@ -52,7 +52,7 @@ sourceCompatibility = 1.8
 repositories {
     mavenCentral()
     maven {
-        url = "https://maven.utoken.io/"
+        url = "https://maven.glmp.me/"
     }
 
 }
