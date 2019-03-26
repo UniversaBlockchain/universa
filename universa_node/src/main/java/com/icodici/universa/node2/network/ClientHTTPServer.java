@@ -198,7 +198,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                 List<Binder> nodes = new ArrayList<Binder>();
                 result.putAll(
                         "version", Main.NODE_VERSION,
-                        "number", node.getNumber(),
+                        "number", node.getNumber()
                 );
                 if (netConfig != null) {
                     netConfig.forEachNode(node -> {
