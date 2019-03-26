@@ -577,26 +577,26 @@ public class Reference implements BiSerializable {
             }
         }
 
-        if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
-            left = leftOperandContract.get(leftOperand);
-        if (rightOperandContract != null)
-            right = rightOperandContract.get(rightOperand);
-
-        if (leftExpression != null) {
-            left = evaluateExpression(leftExpression, refContract, contracts, iteration);
-            typeOfLeftOperand = compareOperandType.FIELD;
-            if (left != null && left.getClass().getName().endsWith("BigDecimal"))
-                isBigDecimalConversion = true;
-        }
-        if (rightExpression != null) {
-            right = evaluateExpression(rightExpression, refContract, contracts, iteration);
-            typeOfRightOperand = compareOperandType.FIELD;
-            if (right != null && right.getClass().getName().endsWith("BigDecimal"))
-                isBigDecimalConversion = true;
-        }
-
         // check operator
         if (rightOperand != null || rightExpression != null) {
+            if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
+                left = leftOperandContract.get(leftOperand);
+            if (rightOperandContract != null)
+                right = rightOperandContract.get(rightOperand);
+
+            if (leftExpression != null) {
+                left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+                typeOfLeftOperand = compareOperandType.FIELD;
+                if (left != null && left.getClass().getName().endsWith("BigDecimal"))
+                    isBigDecimalConversion = true;
+            }
+            if (rightExpression != null) {
+                right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+                typeOfRightOperand = compareOperandType.FIELD;
+                if (right != null && right.getClass().getName().endsWith("BigDecimal"))
+                    isBigDecimalConversion = true;
+            }
+
             try {
                 switch (indxOperator) {
                     case LESS:

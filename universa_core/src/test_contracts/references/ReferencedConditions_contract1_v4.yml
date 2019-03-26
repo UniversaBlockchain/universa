@@ -57,6 +57,7 @@ definition:
          - ref.issuer defined
          - ref.creator defined
          - ref.definition.data.owner undefined
+         - this.xxx.data.qwerty undefined
 
          - ref.definition.issuer == "26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R"
          - ref.issuer == 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R
