@@ -192,6 +192,31 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         });
 
+
+        addEndpoint("/network2", (Binder params, Result result) -> {
+            if (networkData == null) {
+                List<Binder> nodes = new ArrayList<Binder>();
+                result.putAll(
+                        "version", Main.NODE_VERSION,
+                        "number", node.getNumber(),
+                );
+                if (netConfig != null) {
+                    netConfig.forEachNode(node -> {
+                        nodes.add(Binder.of(
+                                "url", node.publicUrlString(),
+                                "key", node.getPublicKey().pack(),
+                                "number", node.getNumber()
+                        ));
+                    });
+                }
+
+                result.put("nodesPacked", Boss.dump(nodes).getData());
+                result.put("signature", ExtendedSignature.sign(nodeKey, Boss.dump(nodes).getData()));
+                result.remove("nodes");
+            }
+
+        });
+
         addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
