@@ -15,6 +15,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
@@ -52,10 +53,13 @@ public class ClientHTTPServer extends BasicHttpServer {
     private boolean localCors = false;
 
     private ExecutorService es = Executors.newFixedThreadPool(40);
+    private PrivateKey nodeKey;
+
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 32, logger);
         log = logger;
+        nodeKey = privateKey;
 
         addSecureEndpoint("status", (params, session) -> Binder.of(
                 "status", "initializing",
@@ -178,6 +182,11 @@ public class ClientHTTPServer extends BasicHttpServer {
                                 "number", node.getNumber()
                         ));
                     });
+                }
+                if(params.getBoolean("sign",false)) {
+                    result.put("nodesPacked", Boss.dump(nodes).getData());
+                    result.put("signature", ExtendedSignature.sign(nodeKey, Boss.dump(nodes).getData()));
+                    result.remove("nodes");
                 }
             }
 

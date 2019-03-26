@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -21,6 +22,8 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
+import net.sergeych.utils.Base64;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -168,8 +171,22 @@ public class Client {
      */
 
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart) throws IOException {
+        this(someNodeUrl,clientPrivateKey,session,delayedStart,null);
+    }
+    /**
+     * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
+
+     * @param someNodeUrl url on some node in network
+     * @param clientPrivateKey client private key
+     * @param session set to null or to the reconstructed instance
+     * @param delayedStart indicates if start of http client should be delayed
+     * @param verifyWith key to verify loaded network info. Must be node's key user believe he connect's to.
+     * @throws IOException
+     */
+
+    public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart, PublicKey verifyWith) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
-        loadNetworkFrom(someNodeUrl);
+        loadNetworkFrom(someNodeUrl, verifyWith);
         clients = new ArrayList<>(size());
         for (int i = 0; i < size(); i++) {
             clients.add(null);
@@ -270,22 +287,44 @@ public class Client {
         return version;
     }
 
-    private void loadNetworkFrom(String someNodeUrl) throws IOException {
+    private void loadNetworkFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
         URL url = new URL(someNodeUrl + "/network");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
-        connection.setRequestMethod("GET");
-
+        if(verifyWith != null) {
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("content-type", "application/x-www-form-urlencoded");
+            connection.getOutputStream().write(("requestData64=" + Base64.encodeString(Boss.dump(Binder.of("sign", true)).getData())).getBytes());
+        } else {
+            connection.setRequestMethod("GET");
+        }
         if (connection.getResponseCode() != 200)
             throw new IOException("failed to access " + url + ", reponseCode " + connection.getResponseCode());
 
-        Binder bres = Boss.unpack((Do.read(connection.getInputStream())))
+        byte[] bytes = (Do.read(connection.getInputStream()));
+
+
+        Binder bres = Boss.unpack(bytes)
                 .getBinderOrThrow("response");
         nodes.clear();
         this.version = bres.getStringOrThrow("version");
 
-        for (Binder b : bres.getBinders("nodes"))
-            nodes.add(new NodeRecord(b));
+        if(verifyWith != null) {
+            byte[] nodesPacked = bres.getBinaryOrThrow("nodesPacked");
+            byte[] signature = bres.getBinaryOrThrow("signature");
+            if(ExtendedSignature.verify(verifyWith,signature,nodesPacked) == null) {
+                throw new IOException("failed to verify node " + url + ", with " + verifyWith);
+            }
+            List<Binder> list = Boss.load(nodesPacked);
+            for (Binder b : list)
+                nodes.add(new NodeRecord(b));
+
+        } else {
+            for (Binder b : bres.getBinders("nodes"))
+                nodes.add(new NodeRecord(b));
+        }
+
     }
 
     /**
