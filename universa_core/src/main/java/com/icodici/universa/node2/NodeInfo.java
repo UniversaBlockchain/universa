@@ -38,6 +38,7 @@ public class NodeInfo implements BiSerializable {
     private int number;
     private String nodeName;
     private String publicHost;
+    private String host;
 
     public NodeInfo() {
 
@@ -49,9 +50,12 @@ public class NodeInfo implements BiSerializable {
         this(publicKey, number, nodeName, host, host, datagramPort, clientHttpPort, serverHttpPort);
     }
 
+    @Deprecated
     public String getPublicHost() {
         return publicHost;
     }
+
+    public String getServerHost() { return host; }
 
     public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host,
                     String publicHost, int datagramPort, int clientHttpPort, int serverHttpPort) {
@@ -62,6 +66,7 @@ public class NodeInfo implements BiSerializable {
         this.number = number;
         this.nodeName = nodeName;
         this.publicHost = publicHost;
+        this.host = host;
         nodeAddress = new InetSocketAddress(host, datagramPort);
         clientAddress = new InetSocketAddress(publicHost, clientHttpPort);
         serverAddress = new InetSocketAddress(host, serverHttpPort);
@@ -154,6 +159,10 @@ public class NodeInfo implements BiSerializable {
 
     public String publicUrlString() {
         return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + publicHost + ":8080";
+    }
+
+    public String serverUrlString() {
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":8080";
     }
 
     @Override

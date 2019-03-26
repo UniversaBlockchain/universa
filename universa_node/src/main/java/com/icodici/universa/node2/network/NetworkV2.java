@@ -199,7 +199,7 @@ public class NetworkV2 extends Network {
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         try {
 //            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
-            URL url = new URL(nodeInfo.publicUrlString() + "/contracts/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.serverUrlString() + "/contracts/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
@@ -224,7 +224,7 @@ public class NetworkV2 extends Network {
         try {
             System.out.println("getEnvironment " + itemId.toBase64String());
 //            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
-            URL url = new URL(nodeInfo.publicUrlString() + "/environments/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.serverUrlString() + "/environments/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
@@ -245,7 +245,7 @@ public class NetworkV2 extends Network {
     public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         try {
 //            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
-            URL url = new URL(nodeInfo.publicUrlString() + "/parcels/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.serverUrlString() + "/parcels/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
