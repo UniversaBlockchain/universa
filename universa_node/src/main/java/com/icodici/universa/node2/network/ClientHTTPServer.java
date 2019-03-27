@@ -180,7 +180,8 @@ public class ClientHTTPServer extends BasicHttpServer {
                                 "url", node.publicUrlString(),
                                 "key", node.getPublicKey().pack(),
                                 "number", node.getNumber(),
-                                "IP", node.getServerHost()
+                                "IP", node.getServerHost(),
+                                "ipurl", node.serverUrlString()
                         ));
                     });
                 }

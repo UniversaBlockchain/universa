@@ -255,7 +255,10 @@ public class Client {
         public final PublicKey key;
 
         private NodeRecord(Binder data) throws IOException {
-            url = data.getStringOrThrow("url");
+
+
+            url = data.containsKey("ipurl") ? data.getStringOrThrow("ipurl") : data.getStringOrThrow("url");
+
             try {
                 key = new PublicKey(data.getBinaryOrThrow("key"));
             } catch (EncryptionError encryptionError) {
