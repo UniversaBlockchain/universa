@@ -1803,9 +1803,9 @@ public class CLIMainTest {
 
     @Test
     public void downloadContract() throws Exception {
-        callMain("-d", "www.utoken.io");
+        callMain("-d", "www.mainnetwork.io");
         System.out.println(output);
-        assertTrue (output.indexOf("downloading from www.utoken.io") >= 0);
+        assertTrue (output.indexOf("downloading from www.mainnetwork.io") >= 0);
         assertEquals(0, errors.size());
     }
 
