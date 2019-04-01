@@ -9,7 +9,6 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
@@ -30,8 +29,6 @@ import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -39,7 +36,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientHTTPServer extends BasicHttpServer {
-
 
     private static final String API_VERSION = "3.1.0";
 
