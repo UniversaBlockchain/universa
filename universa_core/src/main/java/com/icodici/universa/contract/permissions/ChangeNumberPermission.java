@@ -74,21 +74,23 @@ public class ChangeNumberPermission extends Permission {
      */
     @Override
     public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
-        MapDelta<String,Binder,Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
-        if( dataChanges == null)
+        MapDelta<String, Binder, Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
+        if (dataChanges == null)
             return;
         Delta delta = dataChanges.getChange(fieldName);
-        if( delta != null ) {
-            if( !(delta instanceof ChangedItem) )
+        if (delta != null) {
+            if (!(delta instanceof ChangedItem))
                 return;
             try {
                 Decimal valueDelta = new Decimal(delta.newValue().toString());
                 valueDelta = valueDelta.subtract(new Decimal(delta.oldValue().toString()));
-                if (valueDelta.compareTo(minStep) == -1 || valueDelta.compareTo(maxStep) == 1)
+                // if (valueDelta < minStep || valueDelta > maxStep)
+                if (valueDelta.compareTo(minStep) < 0 || valueDelta.compareTo(maxStep) > 0)
                     return;
                 else {
                     newValue = new Decimal(delta.newValue().toString());
-                    if (newValue.compareTo(maxValue) == 1 || newValue.compareTo(minValue) == -1)
+                     // if (newValue > maxValue || newValue < minValue)
+                    if (newValue.compareTo(maxValue) > 0 || newValue.compareTo(minValue) < 0)
                         return;
                     else {
                         dataChanges.remove(fieldName);
@@ -104,5 +106,4 @@ public class ChangeNumberPermission extends Permission {
     static {
         DefaultBiMapper.registerClass(ChangeNumberPermission.class);
     }
-
 }
