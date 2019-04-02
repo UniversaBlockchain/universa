@@ -4007,8 +4007,8 @@ public class CLIMain {
     public static void setNodeNumber(int number) {
         System.out.println("Connecting to node " + number);
         nodeNumber = number;
+        nodeUrl = null;
         clientNetwork = null;
-        setNodeUrl("http://node-" + nodeNumber + "-com.utoken.io:8080");
     }
 
     public static void setNodeUrl(String url) {
