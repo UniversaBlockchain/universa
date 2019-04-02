@@ -78,7 +78,7 @@ public class CLIMain {
     }
 
     private static final String CLI_VERSION = Core.VERSION;
-    private static final String URS_ROOT_URL = "https://xchange.utoken.io/api/v1";
+    private static final String URS_ROOT_URL = "https://xchange.mainnetwork.io/api/v1";
     private static final HashId UTN_ORIGIN = HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE");
     private static final String DEFAULT_WALLET_CONFIG = "config";
     public static String DEFAULT_WALLET_PATH = System.getProperty("user.home") +File.separator+".universa"+File.separator+"uutnwallet";
