@@ -43,11 +43,8 @@ public class ClientNetwork {
         File topologyFile = new File(TOPOLOGY_DIR+TOPOLOGY_FILENAME);
         if(!topologyFile.exists()) {
             ClassLoader classLoader = getClass().getClassLoader();
-            File defaultTopologyFile = new File(classLoader.getResource(TOPOLOGY_FILENAME).getFile());
             Files.createDirectories(Paths.get(TOPOLOGY_DIR));
-            FileOutputStream fos = new FileOutputStream(topologyFile);
-            fos.write(Do.read(defaultTopologyFile));
-            fos.close();
+            Files.copy(classLoader.getResourceAsStream(TOPOLOGY_FILENAME), Paths.get(TOPOLOGY_DIR+TOPOLOGY_FILENAME));
         }
 
         for (int i = 1; i < 10; i++) {
