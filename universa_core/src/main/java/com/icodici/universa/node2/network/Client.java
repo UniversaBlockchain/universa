@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2.network;
 
+import com.eclipsesource.json.JsonValue;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -18,10 +19,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
-import net.sergeych.tools.AsyncEvent;
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
-import net.sergeych.tools.Reporter;
+import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
@@ -54,6 +52,12 @@ public class Client {
     List<Client> clients;
 
     private String version;
+    private List<Binder> topology;
+
+
+    public List<Binder> getTopology() {
+        return topology;
+    }
 
     /**
      *  Get nodes count in network.
@@ -255,9 +259,12 @@ public class Client {
         public final PublicKey key;
 
         private NodeRecord(Binder data) throws IOException {
-
-
-            url = data.containsKey("ipurl") ? data.getStringOrThrow("ipurl") : data.getStringOrThrow("url");
+            if(data.containsKey("direct_urls")) {
+                List<String> directUrls = data.getListOrThrow("direct_urls");
+                url = directUrls.get(0);
+            } else {
+                url = data.getStringOrThrow("url");
+            }
 
             try {
                 key = new PublicKey(data.getBinaryOrThrow("key"));
@@ -291,7 +298,7 @@ public class Client {
     }
 
     private void loadNetworkFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
-        URL url = new URL(someNodeUrl + "/" + (verifyWith == null ? "network" : "netsigned"));
+        URL url = new URL(someNodeUrl + "/" + (verifyWith == null ? "network" : "topology"));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
         connection.setRequestMethod("GET");
@@ -304,21 +311,26 @@ public class Client {
         Binder bres = Boss.unpack(bytes)
                 .getBinderOrThrow("response");
         nodes.clear();
-        this.version = bres.getStringOrThrow("version");
 
         if(verifyWith != null) {
-            byte[] nodesPacked = bres.getBinaryOrThrow("nodesPacked");
+            byte[] packedData = bres.getBinaryOrThrow("packed_data");
             byte[] signature = bres.getBinaryOrThrow("signature");
-            if(ExtendedSignature.verify(verifyWith,signature,nodesPacked) == null) {
+            if(ExtendedSignature.verify(verifyWith,signature,packedData) == null) {
                 throw new IOException("failed to verify node " + url + ", with " + verifyWith);
             }
-            List<Binder> list = Boss.load(nodesPacked);
-            for (Binder b : list)
-                nodes.add(new NodeRecord(b));
+            bres = Boss.unpack(packedData);
 
-        } else {
-            for (Binder b : bres.getBinders("nodes"))
-                nodes.add(new NodeRecord(b));
+            this.topology = bres.getListOrThrow("nodes");
+        }
+        this.version = bres.getStringOrThrow("version");
+        for (Binder b : bres.getBinders("nodes"))
+            nodes.add(new NodeRecord(b));
+
+        if(topology != null) {
+            for (Object o : topology) {
+                Binder b = (Binder) o;
+                b.put("key", new PublicKey(b.getBinaryOrThrow("key")).packToBase64String());
+            }
         }
 
     }

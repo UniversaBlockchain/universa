@@ -9147,4 +9147,17 @@ public class MainTest {
         ts.shutdown();
 
     }
+
+    @Test
+    public void getTopologyFirstTime() throws Exception {
+        String network = "pro";
+        Client cOld = new Client("http://node-1-"+network+".utoken.io",TestKeys.privateKey(1),null);
+        Client.NodeRecord nr = Do.sample(cOld.getNodes());
+        Client cNew = new Client(nr.url,TestKeys.privateKey(1),null,false,nr.key);
+        System.out.println(cNew.getTopology());
+
+        /*Gson gson = new Gson();
+        String json = gson.toJson(cNew.getTopology());
+        System.out.println(json);*/
+    }
 }

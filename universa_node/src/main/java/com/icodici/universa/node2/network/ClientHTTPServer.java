@@ -179,9 +179,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                         nodes.add(Binder.of(
                                 "url", node.publicUrlString(),
                                 "key", node.getPublicKey().pack(),
-                                "number", node.getNumber(),
-                                "IP", node.getServerHost(),
-                                "ipurl", node.serverUrlString()
+                                "number", node.getNumber()
                         ));
                     });
                 }
@@ -217,6 +215,44 @@ public class ClientHTTPServer extends BasicHttpServer {
                 result.put("nodesPacked", Boss.dump(nodes).getData());
                 result.put("signature", ExtendedSignature.sign(nodeKey, Boss.dump(nodes).getData()));
                 result.remove("nodes");
+            }
+
+        });
+
+
+        addEndpoint("/topology", (Binder params, Result result) -> {
+            if (networkData == null) {
+                Binder res = new Binder();
+                List<Binder> nodes = new ArrayList<Binder>();
+                res.putAll(
+                        "version", Main.NODE_VERSION,
+                        "number", node.getNumber(),
+                        "nodes", nodes
+                );
+
+                if (netConfig != null) {
+                    netConfig.forEachNode(node -> {
+                        List<String> directUrls = new ArrayList<>();
+                        directUrls.add(node.directUrlStringV4());
+                        List<String> domainUrls = new ArrayList<>();
+                        domainUrls.add(node.domainUrlStringV4());
+
+                        nodes.add(Binder.of(
+                                "number", node.getNumber(),
+                                "key", node.getPublicKey().pack(),
+                                "name", node.getName(),
+                                "direct_urls", directUrls,
+                                "domain_urls", domainUrls
+                        ));
+                    });
+                }
+
+                byte[] packedData = Boss.dump(res).getData();
+                byte[] signature = ExtendedSignature.sign(nodeKey,packedData);
+                result.putAll("packed_data",packedData,
+                        "signature",signature);
+
+
             }
 
         });

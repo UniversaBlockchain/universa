@@ -165,6 +165,16 @@ public class NodeInfo implements BiSerializable {
         return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":8080";
     }
 
+
+    public String domainUrlStringV4() {
+        return publicHost.equals("localhost") ? "https://localhost:"+clientAddress.getPort() : "https://" + publicHost + ":8080";
+    }
+
+    public String directUrlStringV4() {
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":8080";
+    }
+
+
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         publicKey = deserializer.deserialize(data.getBinderOrThrow("publicKey"));
