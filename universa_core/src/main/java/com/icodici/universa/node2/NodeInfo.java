@@ -16,6 +16,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
@@ -31,6 +32,7 @@ import java.sql.SQLException;
  * The preferred method of identifying the node is its integer id, see {@link #getNumber()}.
  */
 public class NodeInfo implements BiSerializable {
+    private String hostV6;
     private PublicKey publicKey;
     private InetSocketAddress nodeAddress;
     private InetSocketAddress clientAddress;
@@ -47,17 +49,21 @@ public class NodeInfo implements BiSerializable {
 
     public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host,
                     int datagramPort, int clientHttpPort, int serverHttpPort) {
-        this(publicKey, number, nodeName, host, host, datagramPort, clientHttpPort, serverHttpPort);
+        this(publicKey, number, nodeName, host, null, host , datagramPort, clientHttpPort, serverHttpPort);
     }
 
-    @Deprecated
+    public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host,
+                    String publicHost, int datagramPort, int clientHttpPort, int serverHttpPort) {
+        this(publicKey, number, nodeName, host, null, publicHost , datagramPort, clientHttpPort, serverHttpPort);
+    }
+        @Deprecated
     public String getPublicHost() {
         return publicHost;
     }
 
     public String getServerHost() { return host; }
 
-    public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host,
+    public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host, @Nullable String hostV6,
                     String publicHost, int datagramPort, int clientHttpPort, int serverHttpPort) {
         assert number >= 0;
         assert datagramPort > 0;
@@ -67,6 +73,7 @@ public class NodeInfo implements BiSerializable {
         this.nodeName = nodeName;
         this.publicHost = publicHost;
         this.host = host;
+        this.hostV6 = hostV6;
         nodeAddress = new InetSocketAddress(host, datagramPort);
         clientAddress = new InetSocketAddress(publicHost, clientHttpPort);
         serverAddress = new InetSocketAddress(host, serverHttpPort);
@@ -145,6 +152,7 @@ public class NodeInfo implements BiSerializable {
                     b.getIntOrThrow("node_number"),
                     b.getStringOrThrow("node_name"),
                     (String) b.getListOrThrow("ip").get(0),
+                    b.containsKey("ipv6") ? (String) b.getListOrThrow("ipv6").get(0) : null,
                     b.getStringOrThrow("public_host"),
                     b.getIntOrThrow("udp_server_port"),
                     b.getIntOrThrow("http_client_port"),
@@ -162,7 +170,7 @@ public class NodeInfo implements BiSerializable {
     }
 
     public String serverUrlString() {
-        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":8080";
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (hostV6 != null ? "["+hostV6+"]" : host) + ":8080";
     }
 
 

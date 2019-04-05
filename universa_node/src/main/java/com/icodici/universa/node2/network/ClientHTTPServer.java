@@ -189,6 +189,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         });
 
 
+        //TODO: to be removed in near future
         addEndpoint("/netsigned", (Binder params, Result result) -> {
             if (networkData == null) {
                 List<Binder> nodes = new ArrayList<Binder>();
@@ -203,7 +204,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                                 "key", node.getPublicKey().pack(),
                                 "number", node.getNumber(),
                                 "IP", node.getServerHost(),
-                                "ipurl", node.serverUrlString()
+                                "ipurl", node.publicUrlString()
                         ));
                     });
                 }

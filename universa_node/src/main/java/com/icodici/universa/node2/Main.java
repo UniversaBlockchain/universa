@@ -328,6 +328,7 @@ public class Main {
                               settings.getIntOrThrow("node_number"),
                               settings.getStringOrThrow("node_name"),
                               (String) settings.getListOrThrow("ip").get(0),
+                              settings.containsKey("ipv6") ? (String) settings.getListOrThrow("ipv6").get(0) : null,
                               settings.getStringOrThrow("public_host"),
                               settings.getIntOrThrow("udp_server_port"),
                               settings.getIntOrThrow("http_client_port"),
@@ -341,7 +342,8 @@ public class Main {
         log("ledger constructed");
 
         log("key loaded: " + nodeKey.info());
-        log("node local URL: " + myInfo.publicUrlString());
+        log("node local URL: " + myInfo.serverUrlString());
+        log("node public URL: " + myInfo.publicUrlString());
         log("node info: " + myInfo.toBinder());
     }
 
