@@ -10,15 +10,15 @@ COPY / /code/
 WORKDIR /code
 RUN apt-get update --quiet=2 --yes \
 	&& apt-get install --quiet=2 --yes --no-install-recommends --fix-missing gradle \
-	&& gradle -Dfile.encoding=utf-8 :universa_core:fatJar -x test \
+	&& gradle -Dfile.encoding=utf-8 :universa_node:fatJar -x test \
 	&& gradle -Dfile.encoding=utf-8 :uniclient:fatJar -x test \
-	&& mv /code/uniclient/build /deploy/build-client && mv /code/universa_core/build /deploy/build-core
+	&& mv /code/uniclient/build /deploy/build-client && mv /code/universa_node/build /deploy/build-node
 
 # Copy only the needed files.
 
 FROM universa/debian-jdk8:latest as universa
 COPY --from=build_universa /deploy/build-client /deploy/build-client
-COPY --from=build_universa /deploy/build-core /deploy/build-core
+COPY --from=build_universa /deploy/build-node /deploy/build-node
 COPY /docker/node/uninode.sh /deploy/uninode
 COPY /docker/node/uniclient.sh /deploy/uniclient
 
