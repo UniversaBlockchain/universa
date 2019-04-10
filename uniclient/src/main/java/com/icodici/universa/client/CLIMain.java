@@ -88,6 +88,7 @@ public class CLIMain {
     private static boolean testMode;
     private static String testRootPath;
     private static String nodeUrl;
+    private static String topologyFileName;
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
@@ -347,6 +348,13 @@ public class CLIMain {
                         "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_file");
+
+                acceptsAll(asList("topology"), "Specify topology to be used as entry point. Should be " +
+                        "either path to json file for creating new / updating existing named topology " +
+                        "or cached topology name")
+                        .withRequiredArg().ofType(String.class)
+                        .withValuesSeparatedBy(",").describedAs("./path/to/topology_name.json or topology_name");
+
                 acceptsAll(asList("password"), "List of comma-separated passwords " +
                         "to generate or unpack password protected keys. Use with -g or -k")
                         .withRequiredArg().ofType(String.class)
@@ -617,6 +625,12 @@ public class CLIMain {
             } else {
                 reporter.setQuiet(false);
             }
+
+            if(options.has("topology")) {
+                List<String> names = (List) options.valuesOf("topology");
+                setTopologyFileName(names.get(0));
+            }
+
             if (options.has("network")) {
                 ClientNetwork n = getClientNetwork();
                 int total = n.size();
@@ -4016,6 +4030,11 @@ public class CLIMain {
         clientNetwork = null;
     }
 
+    public static void setTopologyFileName(String filename) {
+        topologyFileName = filename;
+        clientNetwork = null;
+    }
+
 
 
     public static void setPrivateKey(PrivateKey key) {
@@ -4035,6 +4054,8 @@ public class CLIMain {
             reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
             if(nodeUrl != null) {
                 clientNetwork = new ClientNetwork(nodeUrl, null, true);
+            } if(topologyFileName != null){
+                clientNetwork = new ClientNetwork(null, topologyFileName, true);
             } else {
                 clientNetwork = new ClientNetwork(null, true);
             }
