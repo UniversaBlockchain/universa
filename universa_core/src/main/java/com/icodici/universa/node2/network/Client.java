@@ -25,10 +25,15 @@ import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -202,6 +207,67 @@ public class Client {
             httpClient.start(clientPrivateKey, r.key, session);
     }
 
+    public static final String TOPOLOGY_DIR = System.getProperty("user.home")+"/.universa/topology/";
+
+    /**
+     * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
+
+     * @param topologyName name of cached topology to be used (without .json) or filename (ending .json) of topology to be cached and used
+     * @param topologyCacheDir path to topology cache. Pass null to use standard ~/.universa/topology
+     * @param clientPrivateKey client private key
+     * @throws IOException
+     */
+
+    public Client(String topologyName, String topologyCacheDir, PrivateKey clientPrivateKey) throws IOException {
+        File topologyFile;
+        if(topologyCacheDir == null) {
+            topologyCacheDir = TOPOLOGY_DIR;
+        }
+
+        if(!topologyCacheDir.endsWith("/")) {
+            topologyCacheDir = topologyCacheDir + "/";
+        }
+
+        //create new / update existing from a given file
+        if(topologyName.endsWith(".json")) {
+            File original = new File(topologyName);
+            topologyFile = new File(topologyCacheDir + original.getName());
+            if (!topologyFile.exists()) {
+                Files.createDirectories(Paths.get(topologyCacheDir));
+                Files.copy(Paths.get(original.getAbsolutePath()), Paths.get(topologyFile.getAbsolutePath()));
+            }
+        } else {
+            topologyFile = new File(topologyCacheDir + topologyName + ".json");
+            if (!topologyFile.exists()) {
+                throw new IllegalArgumentException("Unknown named topology: " + topologyName);
+            }
+        }
+
+
+        List<Map<String,String>> topology = JsonTool.fromJson(new String(Do.read(topologyFile.getAbsolutePath())));
+        Map b = Do.sample(topology);
+
+        this.clientPrivateKey = clientPrivateKey;
+        loadNetworkFrom((String)((List)b.get("direct_urls")).get(0), new PublicKey(Base64u.decodeCompactString((String)b.get("key"))));
+
+
+        FileOutputStream fos = new FileOutputStream(topologyFile);
+        fos.write(JsonTool.toJsonString(getTopology()).getBytes());
+        fos.close();
+
+
+        clients = new ArrayList<>(size());
+        for (int i = 0; i < size(); i++) {
+            clients.add(null);
+        }
+        NodeRecord r = Do.sample(nodes);
+        httpClient = new BasicHttpClient(r.url);
+        this.nodePublicKey = r.key;
+        httpClient.start(clientPrivateKey, r.key, null);
+
+
+
+    }
 
     /**
      * Start http client (used with constructor passing delayedStart = true)
