@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'com.icodici'
-version '3.9.6'
+version '3.9.7'
 
 sourceCompatibility = 1.8
 
