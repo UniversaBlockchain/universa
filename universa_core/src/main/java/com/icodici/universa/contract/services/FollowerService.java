@@ -6,12 +6,25 @@ import com.icodici.universa.node.ItemState;
 
 import java.time.ZonedDateTime;
 
-//*
-
+/**
+ * Service for storing information about subscriptions to callbacks in the follower contract.
+ * Allows you to receive and set the time to which it is possible to sending callbacks,
+ * the amount of spent U for sending callbacks, the number of running callbacks.
+ */
 public interface FollowerService {
 
+    /**
+     * Get expiration time for callback subscription.
+     *
+     * @return expiresAt is expiration time
+     */
     ZonedDateTime expiresAt();
 
+    /**
+     * Getting the time to which it is possible to send callbacks (as long as there is enough money to send at least 1 callback).
+     *
+     * @return mutedAt is muted time
+     */
     ZonedDateTime mutedAt();
 
     /**
