@@ -6,11 +6,11 @@ import com.icodici.universa.contract.Contract;
 import java.time.ZonedDateTime;
 
 /**
- * Subscription to store one revision of the packed contract (transaction pack)
+ * Subscription to events notification of the contract or contract chain
  * <p>
- * The subscribers ({@link NContract} instances) subscribe to contracts to store them for some amount of time. All
- * subscriptions share same copy of the stored contract. When the last susbscription to this revision is destroyed or
- * expired, the copy is dropped.
+ * The subscribers ({@link NContract} instances) subscribe to a contract or a chain of contracts to receive
+ * event notifications and for some amount of time. All subscriptions share same copy of the {@link NContract}.
+ * When the last susbscription to this revision is destroyed or expired, the copy is dropped.
  * <p>
  * Note that subscriptions are private to {@link NContract} instances and visible only to it. When the NContract is
  * revoked, all its subscriptions must be destroyed.

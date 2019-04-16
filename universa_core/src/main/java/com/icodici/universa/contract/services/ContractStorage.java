@@ -18,6 +18,11 @@ import java.time.ZonedDateTime;
 
 public interface ContractStorage {
 
+    /**
+     * Get expiration time for contract storage.
+     *
+     * @return expiration time for contract storage
+     */
     ZonedDateTime expiresAt();
 
     /**

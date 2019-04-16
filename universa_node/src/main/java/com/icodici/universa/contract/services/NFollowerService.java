@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 
 /**
- * Implements {@link ContractSubscription} interface for follower contract.
+ * Implements {@link FollowerService} interface for follower contract.
  */
 public class NFollowerService implements FollowerService, BiSerializable {
 

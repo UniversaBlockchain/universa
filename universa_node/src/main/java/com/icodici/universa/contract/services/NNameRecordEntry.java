@@ -15,7 +15,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Implements {@link ContractStorageSubscription} interface for slot contract.
+ * Implements {@link NameRecordEntry} interface for UNS contract.
  */
 public class NNameRecordEntry implements NameRecordEntry,BiSerializable {
 
