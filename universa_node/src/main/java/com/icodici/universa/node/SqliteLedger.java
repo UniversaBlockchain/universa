@@ -15,6 +15,7 @@ import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node2.*;
+import net.sergeych.tools.Binder;
 import net.sergeych.utils.Ut;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteOpenMode;
@@ -258,9 +259,10 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public Object getKeepingBy(String field, HashId id, int limit, int offset, String sortBy, String sortOrder) {
+    public Binder getKeepingBy(String field, HashId id, Binder tags, int limit, int offset, String sortBy, String sortOrder) {
         return null;
     }
+
 
     @Override
     public void putKeepingItem(StateRecord record, Approvable item) {

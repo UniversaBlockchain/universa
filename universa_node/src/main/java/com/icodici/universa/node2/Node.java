@@ -2505,7 +2505,7 @@ public class Node {
                                 //save newItem to DB in Permanet mode
                                 if (config.isPermanetMode())
                                     synchronized (mutex) {
-                                        ledger.putKeepingItem(record, newItem);
+                                        ledger.putKeepingItem(r, newItem);
                                     }
 
                                 Binder newExtraResult = new Binder();

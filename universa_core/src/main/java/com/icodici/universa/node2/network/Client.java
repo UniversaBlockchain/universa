@@ -15,6 +15,7 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
@@ -846,9 +847,25 @@ public class Client {
      * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
      * @throws ClientError
      */
+
     public Binder getContract(HashId origin, int limit, int offset) throws ClientError {
+        return getContract(origin,null,limit,offset);
+    }
+
+    /**
+     * Get the body of active contract with the given origin (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
+     * @param origin contract origin
+     * @param tags tags to search for
+     * @param limit of list items
+     * @param offset of list items
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getContract(HashId origin, Binder tags, int limit, int offset) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getContract", "origin", origin, "limit", limit, "offset", offset);
+            Binder result = httpClient.command("getContract", "origin", origin, "limit", limit, "offset", offset, "tags", tags);
             if (result.size() > 0) {
                 if (result.containsKey("contractIds")) {
                     List<byte[]> contractIds = new ArrayList<>();
@@ -859,6 +876,17 @@ public class Client {
                     }
                     result.put("contractIds", contractIds);
                     result.put("ids", ids);
+                }
+                
+                if(result.containsKey("packedContract")) {
+                    TransactionPack tp = TransactionPack.unpack(result.getBinaryOrThrow("packedContract"));
+                    HashId id = (HashId) result.getListOrThrow("ids").get(0);
+                    if(tp.getContract().getId().equals(id)) {
+                        result.put("contract", tp.getContract());
+                    } else {
+                        result.put("contract", tp.getSubItem(id));
+                    }
+
                 }
                 return result;
             } else
@@ -890,14 +918,44 @@ public class Client {
      * @throws ClientError
      */
     public Binder getChildren(HashId parent, int limit, int offset) throws ClientError {
+        return getChildren(parent,null,limit,offset);
+    }
+
+    /**
+     * Get the body of active contract with the given parent (if one active contract is returned),
+     * or list of IDs active contracts (if there are more than one).
+     * List of IDs contracts contains contract hash digests as byte arrays.
+     * @param parent id of parent contract
+     * @param tags tags to search for (state.data.search_tags.key=value)
+     * @param limit of list items
+     * @param offset of list items
+     * @return {@link Binder} containing packed transaction or limited list of IDs active contracts or null (if no active contracts found)
+     * @throws ClientError
+     */
+    public Binder getChildren(HashId parent, Map<String,String> tags, int limit, int offset) throws ClientError {
         return protect(() -> {
-            Binder result = httpClient.command("getContract", "parent", parent, "limit", limit,"offset", offset);
+            Binder result = httpClient.command("getContract", "parent", parent, "limit", limit,"offset", offset, "tags", tags);
             if (result.size() > 0) {
                 if (result.containsKey("contractIds")) {
+                    List<byte[]> contractIds = new ArrayList<>();
                     List<HashId> ids = new ArrayList<>();
-                    for (Object id: result.getListOrThrow(("contractIds")))
-                        ids.add(HashId.withDigest(((Bytes)id).getData()));
+                    for (Object id: result.getListOrThrow(("contractIds"))) {
+                        contractIds.add(((Bytes) id).getData());
+                        ids.add(HashId.withDigest(((Bytes) id).getData()));
+                    }
+                    result.put("contractIds", contractIds);
                     result.put("ids", ids);
+                }
+
+                if(result.containsKey("packedContract")) {
+                    TransactionPack tp = TransactionPack.unpack(result.getBinaryOrThrow("packedContract"));
+                    HashId id = (HashId) result.getListOrThrow("ids").get(0);
+                    if(tp.getContract().getId().equals(id)) {
+                        result.put("contract", tp.getContract());
+                    } else {
+                        result.put("contract", tp.getSubItem(id));
+                    }
+
                 }
                 return result;
             } else
