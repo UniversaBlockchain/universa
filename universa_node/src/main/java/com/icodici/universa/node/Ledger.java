@@ -16,6 +16,7 @@ import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NCallbackService;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.tools.Binder;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -208,7 +209,7 @@ public interface Ledger {
     Object getKeepingByOrigin(HashId origin, int limit);
 
 
-    Object getKeepingBy(String field, HashId id, int limit, int offset, String sortBy, String sortOrder);
+    Binder getKeepingBy(String field, HashId id, Binder tags, int limit, int offset, String sortBy, String sortOrder);
 
     NImmutableEnvironment getEnvironment(long environmentId);
     NImmutableEnvironment getEnvironment(HashId contractId);

@@ -18,6 +18,7 @@ import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Ut;
 
 import java.lang.ref.WeakReference;
@@ -32,6 +33,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -292,7 +294,7 @@ public class PostgresLedger implements Ledger {
     @Override
     public byte[] getKeepingItem(HashId itemId) {
         return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where hash = ? limit 1", itemId.getDigest()))) {
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from kept_items, ledger where ledger.hash = ? and ledger.id = kept_items.ledger_id limit 1", itemId.getDigest()))) {
                 if (rs == null)
                     return null;
                 return rs.getBytes("packed");
@@ -308,7 +310,7 @@ public class PostgresLedger implements Ledger {
     public Object getKeepingByOrigin(HashId origin, int limit) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow(
-                    "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and origin = ? and state = ? order by keeping_items.id desc limit ?",
+                    "select kept_items.packed, kept_items.hash from kept_items, ledger where ledger.id = kept_items.ledger_id and origin = ? and state = ? order by kept_items.id desc limit ?",
                     origin.getDigest(), ItemState.APPROVED.ordinal(), limit))) {
                 if (rs == null)
                     return null;
@@ -332,13 +334,14 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Object getKeepingBy(String field, HashId id, int limit, int offset, String sortBy, String sortOrder) {
+    public Binder getKeepingBy(String field, HashId id, Binder tags, int limit, int offset, String sortBy, String sortOrder) {
         String searchColumn;
-
-        if(field.equals("state.origin")) {
-            searchColumn = "keeping_items.origin";
+        if(field == null) {
+            searchColumn = null;
+        } else if(field.equals("state.origin")) {
+            searchColumn = "kept_items.origin";
         } else if(field.equals("state.parent")) {
-            searchColumn = "keeping_items.parent";
+            searchColumn = "kept_items.parent";
         } else {
             throw new IllegalArgumentException("Can't get contracts by '" + field +"'. Should be either state.origin or state.parent");
         }
@@ -359,14 +362,72 @@ public class PostgresLedger implements Ledger {
         }
 
 
-        final String query = "select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and " + searchColumn + " = ? and ledger.state = ? order by " + orderColumn + " " + sortOrder + "  limit ? offset ?";
+        final StringBuilder query = new StringBuilder("");
+
+        List<String> tagsFlat = new ArrayList<>();
+
+        if(tags != null && !tags.isEmpty()) {
+            String tagsQuery = extractTags(true, tags, tagsFlat);
+
+            query.append("WITH tagged_ledger_items AS ( SELECT ledger.id AS ledger_id FROM ledger ");
+
+            for(int i = 0; i < tagsFlat.size()/2; i++) {
+                query.append("INNER JOIN kept_items_tags AS tags_"+i+" ON tags_"+i+".ledger_id = ledger.id ");
+            }
+
+            query.append("WHERE ");
+            query.append(tagsQuery);
+            query.append(")");
+        }
+
+        query.append("select kept_items.packed, ledger.hash from kept_items, ledger ");
+        query.append("WHERE ");
+        if(tags != null && !tags.isEmpty()) {
+            query.append("ledger.id IN (SELECT ledger_id FROM tagged_ledger_items) and ");
+        }
+
+        if(searchColumn != null) {
+            query.append(searchColumn + " = ? and ");
+        }
+
+        query.append("kept_items.ledger_id = ledger.id and ledger.state = ? order by " + orderColumn + " " + sortOrder + "  limit ? offset ?");
+
+//        select keeping_items.packed, keeping_items.hash from keeping_items, ledger where ledger.hash = keeping_items.hash and " + searchColumn + " = ? and ledger.state = ? order by " + orderColumn + " " + sortOrder + "  limit ? offset ?";
 
 
-        return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow(
-                    query,
-                    id.getDigest(), ItemState.APPROVED.ordinal(), limit,offset))) {
+
+
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    query.toString()
+                            )
+            ) {
+                int idx = 1;
+
+                for(int i = 0; i < tagsFlat.size(); i++) {
+                    statement.setString(idx,tagsFlat.get(i));
+                    idx++;
+                }
+
+                if(searchColumn != null) {
+                    statement.setBytes(idx,id.getDigest());
+                    idx++;
+                }
+
+                statement.setInt(idx,ItemState.APPROVED.ordinal());
+                idx++;
+
+                statement.setInt(idx,limit);
+                idx++;
+                statement.setInt(idx,offset);
+
+
+                ResultSet rs = statement.executeQuery();
                 if (rs == null)
+                    return null;
+                if(!rs.next())
                     return null;
 
                 byte[] packed = rs.getBytes("packed");
@@ -376,54 +437,129 @@ public class PostgresLedger implements Ledger {
                 while (rs.next())
                     contractIds.add(rs.getBytes("hash"));
 
-                if (contractIds.size() > 1)
-                    return contractIds;
-                else
-                    return packed;
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
+                Binder res = Binder.of("contractIds", contractIds);
+                if (contractIds.size() == 1)
+                    res.put("packedContract",packed);
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getContractSubscriptions failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getContractSubscriptions failed: " + e);
+        }
+    }
+
+    private String extractTags(boolean all, Binder tags, List<String> tagsFlat) {
+        StringBuilder result = new StringBuilder("(");
+        tags.forEach((k,v)-> {
+            if(v instanceof String) {
+                int i = tagsFlat.size()/2;
+                result.append((result.length() > 1 ? (all ? " and " : " or ") : ""));
+                result.append("(tags_"+i+".tag = ? and tags_"+i+".value = ?)");
+                tagsFlat.add(k);
+                tagsFlat.add((String) v);
+            } else if(v instanceof Binder) {
+                boolean isAll;
+                if(k.equalsIgnoreCase("all_of")) {
+                    isAll = true;
+                } else if(k.equalsIgnoreCase("any_of")) {
+                    isAll = false;
+                } else {
+                    throw new IllegalArgumentException("Dictionary should come with either any_of or all_of key. Got: " + k);
+                }
+                result.append((result.length() > 1 ? (all ? " and " : " or ") : ""));
+                result.append(extractTags(isAll, (Binder) v,tagsFlat));
+
+            } else {
+                throw new IllegalArgumentException("Expected either string or dictionary");
             }
         });
+        result.append(")");
+
+        return result.toString();
     }
 
 
+    public final static String SEARCH_TAGS = "search_tags";
 
     @Override
     public void putKeepingItem(StateRecord record, Approvable item) {
         if (item instanceof Contract) {
+            Contract contract = (Contract) item;
             try (PooledDb db = dbPool.db()) {
                 try (
                         PreparedStatement statement =
                                 db.statement(
-                                        "insert into keeping_items (id,hash,origin,parent,packed) values(?,?,?,?,?);"
+                                        "insert into kept_items (ledger_id,origin,parent,packed) values(?,?,?,?);"
                                 )
                 ) {
-                    if (record != null)
-                        statement.setLong(1, record.getRecordId());
-                    else
-                        statement.setNull(1, Types.INTEGER);
-                    statement.setBytes(2, ((Contract) item).getId().getDigest());
-                    statement.setBytes(3, ((Contract) item).getOrigin().getDigest());
+                    statement.setLong(1, record.getRecordId());
+                    statement.setBytes(2, contract.getOrigin().getDigest());
 
                     if(((Contract) item).getParent() != null)
-                        statement.setBytes(4, ((Contract) item).getParent().getDigest());
+                        statement.setBytes(3, contract.getParent().getDigest());
                     else
-                        statement.setNull(4, Types.VARBINARY);
+                        statement.setNull(3, Types.VARBINARY);
 
-                    statement.setBytes(5, ((Contract) item).getPackedTransaction());
+                    statement.setBytes(4, contract.getPackedTransaction());
 
                     db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();
                     throw e;
                 }
+
             } catch (SQLException se) {
                 se.printStackTrace();
                 throw new Failure("keeping item save failed:" + se);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            Map<String,String> tagsToSave = new HashMap();
+            if(contract.getDefinition().getData().containsKey(SEARCH_TAGS)) {
+                Object fieldValue = contract.getDefinition().getData().get(SEARCH_TAGS);
+                if(fieldValue instanceof Map) {
+                    ((Map)fieldValue).forEach((k,v) -> tagsToSave.put(k.toString(),v.toString()));
+                }
+            }
+            if(tagsToSave.size() > 0) {
+                try (PooledDb db = dbPool.db()) {
+                    try (
+                            PreparedStatement statement =
+                                    db.statement(
+                                            "insert into kept_items_tags (ledger_id,tag,value) values(?,?,?);"
+                                    )
+                    ) {
+                        int insertCount = 0;
+
+                        for (String key : tagsToSave.keySet()) {
+                            statement.setLong(1, record.getRecordId());
+                            statement.setString(2, key);
+                            statement.setString(3, tagsToSave.get(key));
+                            statement.addBatch();
+                            insertCount++;
+
+                            if (insertCount % 100 == 0 || insertCount == tagsToSave.size()) {
+                                statement.executeBatch(); // Execute every 1000 items.
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw e;
+                    }
+
+                } catch (SQLException se) {
+                    se.printStackTrace();
+                    throw new Failure("keeping item tags save failed:" + se);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
         }
     }
 

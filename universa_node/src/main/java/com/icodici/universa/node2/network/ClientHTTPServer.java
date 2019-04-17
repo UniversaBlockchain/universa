@@ -16,6 +16,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -25,13 +26,12 @@ import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -399,12 +399,14 @@ public class ClientHTTPServer extends BasicHttpServer {
         String getBy = null;
         if(params.containsKey("origin")) {
             id = (HashId) params.get("origin");
-            getBy = "state.origin";
+            if(id != null)
+                getBy = "state.origin";
         }
 
         if(params.containsKey("parent")) {
             id = (HashId) params.get("parent");
-            getBy = "state.parent";
+            if(id != null)
+                getBy = "state.parent";
         }
 
         int limit = params.getInt("limit", node.getConfig().getQueryContractsLimit());
@@ -416,23 +418,23 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         int offset = params.getInt("offset", 0);
 
-        String sortBy = params.getString("sortBy", "state.createdAt");
+        String sortBy = params.getString("sortBy", "");
         String sortOrder = params.getString("sortOrder", "DESC");
 
 
-        Object keeping = node.getLedger().getKeepingBy(getBy,id, limit, offset,sortBy,sortOrder);
+        Binder tags = params.getBinder("tags");
+
+        Binder keeping = node.getLedger().getKeepingBy(getBy,id, tags, limit, offset,sortBy,sortOrder);
         if (keeping == null)
             return res;
+        res.putAll(keeping);
 
-        if (keeping instanceof byte[])
-            res.put("packedContract", keeping);
-        else if (keeping instanceof List)
-            res.put("contractIds", keeping);
-
-        if(getBy.equals("state.origin")) {
-            res.put("origin",id);
-        } else if(getBy.equals("state.parent")) {
-            res.put("parent",id);
+        if(getBy != null) {
+            if(getBy.equals("state.origin")) {
+                res.put("origin",id);
+            } else if(getBy.equals("state.parent")) {
+                res.put("parent",id);
+            }
         }
 
         res.put("limit",limit);
