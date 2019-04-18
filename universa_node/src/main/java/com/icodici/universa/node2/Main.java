@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Core;
@@ -24,11 +25,14 @@ import joptsimple.OptionSet;
 import net.sergeych.tools.*;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Arrays.asList;
 
@@ -319,6 +323,14 @@ public class Main {
 
         nodeKey = null;
         Binder settings = Binder.of(yaml.load(new FileInputStream(configRoot + "/config/config.yaml")));
+
+        Binder settingsShared;
+        if(new File(configRoot + "/config/shared.yaml").exists()) {
+            settingsShared = Binder.of(yaml.load(new FileInputStream(configRoot + "/config/shared.yaml")));
+        } else {
+            settingsShared = settings;
+        }
+
         log("node settings: " + settings);
         String nodeKeyFileName = configRoot + "/tmp/" + settings.getStringOrThrow("node_name") + ".private.unikey";
         log(nodeKeyFileName);
@@ -335,8 +347,16 @@ public class Main {
                               settings.getIntOrThrow("http_server_port")
         );
 
-        config.setIsFreeRegistrationsAllowedFromYaml(settings.getBoolean("allow_free_registrations", false));
-        config.setPermanetMode(settings.getBoolean("permanet_mode", false));
+        config.setIsFreeRegistrationsAllowedFromYaml(settingsShared.getBoolean("allow_free_registrations", false));
+        config.setPermanetMode(settingsShared.getBoolean("permanet_mode", false));
+        List<Object> whiteList = settingsShared.getList("whitelist", new ArrayList<>());
+        for(Object value : whiteList) {
+            try {
+                config.getAddressesWhiteList().add(new KeyAddress((String) value));
+            } catch (KeyAddress.IllegalAddressException e) {
+                e.printStackTrace();
+            }
+        }
 
         ledger = new PostgresLedger(settings.getStringOrThrow("database"));
         log("ledger constructed");
