@@ -36,53 +36,16 @@ public class ClientNetwork {
     }
 
 
-    public static final String TOPOLOGY_DIR = System.getProperty("user.home")+"/.universa/topology/";
-    public static final String TOPOLOGY_FILENAME = "mainnet.json";
 
     public ClientNetwork(BasicHttpClientSession session, boolean delayedStart) throws IOException {
         this(session,null,delayedStart);
     }
 
     public ClientNetwork(BasicHttpClientSession session, String topologyName, boolean delayedStart) throws IOException {
-        File topologyFile;
-        if(topologyName == null) {
-            topologyFile = new File(TOPOLOGY_DIR + TOPOLOGY_FILENAME);
-            if (!topologyFile.exists()) {
-                ClassLoader classLoader = getClass().getClassLoader();
-                Files.createDirectories(Paths.get(TOPOLOGY_DIR));
-                Files.copy(classLoader.getResourceAsStream(TOPOLOGY_FILENAME), Paths.get(TOPOLOGY_DIR + TOPOLOGY_FILENAME));
-            }
-        } else {
-            //create new / update existing from a given file
-            if(topologyName.endsWith(".json")) {
-                File original = new File(topologyName);
-                topologyFile = new File(TOPOLOGY_DIR + original.getName());
-                if (!topologyFile.exists()) {
-                    Files.createDirectories(Paths.get(TOPOLOGY_DIR));
-                    Files.copy(Paths.get(original.getAbsolutePath()), Paths.get(topologyFile.getAbsolutePath()));
-                }
-            } else {
-                topologyFile = new File(TOPOLOGY_DIR + topologyName + ".json");
-                if (!topologyFile.exists()) {
-                    throw new IllegalArgumentException("Unknown named topology: " + topologyName);
-                }
-            }
-        }
 
         for (int i = 1; i < 10; i++) {
             try {
-                FileReader fileReader = new FileReader(topologyFile);
-                Gson gson = new Gson();
-                List list = gson.fromJson(fileReader,List.class);
-
-                Map b = Do.sample(list);
-                client = new Client((String) ((List)b.get("direct_urls")).get(0), CLIMain.getPrivateKey(), session, delayedStart,
-                        new PublicKey(Base64u.decodeCompactString((String)b.get("key"))));
-
-                FileOutputStream fos = new FileOutputStream(topologyFile);
-                fos.write(gson.toJson(client.getTopology()).getBytes());
-                fos.close();
-
+                client = new Client(topologyName == null ? "mainnet" : topologyName,null, CLIMain.getPrivateKey());
                 break;
             } catch (IOException e) {
                 reporter.warning("failed to read network from node: " + e.getMessage() );

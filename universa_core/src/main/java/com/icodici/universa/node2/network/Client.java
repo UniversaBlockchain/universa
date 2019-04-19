@@ -7,7 +7,6 @@
 
 package com.icodici.universa.node2.network;
 
-import com.eclipsesource.json.JsonValue;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -26,23 +25,23 @@ import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.math.BigDecimal;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Client {
+
+
 
     static {
         Config.forceInit(ItemResult.class);
@@ -196,7 +195,18 @@ public class Client {
 
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart, PublicKey verifyWith) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
-        loadNetworkFrom(someNodeUrl, verifyWith);
+        Object[] res = loadNetworkFrom(someNodeUrl, verifyWith);
+        this.nodes = (List<NodeRecord>) res[0];
+        topology = (List<Binder>) res[1];
+        if(topology != null) {
+            for (Object o : topology) {
+                Binder b = (Binder) o;
+                b.put("key", ((PublicKey) b.get("key")).packToBase64String());
+            }
+        }
+
+        this.version = (String) res[2];
+
         clients = new ArrayList<>(size());
         for (int i = 0; i < size(); i++) {
             clients.add(null);
@@ -210,17 +220,20 @@ public class Client {
 
     public static final String TOPOLOGY_DIR = System.getProperty("user.home")+"/.universa/topology/";
 
+    private static final double MIN_CONFIRMED_RATIO = 0.4;
+
     /**
      * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
 
-     * @param topologyName name of cached topology to be used (without .json) or filename (ending .json) of topology to be cached and used
+     * @param topologyInput is either name of cached topology to be used (without .json) or filename (ending .json) of topology to be used
      * @param topologyCacheDir path to topology cache. Pass null to use standard ~/.universa/topology
      * @param clientPrivateKey client private key
      * @throws IOException
      */
 
-    public Client(String topologyName, String topologyCacheDir, PrivateKey clientPrivateKey) throws IOException {
-        File topologyFile;
+    public Client(String topologyInput, String topologyCacheDir, PrivateKey clientPrivateKey) throws IOException {
+        this.clientPrivateKey = clientPrivateKey;
+
         if(topologyCacheDir == null) {
             topologyCacheDir = TOPOLOGY_DIR;
         }
@@ -229,32 +242,190 @@ public class Client {
             topologyCacheDir = topologyCacheDir + "/";
         }
 
+        File providedFile = null;
+        File cachedFile = null;
+        InputStream resourceStream = null;
+        String topologyName;
+
+        ClassLoader classLoader = getClass().getClassLoader();
+        Files.createDirectories(Paths.get(TOPOLOGY_DIR));
+
+
         //create new / update existing from a given file
-        if(topologyName.endsWith(".json")) {
-            File original = new File(topologyName);
-            topologyFile = new File(topologyCacheDir + original.getName());
-            if (!topologyFile.exists()) {
-                Files.createDirectories(Paths.get(topologyCacheDir));
-                Files.copy(Paths.get(original.getAbsolutePath()), Paths.get(topologyFile.getAbsolutePath()));
+        if(topologyInput.endsWith(".json")) {
+            providedFile = new File(topologyInput);
+            topologyName = providedFile.getName().substring(0,providedFile.getName().length()-".json".length());
+
+        } else {
+            topologyName = topologyInput;
+        }
+
+        cachedFile = new File(topologyCacheDir + topologyName + ".json");
+        resourceStream = classLoader.getResourceAsStream("topologies/"+topologyName+".json");
+
+        Binder topology = null;
+
+        if(providedFile != null && providedFile.exists()) {
+            Binder providedTopology = extractTopologyFromStream(new FileInputStream(providedFile));
+            if(topology == null || (long)providedTopology.get("updated") > (long)topology.get("updated")) {
+                topology = providedTopology;
+            }
+        }
+
+        if(cachedFile.exists()) {
+            Binder cachedTopology = extractTopologyFromStream(new FileInputStream(cachedFile));
+            if(topology == null || (long)cachedTopology.get("updated") > (long)topology.get("updated")) {
+                topology = cachedTopology;
             }
         } else {
-            topologyFile = new File(topologyCacheDir + topologyName + ".json");
-            if (!topologyFile.exists()) {
-                throw new IllegalArgumentException("Unknown named topology: " + topologyName);
+            if(!new File(TOPOLOGY_DIR).exists())
+                Files.createDirectories(Paths.get(TOPOLOGY_DIR));
+        }
+
+        if(resourceStream != null) {
+            Binder resourceTopology = extractTopologyFromStream(resourceStream);
+            if(topology == null || (long)resourceTopology.get("updated") > (long)topology.get("updated")) {
+                topology = resourceTopology;
             }
         }
 
 
-        List<Map<String,String>> topology = JsonTool.fromJson(new String(Do.read(topologyFile.getAbsolutePath())));
-        Map b = Do.sample(topology);
-
-        this.clientPrivateKey = clientPrivateKey;
-        loadNetworkFrom((String)((List)b.get("direct_urls")).get(0), new PublicKey(Base64u.decodeCompactString((String)b.get("key"))));
+        if(topology == null)
+            throw new IllegalArgumentException("Topology is not provided/not found in cache or resources");
 
 
-        FileOutputStream fos = new FileOutputStream(topologyFile);
-        fos.write(JsonTool.toJsonString(getTopology()).getBytes());
+        List<Binder> inputList = (List<Binder>) topology.get("list");
+
+        Map<PublicKey,List<Binder>> nodeCoordinates = new HashMap<>();
+        Set<PublicKey> knownKeys = new HashSet<>();
+        Map<PublicKey,Binder> confirmedKeys = new HashMap<>();
+        Set<PublicKey> addedKeys = new HashSet<>();
+
+
+        for(Binder inputInfo : inputList) {
+            PublicKey inputKey = new PublicKey(Base64u.decodeCompactString((String) inputInfo.get("key")));
+            knownKeys.add(inputKey);
+        }
+
+        //Collecting data from last known topology
+        for(Binder inputInfo : inputList) {
+            PublicKey inputKey = new PublicKey(Base64u.decodeCompactString((String) inputInfo.get("key")));
+            knownKeys.add(inputKey);
+            try {
+                Object[] res = loadNetworkFrom((String) ((List) inputInfo.get("direct_urls")).get(0), inputKey);
+                for(Binder receivedInfo : (List<Binder>) res[1]) {
+                    PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
+
+                    if(!knownKeys.contains(receivedKey)) {
+                        addedKeys.add(receivedKey);
+                    }
+
+                    if(!nodeCoordinates.containsKey(receivedKey)) {
+                        nodeCoordinates.put(receivedKey,new ArrayList<>());
+                    }
+                    receivedInfo.put("key",receivedKey.packToBase64String());
+                    nodeCoordinates.get(receivedKey).add(receivedInfo);
+                }
+
+                confirmedKeys.put(inputKey,inputInfo);
+            } catch (IOException e) {
+
+            }
+        }
+
+        //Trying to reacciqure connection to known key using the updated information
+        if(knownKeys.size() > confirmedKeys.size()) {
+            for(PublicKey knownKey : knownKeys) {
+                if(confirmedKeys.keySet().contains(knownKey))
+                    continue;
+
+                if(nodeCoordinates.containsKey(knownKey)) {
+                    Map<Binder, Long> result = nodeCoordinates.get(knownKey).stream()
+                            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+                    long max = Collections.max(result.values());
+
+                    Binder inputInfo = result.entrySet().stream().filter(entry -> entry.getValue() == max).map(Map.Entry::getKey).findFirst().get();
+                    try {
+                        Object[] res = loadNetworkFrom((String) ((List) inputInfo.get("direct_urls")).get(0), knownKey);
+                        for(Binder receivedInfo : (List<Binder>) res[1]) {
+                            PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
+
+                            if(!knownKeys.contains(receivedKey)) {
+                                addedKeys.add(receivedKey);
+                            }
+
+                            if(!nodeCoordinates.containsKey(receivedKey)) {
+                                nodeCoordinates.put(receivedKey,new ArrayList<>());
+                            }
+                            receivedInfo.put("key",receivedKey.packToBase64String());
+                            nodeCoordinates.get(receivedKey).add(receivedInfo);
+                        }
+
+                        confirmedKeys.put(knownKey,inputInfo);
+                    } catch (IOException e) {
+
+                    }
+                }
+            }
+        }
+
+        if(confirmedKeys.size() < knownKeys.size()* MIN_CONFIRMED_RATIO)
+            throw new IllegalStateException("Topology can't be trusted");
+
+        //Handling added nodes
+        for(PublicKey addedKey : addedKeys) {
+            if(nodeCoordinates.containsKey(addedKey)) {
+                Map<Binder, Long> result = nodeCoordinates.get(addedKey).stream()
+                        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+                long max = Collections.max(result.values());
+                if(max < confirmedKeys.size()*0.91f) {
+                    System.out.println("AAA");
+                    continue;
+                }
+
+                Binder inputInfo = result.entrySet().stream().filter(entry -> entry.getValue() == max).map(Map.Entry::getKey).findFirst().get();
+                PublicKey inputKey = new PublicKey(Base64u.decodeCompactString((String) inputInfo.get("key")));
+                knownKeys.add(inputKey);
+                try {
+                    Object[] res = loadNetworkFrom((String) ((List) inputInfo.get("direct_urls")).get(0), inputKey);
+                    for(Binder receivedInfo : (List<Binder>) res[1]) {
+                        PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
+
+                        if(!nodeCoordinates.containsKey(receivedKey)) {
+                            nodeCoordinates.put(receivedKey,new ArrayList<>());
+                        }
+                        receivedInfo.put("key",receivedKey.packToBase64String());
+                        nodeCoordinates.get(receivedKey).add(receivedInfo);
+                    }
+
+                    confirmedKeys.put(inputKey,inputInfo);
+                } catch (IOException e) {
+
+                }
+            }
+        }
+
+        inputList.clear();
+        inputList.addAll(confirmedKeys.values());
+        Collections.sort(inputList, Comparator.comparingInt(o -> Integer.parseInt(o.get("number").toString())));
+
+
+        Binder dataToCache = Binder.of("updated", ZonedDateTime.now().toEpochSecond(), "list", inputList);
+
+        FileOutputStream fos = new FileOutputStream(cachedFile);
+        fos.write(JsonTool.toJsonString(dataToCache).getBytes());
         fos.close();
+
+        this.topology = inputList;
+
+        for(int i = 0; i < inputList.size();i++) {
+            String keyString = inputList.get(i).getString("key");
+            inputList.get(i).put("key", Base64.decodeCompactString(keyString));
+            nodes.add(new NodeRecord(inputList.get(i)));
+            inputList.get(i).put("key",keyString);
+        }
 
 
         clients = new ArrayList<>(size());
@@ -267,6 +438,19 @@ public class Client {
         httpClient.start(clientPrivateKey, r.key, null);
 
 
+
+    }
+
+    private static Binder extractTopologyFromStream(InputStream inputStream) throws IOException {
+        Object result = JsonTool.fromJson(new String(Do.read(inputStream)));
+        if(result instanceof List) {
+            Map<String,Object> map = new HashMap<>();
+            map.put("list",result);
+            map.put("updated", 0);
+            return Binder.convertAllMapsToBinders(map);
+        } else {
+            return Binder.convertAllMapsToBinders(result);
+        }
 
     }
 
@@ -364,10 +548,11 @@ public class Client {
         return version;
     }
 
-    private void loadNetworkFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
+    private Object[] loadNetworkFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
         URL url = new URL(someNodeUrl + "/" + (verifyWith == null ? "network" : "topology"));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+        connection.setConnectTimeout(10000);
         connection.setRequestMethod("GET");
         if (connection.getResponseCode() != 200)
             throw new IOException("failed to access " + url + ", reponseCode " + connection.getResponseCode());
@@ -377,7 +562,10 @@ public class Client {
 
         Binder bres = Boss.unpack(bytes)
                 .getBinderOrThrow("response");
-        nodes.clear();
+
+        List<NodeRecord> nodes = new ArrayList<>();
+        List<Binder> topology = null;
+        String version;
 
         if(verifyWith != null) {
             byte[] packedData = bres.getBinaryOrThrow("packed_data");
@@ -387,19 +575,20 @@ public class Client {
             }
             bres = Boss.unpack(packedData);
 
-            this.topology = bres.getListOrThrow("nodes");
+            topology = bres.getListOrThrow("nodes");
         }
-        this.version = bres.getStringOrThrow("version");
+        version = bres.getStringOrThrow("version");
         for (Binder b : bres.getBinders("nodes"))
             nodes.add(new NodeRecord(b));
 
         if(topology != null) {
             for (Object o : topology) {
                 Binder b = (Binder) o;
-                b.put("key", new PublicKey(b.getBinaryOrThrow("key")).packToBase64String());
+                b.put("key", new PublicKey(b.getBinaryOrThrow("key")));
             }
         }
 
+        return new Object[] {nodes,topology,version};
     }
 
     /**
