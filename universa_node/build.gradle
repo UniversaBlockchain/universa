@@ -61,39 +61,3 @@ task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
-
-task fatJar2(type: Jar) {
-    manifest {
-        attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
-                'Implementation-Version': version,
-                'Main-Class': 'com.icodici.universa.node2.Main'
-    }
-//    baseName = project.name + '-all'
-    archiveName = 'uninode-all.jar'
-    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-    duplicatesStrategy 'exclude'
-    zip64 true
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with jar
-}
-
-
-task fatJarTestConfig(type: Task) {
-
-    doFirst {
-        copy {
-            from configFilePath
-            into "$buildDir/" + configBackupFilePath
-            include configFileName
-        }
-
-        copy {
-            from configTestFilePath
-            into configFilePath
-            include configFileName
-        }
-    }
-
-    finalizedBy fatJar2
-    fatJar2.finalizedBy testConfigRestore
-}
