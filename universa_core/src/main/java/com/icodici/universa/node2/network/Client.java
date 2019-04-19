@@ -313,6 +313,10 @@ public class Client {
             knownKeys.add(inputKey);
             try {
                 Object[] res = loadNetworkFrom((String) ((List) inputInfo.get("direct_urls")).get(0), inputKey);
+
+                if(this.version == null)
+                    this.version = (String) res[2];
+
                 for(Binder receivedInfo : (List<Binder>) res[1]) {
                     PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
 
