@@ -267,14 +267,14 @@ public class Client {
 
         if(providedFile != null && providedFile.exists()) {
             Binder providedTopology = extractTopologyFromStream(new FileInputStream(providedFile));
-            if(topology == null || (long)providedTopology.get("updated") > (long)topology.get("updated")) {
+            if(topology == null || (Long.parseLong(providedTopology.get("updated").toString()) > Long.parseLong(topology.get("updated").toString()))) {
                 topology = providedTopology;
             }
         }
 
         if(cachedFile.exists()) {
             Binder cachedTopology = extractTopologyFromStream(new FileInputStream(cachedFile));
-            if(topology == null || (long)cachedTopology.get("updated") > (long)topology.get("updated")) {
+            if(topology == null || Long.parseLong(cachedTopology.get("updated").toString()) > Long.parseLong(topology.get("updated").toString())) {
                 topology = cachedTopology;
             }
         } else {
@@ -284,7 +284,7 @@ public class Client {
 
         if(resourceStream != null) {
             Binder resourceTopology = extractTopologyFromStream(resourceStream);
-            if(topology == null || (long)resourceTopology.get("updated") > (long)topology.get("updated")) {
+            if(topology == null || Long.parseLong(resourceTopology.get("updated").toString()) > Long.parseLong(topology.get("updated").toString())) {
                 topology = resourceTopology;
             }
         }
