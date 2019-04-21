@@ -12,10 +12,14 @@ import java.lang.reflect.Array;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Created by sergeych on 15/02/16.
@@ -134,6 +138,16 @@ public class Do {
 
     public static byte[] read(File f) throws IOException {
         return Files.readAllBytes(f.toPath());
+    }
+
+    public static void waitFor(Supplier<Boolean> function) {
+        while (!function.get()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
