@@ -396,7 +396,7 @@ public class SlotContract extends NSmartContract {
             HashId id = sub.getContractId();
             if(newContractIds.contains(id)) {
                 me.setSubscriptionExpiresAt(sub, newExpires);
-                newContracts.remove(id);
+                newContractIds.remove(id);
             } else {
                 me.destroySubscription(sub);
             }
@@ -404,7 +404,7 @@ public class SlotContract extends NSmartContract {
 
         for (HashId id: newContractIds) {
             try {
-                ContractSubscription css = me.createContractSubscription(id, newExpires);
+                me.createContractSubscription(id, newExpires);
             } catch (Exception e) {
                 e.printStackTrace();
             }

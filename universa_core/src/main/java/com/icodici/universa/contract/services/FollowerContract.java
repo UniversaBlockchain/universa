@@ -419,7 +419,7 @@ public class FollowerContract extends NSmartContract {
 
         for (HashId origin: newOrigins) {
             try {
-                ContractSubscription sub = me.createChainSubscription(origin, newExpires);
+                me.createChainSubscription(origin, newExpires);
             } catch (Exception e) {
                 e.printStackTrace();
             }
