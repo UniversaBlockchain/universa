@@ -54,18 +54,28 @@ public class Client {
     private String version;
     private List<Binder> topology;
 
+    /**
+     *  Get topology of the network. Binders contain the following fields: number - node number, name - node name, direct_urls - urls to access node by IP, domain_urls - urls to access node by hostname if access by IP is impossible (web browser by https),  key - base64 of node's {@link PublicKey}.
+     * @return binders list with network topology info.
+     */
 
     public List<Binder> getTopology() {
         return topology;
     }
 
     /**
-     *  Get nodes count in network.
-     * @return loaded nodes count if constructor with someNodeUrl used otherwise 0
+     * Get size of the network.
+     * @return nodes count
      */
     public final int size() {
         return nodes.size();
     }
+
+    /**
+     * Ping network node by number
+     * @param i index of node in topology (not node's number)
+     * @return was the ping successful
+     */
 
     public boolean ping(int i) {
         try {
@@ -75,20 +85,42 @@ public class Client {
         return false;
     }
 
+    /**
+     * Ping the node client is currently connected to
+     * @return was the ping successful
+     */
+
     public boolean ping() throws IOException {
         httpClient.command("sping");
         return true;
     }
+
+    /**
+     * Get the client connection to network node by number. Instance of {@link Client} provided by this method is unable to perform network-wise operations like {@link #getTopology()}, {@link #ping(int)} ()}, {@link #size()} etc
+     * @param i index of node in topology (not node's number)
+     * @return connected to node
+     */
 
     public Client getClient(int i) throws IOException {
         Client c = clients.get(i);
         if (c == null) {
             NodeRecord r = nodes.get(i);
             c = new Client(r.url, clientPrivateKey, r.key, null);
+            if(topology != null) {
+                c.httpClient.nodeNumber = topology.get(i).getIntOrThrow("number");
+            }
             clients.set(i, c);
         }
         return c;
     }
+
+    /**
+     * Set log levels for different node compononets: node,network и udp. Command requires network administrator key
+     * @param node log level for node
+     * @param network log level for network
+     * @param udp log level for udp
+     * @return dummy ItemResult
+     */
 
     public ItemResult setVerboseLevel(int node, int network, int udp) throws ClientError {
         return protect(() -> {
@@ -108,6 +140,7 @@ public class Client {
         });
     }
 
+    @Deprecated
     public void setNodes(List<NodeRecord> nodes) {
         this.nodes = nodes;
         clients = new ArrayList<>(size());
@@ -127,7 +160,10 @@ public class Client {
      * @param nodePublicKey node key
      * @param session set to null or to the reconstructed instance
      * @throws IOException
+     * @deprecated use {@link #Client(String, String, PrivateKey)}instead.
      */
+
+    @Deprecated
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
                   PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(rootUrlString);
@@ -142,8 +178,10 @@ public class Client {
      * @param myPrivateKey client private key
      * @param nodeInfo node info specifying node public key and url
      * @param session set to null or to the reconstructed instance
+     * @deprecated use {@link #Client(String, String, PrivateKey)}instead.
      * @throws IOException
      */
+    @Deprecated
     public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(nodeInfo.publicUrlString());
         this.clientPrivateKey = myPrivateKey;
@@ -157,9 +195,10 @@ public class Client {
      * @param someNodeUrl url on some node in network
      * @param clientPrivateKey client private key
      * @param session set to null or to the reconstructed instance
+     * @deprecated use {@link #Client(String, String, PrivateKey)}instead.
      * @throws IOException
      */
-
+    @Deprecated
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session) throws IOException {
         this(someNodeUrl, clientPrivateKey, session, false);
     }
@@ -171,12 +210,14 @@ public class Client {
      * @param clientPrivateKey client private key
      * @param session set to null or to the reconstructed instance
      * @param delayedStart indicates if start of http client should be delayed
+     * @deprecated use {@link #Client(String, String, PrivateKey)}instead.
      * @throws IOException
      */
-
+    @Deprecated
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart) throws IOException {
         this(someNodeUrl,clientPrivateKey,session,delayedStart,null);
     }
+
     /**
      * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
 
@@ -185,9 +226,10 @@ public class Client {
      * @param session set to null or to the reconstructed instance
      * @param delayedStart indicates if start of http client should be delayed
      * @param verifyWith key to verify loaded network info. Must be node's key user believe he connect's to.
+     * @deprecated use {@link #Client(String, String, PrivateKey)}instead.
      * @throws IOException
      */
-
+    @Deprecated
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart, PublicKey verifyWith) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
         loadNetworkFrom(someNodeUrl, verifyWith);
@@ -205,11 +247,11 @@ public class Client {
 
 
     /**
-     * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
+     * Creates client connection to network base on known topology. Updated topology of network is loaded and passes consensus-based check. Connection is then established to random node. Updated topology is stored in folder passed and is available for later use (by its name). The library contains a single named topology “mainnet” by default. It is used to connect Universa MainNet.
 
-     * @param topologyInput is either name of cached topology to be used (without .json) or filename (ending .json) of topology to be used
-     * @param topologyCacheDir path to topology cache. Pass null to use standard ~/.universa/topology
-     * @param clientPrivateKey client private key
+     * @param topologyInput name of known topology (without .json) or path to json-file containing topology.
+     * @param topologyCacheDir path to where named topologies are stored for later use. Pass null to use standard ~/.universa/topology
+     * @param clientPrivateKey private key for client connection.  Client key put limit to getState calls per minute and also restricts access to a some of operations available the network administrator only.
      * @throws IOException
      */
 
@@ -231,8 +273,11 @@ public class Client {
         for (int i = 0; i < size(); i++) {
             clients.add(null);
         }
-        NodeRecord r = Do.sample(nodes);
+        int i = Do.randomInt(topology.size());
+        int nodeNumber = topology.get(i).getIntOrThrow("number");
+        NodeRecord r = nodes.get(i);
         httpClient = new BasicHttpClient(r.url);
+        httpClient.nodeNumber = nodeNumber;
         this.nodePublicKey = r.key;
         httpClient.start(clientPrivateKey, r.key, null);
 
@@ -246,12 +291,13 @@ public class Client {
      * @param session set to null or to the reconstructed instance
      * @throws IOException
      */
+    @Deprecated
     public void start(BasicHttpClientSession session) throws IOException {
         httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
     /**
-     * Restart http client
+     * Restart client connection to node
      * @throws IOException
      */
     public void restart() throws IOException {
@@ -259,7 +305,7 @@ public class Client {
     }
 
     /**
-     * Get url of the node client is connected to
+     * Get url of the node this client is currently connected to
      *
      * @return url of the node
      */
@@ -269,7 +315,7 @@ public class Client {
 
 
     /**
-     * Get session of http client
+     * Get current session of this client
      *
      * @return session
      */
@@ -279,9 +325,10 @@ public class Client {
     }
 
     /**
-     * Get session of http client connected to node with given number
      *
-     * @param i number of the node to return session with
+     * Get session of the client currently connected to node with given number
+     *
+     * @param i index of node in topology (not node's number)
      * @return session
      */
     public BasicHttpClientSession getSession(int i) throws IllegalStateException, IOException {
@@ -319,7 +366,9 @@ public class Client {
     /**
      * Get list of nodes in
      * @return list of network nodes if constructor loading network configuration was used. Empty list otherwise
+     * @deprecated use {@link #getTopology()}instead.
      */
+    @Deprecated
     public List<NodeRecord> getNodes() {
         return nodes;
     }
@@ -328,7 +377,7 @@ public class Client {
 
     /**
      * Get network version
-     * @return client version if constructor loading network configuration was used otherwise null
+     * @return version
      */
     public String getVersion() {
         return version;
@@ -387,22 +436,27 @@ public class Client {
     }
 
     /**
-     * Register contract on the network without payment. May require special client key / network configuration
+     * Register contract on the network (no payment). This operation requires either special client key or special network configuration that
+     * allows free registrations. Method doesn't wait until registration is complete. If contract is known to the node already its status is
+     * returned. Otherwise method returns either PENDING if registration have started or UNDEFINED if haven't.
+     *
      * @param packed {@link com.icodici.universa.contract.TransactionPack} binary
-     * @return result of registration
+     * @return registration initiation result
      * @throws ClientError
      */
-
     public ItemResult register(byte[] packed) throws ClientError {
         return register(packed, 0);
     }
 
     /**
-     * Register contract on the network without payment. May require special client key / network configuration and wait for some of the final {@link ItemState}
-     * no longer that time given
+     * Register contract on the network (no payment). This operation requires either special client key or special network configuration that
+     * allows free registrations. Method starts registration and waits until either registration is complete or waiting time is over. Method
+     * returns either one of pending statuses (PENDING/PENDING_POSITIVE/PENDING_NEGATIVE) if registration in progress or UNDEFINED if something
+     * went wrokng registration haven't started or 'final' status - the result of registration
+     *
      * @param packed {@link com.icodici.universa.contract.TransactionPack} binary
      * @param millisToWait maximum time to wait for final {@link ItemState}
-     * @return result of registration
+     * @return result of registration or current state of registration (if wasn't finished yet)
      * @throws ClientError
      */
     public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
@@ -438,9 +492,13 @@ public class Client {
     }
 
     /**
-     * Register contract on the network with parcel (includes payment)
+     * Register contract on the network using parcel (to provide payment). Method doesn't wait until registration is complete.
+     * Method returns right away. It is then required to manually query parcel processing state using {@link #getParcelProcessingState(HashId)}
+     * while it is {@link ParcelProcessingState#isProcessing()}. The status of the actual contract {@link Parcel#getPayload()} can be checked
+     * with {@link #getState(HashId)} then. Getting {@link ItemState#UNDEFINED} on payload contract means something went wrong with payment.
+     * Either it is not valid or insufficient
      * @param packed {@link Parcel} binary
-     * @return result of registration
+     * @return if registration initiation was successful
      * @throws ClientError
      */
     public boolean registerParcel(byte[] packed) throws ClientError {
@@ -461,6 +519,7 @@ public class Client {
      * @param millisToWait maximum time to wait for final {@link ItemState}
      * @return result of registration
      * @throws ClientError
+     * @deprecated use {@link #registerParcelWithState(byte[], long)} instead.
      */
     @Deprecated
     public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
@@ -476,10 +535,13 @@ public class Client {
     }
 
     /**
-     * Register contract on the network with parcel (includes payment) and wait for some of the final {@link ItemState}
+     * Register contract on the network using parcel. Version of {@link #registerParcel(byte[])} that waits until registration is complete
+     * for a given amount of time.
+     *
      * @param packed {@link Parcel} binary
      * @param millisToWait maximum time to wait for final {@link ItemState}
-     * @return final result of registration process
+     * @return either final result of registration or last known status of registration. Getting {@link ItemState#UNDEFINED} means either
+     * payment wasn't processed yet or something is wrong with it (invalid or insufficient)
      * @throws ClientError
      */
     public ItemResult registerParcelWithState(byte[] packed, long millisToWait) throws ClientError {
@@ -529,8 +591,9 @@ public class Client {
 
 
     /**
-     * Look for known state of approvable item on the network
-     * @param item to find state of
+     * Get state of the contract on the node client is currently connected to. Note: limits are applied to number of {@link #getState(Approvable)} calls
+     * per minute per client key. Make sure method is not called too ofter with the same client connection.
+     * @param item to get state of
      * @return known {@link ItemState} if exist or ItemState.UNDEFINED
      * @throws ClientError
      */
@@ -540,21 +603,15 @@ public class Client {
     }
 
     /**
-     * Look for known state of item by given id
-     * @param itemId to find state of
+     * Get state of the contract on the node client is currently connected to by its id. Note: limits are applied to number of {@link #getState(Approvable)} calls
+     * per minute per client key. Make sure method is not called too ofter with the same client connection.
+     * @param itemId to get state by
      * @return known {@link ItemState} if exist or ItemState.UNDEFINED
      * @throws ClientError
      */
 
     public ItemResult getState(HashId itemId) throws ClientError {
         return protect(() -> {
-//            for (int i = 0; i < nodes.size(); i++) {
-//                System.out.println("checking node " + i);
-//                ItemResult r = getClient(i).command("getState",
-//                                                    "itemId", itemId).getOrThrow("itemResult");
-//                System.out.println(">> " + r);
-//            }
-
             Binder result = httpClient.command("getState",
                     "itemId", itemId);
 
@@ -641,6 +698,18 @@ public class Client {
                                                "itemId", itemId).getOrThrow("itemResult");
         });
     }
+
+
+    /**
+     * Get state of the contract on the network. This method uses multiple connections with different nodes to collects statuses.
+     * Note: limits are applied to number of {@link #getState(Approvable)} calls per minute per client key. Make sure method is
+     * not called too ofter with the same client connection.
+     *
+     * @param reporter reported used to log current status, errors from nodes if any etc
+     * @param itemId to get state by
+     * @return known {@link ItemState} if exist or ItemState.UNDEFINED
+     * @throws ClientError
+     */
 
     public ItemResult getState(HashId itemId, Reporter reporter) throws ClientError {
         final ExecutorService pool = Executors.newCachedThreadPool();
