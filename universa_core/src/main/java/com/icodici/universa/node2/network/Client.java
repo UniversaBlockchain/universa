@@ -299,11 +299,11 @@ public class Client {
         topology = tb.getTopology();
         version = tb.getVersion();
 
-        for (int i = 0; i < topology.size(); i++) {
-            String keyString = topology.get(i).getString("key");
-            topology.get(i).put("key", Base64.decodeCompactString(keyString));
-            nodes.add(new NodeRecord(topology.get(i)));
-            topology.get(i).put("key",keyString);
+        for (Binder topologyItem: topology) {
+            String keyString = topologyItem.getString("key");
+            topologyItem.put("key", Base64.decodeCompactString(keyString));
+            nodes.add(new NodeRecord(topologyItem));
+            topologyItem.put("key", keyString);
         }
 
         clients = new ArrayList<>(size());
@@ -1046,7 +1046,31 @@ public class Client {
      * @throws ClientError
      */
     public Binder getContract(HashId origin, int limit, int offset) throws ClientError {
-        return getContract(origin,null, limit, offset);
+        return getContract(origin, null, limit, offset);
+    }
+
+    private static final void processGetContractResults(Binder result) throws IOException {
+        if (Objects.requireNonNull(result).containsKey("contractIds")) {
+            List<byte[]> contractIds = new ArrayList<>();
+            List<HashId> ids = new ArrayList<>();
+            for (Object id : result.getListOrThrow(("contractIds"))) {
+                final byte[] contractsAsBytes = ((Bytes) id).getData();
+                contractIds.add(contractsAsBytes);
+                ids.add(HashId.withDigest(contractsAsBytes));
+            }
+            result.put("contractIds", contractIds);
+            result.put("ids", ids);
+        }
+
+        if (result.containsKey("packedContract")) {
+            TransactionPack tp = TransactionPack.unpack(result.getBinaryOrThrow("packedContract"));
+            HashId id = (HashId) result.getListOrThrow("ids").get(0);
+            if (tp.getContract().getId().equals(id)) {
+                result.put("contract", tp.getContract());
+            } else {
+                result.put("contract", tp.getSubItem(id));
+            }
+        }
     }
 
     /**
@@ -1067,27 +1091,8 @@ public class Client {
         return protect(() -> {
             Binder result = httpClient.command(
                     "getContract", "origin", origin, "limit", limit, "offset", offset, "tags", tags);
-            if (result.size() > 0) {
-                if (result.containsKey("contractIds")) {
-                    List<byte[]> contractIds = new ArrayList<>();
-                    List<HashId> ids = new ArrayList<>();
-                    for (Object id: result.getListOrThrow(("contractIds"))) {
-                        contractIds.add(((Bytes) id).getData());
-                        ids.add(HashId.withDigest(((Bytes) id).getData()));
-                    }
-                    result.put("contractIds", contractIds);
-                    result.put("ids", ids);
-                }
-                
-                if (result.containsKey("packedContract")) {
-                    TransactionPack tp = TransactionPack.unpack(result.getBinaryOrThrow("packedContract"));
-                    HashId id = (HashId) result.getListOrThrow("ids").get(0);
-                    if (tp.getContract().getId().equals(id)) {
-                        result.put("contract", tp.getContract());
-                    } else {
-                        result.put("contract", tp.getSubItem(id));
-                    }
-                }
+            if (!result.isEmpty()) {
+                processGetContractResults(result);
                 return result;
             } else
                 return null;
@@ -1145,28 +1150,8 @@ public class Client {
         return protect(() -> {
             Binder result = httpClient.command(
                     "getContract", "parent", parent, "limit", limit, "offset", offset, "tags", tags);
-            if (result.size() > 0) {
-                if (result.containsKey("contractIds")) {
-                    List<byte[]> contractIds = new ArrayList<>();
-                    List<HashId> ids = new ArrayList<>();
-                    for (Object id: result.getListOrThrow(("contractIds"))) {
-                        contractIds.add(((Bytes) id).getData());
-                        ids.add(HashId.withDigest(((Bytes) id).getData()));
-                    }
-                    result.put("contractIds", contractIds);
-                    result.put("ids", ids);
-                }
-
-                if (result.containsKey("packedContract")) {
-                    TransactionPack tp = TransactionPack.unpack(result.getBinaryOrThrow("packedContract"));
-                    HashId id = (HashId) result.getListOrThrow("ids").get(0);
-                    if (tp.getContract().getId().equals(id)) {
-                        result.put("contract", tp.getContract());
-                    } else {
-                        result.put("contract", tp.getSubItem(id));
-                    }
-
-                }
+            if (!result.isEmpty()) {
+                processGetContractResults(result);
                 return result;
             } else
                 return null;
