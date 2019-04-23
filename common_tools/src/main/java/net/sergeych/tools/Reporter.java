@@ -7,7 +7,7 @@ import java.util.List;
  * Tool to report messages, errors, progress notifications the same way in console applications, GUI applications and
  * services. Create instance and call {@link #notice(String)}, {@link #progress(String)} and {@link #error(String,
  * String, String)}. Supports collecting and reporting collected data, {@link #setQuiet(boolean)} mode, {@link
- * #reportJson()} and one level of verbisity: {@link #setVerboseMode(boolean)}.
+ * #reportJson()} and one level of verbosity: {@link #setVerboseMode(boolean)}.
  */
 public class Reporter {
 
@@ -25,7 +25,7 @@ public class Reporter {
     }
 
     /**
-     * Set quiet mode: all information is only collected. To report it later at some poing, use {@link #report()} or
+     * Set quiet mode: all information is only collected. To report it later at some point, use {@link #report()} or
      * {@link #reportJson()}. If the work is not finished, consider {@link #clear()} before collecting more data.
      * <p>
      * By default, reporter collects data and print itout messages to the stdout.
@@ -157,7 +157,7 @@ public class Reporter {
     }
 
     /**
-     * print to console only, does notthing ing queit mode. To it to not to pollute json output with visual suff like
+     * print to console only, does nothing in quiet mode. Intended to not to pollute json output with visual stuff like
      * newlines.
      *
      * @param text
