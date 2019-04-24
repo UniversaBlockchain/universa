@@ -56,7 +56,7 @@ public class SlotContract extends NSmartContract {
     private LinkedList<Contract> trackingContracts = new LinkedList<>();
     private int keepRevisions = 1;
 
-    // Calculate U paid with las revision of slot
+    // Calculate U paid with last revision of slot
     private int paidU = 0;
     // All KD (kilobytes*days) prepaid from first revision (sum of all paidU, converted to KD)
     private double prepaidKilobytesForDays = 0;

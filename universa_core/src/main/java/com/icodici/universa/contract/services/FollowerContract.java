@@ -51,7 +51,7 @@ public class FollowerContract extends NSmartContract {
     private Map<HashId, String> trackingOrigins = new HashMap<>();
     private Map<String, PublicKey> callbackKeys = new HashMap<>();
 
-    // Calculate U paid with las revision of slot
+    // Calculate U paid with last revision of follower
     private int paidU = 0;
     // All OD (origins*days) prepaid from first revision (sum of all paidU, converted to OD)
     private double prepaidOriginDays = 0;
@@ -648,14 +648,14 @@ public class FollowerContract extends NSmartContract {
 
         boolean checkResult = false;
 
-        // check slot environment
+        // check follower environment
         checkResult = ime != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Environment should be not null");
             return checkResult;
         }
 
-        // check that slot has known and valid type of smart contract
+        // check that follower has known and valid type of smart contract
         checkResult = getExtendedType().equals(SmartContractType.FOLLOWER1.name());
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.FOLLOWER1.name() + " instead " + getExtendedType());
