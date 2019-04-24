@@ -49,8 +49,6 @@ public class UnsContract extends NSmartContract {
     private long storedEarlyEntries = 0;
     private double spentEarlyNDs = 0;
     private double spentNDs = 0;
-    private ZonedDateTime spentEarlyNDsTime = null;
-    private ZonedDateTime prepaidFrom = null;
     private ZonedDateTime spentNDsTime = null;
     private Map<HashId,Contract> originContracts = new HashMap<>();
 
@@ -135,12 +133,10 @@ public class UnsContract extends NSmartContract {
 
         ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidNamesForDays;
-        long wasPrepaidFrom = now.toEpochSecond();
         long spentEarlyNDsTimeSecs = now.toEpochSecond();
         Contract parentContract = getRevokingItem(getParent());
         if(parentContract != null) {
             wasPrepaidNamesForDays = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
             storedEarlyEntries = parentContract.getStateData().getLong(STORED_ENTRIES_FIELD_NAME, 0);
             spentEarlyNDs = parentContract.getStateData().getDouble(SPENT_ND_FIELD_NAME);
             spentEarlyNDsTimeSecs = parentContract.getStateData().getLong(SPENT_ND_TIME_FIELD_NAME, now.toEpochSecond());
@@ -148,13 +144,11 @@ public class UnsContract extends NSmartContract {
             wasPrepaidNamesForDays = 0;
         }
 
-        spentEarlyNDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyNDsTimeSecs), ZoneId.systemDefault());
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
         prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate().doubleValue();
 
         spentNDsTime = now;
 
-        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTime.toEpochSecond());
+        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTimeSecs);
         double spentDays = (double) spentSeconds / (3600 * 24);
         spentNDs = spentEarlyNDs + spentDays * storedEarlyEntries;
 
@@ -295,9 +289,6 @@ public class UnsContract extends NSmartContract {
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNamesForDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-
-        long prepaidFromSeconds = getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, 0);
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
     }
 
     protected UnsContract initializeWithDsl(Binder root) throws EncryptionError {
