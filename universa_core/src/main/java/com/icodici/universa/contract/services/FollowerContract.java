@@ -125,21 +125,6 @@ public class FollowerContract extends NSmartContract {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.FOLLOWER1.name()))
            getDefinition().setExtendedType(SmartContractType.FOLLOWER1.name());
 
-        // add modify_data permission
-        /*boolean permExist = false;
-        Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
-        if(mdps != null) {
-            for (Permission perm : mdps) {
-                if (perm.getName() == ModifyDataPermission.FIELD_NAME) {
-                    if (perm.isAllowedForKeys(getOwner().getKeys())) {
-                        permExist = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if(!permExist) {*/
         RoleLink ownerLink = new RoleLink("owner_link", "owner");
         registerRole(ownerLink);
         HashMap<String, Object> fieldsMap = new HashMap<>();

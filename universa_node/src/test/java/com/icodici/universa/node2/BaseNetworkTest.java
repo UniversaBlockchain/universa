@@ -8626,6 +8626,7 @@ public class BaseNetworkTest extends TestCase {
 
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        ZonedDateTime irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
@@ -8653,6 +8654,8 @@ public class BaseNetworkTest extends TestCase {
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
                     calculateExpires = timeReg1.plusSeconds(seconds);
+
+                    assertAlmostSame(calculateExpires, irExpires, 5);
 
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("days " + days);
@@ -8697,6 +8700,8 @@ public class BaseNetworkTest extends TestCase {
                 double hours = days * 24;
                 long seconds = (long) (days * 24 * 3600);
                 calculateExpires = timeReg1.plusSeconds(seconds);
+
+                assertAlmostSame(calculateExpires, irExpires, 5);
 
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("days " + days);
@@ -8782,6 +8787,7 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+        irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
@@ -8792,6 +8798,8 @@ public class BaseNetworkTest extends TestCase {
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
+
+        assertAlmostSame(calculateExpires, irExpires, (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
 
         System.out.println("spentSeconds " + spentSeconds);
         System.out.println("spentDays " + spentDays);
@@ -8991,6 +8999,7 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+        irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         long spentSeconds2 = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
         double spentDays2 = (double) spentSeconds2 / (3600 * 24);
@@ -9001,6 +9010,8 @@ public class BaseNetworkTest extends TestCase {
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds2);
+
+        assertAlmostSame(calculateExpires, irExpires, (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
 
         System.out.println("spentSeconds " + spentSeconds2);
         System.out.println("spentDays " + spentDays2);
@@ -9205,6 +9216,7 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract3.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+        irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         long spentSeconds3 = (timeReg4.toEpochSecond() - timeReg3.toEpochSecond());
         double spentDays3 = (double) spentSeconds3 / (3600 * 24);
@@ -9215,6 +9227,8 @@ public class BaseNetworkTest extends TestCase {
         double hours3 = days3 * 24;
         long seconds3 = (long) (days3 * 24 * 3600);
         calculateExpires = timeReg4.plusSeconds(seconds3);
+
+        assertAlmostSame(calculateExpires, irExpires, (long) (5 * config.getServiceRate(NSmartContract.SmartContractType.SLOT1.name()).doubleValue()));
 
         System.out.println("spentSeconds " + spentSeconds3);
         System.out.println("spentDays " + spentDays3);
@@ -9466,6 +9480,7 @@ public class BaseNetworkTest extends TestCase {
 
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        ZonedDateTime irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
@@ -9493,6 +9508,8 @@ public class BaseNetworkTest extends TestCase {
                     double hours = days * 24;
                     long seconds = (long) (days * 24 * 3600);
                     calculateExpires = timeReg1.plusSeconds(seconds);
+
+                    assertAlmostSame(calculateExpires, irExpires, 5);
 
                     for (ContractSubscription foundCss : environment.subscriptions()) {
                         System.out.println("days " + days);
@@ -9538,6 +9555,8 @@ public class BaseNetworkTest extends TestCase {
                 double hours = days * 24;
                 long seconds = (long) (days * 24 * 3600);
                 calculateExpires = timeReg1.plusSeconds(seconds);
+
+                assertAlmostSame(calculateExpires, irExpires, 5);
 
                 for (ContractSubscription foundCss : environment.subscriptions()) {
                     System.out.println("days " + days);
@@ -11371,6 +11390,7 @@ public class BaseNetworkTest extends TestCase {
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (uContractLock) {
             uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
@@ -11383,12 +11403,53 @@ public class BaseNetworkTest extends TestCase {
 
         ItemResult itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        ZonedDateTime irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         Thread.sleep(5000);
 
         // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(uns.getId());
+            assertNotNull(environment);
+            double days = (double) 1470 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / 3;
+            double hours = days * 24;
+            long seconds = (long) (days * 24 * 3600);
+            ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+            assertAlmostSame(calculateExpires, irExpires, 5);
+
+            for (NameRecord foundNR : environment.nameRecords()) {
+                System.out.println("days " + days);
+                System.out.println("hours " + hours);
+                System.out.println("seconds " + seconds);
+                System.out.println("reg time " + timeReg1);
+                System.out.println("expected " + calculateExpires);
+                System.out.println("found " + foundNR.expiresAt());
+                assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+            }
+        }
+
         nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
         nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1));
+
+        NImmutableEnvironment environment = node.getLedger().getEnvironment(uns.getId());
+        assertNotNull(environment);
+        double days = (double) 1470 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / 3;
+        double hours = days * 24;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        assertAlmostSame(calculateExpires, irExpires, 5);
+
+        for (NameRecord foundNR : environment.nameRecords()) {
+            System.out.println("days " + days);
+            System.out.println("hours " + hours);
+            System.out.println("seconds " + seconds);
+            System.out.println("reg time " + timeReg1);
+            System.out.println("expected " + calculateExpires);
+            System.out.println("found " + foundNR.expiresAt());
+            assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+        }
 
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1);
@@ -11432,6 +11493,7 @@ public class BaseNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (uContractLock) {
             uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
@@ -11444,19 +11506,329 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(uns.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+        irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
 
         Thread.sleep(5000);
 
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        double spentNDs = spentDays * 3;
+
         // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            environment = networkNode.getLedger().getEnvironment(uns.getId());
+            assertNotNull(environment);
+            days = ((double) 1470 * 2 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() - spentNDs) / 3;
+            hours = days * 24;
+            seconds = (long) (days * 24 * 3600);
+            calculateExpires = timeReg2.plusSeconds(seconds);
+
+            assertAlmostSame(calculateExpires, irExpires, 5);
+
+            for (NameRecord foundNR : environment.nameRecords()) {
+                System.out.println("days " + days);
+                System.out.println("hours " + hours);
+                System.out.println("seconds " + seconds);
+                System.out.println("reg time " + timeReg1);
+                System.out.println("expected " + calculateExpires);
+                System.out.println("found " + foundNR.expiresAt());
+                assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+            }
+        }
+
         nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
         nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1));
         nodes.forEach(n -> assertNull(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName())));
+
+        environment = node.getLedger().getEnvironment(uns.getId());
+        assertNotNull(environment);
+        days = ((double) 1470 * 2 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() - spentNDs) / 3;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        assertAlmostSame(calculateExpires, irExpires, 5);
+
+        for (NameRecord foundNR : environment.nameRecords()) {
+            System.out.println("days " + days);
+            System.out.println("hours " + hours);
+            System.out.println("seconds " + seconds);
+            System.out.println("reg time " + timeReg1);
+            System.out.println("expected " + calculateExpires);
+            System.out.println("found " + foundNR.expiresAt());
+            assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+        }
 
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1);
         assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
     }
 
+    @Test(timeout = 90000)
+    public void registerUnsContractRevisionWithChangeRecordsCount() throws Exception {
+
+        PrivateKey randomPrivKey1 = new PrivateKey(2048);
+        PrivateKey randomPrivKey2 = new PrivateKey(2048);
+        PrivateKey randomPrivKey3 = new PrivateKey(2048);
+        PrivateKey randomPrivKey4 = new PrivateKey(2048);
+        PrivateKey randomPrivKey5 = new PrivateKey(2048);
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract referencesContract1 = new Contract(TestKeys.privateKey(1));
+        referencesContract1.seal();
+
+        Contract referencesContract2 = new Contract(TestKeys.privateKey(2));
+        referencesContract2.seal();
+
+        Set<PublicKey> manufacturePublicKeys = new HashSet<>();
+        manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
+        UnsContract uns = ContractsService.createUnsContract(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider);
+
+        uns.addSignerKey(TestKeys.privateKey(1));
+        uns.addSignerKey(randomPrivKey1);
+        uns.addSignerKey(randomPrivKey3);
+        uns.addSignerKey(authorizedNameServiceKey);
+
+        uns.seal();
+
+        UnsName unsNameToChange = new UnsName("change_"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToChange.setUnsReducedName("change_"+Instant.now().getEpochSecond());
+        UnsName unsNameToAdd = new UnsName("add_"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToAdd.setUnsReducedName("add_"+Instant.now().getEpochSecond());
+        UnsName unsNameToRemove = new UnsName("remove_"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToRemove.setUnsReducedName("remove_"+Instant.now().getEpochSecond());
+
+        UnsRecord unsRecordToChange = new UnsRecord(randomPrivKey1.getPublicKey());
+        UnsRecord unsRecordToAdd = new UnsRecord(randomPrivKey2.getPublicKey());
+        UnsRecord unsRecordToRemove = new UnsRecord(randomPrivKey3.getPublicKey());
+
+        unsNameToChange.addUnsRecord(unsRecordToChange);
+        unsNameToChange.addUnsRecord(unsRecordToRemove);
+
+        unsNameToRemove.addUnsRecord(new UnsRecord(referencesContract1.getId()));
+        unsNameToAdd.addUnsRecord(new UnsRecord(referencesContract2.getId()));
+        unsNameToAdd.addUnsRecord(new UnsRecord(randomPrivKey5.getPublicKey()));
+
+        uns.addUnsName(unsNameToChange);
+        uns.addUnsName(unsNameToRemove);
+        uns.addOriginContract(referencesContract1);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+        uns.check();
+        uns.traceErrors();
+
+        Contract paymentContract = getApprovedUContract();
+
+        Parcel parcel = ContractsService.createParcel(referencesContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract1.getId(), 8000).state);
+
+        paymentContract = getApprovedUContract();
+
+        parcel = ContractsService.createParcel(referencesContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract2.getId(), 8000).state);
+
+        paymentContract = getApprovedUContract();
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        ZonedDateTime irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
+
+        Thread.sleep(5000);
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            NImmutableEnvironment environment = networkNode.getLedger().getEnvironment(uns.getId());
+            assertNotNull(environment);
+            double days = (double) 1470 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / 3;
+            double hours = days * 24;
+            long seconds = (long) (days * 24 * 3600);
+            ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+            assertAlmostSame(calculateExpires, irExpires, 5);
+
+            for (NameRecord foundNR : environment.nameRecords()) {
+                System.out.println("days " + days);
+                System.out.println("hours " + hours);
+                System.out.println("seconds " + seconds);
+                System.out.println("reg time " + timeReg1);
+                System.out.println("expected " + calculateExpires);
+                System.out.println("found " + foundNR.expiresAt());
+                assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+            }
+        }
+
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1));
+
+        NImmutableEnvironment environment = node.getLedger().getEnvironment(uns.getId());
+        assertNotNull(environment);
+        double days = (double) 1470 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / 3;
+        double hours = days * 24;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        assertAlmostSame(calculateExpires, irExpires, 5);
+
+        for (NameRecord foundNR : environment.nameRecords()) {
+            System.out.println("days " + days);
+            System.out.println("hours " + hours);
+            System.out.println("seconds " + seconds);
+            System.out.println("reg time " + timeReg1);
+            System.out.println("expected " + calculateExpires);
+            System.out.println("found " + foundNR.expiresAt());
+            assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+        }
+
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1);
+
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(TestKeys.privateKey(2));
+        keys.add(randomPrivKey2);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(randomPrivKey4);
+        keys.add(randomPrivKey5);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(authorizedNameServiceKey);
+
+        uns = (UnsContract) uns.createRevision(keys);
+        uns.addUnsName(unsNameToAdd);
+        uns.addOriginContract(referencesContract2);
+
+        uns.removeName(unsNameToRemove.getUnsName());
+        UnsName unsNameToChangeCopy = uns.getUnsName(unsNameToChange.getUnsName());
+        for(int i = 0; i < unsNameToChangeCopy.getUnsRecords().size();i++) {
+            UnsRecord unsRecord = unsNameToChangeCopy.getUnsRecord(i);
+            if(unsRecord.getAddresses().equals(unsRecordToRemove.getAddresses())) {
+                unsNameToChangeCopy.getUnsRecords().remove(i);
+                i--;
+                continue;
+            }
+
+            if(unsRecord.getAddresses().equals(unsRecordToChange.getAddresses())) {
+                unsRecord.getAddresses().clear();
+                unsRecord.getAddresses().add(randomPrivKey4.getPublicKey().getShortAddress());
+                continue;
+            }
+        }
+        unsNameToChangeCopy.addUnsRecord(unsRecordToAdd);
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+
+
+        paymentContract = getApprovedUContract();
+
+
+        payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+        irExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(itemResult.extraDataBinder.getLongOrThrow("expires_at")), ZoneId.systemDefault());
+
+        Thread.sleep(5000);
+
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        double spentNDs = spentDays * 3;
+
+        // additional check for all network nodes
+        for (Node networkNode: nodes) {
+            environment = networkNode.getLedger().getEnvironment(uns.getId());
+            assertNotNull(environment);
+            days = ((double) 1470 * 2 * networkNode.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() - spentNDs) / 4;
+            hours = days * 24;
+            seconds = (long) (days * 24 * 3600);
+            calculateExpires = timeReg2.plusSeconds(seconds);
+
+            assertAlmostSame(calculateExpires, irExpires, 5);
+
+            for (NameRecord foundNR : environment.nameRecords()) {
+                System.out.println("days " + days);
+                System.out.println("hours " + hours);
+                System.out.println("seconds " + seconds);
+                System.out.println("reg time " + timeReg1);
+                System.out.println("expected " + calculateExpires);
+                System.out.println("found " + foundNR.expiresAt());
+                assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+            }
+        }
+
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertNull(n.getLedger().getNameRecord(unsNameToRemove.getUnsReducedName())));
+
+        environment = node.getLedger().getEnvironment(uns.getId());
+        assertNotNull(environment);
+        days = ((double) 1470 * 2 * node.getConfig().getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() - spentNDs) / 4;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        assertAlmostSame(calculateExpires, irExpires, 5);
+
+        for (NameRecord foundNR : environment.nameRecords()) {
+            System.out.println("days " + days);
+            System.out.println("hours " + hours);
+            System.out.println("seconds " + seconds);
+            System.out.println("reg time " + timeReg1);
+            System.out.println("expected " + calculateExpires);
+            System.out.println("found " + foundNR.expiresAt());
+            assertAlmostSame(calculateExpires, foundNR.expiresAt(), 5);
+        }
+
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),2);
+        assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
+    }
 
     @Test(timeout = 90000)
     public void registerUnsContractOriginRevision() throws Exception {
