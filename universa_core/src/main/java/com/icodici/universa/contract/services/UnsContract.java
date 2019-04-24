@@ -173,7 +173,7 @@ public class UnsContract extends NSmartContract {
 
         long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTime.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
-        spentNDs = spentEarlyNDs + spentDays * (storedEarlyEntries / 1024);
+        spentNDs = spentEarlyNDs + spentDays * storedEarlyEntries;
 
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
