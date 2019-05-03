@@ -4054,7 +4054,7 @@ public class CLIMain {
             reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
             if(nodeUrl != null) {
                 clientNetwork = new ClientNetwork(nodeUrl, null, true);
-            } if(topologyFileName != null){
+            } else if(topologyFileName != null){
                 clientNetwork = new ClientNetwork(null, topologyFileName, true);
             } else {
                 clientNetwork = new ClientNetwork(null, true);
