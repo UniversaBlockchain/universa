@@ -84,10 +84,6 @@ public class ContractDelta {
         revokingItems = new HashSet(changed.getRevokingItems());
         stateChanges.remove("created_by");
 
-        // todo: check siblings have different and proper branch ids
-        stateChanges.remove("branch_id");
-
-        // todo: these changes should be already checked
         stateChanges.remove("parent");
         stateChanges.remove("origin");
 

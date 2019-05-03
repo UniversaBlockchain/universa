@@ -100,9 +100,9 @@ public class SplitJoinPermission extends Permission {
 
                 int cmp = oldValue.compareTo(newValue);
                 if (cmp > 0)
-                    checkSplit(changed, dataChanges, revokingItems, keys, oldValue, newValue);
+                    checkSplit(changed, dataChanges, stateChanges, revokingItems, keys, oldValue, newValue);
                 else if (cmp < 0)
-                    checkMerge(changed, dataChanges, revokingItems, keys, newValue);
+                    checkMerge(changed, dataChanges, stateChanges, revokingItems, keys, newValue);
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
@@ -110,7 +110,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal newValue) {
+    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal newValue) {
         boolean isValid;
 
         // merge means there are mergeable contracts in the revoking items
@@ -141,10 +141,11 @@ public class SplitJoinPermission extends Permission {
         if (isValid) {
             dataChanges.remove(fieldName);
             revokingItems.removeAll(revokesToRemove);
+            stateChanges.remove("branch_id");
         }
     }
 
-    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal oldValue, Decimal newValue) {
+    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal oldValue, Decimal newValue) {
         boolean isValid;
 
         // We need to find the splitted contracts
@@ -170,6 +171,7 @@ public class SplitJoinPermission extends Permission {
         if (isValid && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0) {
             dataChanges.remove(fieldName);
             revokingItems.removeAll(revokesToRemove);
+            stateChanges.remove("branch_id");
         }
     }
 
