@@ -56,12 +56,10 @@ public class SlotContract extends NSmartContract {
     private LinkedList<Contract> trackingContracts = new LinkedList<>();
     private int keepRevisions = 1;
 
-    // Calculate U paid with las revision of slot
+    // Calculate U paid with last revision of slot
     private int paidU = 0;
     // All KD (kilobytes*days) prepaid from first revision (sum of all paidU, converted to KD)
     private double prepaidKilobytesForDays = 0;
-    // Time of first payment
-    private ZonedDateTime prepaidFrom = null;
     // Stored bytes for previous revision of slot. Use for calculate spent KDs
     private long storedEarlyBytes = 0;
     // Spent KDs for previous revision
@@ -137,22 +135,6 @@ public class SlotContract extends NSmartContract {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.SLOT1.name()))
             getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
-        // add modify_data permission
-
-        /*boolean permExist = false;
-        Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
-        if(mdps != null) {
-            for (Permission perm : mdps) {
-                if (perm.getName() == ModifyDataPermission.FIELD_NAME) {
-                    if (perm.isAllowedForKeys(getOwner().getKeys())) {
-                        permExist = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if(!permExist) {*/
         RoleLink ownerLink = new RoleLink("owner_link", "owner");
         registerRole(ownerLink);
         HashMap<String, Object> fieldsMap = new HashMap<>();
@@ -299,12 +281,10 @@ public class SlotContract extends NSmartContract {
         // additionally we looking for and calculate times of payment fillings and some other data
         ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidKilobytesForDays;
-        long wasPrepaidFrom = now.toEpochSecond();
         long spentEarlyKDsTimeSecs = now.toEpochSecond();
         Contract parentContract = getRevokingItem(getParent());
         if(parentContract != null) {
             wasPrepaidKilobytesForDays = parentContract.getStateData().getDouble(PREPAID_KD_FIELD_NAME);
-            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
             storedEarlyBytes = parentContract.getStateData().getLong(STORED_BYTES_FIELD_NAME, 0);
             spentEarlyKDs = parentContract.getStateData().getDouble(SPENT_KD_FIELD_NAME);
             spentEarlyKDsTimeSecs = parentContract.getStateData().getLong(SPENT_KD_TIME_FIELD_NAME, now.toEpochSecond());
@@ -313,7 +293,6 @@ public class SlotContract extends NSmartContract {
         }
 
         spentEarlyKDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyKDsTimeSecs), ZoneId.systemDefault());
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
         prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * getRate().doubleValue();
 
         spentKDsTime = now;
@@ -343,6 +322,19 @@ public class SlotContract extends NSmartContract {
         return prepaidKilobytesForDays;
     }
 
+    private ZonedDateTime calcExpiresAt() {
+        int storingBytes = 0;
+        for (byte[] packed : packedTrackingContracts)
+            storingBytes += packed.length;
+
+        // calculate time that will be added to now as new expiring time
+        // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
+        double days = (prepaidKilobytesForDays - spentKDs) * 1024 / storingBytes;
+        long seconds = (long) (days * 24 * 3600);
+
+        return spentKDsTime.plusSeconds(seconds);
+    }
+
     /**
      * Own private slot's method for saving subscription. It calls
      * from {@link SlotContract#onContractSubscriptionEvent(ContractSubscription.Event)} (when tracking
@@ -356,17 +348,7 @@ public class SlotContract extends NSmartContract {
         // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
-        int storingBytes = 0;
-        for (byte[] packed : packedTrackingContracts) {
-            storingBytes += packed.length;
-        }
-
-        // calculate time that will be added to now as new expiring time
-        // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
-        double days = (prepaidKilobytesForDays - spentKDs) * 1024 / storingBytes;
-        long seconds = (long) (days * 24 * 3600);
-        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
-                .plusSeconds(seconds);
+        ZonedDateTime newExpires = calcExpiresAt();
 
         // update storages
         Map<HashId, Contract> newContracts = trackingContracts.stream().collect(Collectors.toMap(Contract::getId, c -> c));
@@ -396,7 +378,7 @@ public class SlotContract extends NSmartContract {
             HashId id = sub.getContractId();
             if(newContractIds.contains(id)) {
                 me.setSubscriptionExpiresAt(sub, newExpires);
-                newContracts.remove(id);
+                newContractIds.remove(id);
             } else {
                 me.destroySubscription(sub);
             }
@@ -404,7 +386,7 @@ public class SlotContract extends NSmartContract {
 
         for (HashId id: newContractIds) {
             try {
-                ContractSubscription css = me.createContractSubscription(id, newExpires);
+                me.createContractSubscription(id, newExpires);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -425,8 +407,6 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public void onContractSubscriptionEvent(ContractSubscription.Event event) {
-
-
         if(event instanceof ContractSubscription.ApprovedEvent) {
             MutableEnvironment me = event.getEnvironment();
             // recreate subscription:
@@ -437,11 +417,7 @@ public class SlotContract extends NSmartContract {
 
             // and save new
             updateSubscriptions(me);
-
-        } else if(event instanceof ContractSubscription.RevokedEvent) {
-
         }
-
     }
 
     @Override
@@ -493,10 +469,6 @@ public class SlotContract extends NSmartContract {
         // extract saved prepaid KD (kilobytes*days) value
         prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
 
-        // and extract time when first time payment was
-        long prepaidFromSeconds = getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
-
         // extract and sort by revision number
         try {
             List<Contract> contracts = new ArrayList<>();
@@ -535,9 +507,7 @@ public class SlotContract extends NSmartContract {
         // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
-
-        int paidU = getPaidU();
-        if(paidU == 0) {
+        if (paidU == 0) {
             if(getPaidU(true) > 0) {
                 addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing contracts in slots");
             }
@@ -612,10 +582,9 @@ public class SlotContract extends NSmartContract {
 
     private boolean additionallySlotCheck(ImmutableEnvironment ime) {
 
-        boolean checkResult = false;
+        boolean checkResult = ime != null;
 
         // check slot environment
-        checkResult = ime != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Environment should be not null");
             return checkResult;
@@ -635,14 +604,12 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
-        if(getTrackingContract() != null) {
-            // check for all revisions of tracking contract has same origin
-            for(Contract tc : trackingContracts) {
-                checkResult = getTrackingContract().getOrigin().equals(tc.getOrigin());
-                if (!checkResult) {
-                    addError(Errors.FAILED_CHECK, "Slot-contract should store only contracts with same origin");
-                    return checkResult;
-                }
+        // check for all revisions of tracking contract has same origin
+        for(Contract tc : trackingContracts) {
+            checkResult = getTrackingContract().getOrigin().equals(tc.getOrigin());
+            if (!checkResult) {
+                addError(Errors.FAILED_CHECK, "Slot-contract should store only contracts with same origin");
+                return checkResult;
             }
         }
 
@@ -667,6 +634,11 @@ public class SlotContract extends NSmartContract {
     public void onRevoked(ImmutableEnvironment ime) {
         // remove subscriptions
         //ledger.removeSlotContractWithAllSubscriptions(getId());
+    }
+
+    @Override
+    public Binder getExtraResultForApprove() {
+        return Binder.of("expires_at", calcExpiresAt().toEpochSecond());
     }
 
     static {

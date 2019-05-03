@@ -69,7 +69,7 @@ public class TopologyBuilder {
 
         byte[] packedData = bres.getBinaryOrThrow("packed_data");
         byte[] signature = bres.getBinaryOrThrow("signature");
-        if(ExtendedSignature.verify(verifyWith,signature,packedData) == null) {
+        if (ExtendedSignature.verify(verifyWith, signature, packedData) == null) {
             throw new IOException("failed to verify node " + url + ", with " + verifyWith);
         }
         bres = Boss.unpack(packedData);

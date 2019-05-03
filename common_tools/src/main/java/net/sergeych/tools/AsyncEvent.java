@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 
 
 /**
- * Asymchronous consumer-based event. Uses cached pool to invoke consumers. All the methods are thread-safe.
+ * Asynchronous consumer-based event. Uses cached pool to invoke consumers. All the methods are thread-safe.
  *
  * @param <T> type of the parameter passed to the consumers
  */

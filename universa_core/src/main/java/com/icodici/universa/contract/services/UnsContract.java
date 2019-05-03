@@ -49,8 +49,6 @@ public class UnsContract extends NSmartContract {
     private long storedEarlyEntries = 0;
     private double spentEarlyNDs = 0;
     private double spentNDs = 0;
-    private ZonedDateTime spentEarlyNDsTime = null;
-    private ZonedDateTime prepaidFrom = null;
     private ZonedDateTime spentNDsTime = null;
     private Map<HashId,Contract> originContracts = new HashMap<>();
 
@@ -99,23 +97,6 @@ public class UnsContract extends NSmartContract {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.UNS1.name()))
             getDefinition().setExtendedType(SmartContractType.UNS1.name());
 
-        /*// add modify_data permission
-        boolean permExist = false;
-        Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
-        if(mdps != null) {
-            for (Permission perm : mdps) {
-                if (perm.getName().equals(ModifyDataPermission.FIELD_NAME)) {
-                    //TODO: isONLYAllowedFor owner keys
-                    if (perm.isAllowedForKeys(getOwner().getKeys())) {
-                        permExist = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if(!permExist) {*/
-
         RoleLink ownerLink = new RoleLink("owner_link", "owner");
         registerRole(ownerLink);
         HashMap<String, Object> fieldsMap = new HashMap<>();
@@ -152,12 +133,10 @@ public class UnsContract extends NSmartContract {
 
         ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidNamesForDays;
-        long wasPrepaidFrom = now.toEpochSecond();
         long spentEarlyNDsTimeSecs = now.toEpochSecond();
         Contract parentContract = getRevokingItem(getParent());
         if(parentContract != null) {
             wasPrepaidNamesForDays = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
             storedEarlyEntries = parentContract.getStateData().getLong(STORED_ENTRIES_FIELD_NAME, 0);
             spentEarlyNDs = parentContract.getStateData().getDouble(SPENT_ND_FIELD_NAME);
             spentEarlyNDsTimeSecs = parentContract.getStateData().getLong(SPENT_ND_TIME_FIELD_NAME, now.toEpochSecond());
@@ -165,15 +144,13 @@ public class UnsContract extends NSmartContract {
             wasPrepaidNamesForDays = 0;
         }
 
-        spentEarlyNDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyNDsTimeSecs), ZoneId.systemDefault());
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
         prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate().doubleValue();
 
         spentNDsTime = now;
 
-        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTime.toEpochSecond());
+        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTimeSecs);
         double spentDays = (double) spentSeconds / (3600 * 24);
-        spentNDs = spentEarlyNDs + spentDays * (storedEarlyEntries / 1024);
+        spentNDs = spentEarlyNDs + spentDays * storedEarlyEntries;
 
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
@@ -312,9 +289,6 @@ public class UnsContract extends NSmartContract {
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNamesForDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-
-        long prepaidFromSeconds = getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, 0);
-        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
     }
 
     protected UnsContract initializeWithDsl(Binder root) throws EncryptionError {
@@ -579,12 +553,13 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
+        calculatePrepaidNamesForDays(false);
         ZonedDateTime expiresAt = calcExpiresAt();
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
         return Binder.fromKeysValues("status", "ok");
     }
 
-    private ZonedDateTime calcExpiresAt () {
+    private ZonedDateTime calcExpiresAt() {
         // get number of entries
         int entries = 0;
         for (UnsName sn: storedNames)
@@ -594,24 +569,30 @@ public class UnsContract extends NSmartContract {
 
         final int finalEntries = entries;
 
-        return prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
+        // calculate time that will be added to now as new expiring time
+        // it is difference of all prepaid ND (names*days) and already spent divided to new number of entries.
+        double days = (prepaidNamesForDays - spentNDs) / finalEntries;
+        long seconds = (long) (days * 24 * 3600);
+
+        return spentNDsTime.plusSeconds(seconds);
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
+        calculatePrepaidNamesForDays(false);
+
         ZonedDateTime expiresAt = calcExpiresAt();
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
-        me.nameRecords().forEach( nameRecord -> {
+        me.nameRecords().forEach(nameRecord -> {
             UnsName unsName = newNames.get(nameRecord.getName());
             if(unsName != null &&
                     unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
-                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(nameRecordEntry -> unsRecord.equalsTo(nameRecordEntry)))) {
+                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(unsRecord::equalsTo))) {
                 me.setNameRecordExpiresAt(nameRecord,expiresAt);
                 newNames.remove(nameRecord.getName());
-            } else {
+            } else
                 me.destroyNameRecord(nameRecord);
-            }
         });
 
         newNames.values().forEach(sn -> me.createNameRecord(sn,expiresAt));
@@ -628,9 +609,6 @@ public class UnsContract extends NSmartContract {
     public Binder getExtraResultForApprove() {
         return Binder.of("expires_at", calcExpiresAt().toEpochSecond());
     }
-
-
-
 
     private void addOriginReference(HashId origin) {
         Reference ref = new Reference(this);
