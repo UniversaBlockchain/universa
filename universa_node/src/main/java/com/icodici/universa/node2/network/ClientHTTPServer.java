@@ -275,6 +275,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("followerGetRate", this::followerGetRate);
         addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
 
+        addSecureEndpoint("proxy", this::proxy);
     }
 
     @Override
@@ -840,6 +841,24 @@ public class ClientHTTPServer extends BasicHttpServer {
             FollowerContract followerContract = (FollowerContract) Contract.fromPackedTransaction(followerBin);
             res.set("follower_state", followerContract.getStateData());
         }
+        return res;
+    }
+
+    private Binder proxy(Binder params, Session session) throws IOException {
+        checkNode(session, true);
+
+        Binder res = new Binder();
+        String url = params.getStringOrThrow("url");
+
+        //TODO: check that url is belong to network topology
+        //.....
+
+        String command = params.getStringOrThrow("command");
+        Binder commandParams = params.getBinderOrThrow("params");
+        System.out.println("node-" + node.getNumber() + ": proxy(url=" + url + ", command=" + command + ")");
+        BasicHttpClient basicHttpClient = new BasicHttpClient(url);
+        BasicHttpClient.Answer answer = basicHttpClient.request(command, commandParams);
+        res.set("result", answer.data);
         return res;
     }
 

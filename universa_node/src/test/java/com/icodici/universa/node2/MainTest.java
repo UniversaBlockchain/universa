@@ -58,10 +58,12 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -9212,4 +9214,25 @@ public class MainTest {
         String json = gson.toJson(cNew.getTopology());
         System.out.println(json);*/
     }
+
+    @Test
+    public void httpProxy() throws Exception {
+        List<Main> nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            nodes.add(createMain("node" + (i + 1), false));
+        nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client client0 = new Client(myKey, nodes.get(0).myInfo, null);
+
+        System.out.println("\n\n-------------------");
+
+        String url = nodes.get(1).myInfo.publicUrlString();
+        BasicHttpClientSession session = client0.getSession();
+        Binder answer = client0.proxyCommand(url, session, "getState", "itemId", HashId.createRandom());
+        System.out.println(answer);
+        System.out.println("-------------------\n\n");
+
+        nodes.forEach(n->n.shutdown());
+    }
+
 }

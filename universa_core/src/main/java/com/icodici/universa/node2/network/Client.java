@@ -871,6 +871,18 @@ public class Client {
         return httpClient.command(name, params);
     }
 
+    public Binder proxyCommand(String url, BasicHttpClientSession innerSession, String name, Object... params) throws IOException {
+        Binder cmd = Binder.of("command", name, "params", Binder.fromKeysValues(params));
+        Binder commandParams = Binder.of("session_id", innerSession.getSessionId(), "params", innerSession.getSessionKey().encrypt(Boss.pack(cmd)));
+        Binder ans = httpClient.command("proxy", Binder.of("url", url, "command", "command", "params", commandParams));
+        Binder res = ans.getBinderOrThrow("result");
+        try {
+            return Boss.unpack(innerSession.getSessionKey().decrypt(res.getBinaryOrThrow("result")));
+        } catch (IllegalArgumentException e) {
+            return res;
+        }
+    }
+
     public BasicHttpClient.Answer request(String name, Object... params) throws IOException {
         return httpClient.request(name, params);
     }
