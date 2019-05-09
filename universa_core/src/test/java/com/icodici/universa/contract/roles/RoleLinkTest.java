@@ -7,10 +7,14 @@
 
 package com.icodici.universa.contract.roles;
 
+import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import static junit.framework.TestCase.assertNull;
 import static org.junit.Assert.*;
@@ -63,4 +67,21 @@ public class RoleLinkTest {
         assertEquals(r1.getName(), r2.getName());
     }
 
+    @Test
+    public void testGetSimpleAddress() throws Exception {
+        Set<Object> keyAddresses = new HashSet<>();
+        keyAddresses.add(TestKeys.publicKey(0).getLongAddress());
+        SimpleRole sr = new SimpleRole("sr", keyAddresses);
+        Contract c = new Contract();
+        c.registerRole(sr);
+        RoleLink rl = new RoleLink("rl",sr.getName());
+        c.registerRole(rl);
+        assertEquals(rl.getSimpleAddress(),TestKeys.publicKey(0).getLongAddress());
+
+        rl.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);
+        assertNull(rl.getSimpleAddress());
+        assertEquals(RoleExtractor.extractSimpleAddress(rl),TestKeys.publicKey(0).getLongAddress());
+
+
+    }
 }

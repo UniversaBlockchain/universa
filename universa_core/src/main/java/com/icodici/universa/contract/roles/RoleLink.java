@@ -247,6 +247,19 @@ public class RoleLink extends Role {
             role.anonymize();
     }
 
+    @Override
+    @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
+        if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
+            return null;
+
+
+        Role r = resolve();
+        if(r != null) {
+            return  r.getSimpleAddress(ignoreRefs);
+        }
+        return null;
+    }
+
     static {
         DefaultBiMapper.registerClass(RoleLink.class);
     }

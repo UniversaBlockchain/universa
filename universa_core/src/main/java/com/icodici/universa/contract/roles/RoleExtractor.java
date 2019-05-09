@@ -4,12 +4,22 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Extracts keys, addresses and anon ids of the role. This utility class drops the internal structure of the role. Use with caution.
+ */
+
 public class RoleExtractor {
 
+    /**
+     * Extract keys from the role.
+     * @param role to extranct keys from
+     * @return set of keys present in the role
+     */
     public static Set<PublicKey> extractKeys(Role role) {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeys();
@@ -23,7 +33,11 @@ public class RoleExtractor {
         return null;
     }
 
-
+    /**
+     * Extract anon ids from the role.
+     * @param role to extranct keys from
+     * @return set of anon ids present in the role
+     */
     public static Set<AnonymousId> extractAnonymousIds(Role role) {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleAnonymousIds();
@@ -37,7 +51,11 @@ public class RoleExtractor {
         return null;
     }
 
-
+    /**
+     * Extract addresses from the role.
+     * @param role to extranct keys from
+     * @return set of addresses present in the role
+     */
     public static Set<KeyAddress> extractKeyAddresses(Role role) {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeyAddresses();
@@ -62,6 +80,22 @@ public class RoleExtractor {
             return result;
         }
         return null;
+    }
+
+    /**
+     * Get an address from the role, if it is just a single one.
+     *
+     * May be used to display a single bearer of a role in UIs. Returns  {@code null} if a single address cannot be decided
+     * for the role (like, if there is no addresses/keys discoverable or if there is more than 1 address/key). If the role is bound
+     * to a public key rather than an address, returns its short address.
+     *
+     * @apiNote: IMPORTANT: having references in the role doesn't affect the result. If you need references to be taken into account
+     * use {@link Role#getSimpleAddress()}
+     *
+     * @return role address or null
+     */
+    public static @Nullable KeyAddress extractSimpleAddress(Role role) {
+        return role.getSimpleAddress(true);
     }
 
 }

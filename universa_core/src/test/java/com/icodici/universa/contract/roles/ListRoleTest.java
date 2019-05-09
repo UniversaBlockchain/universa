@@ -16,11 +16,9 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
+import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -284,6 +282,40 @@ public class ListRoleTest {
         ListRole slr2 = DefaultBiMapper.deserialize(blr);
 
         assertEquals(slr1.getRoles(), slr2.getRoles());
+    }
+
+
+    @Test
+    public void testGetSimpleAddress() throws Exception {
+        Set<Object> keyAddresses = new HashSet<>();
+        keyAddresses.add(TestKeys.publicKey(0).getLongAddress());
+        SimpleRole sr = new SimpleRole("sr", keyAddresses);
+
+        ListRole lr = new ListRole();
+        lr.addRole(sr);
+        lr.setMode(ListRole.Mode.ALL);
+        assertEquals(lr.getSimpleAddress(),TestKeys.publicKey(0).getLongAddress());
+
+        lr.setMode(ListRole.Mode.ANY);
+        assertEquals(lr.getSimpleAddress(),TestKeys.publicKey(0).getLongAddress());
+
+        lr.setQuorum(2);
+        assertNull(lr.getSimpleAddress());
+
+        lr.setQuorum(1);
+        assertEquals(lr.getSimpleAddress(),TestKeys.publicKey(0).getLongAddress());
+
+        lr.setMode(ListRole.Mode.ANY);
+
+        SimpleRole sr2 = new SimpleRole("sr2", keyAddresses);
+        lr.addRole(sr2);
+        assertNull(lr.getSimpleAddress());
+
+        lr.getRoles().remove(sr2);
+        lr.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);
+        assertNull(lr.getSimpleAddress());
+        assertEquals(RoleExtractor.extractSimpleAddress(lr),TestKeys.publicKey(0).getLongAddress());
+
     }
 
 }

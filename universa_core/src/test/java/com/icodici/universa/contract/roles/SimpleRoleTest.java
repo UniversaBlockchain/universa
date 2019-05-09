@@ -19,6 +19,7 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 
@@ -93,5 +94,25 @@ public class SimpleRoleTest {
         SimpleRole r2 = r1.cloneAs("tr1");
 
         assertEquals(sr, r2);
+    }
+
+
+    @Test
+    public void testGetSimpleAddress() throws Exception {
+        Set<Object> keyAddresses = new HashSet<>();
+        keyAddresses.add(keys.get(0).getPublicKey().getShortAddress());
+        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+        assertEquals(sr.getSimpleAddress(),keyAddresses.iterator().next());
+        keyAddresses.add(keys.get(1).getPublicKey());
+        sr = new SimpleRole("tr1", keyAddresses);
+        assertNull(sr.getSimpleAddress());
+        keyAddresses.remove(keys.get(0).getPublicKey().getShortAddress());
+        sr = new SimpleRole("tr1", keyAddresses);
+        assertEquals(sr.getSimpleAddress(),keys.get(1).getPublicKey().getShortAddress());
+
+        sr.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);
+        assertNull(sr.getSimpleAddress());
+        assertEquals(RoleExtractor.extractSimpleAddress(sr),keys.get(1).getPublicKey().getShortAddress());
+
     }
 }

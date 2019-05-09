@@ -20,6 +20,7 @@ import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.Instant;
 import java.util.*;
@@ -378,6 +379,17 @@ public class ListRole extends Role {
     public void anonymize() {
         for (Role role : roles)
             role.anonymize();
+    }
+
+    @Override
+    @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
+        if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
+            return null;
+
+        if(roles.size() == 1 && (mode != Mode.QUORUM || quorumSize == 1)) {
+            return roles.iterator().next().getSimpleAddress(ignoreRefs);
+        }
+        return null;
     }
 
     static {

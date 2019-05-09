@@ -20,6 +20,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64u;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.security.Key;
@@ -408,6 +409,21 @@ public class SimpleRole extends Role {
         for (PublicKey publicKey : keyRecords.keySet())
             anonymousIds.add(AnonymousId.fromBytes(publicKey.createAnonymousId()));
         keyRecords.clear();
+    }
+
+    @Override
+    @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
+        if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
+            return null;
+
+        if(anonymousIds.size() == 0 && keyRecords.size() + keyAddresses.size() == 1) {
+            if(keyRecords.size() == 1) {
+                return keyRecords.keySet().iterator().next().getShortAddress();
+            } else {
+                return keyAddresses.iterator().next();
+            }
+        }
+        return null;
     }
 
     static {

@@ -17,6 +17,7 @@ import com.icodici.universa.contract.Reference;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -330,7 +331,8 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Get set of all keys in sub-roles.
-     * @deprecated the only usable check allowance method is isAllowedForKeys
+     * @deprecated getting plain keys from the role without understanding its internal structure is not allowed.
+     * Use {@link #getSimpleAddress()} if you need to display single bearer of a role
      * @return set of public keys (see {@link PublicKey})
      */
     @Deprecated
@@ -338,7 +340,8 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Get set of all anonymous identifiers in sub-roles.
-     * @deprecated the only usable check allowance method is isAllowedForKeys
+     * @deprecated getting plain keys from the role without understanding its internal structure is not allowed.
+     * Use {@link #getSimpleAddress()} if you need to display single bearer of a role
      * @return set of anonymous identifiers (see {@link AnonymousId})
      */
     @Deprecated
@@ -346,7 +349,8 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Get set of all key addresses in sub-roles.
-     * @deprecated the only usable check allowance method is isAllowedForKeys
+     * @deprecated getting plain keys from the role without understanding its internal structure is not allowed.
+     * Use {@link #getSimpleAddress()} if you need to display single bearer of a role
      * @return set of key addresses (see {@link KeyAddress})
      */
     @Deprecated
@@ -354,7 +358,8 @@ public abstract class Role implements BiSerializable {
 
     /**
      * Get set of all key records in sub-roles.
-     * @deprecated the only usable check allowance method is isAllowedForKeys
+     * @deprecated getting plain keys from the role without understanding its internal structure is not allowed.
+     * Use {@link #getSimpleAddress()} if you need to display single bearer of a role
      * @return set of key records (see {@link KeyAddress})
      */
     @Deprecated
@@ -461,6 +466,27 @@ public abstract class Role implements BiSerializable {
         if (contract != null)
             contract.registerRole(newRole);
         return newRole;
+    }
+
+
+    /**
+     * Get an address from the role, if it is just a single one.
+     *
+     * May be used to display a single bearer of a role in UIs. Returns  {@code null} if a single address cannot be decided
+     * for the role (like, if there is no addresses/keys discoverable or if there is more than 1 address/key). If the role is bound
+     * to a public key rather than an address, returns its short address.
+     *
+     * @apiNote: if the role uses any References, it affects the role bearing rules and effectively means the single address cannot
+     * be discovered definitely; the method will return {@code null} in this case as well.
+     *
+     * @return role address or null
+     */
+    public final @Nullable KeyAddress getSimpleAddress() {
+        return getSimpleAddress(false);
+    }
+
+    @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
+        return null;
     }
 
     /**
