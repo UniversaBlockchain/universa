@@ -857,8 +857,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         Binder commandParams = params.getBinderOrThrow("params");
         System.out.println("node-" + node.getNumber() + ": proxy(url=" + url + ", command=" + command + ")");
         BasicHttpClient basicHttpClient = new BasicHttpClient(url);
-        BasicHttpClient.Answer answer = basicHttpClient.request(command, commandParams);
-        res.set("result", answer.data);
+        BasicHttpClient.AnswerRaw answerRaw = basicHttpClient.requestRaw(command, commandParams);
+        res.set("result", answerRaw.body);
+        res.set("responseCode", answerRaw.code);
         return res;
     }
 

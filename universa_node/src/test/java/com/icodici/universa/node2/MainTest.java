@@ -9222,14 +9222,33 @@ public class MainTest {
             nodes.add(createMain("node" + (i + 1), false));
         nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
         PrivateKey myKey = TestKeys.privateKey(3);
-        Client client0 = new Client(myKey, nodes.get(0).myInfo, null);
+        ArrayList<Client> clientProxyToNode = new ArrayList<>();
+        for (int i = 0; i < 4; ++i) {
+            Client clientProxyTo_i = new Client("http://localhost:8080", myKey, null);
+            clientProxyTo_i.startProxyToUrl(nodes.get(i).myInfo, null);
+            clientProxyToNode.add(clientProxyTo_i);
+        }
+
+        HashId testHashId = HashId.createRandom();
+        nodes.get(0).node.getLedger().findOrCreate(testHashId).setState(ItemState.APPROVED).save();
+        nodes.get(1).node.getLedger().findOrCreate(testHashId).setState(ItemState.DECLINED).save();
+        nodes.get(2).node.getLedger().findOrCreate(testHashId).setState(ItemState.REVOKED).save();
+        nodes.get(3).node.getLedger().findOrCreate(testHashId).setState(ItemState.DISCARDED).save();
 
         System.out.println("\n\n-------------------");
 
-        String url = nodes.get(1).myInfo.publicUrlString();
-        BasicHttpClientSession session = client0.getSession();
-        Binder answer = client0.proxyCommand(url, session, "getState", "itemId", HashId.createRandom());
+        ItemResult answer = clientProxyToNode.get(0).getState(testHashId);
         System.out.println(answer);
+        assertEquals(ItemState.APPROVED, answer.state);
+        answer = clientProxyToNode.get(1).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.DECLINED, answer.state);
+        answer = clientProxyToNode.get(2).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.REVOKED, answer.state);
+        answer = clientProxyToNode.get(3).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.DISCARDED, answer.state);
         System.out.println("-------------------\n\n");
 
         nodes.forEach(n->n.shutdown());

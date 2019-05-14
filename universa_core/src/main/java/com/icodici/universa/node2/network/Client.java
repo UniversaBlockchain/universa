@@ -871,16 +871,15 @@ public class Client {
         return httpClient.command(name, params);
     }
 
-    public Binder proxyCommand(String url, BasicHttpClientSession innerSession, String name, Object... params) throws IOException {
-        Binder cmd = Binder.of("command", name, "params", Binder.fromKeysValues(params));
-        Binder commandParams = Binder.of("session_id", innerSession.getSessionId(), "params", innerSession.getSessionKey().encrypt(Boss.pack(cmd)));
-        Binder ans = httpClient.command("proxy", Binder.of("url", url, "command", "command", "params", commandParams));
-        Binder res = ans.getBinderOrThrow("result");
-        try {
-            return Boss.unpack(innerSession.getSessionKey().decrypt(res.getBinaryOrThrow("result")));
-        } catch (IllegalArgumentException e) {
-            return res;
-        }
+    /**
+     * Convert this client into proxy to targetNode.
+     * After calling this method, all subsequent {@link #command(String, Object...)} will works through selected proxy node.
+     * @param targetNode NodeInfo of node which we want to work
+     * @param targetSession saved session to target node. Pass here null to create new session.
+     * @throws IOException
+     */
+    public void startProxyToUrl(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
+        httpClient.startProxyToUrl(targetNode, targetSession);
     }
 
     public BasicHttpClient.Answer request(String name, Object... params) throws IOException {

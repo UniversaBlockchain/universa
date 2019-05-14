@@ -19,6 +19,8 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.NodeInfo;
+import com.sun.istack.internal.NotNull;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -47,6 +49,8 @@ public class BasicHttpClient {
     static private LogPrinter log = new LogPrinter("HTCL");
     private String url;
     protected BasicHttpClientSession session;
+    private NodeInfo targetNode = null;
+    private BasicHttpClientSession targetSession;
 
     public BasicHttpClient(String rootUrlString) {
         this.url = rootUrlString;
@@ -64,6 +68,12 @@ public class BasicHttpClient {
             return session;
 
         throw new IllegalStateException("Session does not exist. Start BasicHttpClient for create session.");
+    }
+
+    public void startProxyToUrl(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
+        this.targetNode = targetNode;
+        this.targetSession = targetSession;
+        startWithProxy(this.session.getPrivateKey(), targetNode.getPublicKey(), targetSession);
     }
 
     /**
@@ -189,6 +199,78 @@ public class BasicHttpClient {
 
     }
 
+    public BasicHttpClientSession startWithProxy(PrivateKey privateKey, PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
+
+        synchronized (this) {
+            if (session != null) {
+                this.targetSession = session;
+                this.targetSession.setNodePublicKey(nodePublicKey);
+                this.targetSession.setPrivateKey(privateKey);
+
+                Binder result = command("hello");
+
+                this.targetSession.setConnectMessage(result.getStringOrThrow("message"));
+
+                if (!result.getStringOrThrow("status").equals("OK"))
+                    throw new ConnectionFailedException("" + result);
+
+            } else {
+
+                this.targetSession = new BasicHttpClientSession();
+
+                this.targetSession.setNodePublicKey(nodePublicKey);
+
+                this.targetSession.setPrivateKey(privateKey);
+
+                Answer a = proxyRequestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+
+                this.targetSession.setSessionId(a.data.getLongOrThrow("session_id"));
+
+                byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
+                byte[] client_nonce = Do.randomBytes(47);
+                byte[] data = Boss.pack(Binder.fromKeysValues(
+                        "client_nonce", client_nonce,
+                        "server_nonce", server_nonce
+                ));
+
+                a = proxyRequestOrThrow("get_token",
+                        "signature", privateKey.sign(data, HashType.SHA512),
+                        "data", data,
+                        "session_id", this.targetSession.getSessionId()
+                );
+
+                data = a.data.getBinaryOrThrow("data");
+
+                if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
+                    throw new IOException("node signature failed");
+
+                Binder params = Boss.unpack(data);
+
+                if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
+                    throw new IOException("client nonce mismatch");
+
+                byte[] key = Boss.unpack(
+                        privateKey.decrypt(
+                                params.getBinaryOrThrow("encrypted_token")
+                        )
+                )
+                        .getBinaryOrThrow("sk");
+
+                this.targetSession.setSessionKey(new SymmetricKey(key));
+
+                Binder result = command("hello");
+
+                this.targetSession.setConnectMessage(result.getStringOrThrow("message"));
+
+                if (!result.getStringOrThrow("status").equals("OK"))
+                    throw new ConnectionFailedException("" + result);
+            }
+
+            return this.targetSession;
+        }
+
+    }
+
     public void restart() throws IOException {
         synchronized (this) {
             System.err.println("Restarting connection to $"+this.nodeNumber+": "+this.getUrl());
@@ -225,6 +307,13 @@ public class BasicHttpClient {
      * @throws IOException if the commadn can't be executed after several retries or the remote side reports error.
      */
     public Binder command(String name, Binder params) throws IOException {
+        if (this.targetNode == null)
+            return execCommand(name, params);
+        else
+            return proxyCommand(name, params);
+    }
+
+    private Binder execCommand(String name, Binder params) throws IOException {
 
         synchronized (this) {
             if (session == null || session.getSessionKey() == null)
@@ -286,6 +375,24 @@ public class BasicHttpClient {
         }
     }
 
+    private Binder proxyCommand(String name, Binder params) throws IOException {
+        Binder cmd = Binder.of("command", name, "params", params);
+        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
+        Binder ans = execCommand("proxy", Binder.of("url", targetNode.publicUrlString(), "command", "command", "params", commandParams));
+        Binder res = Binder.from(Boss.load(ans.getBytesOrThrow("result")));
+        try {
+            res = Boss.unpack(targetSession.getSessionKey().decrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result")));
+            return res.getBinderOrThrow("result");
+        } catch (IllegalArgumentException e) {
+            try {
+                IOException ioException = new IOException(res.getStringOrThrow("errors"));
+                throw ioException;
+            } catch (IllegalArgumentException e1) {
+                return res;
+            }
+        }
+    }
+
     /**
      * Execute command over the authenticated and encrypted connection. See {@link #command(String, Binder)} for more.
      * @param name command name
@@ -308,12 +415,23 @@ public class BasicHttpClient {
         return answer;
     }
 
+    private Answer proxyRequestOrThrow(String connect, Object... params) throws IOException {
+        Answer answer = proxyRequest(connect, params);
+        if (answer.code >= 400 || answer.data.containsKey("errors"))
+            throw new EndpointException(answer);
+        return answer;
+    }
+
     public String getUrl() {
         return url;
     }
 
     public Answer request(String path, Object... keysValues) throws IOException {
         return request(path, Binder.fromKeysValues(keysValues));
+    }
+
+    public Answer proxyRequest(String path, Object... keysValues) throws IOException {
+        return proxyRequest(path, Binder.fromKeysValues(keysValues));
     }
 
     public Answer commonRequest(String path, Object... keysValues) throws IOException {
@@ -339,6 +457,11 @@ public class BasicHttpClient {
     }
 
     public Answer request(String path, Binder params) throws IOException {
+        AnswerRaw answerRaw = requestRaw(path, params);
+        return new Answer(answerRaw.code, Binder.from(Boss.load(answerRaw.body)));
+    }
+
+    public AnswerRaw requestRaw(String path, Binder params) throws IOException {
         synchronized (this) {
             String charset = "UTF-8";
 
@@ -383,10 +506,15 @@ public class BasicHttpClient {
             int responseCode = httpConnection.getResponseCode();
             byte[] answer = Do.read(httpConnection.getInputStream());
             httpConnection.disconnect();
-            return new Answer(responseCode, Binder.from(Boss.load(answer)));
+            return new AnswerRaw(responseCode, answer);
         }
     }
 
+    public Answer proxyRequest(String path, Binder params) throws IOException {
+        Binder proxyAns = execCommand("proxy", Binder.of("url", targetNode.publicUrlString(), "command", path, "params", params));
+        Answer ans = new Answer(proxyAns.getIntOrThrow("responseCode"), Binder.from(Boss.load(proxyAns.getBytesOrThrow("result"))));
+        return ans;
+    }
 
     public static Object ofJson(JsonValue json) {
         if(json.isObject()) {
@@ -506,6 +634,14 @@ public class BasicHttpClient {
         }
     }
 
+    public class AnswerRaw {
+        public final int code;
+        public final byte[] body;
+        private AnswerRaw(int code, @NotNull byte[] body) {
+            this.code = code;
+            this.body = body;
+        }
+    }
 
     public class Answer {
         public final int code;
