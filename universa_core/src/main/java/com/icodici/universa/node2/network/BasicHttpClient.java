@@ -70,7 +70,7 @@ public class BasicHttpClient {
         throw new IllegalStateException("Session does not exist. Start BasicHttpClient for create session.");
     }
 
-    public void startProxyToUrl(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
+    public void startProxyToNode(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
         this.targetNode = targetNode;
         this.targetSession = targetSession;
         startWithProxy(this.session.getPrivateKey(), targetNode.getPublicKey(), targetSession);

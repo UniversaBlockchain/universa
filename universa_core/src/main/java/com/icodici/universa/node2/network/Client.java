@@ -878,8 +878,8 @@ public class Client {
      * @param targetSession saved session to target node. Pass here null to create new session.
      * @throws IOException
      */
-    public void startProxyToUrl(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
-        httpClient.startProxyToUrl(targetNode, targetSession);
+    public void startProxyToNode(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
+        httpClient.startProxyToNode(targetNode, targetSession);
     }
 
     public BasicHttpClient.Answer request(String name, Object... params) throws IOException {

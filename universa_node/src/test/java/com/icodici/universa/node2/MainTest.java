@@ -9225,7 +9225,7 @@ public class MainTest {
         ArrayList<Client> clientProxyToNode = new ArrayList<>();
         for (int i = 0; i < 4; ++i) {
             Client clientProxyTo_i = new Client("http://localhost:8080", myKey, null);
-            clientProxyTo_i.startProxyToUrl(nodes.get(i).myInfo, null);
+            clientProxyTo_i.startProxyToNode(nodes.get(i).myInfo, null);
             clientProxyToNode.add(clientProxyTo_i);
         }
 
