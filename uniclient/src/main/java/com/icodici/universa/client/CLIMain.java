@@ -1443,7 +1443,11 @@ public class CLIMain {
                                 report("registering with parcel: " + parcel.getId());
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
-                                    addErrors(ir.errors);
+                                    if(ir.errors.size() == 0) {
+                                        addError(Errors.COMMAND_FAILED.name(),parcel.getPayloadContract().getId().toString(),"registration failed");
+                                    } else {
+                                        addErrors(ir.errors);
+                                    }
                                 }
                             } else {
                                 addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup u revision");
