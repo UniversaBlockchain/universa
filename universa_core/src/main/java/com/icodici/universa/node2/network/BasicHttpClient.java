@@ -49,7 +49,7 @@ public class BasicHttpClient {
     static private LogPrinter log = new LogPrinter("HTCL");
     private String url;
     protected BasicHttpClientSession session;
-    private NodeInfo targetNode = null;
+    private Client.NodeRecord targetNode = null;
     private BasicHttpClientSession targetSession;
 
     public BasicHttpClient(String rootUrlString) {
@@ -70,10 +70,10 @@ public class BasicHttpClient {
         throw new IllegalStateException("Session does not exist. Start BasicHttpClient for create session.");
     }
 
-    public void startProxyToNode(NodeInfo targetNode, BasicHttpClientSession targetSession) throws IOException {
+    public void startProxyToNode(Client.NodeRecord targetNode, BasicHttpClientSession targetSession) throws IOException {
         this.targetNode = targetNode;
         this.targetSession = targetSession;
-        startWithProxy(this.session.getPrivateKey(), targetNode.getPublicKey(), targetSession);
+        startWithProxy(this.session.getPrivateKey(), targetNode.key, targetSession);
     }
 
     /**
@@ -378,7 +378,7 @@ public class BasicHttpClient {
     private Binder proxyCommand(String name, Binder params) throws IOException {
         Binder cmd = Binder.of("command", name, "params", params);
         Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
-        Binder ans = execCommand("proxy", Binder.of("url", targetNode.publicUrlString(), "command", "command", "params", commandParams));
+        Binder ans = execCommand("proxy", Binder.of("url", targetNode.url, "command", "command", "params", commandParams));
         Binder res = Binder.from(Boss.load(ans.getBytesOrThrow("result")));
         try {
             res = Boss.unpack(targetSession.getSessionKey().decrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result")));
@@ -511,7 +511,7 @@ public class BasicHttpClient {
     }
 
     public Answer proxyRequest(String path, Binder params) throws IOException {
-        Binder proxyAns = execCommand("proxy", Binder.of("url", targetNode.publicUrlString(), "command", path, "params", params));
+        Binder proxyAns = execCommand("proxy", Binder.of("url", targetNode.url, "command", path, "params", params));
         Answer ans = new Answer(proxyAns.getIntOrThrow("responseCode"), Binder.from(Boss.load(proxyAns.getBytesOrThrow("result"))));
         return ans;
     }

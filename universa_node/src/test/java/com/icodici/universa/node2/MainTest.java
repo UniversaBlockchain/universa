@@ -9224,8 +9224,9 @@ public class MainTest {
         PrivateKey myKey = TestKeys.privateKey(3);
         ArrayList<Client> clientProxyToNode = new ArrayList<>();
         for (int i = 0; i < 4; ++i) {
-            Client clientProxyTo_i = new Client("http://localhost:8080", myKey, null);
-            clientProxyTo_i.startProxyToNode(nodes.get(i).myInfo, null);
+            Client clientProxyTo_i = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),myKey);
+
+            clientProxyTo_i.startProxyToNode(i, null);
             clientProxyToNode.add(clientProxyTo_i);
         }
 
