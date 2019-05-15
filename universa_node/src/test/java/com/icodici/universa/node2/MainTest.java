@@ -58,10 +58,12 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -9212,4 +9214,45 @@ public class MainTest {
         String json = gson.toJson(cNew.getTopology());
         System.out.println(json);*/
     }
+
+    @Test
+    public void httpProxy() throws Exception {
+        List<Main> nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            nodes.add(createMain("node" + (i + 1), false));
+        nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        PrivateKey myKey = TestKeys.privateKey(3);
+        ArrayList<Client> clientProxyToNode = new ArrayList<>();
+        for (int i = 0; i < 4; ++i) {
+            Client clientProxyTo_i = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),myKey);
+
+            clientProxyTo_i.startProxyToNode(i, null);
+            clientProxyToNode.add(clientProxyTo_i);
+        }
+
+        HashId testHashId = HashId.createRandom();
+        nodes.get(0).node.getLedger().findOrCreate(testHashId).setState(ItemState.APPROVED).save();
+        nodes.get(1).node.getLedger().findOrCreate(testHashId).setState(ItemState.DECLINED).save();
+        nodes.get(2).node.getLedger().findOrCreate(testHashId).setState(ItemState.REVOKED).save();
+        nodes.get(3).node.getLedger().findOrCreate(testHashId).setState(ItemState.DISCARDED).save();
+
+        System.out.println("\n\n-------------------");
+
+        ItemResult answer = clientProxyToNode.get(0).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.APPROVED, answer.state);
+        answer = clientProxyToNode.get(1).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.DECLINED, answer.state);
+        answer = clientProxyToNode.get(2).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.REVOKED, answer.state);
+        answer = clientProxyToNode.get(3).getState(testHashId);
+        System.out.println(answer);
+        assertEquals(ItemState.DISCARDED, answer.state);
+        System.out.println("-------------------\n\n");
+
+        nodes.forEach(n->n.shutdown());
+    }
+
 }

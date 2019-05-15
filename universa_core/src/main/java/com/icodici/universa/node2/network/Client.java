@@ -871,6 +871,17 @@ public class Client {
         return httpClient.command(name, params);
     }
 
+    /**
+     * Convert this client into proxy to targetNode.
+     * After calling this method, all subsequent {@link #command(String, Object...)} will works through selected proxy node.
+     * @param targetNode index of node in topology (not the node number)
+     * @param targetSession saved session to target node. Pass here null to create new session.
+     * @throws IOException
+     */
+    public void startProxyToNode(int targetNode, BasicHttpClientSession targetSession) throws IOException {
+        httpClient.startProxyToNode(nodes.get(targetNode), targetSession);
+    }
+
     public BasicHttpClient.Answer request(String name, Object... params) throws IOException {
         return httpClient.request(name, params);
     }

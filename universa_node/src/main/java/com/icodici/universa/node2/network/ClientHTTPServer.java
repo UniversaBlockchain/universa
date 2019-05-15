@@ -275,6 +275,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("followerGetRate", this::followerGetRate);
         addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
 
+        addSecureEndpoint("proxy", this::proxy);
     }
 
     @Override
@@ -839,6 +840,39 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (followerBin != null) {
             FollowerContract followerContract = (FollowerContract) Contract.fromPackedTransaction(followerBin);
             res.set("follower_state", followerContract.getStateData());
+        }
+        return res;
+    }
+
+    private Set<String> getValidUrlsForProxy() {
+        Set<String> res = new HashSet<>();
+        if (netConfig != null) {
+            netConfig.forEachNode(node -> {
+                res.add(node.directUrlStringV4());
+                res.add(node.domainUrlStringV4());
+            });
+        }
+        return res;
+    }
+
+    private Binder proxy(Binder params, Session session) throws IOException {
+        checkNode(session, true);
+
+        Binder res = new Binder();
+        String url = params.getStringOrThrow("url");
+
+        if (getValidUrlsForProxy().contains(url)) {
+            String command = params.getStringOrThrow("command");
+            Binder commandParams = params.getBinderOrThrow("params");
+            //System.out.println("node-" + node.getNumber() + ": proxy(url=" + url + ", command=" + command + ")");
+            BasicHttpClient basicHttpClient = new BasicHttpClient(url);
+            BasicHttpClient.AnswerRaw answerRaw = basicHttpClient.requestRaw(command, commandParams);
+            res.set("responseCode", answerRaw.code);
+            res.set("result", answerRaw.body);
+        } else {
+            res.set("responseCode", 403);
+            Binder err = Binder.fromKeysValues("response", "Access denied. Url '"+url+"' is not found in network topology.");
+            res.set("result", Boss.pack(Binder.fromKeysValues("result", "error", "response", err)));
         }
         return res;
     }
