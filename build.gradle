@@ -1,5 +1,5 @@
 group 'com.icodici'
-version '3.9.10'
+version '3.9.11'
 
 apply plugin: 'java'
 
