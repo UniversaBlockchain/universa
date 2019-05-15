@@ -16,6 +16,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -51,6 +52,7 @@ public class TopologyTest {
         //servers.forEach(s->{try{s.shutdown();} catch (Exception ignored){}});
     }
 
+    @Ignore
     @Test
     public void simpleTest() throws Exception {
 

@@ -155,7 +155,7 @@ public class SplitJoinPermission extends Permission {
 
 
             if (!isMergeable(s) || !validateMergeFields(changed, s) || !hasSimilarPermission(s, keys, false)) {
-                continue;
+                return;
             }
 
             sum = sum.add(new Decimal(s.getStateData().getString(fieldName)));
@@ -183,7 +183,7 @@ public class SplitJoinPermission extends Permission {
 
         for (Contract c : changed.getSiblings()) {
             if (!isMergeable(c) || !validateMergeFields(changed, c) || !hasSimilarPermission(c, keys,  false))
-                continue;
+                return false;
             splitJoinSum = splitJoinSum.add(new Decimal(c.getStateData().getString(fieldName)));
             for (Approvable r : c.getRevokingItems()) {
                 if (r instanceof Contract) {
