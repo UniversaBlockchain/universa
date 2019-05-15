@@ -20,7 +20,6 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
-import com.sun.istack.internal.NotNull;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -637,7 +636,7 @@ public class BasicHttpClient {
     public class AnswerRaw {
         public final int code;
         public final byte[] body;
-        private AnswerRaw(int code, @NotNull byte[] body) {
+        private AnswerRaw(int code, @NonNull byte[] body) {
             this.code = code;
             this.body = body;
         }
