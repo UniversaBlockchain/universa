@@ -63,6 +63,7 @@ public class BasicHttpServer {
         addEndpoint("/connect", params -> onConnect(params));
         addEndpoint("/get_token", params -> inSession(params.getLongOrThrow("session_id"), s -> s.getToken(params)));
         addEndpoint("/command", params -> inSession(params.getLongOrThrow("session_id"), s -> s.command(params)));
+        addEndpoint("/proxyCommand", params -> inSession(params.getLongOrThrow("session_id"), s -> s.proxyCommand(params)));
 
         service.start(port, maxTrheads);
     }
@@ -364,6 +365,32 @@ public class BasicHttpServer {
             );
         }
 
+        public Binder proxyCommand(Binder params) throws ClientError, EncryptionError {
+            // decrypt params and execute command
+            Binder result = null;
+            try {
+                result = Binder.fromKeysValues(
+                        "result",
+                        executeAuthenticatedProxyCommand(
+                                Boss.unpack(
+                                        sessionKey.decrypt(params.getBinaryOrThrow("params"))
+                                )
+                        )
+                );
+            } catch (Exception e) {
+                ErrorRecord r = (e instanceof ClientError) ? ((ClientError) e).getErrorRecord() :
+                        new ErrorRecord(Errors.COMMAND_FAILED, "", e.getMessage());
+                result = Binder.fromKeysValues(
+                        "error", r
+                );
+            }
+            // encrypt and return result
+            return Binder.fromKeysValues(
+                    "result",
+                    sessionKey.encrypt(Boss.pack(result))
+            );
+        }
+
         private Binder executeAuthenticatedCommand(Binder params) throws ClientError {
             String cmd = params.getStringOrThrow("command");
             try {
@@ -394,6 +421,13 @@ public class BasicHttpServer {
                 throw new ClientError(Errors.COMMAND_FAILED, cmd, e.getMessage());
             }
             throw new ClientError(Errors.UNKNOWN_COMMAND, "command", "unknown: " + cmd);
+        }
+
+        private Binder executeAuthenticatedProxyCommand(Binder params) throws ClientError {
+            String cmd = params.getStringOrThrow("command");
+            if ("proxy".equals(cmd))
+                throw new ClientError(Errors.COMMAND_FAILED, cmd, "Unable to proxy command 'proxy'");
+            return executeAuthenticatedCommand(params);
         }
     }
 

@@ -377,7 +377,7 @@ public class BasicHttpClient {
     private Binder proxyCommand(String name, Binder params) throws IOException {
         Binder cmd = Binder.of("command", name, "params", params);
         Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
-        Binder ans = execCommand("proxy", Binder.of("url", targetNode.url, "command", "command", "params", commandParams));
+        Binder ans = execCommand("proxy", Binder.of("url", targetNode.url, "command", "proxyCommand", "params", commandParams));
         Binder res = Binder.from(Boss.load(ans.getBytesOrThrow("result")));
         try {
             res = Boss.unpack(targetSession.getSessionKey().decrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result")));

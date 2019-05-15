@@ -9255,4 +9255,74 @@ public class MainTest {
         nodes.forEach(n->n.shutdown());
     }
 
+    @Test
+    public void httpProxyRecursion() throws Exception {
+        List<Main> nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            nodes.add(createMain("node" + (i + 1), false));
+        nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client clientProxy = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),myKey);
+        clientProxy.startProxyToNode(1, null);
+
+        HashId testHashId = HashId.createRandom();
+        nodes.get(0).node.getLedger().findOrCreate(testHashId).setState(ItemState.APPROVED).save();
+        nodes.get(1).node.getLedger().findOrCreate(testHashId).setState(ItemState.DECLINED).save();
+        nodes.get(2).node.getLedger().findOrCreate(testHashId).setState(ItemState.REVOKED).save();
+        nodes.get(3).node.getLedger().findOrCreate(testHashId).setState(ItemState.DISCARDED).save();
+
+        System.out.println("\n\n-------------------");
+
+        Client targetClient = clientProxy.getClient(2);
+        BasicHttpClientSession targetSession = targetClient.getSession();
+        Binder cmd = Binder.of("command", "getState", "params", Binder.of("itemId", testHashId));
+        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
+
+        Binder answer = clientProxy.command("proxy", "url", targetClient.getUrl(), "command", "proxyCommand", "params", commandParams);
+        String answerError = answer.getStringOrThrow("error");
+        System.out.println("try recursion v1... answerError: " + answerError);
+        assertEquals("COMMAND_FAILED [proxy] Unable to proxy command 'proxy'", answerError);
+
+        System.out.println("-------------------\n\n");
+
+        nodes.forEach(n->n.shutdown());
+    }
+
+    @Test
+    public void httpProxyRecursion2() throws Exception {
+        List<Main> nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            nodes.add(createMain("node" + (i + 1), false));
+        nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client clientProxy = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),myKey);
+
+        //don't start proxy here. we will make proxy request manually
+
+        HashId testHashId = HashId.createRandom();
+        nodes.get(0).node.getLedger().findOrCreate(testHashId).setState(ItemState.APPROVED).save();
+        nodes.get(1).node.getLedger().findOrCreate(testHashId).setState(ItemState.DECLINED).save();
+        nodes.get(2).node.getLedger().findOrCreate(testHashId).setState(ItemState.REVOKED).save();
+        nodes.get(3).node.getLedger().findOrCreate(testHashId).setState(ItemState.DISCARDED).save();
+
+        System.out.println("\n\n-------------------");
+
+        Client targetClient1 = clientProxy.getClient(1);
+        Client targetClient2 = clientProxy.getClient(2);
+        BasicHttpClientSession targetSession1 = targetClient1.getSession();
+        BasicHttpClientSession targetSession2 = targetClient2.getSession();
+        Binder cmd2 = Binder.of("command", "getState", "params", Binder.of("itemId", testHashId));
+        Binder command2Params = Binder.of("session_id", targetSession2.getSessionId(), "params", targetSession2.getSessionKey().encrypt(Boss.pack(cmd2)));
+        Binder answer = clientProxy.command("proxy", "url", targetClient2.getUrl(), "command", "command", "params", command2Params);
+
+        Binder answerBinder = Boss.load(answer.getBinaryOrThrow("result"));
+        String answerError = answerBinder.getBinderOrThrow("response").getStringOrThrow("response");
+        System.out.println("try recursion v2... answerError: " + answerError);
+        assertEquals("Access denied. Command 'command' is not allowed with 'proxy', use 'proxyCommand' instead.", answerError);
+
+        System.out.println("-------------------\n\n");
+
+        nodes.forEach(n->n.shutdown());
+    }
+
 }

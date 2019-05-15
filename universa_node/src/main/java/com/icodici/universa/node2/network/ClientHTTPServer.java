@@ -865,10 +865,16 @@ public class ClientHTTPServer extends BasicHttpServer {
             String command = params.getStringOrThrow("command");
             Binder commandParams = params.getBinderOrThrow("params");
             //System.out.println("node-" + node.getNumber() + ": proxy(url=" + url + ", command=" + command + ")");
-            BasicHttpClient basicHttpClient = new BasicHttpClient(url);
-            BasicHttpClient.AnswerRaw answerRaw = basicHttpClient.requestRaw(command, commandParams);
-            res.set("responseCode", answerRaw.code);
-            res.set("result", answerRaw.body);
+            if ("command".equals(command)) {
+                res.set("responseCode", 403);
+                Binder err = Binder.fromKeysValues("response", "Access denied. Command 'command' is not allowed with 'proxy', use 'proxyCommand' instead.");
+                res.set("result", Boss.pack(Binder.fromKeysValues("result", "error", "response", err)));
+            } else {
+                BasicHttpClient basicHttpClient = new BasicHttpClient(url);
+                BasicHttpClient.AnswerRaw answerRaw = basicHttpClient.requestRaw(command, commandParams);
+                res.set("responseCode", answerRaw.code);
+                res.set("result", answerRaw.body);
+            }
         } else {
             res.set("responseCode", 403);
             Binder err = Binder.fromKeysValues("response", "Access denied. Url '"+url+"' is not found in network topology.");
