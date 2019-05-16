@@ -74,7 +74,7 @@ public class NodeInfo implements BiSerializable {
         this.publicHost = publicHost;
         this.host = host;
         this.hostV6 = hostV6;
-        nodeAddress = new InetSocketAddress(host, datagramPort);
+        nodeAddress = new InetSocketAddress(hostV6 != null ? hostV6 : host, datagramPort);
         clientAddress = new InetSocketAddress(publicHost, clientHttpPort);
         serverAddress = new InetSocketAddress(host, serverHttpPort);
     }
