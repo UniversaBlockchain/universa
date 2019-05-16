@@ -204,6 +204,8 @@ public class NetworkV2 extends Network {
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
             connection.setRequestMethod("GET");
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout((int) (maxTimeout.getSeconds()*1000));
             if (200 != connection.getResponseCode())
                 return null;
             byte[] data = Do.read(connection.getInputStream());
@@ -229,6 +231,8 @@ public class NetworkV2 extends Network {
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
             connection.setRequestMethod("GET");
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout((int) (maxTimeout.getSeconds()*1000));
             if (200 != connection.getResponseCode())
                 return null;
             byte[] data = Do.read(connection.getInputStream());
@@ -250,6 +254,8 @@ public class NetworkV2 extends Network {
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
             connection.setRequestProperty("Connection", "close");
             connection.setRequestMethod("GET");
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout((int) (maxTimeout.getSeconds()*1000));
             if (200 != connection.getResponseCode())
                 return null;
             byte[] data = Do.read(connection.getInputStream());
