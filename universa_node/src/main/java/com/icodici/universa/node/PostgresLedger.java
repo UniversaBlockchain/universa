@@ -662,7 +662,6 @@ public class PostgresLedger implements Ledger {
         }
         protect(() -> {
             inPool(d -> {
-                d.update("DELETE FROM items WHERE id = ?", recordId);
                 d.update("DELETE FROM ledger WHERE id = ?", recordId);
                 return null;
             });
