@@ -28,11 +28,15 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Client {
 
@@ -674,6 +678,116 @@ public class Client {
 
             return ItemResult.UNDEFINED;
         });
+    }
+
+    /**
+     * Check if the contract has APPROVED status across the network.
+     *
+     * The method queries the status from multiple random different nodes until either gets enough replies to consider it approved, or collects a negative consensus sufficient to consider it is not approved (whatever happens earlier).
+     *
+     * “Enough” factor (for “enough replies”) is specified using the {@code trustLevel} parameter (what ratio of the total node count you would consider trusted).
+     *
+     * @implNote: according to the common Universa consensus rules, the negative consensus is defined as <code>10% of total nodes count + 1</code>. DECLINED/REVOKED/UNDEFINED statuses are treated as negative consensus.
+     *
+     * @apiNote: Method can be used for contract that are currently processed by network. It will wait until the pending statuses become final.
+     *
+     * @param itemId to get state of
+     * @param trustLevel a value from 0 (exclusive) to 0.9; how many nodes (of all ones available in the network) do you need
+     * @param millisToWait maximum time to get the positive or negative result from the network. If result is not received
+     * within given time {@link ClientError} is thrown
+     *
+     *
+     * @return if item is APPROVED by network
+     * @throws ClientError
+     */
+    public boolean isApprovedByNetwork(HashId itemId, double trustLevel, long millisToWait) throws ClientError {
+        if(trustLevel > 0.9)
+            trustLevel = 0.9;
+
+        Instant end = Instant.now().plusMillis(millisToWait);
+        int Nt = (int) Math.ceil(size()*trustLevel);
+        if(Nt < 1) {
+            Nt = 1;
+        }
+        int N10 = (int) (Math.floor(size()*0.1)) + 1;
+
+        int Nn = (Nt + 1) > N10 ? Nt + 1 : N10;
+
+
+        Set<Integer> unprocessedIdxs = ConcurrentHashMap.newKeySet();
+        Set<Integer> retryIdxs = ConcurrentHashMap.newKeySet();
+
+        Map<ItemState,Set<Integer>> responseIdxs = new HashMap<>();
+        responseIdxs.put(ItemState.APPROVED, ConcurrentHashMap.newKeySet());
+        responseIdxs.put(ItemState.REVOKED, ConcurrentHashMap.newKeySet());
+        responseIdxs.put(ItemState.DECLINED, ConcurrentHashMap.newKeySet());
+        responseIdxs.put(ItemState.UNDEFINED, ConcurrentHashMap.newKeySet());
+
+        Set<Integer> positiveIdxs = ConcurrentHashMap.newKeySet();
+        Set<Integer> negativeIdxs = ConcurrentHashMap.newKeySet();
+
+        unprocessedIdxs.addAll(IntStream.range(0, size()).boxed().collect(Collectors.toSet()));
+
+        while(true) {
+            AtomicInteger running = new AtomicInteger(0);
+            for (int i = 0; i < Nn; i++) {
+
+                Set<Integer> targetSet = unprocessedIdxs.size() > 0 ? unprocessedIdxs : retryIdxs;
+
+                int size = targetSet.size();
+
+
+                if(size > 0) {
+                    running.incrementAndGet();
+                    int rand = Do.randomInt(size);
+                    Iterator<Integer> it = targetSet.iterator();
+                    while(rand > 0) {
+                        rand--;
+                        it.next();
+                    }
+                    final int index = it.next();
+                    it.remove();
+
+                    Do.inParallel(() -> getClient(index).getState(itemId))
+                            .failure(data -> {
+                                retryIdxs.add(index);
+                                running.decrementAndGet();
+                            })
+                            .success(data -> {
+                                ItemResult ir = (ItemResult) data;
+                                if (ir.state.isPending() || ir.state == ItemState.LOCKED || ir.state == ItemState.LOCKED_FOR_CREATION || ir.state == ItemState.LOCKED_FOR_CREATION_REVOKED) {
+                                    retryIdxs.add(index);
+                                } else {
+                                    responseIdxs.get(ir.state).add(index);
+                                    (ir.state.isApproved() ? positiveIdxs : negativeIdxs).add(index);
+                                }
+                                running.decrementAndGet();
+                            });
+                }
+            }
+
+
+            while (running.get() > 0) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {
+
+                }
+                if(negativeIdxs.size() >= N10) {
+                    return false;
+                }
+
+                if(positiveIdxs.size() >= Nt) {
+                    return true;
+                }
+
+                if(Instant.now().isAfter(end)) {
+                    throw new ClientError(Errors.COMMAND_PENDING, "isApprovedByNetwork",
+                            "waiting time is up, but no result can be provided");
+                }
+            }
+        }
+
     }
 
     /**

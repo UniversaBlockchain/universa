@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -14,10 +15,7 @@ import com.icodici.crypto.digest.Crc32;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.Core;
-import com.icodici.universa.Decimal;
-import com.icodici.universa.HashId;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
@@ -26,7 +24,6 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
-import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
@@ -9324,5 +9321,45 @@ public class MainTest {
 
         nodes.forEach(n->n.shutdown());
     }
+
+
+
+    @Test
+    public void networkStatusTest() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n-> {
+            try {
+                n.config.getAddressesWhiteList().add(TestKeys.publicKey(1).getLongAddress());
+            } catch (EncryptionError encryptionError) {
+                encryptionError.printStackTrace();
+            }
+        });
+
+        Client client = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(1));
+
+        HashId id1 = HashId.createRandom();
+        ts.nodes.forEach(n->n.node.getLedger().findOrCreate(id1).setState(ItemState.APPROVED).save());
+        assertTrue(client.isApprovedByNetwork(id1,0.9,3000));
+
+        HashId id2 = HashId.createRandom();
+        for(int i = 0; i < ts.nodes.size();i++) {
+            ts.nodes.get(i).node.getLedger().findOrCreate(id2).setState(i==0?ItemState.DECLINED:ItemState.APPROVED);
+        }
+        for(int i = 0; i < 10;i++) {
+            assertFalse(client.isApprovedByNetwork(id2, 0.8, 3000));
+        }
+
+        ts.shutdown();
+        try {
+            client.isApprovedByNetwork(HashId.createRandom(),0.1,3000);
+        } catch (ClientError e) {
+            System.out.println(e.getErrorRecord());
+            assertEquals(e.getErrorRecord().getError(), Errors.COMMAND_PENDING);
+        }
+    }
+
+
+
+
 
 }
