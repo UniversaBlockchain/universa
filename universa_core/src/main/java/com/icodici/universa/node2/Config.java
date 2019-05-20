@@ -158,6 +158,10 @@ public class Config {
         rate.put(name, value);
     }
 
+    public void setMaxDiskCacheAge(Duration diskCacheAge) {
+        maxDiskCacheAge = diskCacheAge;
+    }
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }

@@ -358,6 +358,12 @@ public class Main {
             }
         }
 
+        if(settings.containsKey("disk_cache_age")) {
+            int days = settings.getIntOrThrow("disk_cache_age");
+            log("using extended disk cache age: " + days + " days");
+            config.setMaxDiskCacheAge(Duration.ofDays(days));
+        }
+
         ledger = new PostgresLedger(settings.getStringOrThrow("database"));
         log("ledger constructed");
 
