@@ -604,6 +604,9 @@ public class UDPAdapter extends DatagramAdapter {
                             case PacketTypes.SESSION_ACK:
                                 onReceiveSessionAck(packet);
                                 break;
+                            case PacketTypes.ECHO:
+                                threadSocket.send(receivedDatagram);
+                                break;
                             default:
                                 report(logLabel, () -> "received unknown packet type: " + packet.type, VerboseLevel.BASE);
                                 break;
@@ -1153,6 +1156,7 @@ public class UDPAdapter extends DatagramAdapter {
         static public final int SESSION_PART1  = 7;
         static public final int SESSION_PART2  = 8;
         static public final int SESSION_ACK    = 9;
+        static public final int ECHO           = 10;
     }
 
 
