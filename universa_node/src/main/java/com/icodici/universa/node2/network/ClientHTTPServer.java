@@ -629,37 +629,24 @@ public class ClientHTTPServer extends BasicHttpServer {
                         config.getKeysWhiteList().contains(session.getPublicKey()) ||
                         config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
         )) {
-            System.out.println("pingNode ERROR: command needs client key from whitelist");
-
-            return Binder.of(
-                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"pingNode", "command needs client key from whitelist"));
+            throw new IllegalArgumentException("command needs client key from whitelist");
         }
 
-        try {
-            int nodeNumber = params.getIntOrThrow("nodeNumber");
-            int timeoutMillis = params.getInt("timeoutMillis",15000);
-            if(nodeNumber == node.getNumber()) {
-                throw new IllegalArgumentException("Not going to self pingNode");
-            }
+        int nodeNumber = params.getIntOrThrow("nodeNumber");
+        int timeoutMillis = params.getInt("timeoutMillis",15000);
 
-            if(netConfig.getInfo(nodeNumber) == null) {
-                throw new IllegalArgumentException("Unkwnown node " + nodeNumber);
-            }
-
-            long responseMillisUDP = node.pingNodeUDP(nodeNumber,timeoutMillis);
-            long responseMillisTCP = node.pingNodeTCP(nodeNumber,timeoutMillis);
-
-
-
-
-            return Binder.of("UDP",responseMillisUDP,"TCP",responseMillisTCP);
-
-
-        } catch (Exception e) {
-            System.out.println("getState ERROR: " + e.getMessage());
-            return Binder.of(
-                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"pingNode", e.getMessage()));
+        if(netConfig.getInfo(nodeNumber) == null) {
+            throw new IllegalArgumentException("Unkwnown node " + nodeNumber);
         }
+
+        long responseMillisUDP = node.pingNodeUDP(nodeNumber,timeoutMillis);
+        long responseMillisTCP = node.pingNodeTCP(nodeNumber,timeoutMillis);
+
+
+
+
+        return Binder.of("UDP",responseMillisUDP,"TCP",responseMillisTCP);
+
     }
 
     private Binder setVerbose(Binder params, Session session) throws CommandFailedException {

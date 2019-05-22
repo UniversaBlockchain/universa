@@ -9377,10 +9377,23 @@ public class MainTest {
         });
 
         Client client1 = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(10));
-        Binder resErr  = client1.getClient(0).pingNode(3,10000);
-        assertEquals(((ItemResult)resErr.get("itemResult")).errors.get(0).getError(),Errors.BAD_CLIENT_KEY);
+
+        try {
+            Binder resErr  = client1.getClient(0).pingNode(3,10000);
+            fail();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
 
         Client client = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(1));
+
+        try {
+            Binder resErr  = client.getClient(0).pingNode(33,10000);
+            fail();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
 
         for(int i = 0; i < client.size();i++) {
             for(int j = 0; j < client.size();j++) {
@@ -9419,4 +9432,5 @@ public class MainTest {
 
         ts.shutdown();
     }
+
 }
