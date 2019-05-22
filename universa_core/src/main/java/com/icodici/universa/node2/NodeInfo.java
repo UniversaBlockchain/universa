@@ -35,6 +35,7 @@ public class NodeInfo implements BiSerializable {
     private String hostV6;
     private PublicKey publicKey;
     private InetSocketAddress nodeAddress;
+    private InetSocketAddress nodeAddressV6;
     private InetSocketAddress clientAddress;
     private InetSocketAddress serverAddress;
     private int number;
@@ -74,7 +75,10 @@ public class NodeInfo implements BiSerializable {
         this.publicHost = publicHost;
         this.host = host;
         this.hostV6 = hostV6;
-        nodeAddress = new InetSocketAddress(hostV6 != null ? hostV6 : host, datagramPort);
+        nodeAddress = new InetSocketAddress(host, datagramPort);
+        if(hostV6 != null) {
+            nodeAddressV6 = new InetSocketAddress(hostV6, datagramPort);
+        }
         clientAddress = new InetSocketAddress(publicHost, clientHttpPort);
         serverAddress = new InetSocketAddress(host, serverHttpPort);
     }
@@ -85,6 +89,9 @@ public class NodeInfo implements BiSerializable {
 
     public InetSocketAddress getNodeAddress() {
         return nodeAddress;
+    }
+    public InetSocketAddress getNodeAddressV6() {
+        return nodeAddressV6 != null ? nodeAddressV6 : nodeAddress;
     }
 
     public InetSocketAddress getClientAddress() {
@@ -170,6 +177,10 @@ public class NodeInfo implements BiSerializable {
     }
 
     public String serverUrlString() {
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (host) + ":8080";
+    }
+
+    public String serverUrlStringV6() {
         return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (hostV6 != null ? "["+hostV6+"]" : host) + ":8080";
     }
 
@@ -220,5 +231,9 @@ public class NodeInfo implements BiSerializable {
         return new NodeInfo(new PublicKey(rs.getBytes("public_key")), rs.getInt("node_number"), rs.getString("node_name"), rs.getString("host"),rs.getString("public_host"),
                 rs.getInt("udp_server_port"), rs.getInt("http_client_port"), rs.getInt("http_server_port"));
 
+    }
+
+    public boolean hasV6() {
+        return hostV6 != null;
     }
 }

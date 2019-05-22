@@ -112,7 +112,8 @@ public class UDPAdapter extends DatagramAdapter {
      */
     private void sendPacket(NodeInfo destination, Packet packet) {
         byte[] payload = packet.makeByteArray();
-        DatagramPacket dp = new DatagramPacket(payload, payload.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
+        InetSocketAddress destAddr = myNodeInfo.hasV6() ? destination.getNodeAddressV6() : destination.getNodeAddress();
+        DatagramPacket dp = new DatagramPacket(payload, payload.length, destAddr.getAddress(), destAddr.getPort());
         try {
             report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
             if ((testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS)
