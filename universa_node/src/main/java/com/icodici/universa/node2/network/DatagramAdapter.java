@@ -13,7 +13,6 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -147,6 +146,8 @@ public abstract class DatagramAdapter {
     public void setLostPacketsPercentInTestMode(int percent) {
         this.lostPacketsPercent = percent;
     }
+
+    public abstract int pingNodeUDP(int number, int timeoutMillis);
 
 
     public class TestModes

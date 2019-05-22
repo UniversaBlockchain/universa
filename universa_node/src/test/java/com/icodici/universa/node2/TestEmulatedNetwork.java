@@ -9,9 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
@@ -115,6 +113,16 @@ public class TestEmulatedNetwork extends Network {
     @Override
     public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
         return nodes.get(nodeInfo).checkItem(id);
+    }
+
+    @Override
+    public int pingNodeUDP(int number, int timeoutMillis) {
+        return 0;
+    }
+
+    @Override
+    public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
+        return 0;
     }
 
     public Node getNode(NodeInfo info) {

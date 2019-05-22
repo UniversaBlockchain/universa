@@ -22,7 +22,6 @@ import com.icodici.universa.node2.network.UDPAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -249,6 +248,16 @@ public class TestLocalNetwork extends Network {
     @Override
     public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
         return nodes.get(nodeInfo).checkItem(id);
+    }
+
+    @Override
+    public int pingNodeUDP(int number, int timeoutMillis) {
+        return 0;
+    }
+
+    @Override
+    public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
+        return 0;
     }
 
     // redo it to work right in the local network

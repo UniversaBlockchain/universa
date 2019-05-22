@@ -1250,6 +1250,15 @@ public class Node {
         return true;
     }
 
+    public long pingNodeUDP(int number, int timeoutMillis) {
+        return network.pingNodeUDP(number,timeoutMillis);
+    }
+
+    public long pingNodeTCP(int nodeNumber, int timeoutMillis) {
+        return network.pingNodeTCP(nodeNumber,timeoutMillis);
+    }
+
+
     /// ParcelProcessor ///
 
     private class ParcelProcessor {

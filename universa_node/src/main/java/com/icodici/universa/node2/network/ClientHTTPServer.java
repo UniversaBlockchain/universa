@@ -16,7 +16,6 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -31,6 +30,9 @@ import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -259,6 +261,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("resyncItem", this::resyncItem);
+        addSecureEndpoint("pingNode", this::pingNode);
         addSecureEndpoint("setVerbose", this::setVerbose);
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
@@ -588,7 +591,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                     config.getKeysWhiteList().contains(session.getPublicKey()) ||
                     config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
             )) {
-                System.out.println("approve ERROR: command needs client key from whitelist");
+                System.out.println("resyncItem ERROR: command needs client key from whitelist");
 
                 return Binder.of(
                         "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"resyncItem", "command needs client key from whitelist"));
@@ -603,6 +606,59 @@ public class ClientHTTPServer extends BasicHttpServer {
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"resyncItem", e.getMessage()));
+        }
+    }
+
+    private Binder pingNode(Binder params, Session session) throws CommandFailedException {
+
+        // checking node
+        if (node == null) {
+            throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
+        }
+
+        KeyAddress tmpAddress = null;
+        try {
+            tmpAddress = new KeyAddress("JKEgDs9CoCCymD9TgmjG8UBLxuJwT5GZ3PaZyG6o2DQVGRQPjXHCG8JouC8eZw5Nd1w9krCS");
+        } catch (KeyAddress.IllegalAddressException e) {
+            e.printStackTrace();
+        }
+
+        if(!(
+                tmpAddress.isMatchingKey(session.getPublicKey()) ||
+                        config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                        config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                        config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+        )) {
+            System.out.println("pingNode ERROR: command needs client key from whitelist");
+
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"pingNode", "command needs client key from whitelist"));
+        }
+
+        try {
+            int nodeNumber = params.getIntOrThrow("nodeNumber");
+            int timeoutMillis = params.getInt("timeoutMillis",15000);
+            if(nodeNumber == node.getNumber()) {
+                throw new IllegalArgumentException("Not going to self pingNode");
+            }
+
+            if(netConfig.getInfo(nodeNumber) == null) {
+                throw new IllegalArgumentException("Unkwnown node " + nodeNumber);
+            }
+
+            long responseMillisUDP = node.pingNodeUDP(nodeNumber,timeoutMillis);
+            long responseMillisTCP = node.pingNodeTCP(nodeNumber,timeoutMillis);
+
+
+
+
+            return Binder.of("UDP",responseMillisUDP,"TCP",responseMillisTCP);
+
+
+        } catch (Exception e) {
+            System.out.println("getState ERROR: " + e.getMessage());
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"pingNode", e.getMessage()));
         }
     }
 

@@ -19,7 +19,6 @@ import com.icodici.universa.node2.Notification;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 /**
@@ -119,4 +118,8 @@ public abstract class Network {
     public void removeNode(NodeInfo nodeInfo) {
         netConfig.removeNode(nodeInfo);
     }
+
+    public abstract int pingNodeUDP(int number, int timeoutMillis);
+
+    public abstract int pingNodeTCP(int nodeNumber, int timeoutMillis);
 }

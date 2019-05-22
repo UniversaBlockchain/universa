@@ -13,6 +13,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 
@@ -200,6 +201,32 @@ public class UDPAdapter extends DatagramAdapter {
             report(logLabel, ()->"shutting down... InterruptedException: "+e, VerboseLevel.BASE);
         }
         report(logLabel, ()->"shutting down... done", VerboseLevel.BASE);
+    }
+
+    Map<Integer,AsyncEvent> pingWaiters = new ConcurrentHashMap<>();
+
+    @Override
+    public int pingNodeUDP(int number, int timeoutMillis) {
+        Packet p = new Packet();
+        p.type = PacketTypes.ECHO;
+        p.packetId = Do.randomInt(Integer.MAX_VALUE);
+        p.payload = new byte[]{};
+        p.receiverNodeId = 0;
+        p.senderNodeId = 0;
+
+        AsyncEvent event = new AsyncEvent();
+        long ts = Instant.now().toEpochMilli();
+        pingWaiters.put(p.packetId,event);
+        sendPacket(netConfig.getInfo(number),p);
+
+        try {
+            event.await(timeoutMillis);
+        } catch (TimeoutException|InterruptedException e) {
+            pingWaiters.remove(p.packetId);
+            return -1;
+        }
+
+        return (int) (Instant.now().toEpochMilli()-ts);
     }
 
 
@@ -606,7 +633,12 @@ public class UDPAdapter extends DatagramAdapter {
                                 onReceiveSessionAck(packet);
                                 break;
                             case PacketTypes.ECHO:
-                                threadSocket.send(receivedDatagram);
+                                AsyncEvent e = pingWaiters.remove(packet.packetId);
+                                if( e != null) {
+                                    e.fire();
+                                } else {
+                                    threadSocket.send(receivedDatagram);
+                                }
                                 break;
                             default:
                                 report(logLabel, () -> "received unknown packet type: " + packet.type, VerboseLevel.BASE);

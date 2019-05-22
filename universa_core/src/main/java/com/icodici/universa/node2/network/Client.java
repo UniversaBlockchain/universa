@@ -840,6 +840,22 @@ public class Client {
     }
 
     /**
+     * Pings given node from the node client currently connected to
+     *
+     * Accessible to the network admins only.
+     *
+     * @return dictionary containing UDP and TCP indicating delays. Values are set to -1 in case of ping timeout
+     *
+     * @param nodeNumber node number to send ping to
+     * @param timeoutMillis maximum waiting time
+     *
+     * @throws ClientError
+     */
+    public Binder pingNode(Integer nodeNumber, Integer timeoutMillis) throws ClientError {
+        return protect(() -> httpClient.command("pingNode","nodeNumber", nodeNumber,"timeoutMillis", timeoutMillis));
+    }
+
+    /**
      * Get the processing state of given parcel.
      *
      * @param parcelId id of the parcel to get state of

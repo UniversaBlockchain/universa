@@ -58,6 +58,16 @@ public class TestSingleNetwork extends Network {
         return nodes.get(nodeInfo).checkItem(id);
     }
 
+    @Override
+    public int pingNodeUDP(int number, int timeoutMillis) {
+        return 0;
+    }
+
+    @Override
+    public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
+        return 0;
+    }
+
     public void addNode(NodeInfo ni, Node node) {
         nodes.put(ni, node);
     }

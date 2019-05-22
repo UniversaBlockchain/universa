@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -282,6 +283,38 @@ public class NetworkV2 extends Network {
             }
         }
         return client.getState(id);
+    }
+
+    @Override
+    public int pingNodeUDP(int number, int timeoutMillis) {
+        if(adapter != null)
+            return adapter.pingNodeUDP(number,timeoutMillis);
+
+        return -1;
+    }
+
+    @Override
+    public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
+        try {
+            NodeInfo nodeInfo = netConfig.getInfo(nodeNumber);
+            URL url = new URL((myInfo.hasV6() ? nodeInfo.serverUrlStringV6() : nodeInfo.serverUrlString()) + "/ping");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(timeoutMillis);
+            connection.setReadTimeout(timeoutMillis);
+
+            long ts = Instant.now().toEpochMilli();
+
+            if (200 != connection.getResponseCode())
+                return -1;
+            byte[] data = Do.read(connection.getInputStream());
+
+            return (int) (Instant.now().toEpochMilli()-ts);
+        } catch (IOException e) {
+            return -1;
+        }
     }
 
     private String exceptionCallback(String message) {

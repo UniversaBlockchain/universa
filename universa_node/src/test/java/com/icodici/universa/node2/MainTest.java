@@ -27,7 +27,10 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
+import net.sergeych.diff.Delta;
 import net.sergeych.tools.*;
+import net.sergeych.utils.Base64;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -37,6 +40,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.spongycastle.util.encoders.Hex;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -55,12 +59,11 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -9362,4 +9365,58 @@ public class MainTest {
 
 
 
+    @Test
+    public void pingTest() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n-> {
+            try {
+                n.config.getAddressesWhiteList().add(TestKeys.publicKey(1).getLongAddress());
+            } catch (EncryptionError encryptionError) {
+                encryptionError.printStackTrace();
+            }
+        });
+
+        Client client1 = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(10));
+        Binder resErr  = client1.getClient(0).pingNode(3,10000);
+        assertEquals(((ItemResult)resErr.get("itemResult")).errors.get(0).getError(),Errors.BAD_CLIENT_KEY);
+
+        Client client = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(1));
+
+        for(int i = 0; i < client.size();i++) {
+            for(int j = 0; j < client.size();j++) {
+                if(j == i)
+                    continue;
+                Binder res = client.getClient(i).pingNode(j + 1, 10000);
+
+                System.out.println(i+"->"+j+" " +res);
+                assertTrue(res.getIntOrThrow("UDP") >= 0);
+                assertTrue(res.getIntOrThrow("UDP") < 10);
+
+                assertTrue(res.getIntOrThrow("TCP") >= 0);
+                assertTrue(res.getIntOrThrow("TCP") < 15);
+            }
+        }
+
+
+        ts.nodes.remove(ts.nodes.size()-1).shutdown();
+
+        for(int i = 0; i < client.size()-1;i++) {
+            for(int j = 0; j < client.size();j++) {
+                if(j == i)
+                    continue;
+                Binder res = client.getClient(i).pingNode(j + 1, 500);
+                if(j < client.size()-1) {
+                    assertTrue(res.getIntOrThrow("UDP") >= 0);
+                    assertTrue(res.getIntOrThrow("UDP") < 10);
+                    assertTrue(res.getIntOrThrow("TCP") >= 0);
+                    assertTrue(res.getIntOrThrow("TCP") < 10);
+                } else {
+                    assertEquals(res.getIntOrThrow("UDP"),-1);
+                    assertEquals(res.getIntOrThrow("TCP"),-1);
+                }
+            }
+        }
+
+        ts.shutdown();
+    }
 }
