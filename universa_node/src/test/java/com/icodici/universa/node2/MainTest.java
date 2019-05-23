@@ -1339,6 +1339,7 @@ public class MainTest {
 
         for (int i = 0; i < NODE_COUNT; i++) {
             Main m = createMain("node" + (i + 1), false);
+            m.config.setIsFreeRegistrationsAllowedFromYaml(true);
             mm.add(m);
             Client client = new Client(TestKeys.privateKey(i), m.myInfo, null);
             clients.add(client);

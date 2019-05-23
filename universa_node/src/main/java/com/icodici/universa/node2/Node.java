@@ -545,11 +545,13 @@ public class Node {
      */
     private final void onNotification(Notification notification) {
         if (notification instanceof ParcelNotification) {
-            obtainParcelCommonNotification((ParcelNotification) notification);
+            if(!isSanitating())
+                obtainParcelCommonNotification((ParcelNotification) notification);
         } else if (notification instanceof ResyncNotification) {
             obtainResyncNotification((ResyncNotification) notification);
         } else if (notification instanceof ItemNotification) {
-            obtainCommonNotification((ItemNotification) notification);
+            if(!isSanitating())
+                obtainCommonNotification((ItemNotification) notification);
         } else if (notification instanceof CallbackNotification) {
             callbackService.obtainCallbackNotification((CallbackNotification) notification);
         }
@@ -3333,6 +3335,7 @@ public class Node {
         private ConcurrentHashMap<HashId, Integer> resyncingSubTreeItems = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
         private ConcurrentHashMap<HashId, ItemState> resyncingSubTreeItemsResults = new ConcurrentHashMap<>();
         private ConcurrentHashMap<NodeInfo, Integer> obtainedAnswersFromNodes = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
+        private ScheduledFuture<?> resyncExpirationCallback;
 
         public ResyncProcessor(HashId itemId, Consumer<ResyncingItem> onComplete) {
             this.itemId = itemId;
@@ -3350,7 +3353,7 @@ public class Node {
         public void startResync() {
             report(getLabel(), ()->"ResyncProcessor.startResync(itemId="+itemId+")", DatagramAdapter.VerboseLevel.BASE);
             resyncExpiresAt = Instant.now().plus(config.getMaxResyncTime());
-            executorService.schedule(()->resyncEnded(), config.getMaxResyncTime().getSeconds(), TimeUnit.SECONDS);
+            resyncExpirationCallback = executorService.schedule(()->resyncEnded(), config.getMaxResyncTime().getSeconds(), TimeUnit.SECONDS);
             resyncingItem = new ResyncingItem(itemId, ledger.getRecord(itemId));
             resyncingItem.finishEvent.addConsumer((ri)->onFinishResync(ri));
             List<Integer> periodsMillis = config.getResyncTime();
@@ -3434,9 +3437,15 @@ public class Node {
         }
 
         private void resyncEnded() {
-            if (resyncingItem.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
-                //TODO: how to call this from ResyncProcessor?
-                //rollbackChanges(stateWas);
+            if(resyncingItem.getResyncingState() == ResyncingItemProcessingState.PENDING_TO_COMMIT
+                    || resyncingItem.getResyncingState() == ResyncingItemProcessingState.IS_COMMITTING) {
+
+                executorService.schedule(() -> resyncEnded(), 1, TimeUnit.SECONDS);
+                return;
+
+            } else if(resyncingItem.getResyncingState() == ResyncingItemProcessingState.WAIT_FOR_VOTES) {
+                executorService.schedule(() -> itemSanitationTimeout(resyncingItem.record), 0, TimeUnit.SECONDS);
+            } else if (resyncingItem.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
                 executorService.schedule(() -> itemSanitationFailed(resyncingItem.record), 0, TimeUnit.SECONDS);
             } else {
                 executorService.schedule(() -> itemSanitationDone(resyncingItem.record), 0, TimeUnit.SECONDS);
@@ -3447,6 +3456,7 @@ public class Node {
 
         private void stopResync() {
             resyncer.cancel(true);
+            resyncExpirationCallback.cancel(true);
             resyncProcessors.remove(itemId);
         }
 
@@ -3493,114 +3503,132 @@ public class Node {
 
 
 
-    private void itemSanitationDone(StateRecord record) {
+    private void itemSanitationTimeout(StateRecord record) {
+        synchronized (recordsToSanitate) {
+            if (recordsToSanitate.containsKey(record.getId())) {
 
+                report(getLabel(), () -> concatReportMessage("itemSanitationTimeout ", record.getId(), recordsToSanitate.size()),
+                        DatagramAdapter.VerboseLevel.BASE);
+
+                executorService.schedule(() -> sanitateRecord(record), 5, TimeUnit.SECONDS);
+            }
+        }
+    }
+
+    private void removeLocks(StateRecord record) {
+        Set<HashId> idsToRemove = new HashSet<>();
+        for (StateRecord r : recordsToSanitate.values()) {
+            if (r.getLockedByRecordId() == record.getRecordId()) {
+                try {
+                    itemLock.synchronize(r.getId(), lock -> {
+                        if (record.getState() == ItemState.APPROVED) {
+                            //ITEM ACCEPTED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
+                            if (r.getState() == ItemState.LOCKED) {
+                                r.setState(ItemState.REVOKED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                r.setState(ItemState.APPROVED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            }
+                        } else if (record.getState() == ItemState.DECLINED) {
+                            //ITEM REJECTED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
+                            if (r.getState() == ItemState.LOCKED) {
+                                r.setState(ItemState.APPROVED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                r.destroy();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), null);
+                                }
+                                idsToRemove.add(r.getId());
+                            }
+                        } else if (record.getState() == ItemState.REVOKED) {
+                            //ITEM ACCEPTED AND THEN REVOKED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
+                            if (r.getState() == ItemState.LOCKED) {
+                                r.setState(ItemState.REVOKED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                r.setState(ItemState.APPROVED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            }
+                        } else if (record.getState() == ItemState.UNDEFINED) {
+                            //ITEM UNDEFINED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
+                            if (r.getState() == ItemState.LOCKED) {
+                                r.setState(ItemState.APPROVED);
+                                r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
+                                idsToRemove.add(r.getId());
+                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                r.destroy();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), null);
+                                }
+                                idsToRemove.add(r.getId());
+                            }
+                        }
+                        return null;
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        idsToRemove.stream().forEach(id -> recordsToSanitate.remove(id));
+    }
+
+    private void itemSanitationDone(StateRecord record) {
         synchronized (recordsToSanitate) {
             if(recordsToSanitate.containsKey(record.getId())) {
 
-
                 recordsToSanitate.remove(record.getId());
-                Set<HashId> idsToRemove = new HashSet<>();
-                for (StateRecord r : recordsToSanitate.values()) {
-                    if (r.getLockedByRecordId() == record.getRecordId()) {
-                        try {
-                            itemLock.synchronize(r.getId(), lock -> {
-                                if (record.getState() == ItemState.APPROVED) {
-                                    //ITEM ACCEPTED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
-                                    if (r.getState() == ItemState.LOCKED) {
-                                        r.setState(ItemState.REVOKED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.setState(ItemState.APPROVED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    }
-                                } else if (record.getState() == ItemState.DECLINED) {
-                                    //ITEM REJECTED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
-                                    if (r.getState() == ItemState.LOCKED) {
-                                        r.setState(ItemState.APPROVED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.destroy();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), null);
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    }
-                                } else if (record.getState() == ItemState.REVOKED) {
-                                    //ITEM ACCEPTED AND THEN REVOKED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
-                                    if (r.getState() == ItemState.LOCKED) {
-                                        r.setState(ItemState.REVOKED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.setState(ItemState.APPROVED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    }
-                                } else if (record.getState() == ItemState.UNDEFINED) {
-                                    //ITEM UNDEFINED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
-                                    if (r.getState() == ItemState.LOCKED) {
-                                        r.setState(ItemState.APPROVED);
-                                        r.save();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), new ItemResult(r));
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.destroy();
-                                        synchronized (cache) {
-                                            cache.update(r.getId(), null);
-                                        }
-                                        idsToRemove.add(r.getId());
-                                    }
-                                }
-                                return null;
-                            });
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-
-                idsToRemove.stream().forEach(id -> recordsToSanitate.remove(id));
-
+                removeLocks(record);
+                report(getLabel(), () -> concatReportMessage("itemSanitationDone ", record.getId(), recordsToSanitate.size()),
+                        DatagramAdapter.VerboseLevel.BASE);
             }
 
         }
     }
 
+
+
     private void itemSanitationFailed(StateRecord record) {
-        if(recordsToSanitate.containsKey(record.getId())) {
+        synchronized (recordsToSanitate) {
+            if (recordsToSanitate.containsKey(record.getId())) {
 
-            //System.out.println("itemSanitationFailed at " + myInfo.getNumber() + " item " + record.getId());
+                recordsToSanitate.remove(record.getId());
 
-            //item unknown to network we must restart voting
-            Contract contract = (Contract) ledger.getItem(record);
-            if (contract != null) {
-                // todo: looks like we need re-check and re-register items after sanitation will be finished
-                //Item found in disk cache. Restart voting.
-                record.setState(ItemState.PENDING);
+                record.setState(ItemState.UNDEFINED);
+                removeLocks(record);
+
+                //item unknown to network we must restart voting
+                Contract contract = (Contract) ledger.getItem(record);
+
                 try {
                     itemLock.synchronize(record.getId(), lock -> {
-                        record.save();
+                        record.destroy();
                         synchronized (cache) {
                             cache.update(record.getId(), new ItemResult(record));
                         }
@@ -3609,28 +3637,17 @@ public class Node {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                Object x = checkItemInternal(contract.getId(),null,contract,true,true,true);
-                if (x instanceof ItemProcessor) {
-                    ((ItemProcessor)x).doneEvent.addConsumer(i -> executorService.schedule( () -> itemSanitationDone(record),0,TimeUnit.SECONDS));
-                } else {
-                    throw new IllegalStateException("should never happen because ommitItemResult is true");
+
+                report(getLabel(), () -> concatReportMessage("itemSanitationFailed ", record.getId(), recordsToSanitate.size()),
+                        DatagramAdapter.VerboseLevel.BASE);
+
+                if (contract != null) {
+                    report(getLabel(), () -> concatReportMessage("restart vote after sanitation fail: ", record.getId()),
+                            DatagramAdapter.VerboseLevel.BASE);
+
+                    //Item found in disk cache. Restart voting.
+                    checkItemInternal(contract.getId(), null, contract, true, true, false);
                 }
-//                record.setState(ItemState.UNDEFINED);
-//                record.destroy();
-//                itemSanitationDone(record);
-            } else {
-                //Item not found in cache so we can't restart voting
-                //Nothing we can do here. Just throw item away and remove all locks
-                record.setState(ItemState.UNDEFINED);
-                try {
-                    itemLock.synchronize(record.getId(), lock -> {
-                        record.destroy();
-                        return null;
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                itemSanitationDone(record);
             }
         }
     }
