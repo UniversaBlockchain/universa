@@ -522,7 +522,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             System.out.println("approveParcel ERROR: " + e.getMessage());
             return Binder.of(
-                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
+                    "result", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
         }
     }
 
@@ -568,7 +568,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             e.printStackTrace();
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
-                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"getState", e.getMessage()));
         }
     }
 
@@ -603,7 +603,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             node.resync((HashId) params.get("itemId"));
             return result;
         } catch (Exception e) {
-            System.out.println("getState ERROR: " + e.getMessage());
+            System.out.println("resyncItem ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"resyncItem", e.getMessage()));
         }
@@ -667,7 +667,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                     config.getKeysWhiteList().contains(session.getPublicKey()) ||
                     config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
             )) {
-                System.out.println("approve ERROR: command needs client key from whitelist");
+                System.out.println("setVerbose ERROR: command needs client key from whitelist");
 
                 return Binder.of(
                         "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"setVerbose", "command needs client key from whitelist"));
@@ -708,9 +708,9 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
             return Binder.of("itemResult",ItemResult.UNDEFINED);
         } catch (Exception e) {
-            System.out.println("getState ERROR: " + e.getMessage());
+            System.out.println("setVerbose ERROR: " + e.getMessage());
             return Binder.of(
-                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"resyncItem", e.getMessage()));
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"setVerbose", e.getMessage()));
         }
     }
 
