@@ -196,11 +196,17 @@ public class Reference implements BiSerializable {
 
     //Operations
     final static String[] operations = {"+", "-", "*", "/"};
+    final static String[] roundOperations = {"round(", "floor(", "ceil("};
 
     final static int PLUS = 0;
     final static int MINUS = 1;
     final static int MULT = 2;
     final static int DIV = 3;
+
+    final static int ROUND_OPERATIONS = 100;
+    final static int ROUND = 100;
+    final static int FLOOR = 101;
+    final static int CEIL = 102;
 
     //Conversions
     final static int NO_CONVERSION = 0;
@@ -386,7 +392,17 @@ public class Reference implements BiSerializable {
                 return null;
 
             // evaluate expression
-            if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
+            if (operation == ROUND)
+                result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).setScale(
+                        (int) objectCastToLong(right), RoundingMode.HALF_UP);
+            else if (operation == FLOOR)
+                result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).setScale(
+                        (int) objectCastToLong(right), RoundingMode.FLOOR);
+            else if (operation == CEIL)
+                result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).setScale(
+                        (int) objectCastToLong(right), RoundingMode.CEILING);
+
+            else if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
                 left.getClass().getName().endsWith("BigDecimal") || right.getClass().getName().endsWith("BigDecimal")) {
                 // BigDecimals
                 if (operation == PLUS)
@@ -1029,8 +1045,9 @@ public class Reference implements BiSerializable {
         if (baseContract == null)
             System.out.println("WARNING: Need base contract to check API level. Capabilities API level 4 and above disabled.");
 
-        return baseContract != null && baseContract.getApiLevel() >= 4 && Arrays.stream(operations).anyMatch(op ->
-                operand.contains(op) && (!op.equals(operations[MINUS]) || operand.lastIndexOf(op) > 0));
+        return baseContract != null && baseContract.getApiLevel() >= 4 && (Arrays.stream(operations).anyMatch(op ->
+                operand.contains(op) && (!op.equals(operations[MINUS]) || operand.lastIndexOf(op) > 0)) ||
+                Arrays.stream(roundOperations).anyMatch(operand::startsWith));
     }
 
     private int countCommonParentheses(String expression) {
@@ -1105,13 +1122,33 @@ public class Reference implements BiSerializable {
 
         int opPos = -1;
         int i = -1;
+        int opLen = 1;
         do {
             i++;
             while ((opPos = expression.indexOf(operations[i], opPos + 1)) > 0 && !isTopLevelOperation(expression, opPos));
         } while (opPos <= 0 && i < DIV);
 
-        if (opPos <= 0)
-            throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found top-level operation.");
+        if (opPos <= 0) {
+            // parse round operations
+            for (i = ROUND; i <= CEIL; i++)
+                if (expression.startsWith(roundOperations[i - ROUND_OPERATIONS])) {
+                    if (!expression.endsWith(")"))
+                        throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not expected ')' after rounding operation.");
+
+                    expression = expression.substring(roundOperations[i - ROUND_OPERATIONS].length(), expression.length() - 1);
+
+                    while ((opPos = expression.indexOf(",", opPos + 1)) > 0 && !isTopLevelOperation(expression, opPos));
+                    if (opPos <= 0)
+                        throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not expected ',' after rounding operation.");
+
+                    break;
+                }
+
+            if (i > CEIL)
+                throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found top-level operation.");
+        }
+        else
+            opLen = operations[i].length();
 
         String leftOperand = expression.substring(0, opPos);
         if (leftOperand.length() == 0)
@@ -1135,7 +1172,7 @@ public class Reference implements BiSerializable {
                 typeLeftOperand = compareOperandType.FIELD;
         }
 
-        String rightOperand = expression.substring(opPos + operations[i].length());
+        String rightOperand = expression.substring(opPos + opLen);
         if (rightOperand.length() == 0)
             throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Missing right operand.");
 
@@ -1772,6 +1809,9 @@ public class Reference implements BiSerializable {
         if (leftParentheses)
             result += "(";
 
+        if (operation >= ROUND_OPERATIONS)
+            result += operations[operation];
+
         if (leftOperand != null) {
             result += leftOperand;
 
@@ -1784,7 +1824,10 @@ public class Reference implements BiSerializable {
         if (leftParentheses)
             result += ")";
 
-        result += operations[operation];
+        if (operation >= ROUND_OPERATIONS)
+            result += ",";
+        else
+            result += operations[operation];
 
         if (rightParentheses)
             result += "(";
@@ -1797,6 +1840,9 @@ public class Reference implements BiSerializable {
 
         } else if (right != null)
             result += assemblyExpression(right);
+
+        if (operation >= ROUND_OPERATIONS)
+            result += ")";
 
         if (rightParentheses)
             result += ")";

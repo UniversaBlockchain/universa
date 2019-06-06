@@ -1227,6 +1227,11 @@ state:
          - (((((13 - 7) / (8-6))) + 27) * 3) > (this.state.data.amount - 100) / ref.state.data.bigdecimal2::number
          - (((this.state.data.double4 - this.state.data.int5) * 2) + ((this.state.data.bigdecimal1::number + this.state.data.int5) * this.state.data.int3)) <= (((ref.state.data.double4 + this.state.data.int5) * 2) +  ((this.state.data.bigdecimal1::number + this.state.data.int5) * ref.state.data.int3))
 
+         - floor(172906.1092239, 2) == 172906.1
+         - ceil(450.59012, 3) == 450.591
+         - round(80944.323, -1) == 80940
+         - round(80945.323, -1) == 80950
+
          # mirroring ===========================================================================================\\
 
          - 2*2 == 4
