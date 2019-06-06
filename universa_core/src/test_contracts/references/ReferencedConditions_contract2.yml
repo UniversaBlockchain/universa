@@ -142,6 +142,7 @@ state:
    amount: 1000
    int3: 777
    int4: 7777
+   int7: 3
    float3: 777.0
    float4: 7777.0
    string3: "strong"

@@ -913,6 +913,16 @@ public class CLIMainTest {
         assertFalse(right.containsKey("leftParentheses"));
         assertFalse(right.containsKey("rightParentheses"));
 
+        //round(450.59012, 3) == 450.59
+        parsed = ((Binder)condList.get(5));
+        left = parsed.getBinder("left", null);
+
+        assertEquals(parsed.getString("rightOperand", ""), "450.59");
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("operator"), 7);
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+
         refContract.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         refContract.seal();
         refContract.check();

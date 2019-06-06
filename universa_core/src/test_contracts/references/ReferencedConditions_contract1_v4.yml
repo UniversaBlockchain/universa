@@ -1228,9 +1228,77 @@ state:
          - (((this.state.data.double4 - this.state.data.int5) * 2) + ((this.state.data.bigdecimal1::number + this.state.data.int5) * this.state.data.int3)) <= (((ref.state.data.double4 + this.state.data.int5) * 2) +  ((this.state.data.bigdecimal1::number + this.state.data.int5) * ref.state.data.int3))
 
          - floor(172906.1092239, 2) == 172906.1
+         - floor(172906.1992239, 2) == 172906.19
+         - floor(172906.1992239, 0) == 172906
+         - floor(this.state.data.int5 + 5, -2) == 7700
+         - (floor(this.state.data.int5 + 5, -2) + 4) * 2 == 15408
+         - (floor(this.state.data.int5 + 5, -2) + 4) * 2 == floor(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408
+         - floor(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408 != 15409
+         - floor(this.state.data.int5, -2) == ref.state.data.int3*10 - 70
+         - floor(this.state.data.int5 - 25, -2) + 45 == ref.state.data.int3*10 - 70 + 45
+         - floor(this.state.data.double4, 8) == 32.09204932
+         - floor(ref.state.data.double3, -2) == -1000
+         - floor(this.state.data.double4, 8) >= 32.09204931
+         - floor(this.state.data.float3, -2) <= floor(ref.state.data.float4, -3)
+         - this.state.data.amount <= floor(ref.state.data.bigdecimal2::number*10, -40)
+         - floor(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) == floor(ref.state.data.bigdecimal2::number*this.state.data.bigdecimal2::number, -1000)
+         - floor(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000) <= floor(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000)
+         - floor(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) == floor(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10)
+         - floor(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40 <= floor(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4
+
          - ceil(450.59012, 3) == 450.591
+         - ceil(172906.1092239, 2) == 172906.11
+         - ceil(172906.1992239, 2) == 172906.2
+         - ceil(172906.1992239, 0) == 172907
+         - ceil(ref.state.data.double3, -2) == -900
+         - ceil(this.state.data.int5 + 5, -2) == 7800
+         - (ceil(this.state.data.int5 + 5, -2) + 4) * 2 == 15608
+         - (ceil(this.state.data.int5 + 5, -2) + 4) * 2 == ceil(ref.state.data.int4 + 1, -3) / (5 - 4) + 7608
+         - ceil(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408 != 16409
+         - ceil(this.state.data.int5, -2) == ref.state.data.int3*10 + 30
+         - ceil(this.state.data.int5 - 25, -2) + 45 == ref.state.data.int3*10 + 75
+         - ceil(this.state.data.double4, 8) == 32.09204933
+         - ceil(ref.state.data.double3, -2) == -900
+         - ceil(this.state.data.double4, 8) >= 32.09204932
+         - ceil(this.state.data.float3, -2) <= ceil(ref.state.data.float4, -3)
+         - this.state.data.amount <= ceil(ref.state.data.bigdecimal2::number*10, -40)
+         - ceil(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) == ceil(ref.state.data.bigdecimal2::number*this.state.data.bigdecimal2::number, -1000)
+         - ceil(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000) <= ceil(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000)
+         - ceil(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) == ceil(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10)
+         - ceil(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40 <= ceil(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4
+
          - round(80944.323, -1) == 80940
          - round(80945.323, -1) == 80950
+         - round(450.59012, 3) == 450.59
+         - round(172906.1092239, 2) == 172906.11
+         - round(172906.1992239, 2) == 172906.2
+         - round(172906.1992239, 0) == 172906
+         - round(ref.state.data.double3, -2) == -900
+         - round(this.state.data.int5 + 5, -2) == 7800
+         - (round(this.state.data.int5 + 5, -2) + 4) * 2 == 15608
+         - (round(this.state.data.int5 + 5, -2) + 4) * 2 == round(ref.state.data.int4 + 1, -3) / (5 - 4) + 7608
+         - round(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408 != 16409
+         - round(this.state.data.int5, -2) == ref.state.data.int3*10 + 30
+         - round(this.state.data.int5 - 25, -2) + 45 == ref.state.data.int3*10 - 25
+         - round(this.state.data.double4, 8) == 32.09204932
+         - round(ref.state.data.double3, -2) == -900
+         - round(this.state.data.double4, 8) >= 32.09204931
+         - round(this.state.data.float3, -2) <= round(ref.state.data.float4, -3)
+         - this.state.data.amount <= round(ref.state.data.bigdecimal2::number*10, -40)
+         - round(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) == round(ref.state.data.bigdecimal2::number*this.state.data.bigdecimal2::number, -1000)
+         - round(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000) <= round(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000)
+         - round(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) == round(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10)
+         - round(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40 <= round(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4
+
+         - floor(172906.1092239, 2) == round(172906.1042239, 2)
+         - round(6.104, 2) == floor(ceil(6.1056, 3), 2)
+         - round(6.104, 22 - 20) == floor(ceil(6.1056, 5-2), 1 + 1)
+         - round(6.105, 2) >= floor(ceil(6.1056, 3), 2)
+         - round(6.105, 2) != floor(ceil(6.106898, 3), 2)
+         - floor(ceil(6.1156, 3), 2) > round(floor(6.1000008, 3), 2)
+         - round(6.104, this.state.data.int6) == floor(ceil(6.1056, ref.state.data.int7), 2)
+         - round(6.104, ref.state.data.int7 - 1) == floor(ceil(6.1056, ref.state.data.int7), 2)
+         - round(6.104, this.state.data.int8 - ref.state.data.int7) == floor(ceil(6.1056, this.state.data.int8 - this.state.data.int6), 2)
 
          # mirroring ===========================================================================================\\
 
@@ -1296,6 +1364,42 @@ state:
          - (this.state.data.amount - 100) / ref.state.data.bigdecimal2::number < (((((13 - 7) / (8-6))) + 27) * 3)
          - (((ref.state.data.double4 + this.state.data.int5) * 2) +  ((this.state.data.bigdecimal1::number + this.state.data.int5) * ref.state.data.int3)) >= (((this.state.data.double4 - this.state.data.int5) * 2) + ((this.state.data.bigdecimal1::number + this.state.data.int5) * this.state.data.int3))
 
+         - 172906.1 == floor(172906.1092239, 2)
+         - 172906.19 == floor(172906.1992239, 2)
+         - 172906 == floor(172906.1992239, 0)
+         - floor(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408 == (floor(this.state.data.int5 + 5, -2) + 4) * 2
+         - ref.state.data.int3*10 - 70 == floor(this.state.data.int5, -2)
+         - ref.state.data.int3*10 - 70 + 45 == floor(this.state.data.int5 - 25, -2) + 45
+         - 32.09204932 == floor(this.state.data.double4, 8)
+         - floor(ref.state.data.float4, -3) >= floor(this.state.data.float3, -2)
+         - floor(ref.state.data.bigdecimal2::number*10, -40) >= this.state.data.amount
+         - floor(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) >= floor(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000)
+         - floor(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4 >= floor(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40
+
+         - 172906.11 == ceil(172906.1092239, 2)
+         - 172906.2 == ceil(172906.1992239, 2)
+         - -900 == ceil(ref.state.data.double3, -2)
+         - 7800 == ceil(this.state.data.int5 + 5, -2)
+         - ceil(ref.state.data.int4 + 1, -3) / (5 - 4) + 7608 == (ceil(this.state.data.int5 + 5, -2) + 4) * 2
+         - ref.state.data.int3*10 + 75 == ceil(this.state.data.int5 - 25, -2) + 45
+         - 32.09204933 == ceil(this.state.data.double4, 8)
+         - 32.09204932 <= ceil(this.state.data.double4, 8)
+         - ceil(ref.state.data.float4, -3) >= ceil(this.state.data.float3, -2)
+         - ceil(ref.state.data.bigdecimal2::number*10, -40) >= this.state.data.amount
+         - ceil(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) >= ceil(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000)
+         - ceil(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4 >= ceil(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40
+
+         - 450.59 == round(450.59012, 3)
+         - 172906.11 == round(172906.1092239, 2)
+         - 15608 == (round(this.state.data.int5 + 5, -2) + 4) * 2
+         - round(ref.state.data.int4 + 1, -3) / (5 - 4) + 7608 == (round(this.state.data.int5 + 5, -2) + 4) * 2
+         - 16409 != round(ref.state.data.int4 + 1, -3) / (5 - 4) + 8408
+         - 32.09204931 <= round(this.state.data.double4, 8)
+         - round(ref.state.data.float4, -3) >= round(this.state.data.float3, -2)
+         - round(ref.state.data.bigdecimal2::number*10, -40) >= this.state.data.amount
+         - round(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) >= round(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000)
+         - round(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4 >= round(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40
+
          # mirroring ===========================================================================================//
 
  # required section. any application data that could be changed.
@@ -1304,6 +1408,8 @@ state:
    int3: 777
    int4: 7777
    int5: 7770
+   int6: 2
+   int8: 5
    float3: 777.0
    float4: 7777.0
    string3: "strong"

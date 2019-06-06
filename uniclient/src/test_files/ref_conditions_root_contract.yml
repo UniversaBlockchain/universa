@@ -194,6 +194,7 @@ state:
              - ((((12 + ((4 * ((10 + 5)))))))) == 72
              - ((((((((-5)+2))))))) < 0
              - (this.state.data.int_val - 5) / (43 + 7) * 20 == ((((this.state.data.int_val - 5) / 10 - 5) + 20))
+             - round(450.59012, 3) == 450.59
 
  # required section. any application data that could be changed.
  data:
