@@ -1810,7 +1810,7 @@ public class Reference implements BiSerializable {
             result += "(";
 
         if (operation >= ROUND_OPERATIONS)
-            result += operations[operation];
+            result += roundOperations[operation - ROUND_OPERATIONS];
 
         if (leftOperand != null) {
             result += leftOperand;
