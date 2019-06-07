@@ -918,10 +918,23 @@ public class CLIMainTest {
         left = parsed.getBinder("left", null);
 
         assertEquals(parsed.getString("rightOperand", ""), "450.59");
-        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
         assertEquals(parsed.getIntOrThrow("operator"), 7);
         assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 3);
         assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 2);
+        assertFalse(parsed.containsKey("leftParentheses"));
+        assertFalse(parsed.containsKey("rightParentheses"));
+
+        assertEquals(left.getString("leftOperand", ""), "450.59012");
+        assertEquals(left.getString("rightOperand", ""), "3");
+        assertEquals(left.getIntOrThrow("rightConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfLeftOperand"), 2);
+        assertEquals(left.getIntOrThrow("leftConversion"), 0);
+        assertEquals(left.getIntOrThrow("typeOfRightOperand"), 2);
+        assertEquals(left.getIntOrThrow("operation"), 100);
+        assertFalse(left.containsKey("leftParentheses"));
+        assertFalse(left.containsKey("rightParentheses"));
 
         refContract.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         refContract.seal();
@@ -1007,6 +1020,7 @@ public class CLIMainTest {
         assertTrue((list.contains("        - 12+(4*(10+5))==72")));
         assertTrue((list.contains("        - (-5)+2<0")));
         assertTrue((list.contains("        - (this.state.data.int_val-5)/(43+7)*20==((this.state.data.int_val-5)/10-5)+20")));
+        assertTrue((list.contains("        - round(450.59012,3)==450.59")));
     }
 
     @Test
