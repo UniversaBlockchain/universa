@@ -743,8 +743,9 @@ public class PostgresLedger implements Ledger {
                 }
                 putToCache(stateRecord);
             } else {
-                db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                db.update("update ledger set state=?, created_at=?, expires_at=?, locked_by_id=? where id=?",
                         stateRecord.getState().ordinal(),
+                        Ut.unixTime(stateRecord.getCreatedAt()),
                         Ut.unixTime(stateRecord.getExpiresAt()),
                         stateRecord.getLockedByRecordId(),
                         stateRecord.getRecordId()
