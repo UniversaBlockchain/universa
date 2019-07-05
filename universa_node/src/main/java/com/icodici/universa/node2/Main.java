@@ -196,7 +196,7 @@ public class Main {
             int negative = (int) Math.ceil(n * 0.11);
             if (negative < 1)
                 negative = 1;
-            int positive = (int) Math.floor(n * 0.90);
+            int positive = (int) Math.round(n * 0.90);
             if(positive == 0)
                 positive = 1;
             if( negative+positive == n)
