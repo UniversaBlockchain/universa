@@ -9434,4 +9434,74 @@ public class MainTest {
         ts.shutdown();
     }
 
+    public static Contract joinWithDelay(Contract personUnits, Contract bankUnits, Duration delay, Set<PrivateKey> ownersKeys, String fieldName) {
+        Contract result = personUnits.createRevision(ownersKeys);
+        result.addRevokingItems(bankUnits);
+
+        BigDecimal sum = new BigDecimal(personUnits.getStateData().get(fieldName).toString()).add(new BigDecimal(bankUnits.getStateData().get(fieldName).toString()));
+
+        result.getStateData().put(fieldName, sum.toString());
+
+        Reference ownerRef = new Reference(result);
+        ownerRef.type = Reference.TYPE_TRANSACTIONAL;
+        ownerRef.name = "refOwner";
+        ownerRef.setConditions(Binder.of("all_of",Do.listOf(
+                "now>this.transactional.data.valid_from")));
+        result.addReference(ownerRef);
+        result.getOwner().addRequiredReference("refOwner", Role.RequiredMode.ALL_OF);
+        result.getTransactionalData().put("valid_from",ZonedDateTime.now().plus(delay));
+
+        return result;
+    }
+
+    @Test
+    public void joinWithDelayTest() throws Exception{
+
+        PrivateKey bankKey = TestKeys.privateKey(1);
+        PrivateKey personKey = TestKeys.privateKey(2);
+
+
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(bankKey)),new HashSet<>(Do.listOf(bankKey.getPublicKey())),new BigDecimal("1000"));
+        token.seal();
+        assertTrue(token.check());
+
+        Contract bankUnits = ContractsService.createSplit(token,new BigDecimal("200"),"amount",new HashSet<>(Do.listOf(bankKey)));
+        Contract personalUnits = (Contract) bankUnits.getNewItems().iterator().next();
+        personalUnits.setOwnerKey(TestKeys.privateKey(2));
+        personalUnits.seal();
+        bankUnits.seal();
+        assertTrue(bankUnits.check());
+
+
+        final long DELAY = 3000;
+
+        Contract joinResult = joinWithDelay(personalUnits,bankUnits,Duration.ofMillis(DELAY),new HashSet<>(Do.listOf(bankKey,personKey)),"amount");
+        joinResult.seal();
+        assertTrue(joinResult.check());
+
+
+
+        Contract transferBeforeDelayPassed = joinResult.createRevision(personKey);
+        transferBeforeDelayPassed.setOwnerKey(TestKeys.publicKey(3));
+        transferBeforeDelayPassed.seal();
+        assertFalse(transferBeforeDelayPassed.check());
+
+        //Timestamps are trunicated to seconds. We must add a second to delay to be sure.
+        Thread.sleep(DELAY+1000);
+
+
+        Contract transferAfterDelayPassedWrongKey = joinResult.createRevision(bankKey);
+        transferAfterDelayPassedWrongKey.setOwnerKey(TestKeys.publicKey(3));
+        transferAfterDelayPassedWrongKey.seal();
+        transferAfterDelayPassedWrongKey.check();
+        assertFalse(transferAfterDelayPassedWrongKey.isOk());
+
+        Contract transferAfterDelayPassed = joinResult.createRevision(personKey);
+        transferAfterDelayPassed.setOwnerKey(TestKeys.publicKey(3));
+        transferAfterDelayPassed.seal();
+        transferAfterDelayPassed.check();
+        assertTrue(transferAfterDelayPassed.isOk());
+
+    }
+
 }
