@@ -165,6 +165,16 @@ public class Reference implements BiSerializable {
         return reference;
     }
 
+
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof Reference))
+            return false;
+        Binder dataThis = serialize(new BiSerializer());
+        Binder dataA = ((Reference)obj).serialize(new BiSerializer());
+        return dataThis.equals(dataA);
+    }
+
     public boolean equals(Reference a) {
         Binder dataThis = serialize(new BiSerializer());
         Binder dataA = a.serialize(new BiSerializer());
@@ -524,7 +534,8 @@ public class Reference implements BiSerializable {
                             leftOperandContract = checkedContract;
 
                     if (leftOperandContract == null)
-                        throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand.substring(0, firstPointPos));
+                        return false;
+                        //throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand.substring(0, firstPointPos));
 
                     leftOperand = leftOperand.substring(firstPointPos + 1);
                 } else

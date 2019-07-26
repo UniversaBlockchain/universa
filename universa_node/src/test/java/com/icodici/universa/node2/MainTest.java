@@ -27,10 +27,7 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
-import net.sergeych.diff.Delta;
 import net.sergeych.tools.*;
-import net.sergeych.utils.Base64;
-import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -40,7 +37,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.spongycastle.util.encoders.Hex;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -55,6 +52,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
@@ -63,7 +61,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -73,6 +70,7 @@ import static org.junit.Assert.*;
 
 @Ignore("start it manually")
 public class MainTest {
+
 
     @Ignore
     @Test
@@ -9501,6 +9499,586 @@ public class MainTest {
         transferAfterDelayPassed.seal();
         transferAfterDelayPassed.check();
         assertTrue(transferAfterDelayPassed.isOk());
+
+    }
+
+
+
+
+
+    static final private String FIELD_COLLATERAL_ID = "col_id";
+    static final private String PATH_COLLATERAL_ID= "state.data."+FIELD_COLLATERAL_ID;
+
+    //static final private String FIELD_COLLATERAL_TEMPLATE = "col_template";
+    //static final private String PATH_COLLATERAL_TEMPLATE= "state.data."+FIELD_COLLATERAL_TEMPLATE;
+
+    static final private String FIELD_REPAYMENT_TEMPLATE = "rep_template";
+    static final private String PATH_REPAYMENT_TEMPLATE= "state.data."+FIELD_REPAYMENT_TEMPLATE;
+
+
+    static final private String FIELD_LOAN_AMOUNT = "loan_amount";
+    static final private String PATH_LOAN_AMOUNT= "definition.data."+FIELD_LOAN_AMOUNT;
+
+    static final private String FIELD_MINTABLE_LOAN_ISSUER = "loan_issuer";
+    static final private String PATH_MINTABLE_LOAN_ISSUER= "definition.data."+FIELD_MINTABLE_LOAN_ISSUER;
+
+    static final private String FIELD_MINTABLE_LOAN_CURRENCY = "loan_currency";
+    static final private String PATH_MINTABLE_LOAN_CURRENCY= "definition.data."+FIELD_MINTABLE_LOAN_CURRENCY;
+
+    static final private String FIELD_FIXED_SUPPLY_LOAN_ORIGIN = "loan_origin";
+    static final private String PATH_FIXED_SUPPLY_LOAN_ORIGIN= "definition.data."+ FIELD_FIXED_SUPPLY_LOAN_ORIGIN;
+
+
+
+    static final private String FIELD_REPAYMENT_AMOUNT = "repayment_amount";
+    static final private String PATH_REPAYMENT_AMOUNT= "definition.data."+FIELD_REPAYMENT_AMOUNT;
+
+    static final private String FIELD_MINTABLE_REPAYMENT_ISSUER = "repayment_issuer";
+    static final private String PATH_MINTABLE_REPAYMENT_ISSUER= "definition.data."+FIELD_MINTABLE_REPAYMENT_ISSUER;
+
+    static final private String FIELD_MINTABLE_REPAYMENT_CURRENCY = "repayment_currency";
+    static final private String PATH_MINTABLE_REPAYMENT_CURRENCY= "definition.data."+FIELD_MINTABLE_REPAYMENT_CURRENCY;
+
+    static final private String FIELD_FIXED_SUPPLY_REPAYMENT_ORIGIN = "repayment_origin";
+    static final private String PATH_FIXED_SUPPLY_REPAYMENT_ORIGIN= "definition.data."+FIELD_FIXED_SUPPLY_REPAYMENT_ORIGIN;
+
+
+
+
+    static final private String FIELD_LENDER = "lender";
+    static final private String PATH_LENDER = "definition.data."+FIELD_LENDER;
+    static final private String FIELD_BORROWER = "borrower";
+    static final private String PATH_BORROWER = "definition.data."+FIELD_BORROWER;
+
+    static final private String FIELD_STATUS = "status";
+    static final private String PATH_STATUS = "state.data."+FIELD_STATUS;
+    static final private String FIELD_EXPIRES = "defaultAt";
+    static final private String PATH_EXPIRES = "definition.data."+FIELD_EXPIRES;
+    static final private String STATUS_INIT = "init";
+    static final private String STATUS_IN_PROGRESS = "in_progress";
+    static final private String STATUS_DEFAULT = "default";
+    static final private String STATUS_REPAID = "repayed";
+    static final private String STATUS_CLOSED = "closed";
+
+    private static final boolean MINTABLE = false;
+
+
+    public void setCollateralOwnerAndRefs(Contract contract, HashId loanContractId, KeyAddress lenderAddress, KeyAddress borrowerAddress) {
+
+        //TODO: fix workaround. transactional refs are only serialized if transactional exists
+        contract.getTransactionalData();
+
+        Reference refDefault = new Reference(contract);
+        refDefault.name = "refDefault";
+        refDefault.type = Reference.TYPE_TRANSACTIONAL;
+        refDefault.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==\""+loanContractId.toBase64String()+"\"",
+                "ref."+PATH_STATUS+"==\""+STATUS_DEFAULT+"\""
+        )));
+
+        contract.addReference(refDefault);
+
+        Reference refClosed = new Reference(contract);
+        refClosed.name = "refClosed";
+        refClosed.type = Reference.TYPE_TRANSACTIONAL;
+        refClosed.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==\""+loanContractId.toBase64String()+"\"",
+                "ref."+PATH_STATUS+"==\""+STATUS_CLOSED+"\""
+        )));
+
+        contract.addReference(refClosed);
+
+        SimpleRole borrower = new SimpleRole("@b",Do.listOf(borrowerAddress));
+        borrower.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
+
+        SimpleRole lender = new SimpleRole("@l",Do.listOf(lenderAddress));
+        lender.addRequiredReference("refDefault", Role.RequiredMode.ALL_OF);
+
+        ListRole owner = new ListRole("owner");
+        owner.addRole(borrower);
+        owner.addRole(lender);
+        owner.setMode(ListRole.Mode.ANY);
+        contract.registerRole(owner);
+
+    }
+
+
+    public void setRepaymentOwnerAndRefs(Contract contract, HashId loanContractId, KeyAddress lenderAddress) {
+
+        //TODO: fix workaround. transactional refs are only serialized if transactional exists
+        contract.getTransactionalData().set("is_repayment","yes");
+
+        Reference refClosed = new Reference(contract);
+        refClosed.name = "refClosed";
+        refClosed.type = Reference.TYPE_TRANSACTIONAL;
+        refClosed.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==\""+loanContractId.toBase64String()+"\"",
+                "ref."+PATH_STATUS+"==\""+STATUS_CLOSED+"\""
+        )));
+
+        contract.addReference(refClosed);
+
+        SimpleRole owner = new SimpleRole("owner",Do.listOf(lenderAddress));
+        owner.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
+        contract.registerRole(owner);
+    }
+
+
+
+    public Contract[] initSecureLoan(Client client, PrivateKey initKey, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Contract collateral, String repaymentAmount) throws IOException {
+        Contract secureLoan = new Contract(initKey);
+        secureLoan.setExpiresAt(ZonedDateTime.now().plusYears(100));
+
+
+
+        //MODIFY STATE DATA PERMISSIONS
+        //INIT->IN_PROGRESS
+        SimpleRole initRole = new SimpleRole("@init",Do.listOf(lenderAddress,borrowerAddress));
+        initRole.addRequiredReference("refInit", Role.RequiredMode.ALL_OF);
+        //initRole.addRequiredReference("refLoan", Role.RequiredMode.ALL_OF);
+
+        ModifyDataPermission initPermission =
+                new ModifyDataPermission(initRole,
+                        Binder.of("fields",Binder.of(
+                                FIELD_STATUS,Do.listOf(STATUS_IN_PROGRESS),
+                                "/references",null,
+                                //FIELD_COLLATERAL_TEMPLATE, null,
+                                FIELD_REPAYMENT_TEMPLATE, null,
+                                FIELD_COLLATERAL_ID, null
+                                )));
+        secureLoan.addPermission(initPermission);
+
+        //IN_PROGRESS->DEFAULT
+        SimpleRole defaultRole = new SimpleRole("@default",Do.listOf(lenderAddress));
+        defaultRole.addRequiredReference("refDefault", Role.RequiredMode.ALL_OF);
+
+        ModifyDataPermission defaultPermission =
+                new ModifyDataPermission(defaultRole,
+                        Binder.of("fields",Binder.of(FIELD_STATUS,Do.listOf(STATUS_DEFAULT))));
+        secureLoan.addPermission(defaultPermission);
+
+
+
+        //IN_PROGRESS->REPAID
+        SimpleRole repaidRole = new SimpleRole("@repaid",Do.listOf(borrowerAddress));
+        //this is here just to make it 'role reference'
+        repaidRole.addRequiredReference("refRepayment", Role.RequiredMode.ALL_OF);
+        //this is where the actual check happens
+        repaidRole.addRequiredReference("refRepaid", Role.RequiredMode.ALL_OF);
+
+
+        ModifyDataPermission repaidPermission =
+                new ModifyDataPermission(repaidRole,
+                        Binder.of("fields",Binder.of(FIELD_STATUS,Do.listOf(STATUS_REPAID))));
+        secureLoan.addPermission(repaidPermission);
+
+
+        //REPAID->CLOSED
+        SimpleRole closedRole = new SimpleRole("@closed",Do.listOf(borrowerAddress,lenderAddress));
+        closedRole.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
+
+        ModifyDataPermission closedPermission =
+                new ModifyDataPermission(closedRole,
+                        Binder.of("fields",Binder.of(FIELD_STATUS,Do.listOf(STATUS_CLOSED))));
+        secureLoan.addPermission(closedPermission);
+
+
+
+
+        secureLoan.getDefinition().getData().put(FIELD_LENDER,lenderAddress.toString());
+        secureLoan.getDefinition().getData().put(FIELD_BORROWER,borrowerAddress.toString());
+        secureLoan.getDefinition().getData().put(FIELD_EXPIRES,ZonedDateTime.now().plusSeconds(5).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))));
+
+        secureLoan.getDefinition().getData().put(FIELD_LOAN_AMOUNT,loan.getStateData().get("amount"));
+        secureLoan.getDefinition().getData().put(FIELD_REPAYMENT_AMOUNT,repaymentAmount);
+        if(MINTABLE) {
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_LOAN_CURRENCY, loan.getDefinition().getData().get("currency"));
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_REPAYMENT_CURRENCY, loan.getDefinition().getData().get("currency"));
+
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_LOAN_ISSUER, ((SimpleRole)loan.getIssuer()).getSimpleKeyAddresses().iterator().next().toString());
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_REPAYMENT_ISSUER, ((SimpleRole)loan.getIssuer()).getSimpleKeyAddresses().iterator().next().toString());
+        } else {
+            secureLoan.getDefinition().getData().put(FIELD_FIXED_SUPPLY_LOAN_ORIGIN, loan.getOrigin().toBase64String());
+            secureLoan.getDefinition().getData().put(FIELD_FIXED_SUPPLY_REPAYMENT_ORIGIN, loan.getOrigin().toBase64String());
+        }
+
+        secureLoan.getStateData().put(FIELD_STATUS, STATUS_INIT);
+
+        //TODO: try NULL and see what happens
+        //secureLoan.getStateData().put(FIELD_COLLATERAL_TEMPLATE,"undefined");
+        secureLoan.getStateData().put(FIELD_COLLATERAL_ID,"undefined");
+        secureLoan.getStateData().put(FIELD_REPAYMENT_TEMPLATE,"undefined");
+
+        Reference refInit = new Reference(secureLoan);
+        refInit.name = "refInit";
+        refInit.type = Reference.TYPE_EXISTING_STATE;
+        refInit.setConditions(Binder.of("all_of",
+                Do.listOf(
+                        "this."+PATH_STATUS+"==\""+STATUS_INIT+"\""
+                )));
+        secureLoan.addReference(refInit);
+
+
+        //REGISTER 1ST REV of secure loan to get its origin
+        secureLoan.seal();
+
+        ItemResult ir = client.register(secureLoan.getPackedTransaction(), 10000);
+        System.out.println(ir);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+
+        //Contract collateralTemplate = new Contract(initKey);
+        //setCollateralOwnerAndRefs(collateralTemplate,secureLoan.getOrigin(),lenderAddress,borrowerAddress);
+        //collateralTemplate.seal();
+
+
+        Contract repaymentTemplate = new Contract(initKey);
+        setRepaymentOwnerAndRefs(repaymentTemplate,secureLoan.getOrigin(),lenderAddress);
+        repaymentTemplate.seal();
+
+
+
+        //transfer collateral to complex secure loan status dependant role
+        collateral = collateral.createRevision();
+        setCollateralOwnerAndRefs(collateral,secureLoan.getOrigin(),lenderAddress,borrowerAddress);
+        collateral.seal();
+
+        //transfer loan directry to borrower
+        loan = loan.createRevision();
+        loan.setOwnerKey(borrowerAddress);
+        loan.seal();
+
+
+        secureLoan = secureLoan.createRevision();
+        secureLoan.setCreatorKeys(lenderAddress,borrowerAddress);
+        secureLoan.getStateData().put(FIELD_STATUS,STATUS_IN_PROGRESS);
+        //secureLoan.getStateData().put(FIELD_COLLATERAL_TEMPLATE,collateralTemplate.getId().toBase64String());
+        secureLoan.getStateData().put(FIELD_COLLATERAL_ID,collateral.getId().toBase64String());
+        secureLoan.getStateData().put(FIELD_REPAYMENT_TEMPLATE,repaymentTemplate.getId().toBase64String());
+
+
+
+
+        //Add references to template for collateral and repayment (to compare owner and refs with the real ones)
+        /*Reference refCollateralTemplate = new Reference(secureLoan);
+        refCollateralTemplate.name = "refCollateralTemplate";
+        refCollateralTemplate.type = Reference.TYPE_EXISTING_STATE;
+        refCollateralTemplate.setConditions(Binder.of("all_of",Do.listOf("ref.id==this."+PATH_COLLATERAL_TEMPLATE)));
+        secureLoan.addReference(refCollateralTemplate);*/
+
+        Reference refRepaymentTemplate = new Reference(secureLoan);
+        refRepaymentTemplate.name = "refRepaymentTemplate";
+        refRepaymentTemplate.type = Reference.TYPE_EXISTING_STATE;
+        refRepaymentTemplate.setConditions(Binder.of("all_of",Do.listOf("ref.id==this."+PATH_REPAYMENT_TEMPLATE)));
+        secureLoan.addReference(refRepaymentTemplate);
+
+
+        //Reference to loan
+        /*Reference refLoan = new Reference(secureLoan);
+        refLoan.name = "refLoan";
+        refLoan.type = Reference.TYPE_EXISTING_STATE;
+        List<Object> conditions = Do.listOf(
+                "ref.state.data.amount==this." + PATH_LOAN_AMOUNT,
+                "ref.owner==this."+PATH_BORROWER,
+                "refCollateral.owner==refCollateralTemplate.owner",
+                "refCollateral.transactional.references.refClosed==refCollateralTemplate.transactional.references.refClosed",
+                "refCollateral.transactional.references.refDefault==refCollateralTemplate.transactional.references.refDefault"
+        );
+
+        if(MINTABLE) {
+            conditions.add("ref.issuer==this."+PATH_MINTABLE_LOAN_ISSUER);
+            conditions.add("ref.definition.data.currency==this."+PATH_MINTABLE_LOAN_CURRENCY);
+        } else {
+            conditions.add("ref.origin==this."+PATH_FIXED_SUPPLY_LOAN_ORIGIN);
+        }
+        refLoan.setConditions(Binder.of("all_of",conditions));
+        secureLoan.addReference(refLoan);*/
+
+
+        //Reference to repayment
+        Reference refRepayment = new Reference(secureLoan);
+        refRepayment.name = "refRepayment";
+        refRepayment.type = Reference.TYPE_EXISTING_STATE;
+        List<Object> conditions = Do.listOf(
+                "ref.state.data.amount==this." + PATH_REPAYMENT_AMOUNT,
+                "ref.transactional.data.is_repayment==\"yes\""
+        );
+        if(MINTABLE) {
+            conditions.add("ref.issuer==this."+PATH_MINTABLE_REPAYMENT_ISSUER);
+            conditions.add("ref.definition.data.currency==this."+PATH_MINTABLE_REPAYMENT_CURRENCY);
+        } else {
+            conditions.add("ref.origin==this."+PATH_FIXED_SUPPLY_REPAYMENT_ORIGIN);
+        }
+        refRepayment.setConditions(Binder.of("all_of",conditions));
+        secureLoan.addReference(refRepayment);
+
+
+        //Reference to collateral
+        //Reference refCollateral = new Reference(secureLoan);
+        //refCollateral.name = "refCollateral";
+        //refCollateral.type = Reference.TYPE_EXISTING_STATE;
+        //refCollateral.setConditions(Binder.of("all_of",Do.listOf("ref.id==this."+PATH_COLLATERAL_ID)));
+        //secureLoan.addReference(refCollateral);
+
+
+
+        Reference refDefault = new Reference(secureLoan);
+        refDefault.name = "refDefault";
+        refDefault.type = Reference.TYPE_EXISTING_STATE;
+        refDefault.setConditions(Binder.of("all_of",
+                Do.listOf(
+                        "this."+PATH_STATUS+"==\""+STATUS_IN_PROGRESS+"\"",
+                        "now>this."+PATH_EXPIRES
+                )));
+        secureLoan.addReference(refDefault);
+
+        Reference refRepaid = new Reference(secureLoan);
+        refRepaid.name = "refRepaid";
+        refRepaid.type = Reference.TYPE_EXISTING_STATE;
+        refRepaid.setConditions(Binder.of("all_of",
+                Do.listOf(
+                        "this."+PATH_STATUS+"==\""+STATUS_IN_PROGRESS+"\"",
+                        "refRepayment.owner==refRepaymentTemplate.owner",
+                        "refRepayment.transactional.references.refClosed==refRepaymentTemplate.transactional.references.refClosed"
+                )));
+        secureLoan.addReference(refRepaid);
+
+        Reference refclosed = new Reference(secureLoan);
+        refclosed.name = "refClosed";
+        refclosed.type = Reference.TYPE_EXISTING_STATE;
+        refclosed.setConditions(Binder.of("all_of",
+                Do.listOf(
+                        "this."+PATH_STATUS+"==\""+ STATUS_REPAID+"\""
+                )));
+        secureLoan.addReference(refclosed);
+
+        secureLoan.addNewItems(collateral);
+        //secureLoan.addNewItems(collateralTemplate);
+        secureLoan.addNewItems(repaymentTemplate);
+        secureLoan.addNewItems(loan);
+
+        secureLoan.seal();
+
+        return new Contract[] {secureLoan,loan,collateral,repaymentTemplate};
+    }
+
+
+
+    @Test
+    public void secureLoanTestDefault() throws Exception{
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        PrivateKey lenderKey = TestKeys.privateKey(1);
+        PrivateKey borrowerKey = TestKeys.privateKey(2);
+        PrivateKey initKey = TestKeys.privateKey(3);
+
+        KeyAddress lenderAddress = lenderKey.getPublicKey().getLongAddress();
+        KeyAddress borrowerAddress = borrowerKey.getPublicKey().getLongAddress();
+
+
+        //create token for lender
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),"1000");
+        token.seal();
+
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //split 200 and transfer to borrower
+        token = ContractsService.createSplit(token,new BigDecimal("200"),"amount",new HashSet<>(Do.listOf(lenderKey)));
+        Contract rest = (Contract) token.getNewItems().iterator().next();
+        rest.setOwnerKeys(borrowerAddress);
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+
+        //create collateral on behalf of borrower
+        Contract collateral = new Contract(borrowerKey);
+        collateral.getStateData().put("description","This is very valuable contract");
+        collateral.seal();
+        assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000");
+
+        Contract secureLoan = res[0];
+
+        secureLoan.addSignatureToSeal(borrowerKey);
+        secureLoan.addSignatureToSeal(lenderKey);
+
+        ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        token = res[1];
+        collateral = res[2];
+        Contract repaymentTemplate = res[3];
+
+
+        //colateral isn't owned by neither borrower nor lender.
+        Contract col1 = collateral.createRevision(borrowerKey,lenderKey);
+        col1.setOwnerKeys(initKey);
+        col1.seal();
+        col1.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(col1.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        //DEFAULT IS NOT AVAILABLE
+        Contract defaultAttempt = secureLoan.createRevision(lenderKey);
+        defaultAttempt.getStateData().set(FIELD_STATUS,STATUS_DEFAULT);
+        defaultAttempt.seal();
+        defaultAttempt.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(defaultAttempt.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        Thread.sleep(6000);
+
+        //DEFAULT IS AVAILABLE
+        secureLoan = secureLoan.createRevision(lenderKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_DEFAULT);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //colateral is now owner by lender
+        Contract col2 = collateral.createRevision(lenderKey);
+        col2.setOwnerKeys(initKey);
+        col2.seal();
+        col2.getTransactionPack().addReferencedItem(secureLoan);
+
+        col2 = Contract.fromPackedTransaction(col2.getPackedTransaction());
+        assertTrue(col2.check());
+        ir = ts.client.register(col2.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        ts.shutdown();
+    }
+
+
+
+    @Test
+    public void secureLoanTestRepayment() throws Exception{
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        PrivateKey lenderKey = TestKeys.privateKey(1);
+        PrivateKey borrowerKey = TestKeys.privateKey(2);
+        PrivateKey initKey = TestKeys.privateKey(3);
+
+        KeyAddress lenderAddress = lenderKey.getPublicKey().getLongAddress();
+        KeyAddress borrowerAddress = borrowerKey.getPublicKey().getLongAddress();
+
+
+        //create token for lender
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),"1000");
+        token.seal();
+
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //split 200 and transfer to borrower
+        token = ContractsService.createSplit(token,new BigDecimal("200"),"amount",new HashSet<>(Do.listOf(lenderKey)));
+        Contract rest = (Contract) token.getNewItems().iterator().next();
+        rest.setOwnerKeys(borrowerAddress);
+        rest.seal();
+        token.seal();
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+
+        //create collateral on behalf of borrower
+        Contract collateral = new Contract(borrowerKey);
+        collateral.getStateData().put("description","This is very valuable contract");
+        collateral.seal();
+        assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //init loan contract
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000");
+
+        Contract secureLoan = res[0];
+
+        //add signatures
+
+        secureLoan.addSignatureToSeal(borrowerKey);
+        secureLoan.addSignatureToSeal(lenderKey);
+
+        ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        token = res[1];
+        collateral = res[2];
+        Contract repaymentTemplate = res[3];
+
+
+        //prepare repayment using second part
+        token = token.createRevision(borrowerKey);
+        token.addRevokingItems(rest);
+        token.getStateData().set("amount","1000");
+        setRepaymentOwnerAndRefs(token,secureLoan.getOrigin(),lenderAddress);
+        token.seal();
+
+        //set loan contract ot REPAID
+        secureLoan = secureLoan.createRevision(borrowerKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_REPAID);
+        secureLoan.addNewItems(token);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+
+        ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        //Check that token and collateral aren't available
+        Contract tokenAtempt = token.createRevision(lenderKey);
+        tokenAtempt.setOwnerKeys(initKey);
+        tokenAtempt.seal();
+        tokenAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(tokenAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        Contract collateralAtempt = collateral.createRevision(borrowerKey);
+        collateralAtempt.setOwnerKeys(initKey);
+        collateralAtempt.seal();
+        collateralAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(collateralAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        //close loan contract
+        secureLoan = secureLoan.createRevision(borrowerKey,lenderKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_CLOSED);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //Check that token and collateral are available
+        tokenAtempt = token.createRevision(lenderKey);
+        tokenAtempt.setOwnerKeys(initKey);
+        tokenAtempt.seal();
+        tokenAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(tokenAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        collateralAtempt = collateral.createRevision(borrowerKey);
+        collateralAtempt.setOwnerKeys(initKey);
+        collateralAtempt.seal();
+        collateralAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(collateralAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        ts.shutdown();
 
     }
 
