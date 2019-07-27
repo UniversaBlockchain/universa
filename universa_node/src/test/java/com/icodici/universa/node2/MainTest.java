@@ -9565,8 +9565,6 @@ public class MainTest {
 
     public void setCollateralOwnerAndRefs(Contract contract, HashId loanContractId, KeyAddress lenderAddress, KeyAddress borrowerAddress) {
 
-        //TODO: fix workaround. transactional refs are only serialized if transactional exists
-        contract.getTransactionalData();
 
         Reference refDefault = new Reference(contract);
         refDefault.name = "refDefault";
@@ -9605,7 +9603,6 @@ public class MainTest {
 
     public void setRepaymentOwnerAndRefs(Contract contract, HashId loanContractId, KeyAddress lenderAddress) {
 
-        //TODO: fix workaround. transactional refs are only serialized if transactional exists
         contract.getTransactionalData().set("is_repayment","yes");
 
         Reference refClosed = new Reference(contract);
@@ -9704,10 +9701,6 @@ public class MainTest {
 
         secureLoan.getStateData().put(FIELD_STATUS, STATUS_INIT);
 
-        //TODO: try NULL and see what happens
-        //secureLoan.getStateData().put(FIELD_COLLATERAL_TEMPLATE,"undefined");
-        secureLoan.getStateData().put(FIELD_COLLATERAL_ID,"undefined");
-        secureLoan.getStateData().put(FIELD_REPAYMENT_TEMPLATE,"undefined");
 
         Reference refInit = new Reference(secureLoan);
         refInit.name = "refInit";
