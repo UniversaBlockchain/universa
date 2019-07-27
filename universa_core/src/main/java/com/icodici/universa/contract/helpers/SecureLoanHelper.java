@@ -139,7 +139,7 @@ public class SecureLoanHelper {
      * @param borrowerAddress address of borrower key
      * @param loan contract that is given to borrower by lender. must be owned by lender by this time.
      * @param loanDuration duration of a loan
-     * @param collateral contract that is acts as collateral for a loan
+     * @param collateral contract that is acts as collateral for a loan must be owned by borrower by this time.
      * @param repaymentAmount the amount to be repaid at the end of the loan
      * @param mintable flag indicates if repayment is mintable token. Fixed supply otherwise
      * @param repaymentOrigin the expected origin of repayment token. passed for fixed supply tokens only. pass null otherwise.
