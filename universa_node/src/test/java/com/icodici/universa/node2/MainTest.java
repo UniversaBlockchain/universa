@@ -9534,7 +9534,7 @@ public class MainTest {
         collateral.seal();
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        Contract[] res = SecureLoanHelper.initSecureLoan(lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",false,token.getOrigin(),null,null);
+        Contract[] res = SecureLoanHelper.initSecureLoan(null,lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",false,token.getOrigin(),null,null);
 
         Contract secureLoan = res[0];
 
@@ -9628,7 +9628,7 @@ public class MainTest {
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //init loan contract
-        Contract[] res =  SecureLoanHelper.initSecureLoan(lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",false,token.getOrigin(),null,null);
+        Contract[] res =  SecureLoanHelper.initSecureLoan(Binder.of("description","bla bla bla"),lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",false,token.getOrigin(),null,null);
 
         Contract secureLoan = res[0];
 
@@ -9738,7 +9738,7 @@ public class MainTest {
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //INIT LOAN
-        Contract[] res =  SecureLoanHelper.initSecureLoan(lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
+        Contract[] res =  SecureLoanHelper.initSecureLoan(new Binder(),lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
         Contract secureLoan = res[0];
         secureLoan.addSignatureToSeal(borrowerKey);
         secureLoan.addSignatureToSeal(lenderKey);
@@ -9808,7 +9808,7 @@ public class MainTest {
 
 
         //init loan contract
-        Contract[] res =  SecureLoanHelper.initSecureLoan(lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
+        Contract[] res =  SecureLoanHelper.initSecureLoan(null, lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
         Contract secureLoan = res[0];
         //add signatures
         secureLoan.addSignatureToSeal(borrowerKey);

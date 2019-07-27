@@ -170,6 +170,7 @@ public class SecureLoanHelper {
      *
      * Contract returned is not signed/registered. Must be signed (by borrower and lender) and registered to get its satellites registered and usable
      *
+     * @param definitionData free-form data to put into loan contract definition.
      * @param lenderAddress address of lender key
      * @param borrowerAddress address of borrower key
      * @param loan contract that is given to borrower by lender. must be owned by lender by this time.
@@ -183,13 +184,15 @@ public class SecureLoanHelper {
      * @return the array of contracts [secure loan agreement contract, loan contract owned by borrower]
      */
 
-    public static Contract[] initSecureLoan(KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Duration loanDuration, Contract collateral, String repaymentAmount, boolean mintable, HashId repaymentOrigin, KeyAddress repaymentIssuer, String repaymentCurrency) {
+    public static Contract[] initSecureLoan(Binder definitionData, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Duration loanDuration, Contract collateral, String repaymentAmount, boolean mintable, HashId repaymentOrigin, KeyAddress repaymentIssuer, String repaymentCurrency) {
         Contract secureLoan = new Contract();
         secureLoan.setExpiresAt(ZonedDateTime.now().plusYears(100));
         secureLoan.setIssuerKeys(lenderAddress,borrowerAddress);
         secureLoan.setOwnerKeys(lenderAddress,borrowerAddress);
         secureLoan.setCreatorKeys(lenderAddress,borrowerAddress);
 
+        if(definitionData != null)
+            secureLoan.getDefinition().getData().putAll(definitionData);
 
         secureLoan.getDefinition().getData().put(FIELD_LENDER,lenderAddress.toString());
         secureLoan.getDefinition().getData().put(FIELD_BORROWER,borrowerAddress.toString());
@@ -352,7 +355,8 @@ public class SecureLoanHelper {
                 Do.listOf(
                         "this."+PATH_STATUS+"==\""+STATUS_IN_PROGRESS+"\"",
                         "refRepayment.owner==refRepaymentTemplate.owner",
-                        "refRepayment.transactional.references.refClosed==refRepaymentTemplate.transactional.references.refClosed"
+                        "refRepayment.transactional.references.refClosed==refRepaymentTemplate.transactional.references.refClosed",
+                        "now<this."+PATH_EXPIRES
                 )));
         secureLoan.addReference(refRepaid);
 
@@ -387,6 +391,10 @@ public class SecureLoanHelper {
      */
 
     public static Contract[] defaultSecureLoan(Contract secureLoan) {
+        if(!secureLoan.getStateData().get(FIELD_STATUS).equals(STATUS_IN_PROGRESS)) {
+            throw new IllegalArgumentException("wrong secure loan state. expected " + STATUS_IN_PROGRESS + " found " + secureLoan.getStateData().get(FIELD_STATUS));
+        }
+
         KeyAddress lenderAddress = getLender(secureLoan);
         Contract collateral = getCollateral(secureLoan);
 
@@ -417,6 +425,12 @@ public class SecureLoanHelper {
      */
 
     public static Contract[] repaySecureLoan(Contract secureLoan, Contract repayment) {
+
+        if(!secureLoan.getStateData().get(FIELD_STATUS).equals(STATUS_IN_PROGRESS)) {
+            throw new IllegalArgumentException("wrong secure loan state. expected " + STATUS_IN_PROGRESS + " found " + secureLoan.getStateData().get(FIELD_STATUS));
+        }
+
+
         Contract serviceContract = getServiceContract(secureLoan);
         Contract collateral = getCollateral(secureLoan);
 
@@ -450,6 +464,11 @@ public class SecureLoanHelper {
      */
 
     public static Contract[] closeSecureLoan(Contract secureLoan) {
+
+        if(!secureLoan.getStateData().get(FIELD_STATUS).equals(STATUS_REPAID)) {
+            throw new IllegalArgumentException("wrong secure loan state. expected " + STATUS_REPAID + " found " + secureLoan.getStateData().get(FIELD_STATUS));
+        }
+
         Contract repayment = getRepayment(secureLoan);
         Contract collateral = getCollateral(secureLoan);
 
