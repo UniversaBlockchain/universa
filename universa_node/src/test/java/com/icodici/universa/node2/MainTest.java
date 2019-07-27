@@ -9545,9 +9545,6 @@ public class MainTest {
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        token = res[1];
-        collateral = res[2];
-        //Contract repaymentTemplate = res[3];
 
 
         //colateral isn't owned by neither borrower nor lender.
@@ -9561,7 +9558,7 @@ public class MainTest {
 
 
         //DEFAULT IS NOT AVAILABLE
-        Contract defaultAttempt = SecureLoanHelper.defaultSecureLoan(secureLoan,collateral)[0];
+        Contract defaultAttempt = SecureLoanHelper.defaultSecureLoan(secureLoan)[0];
         defaultAttempt.addSignatureToSeal(lenderKey);
         ir = ts.client.register(defaultAttempt.getPackedTransaction(), 8000);
         System.out.println(ir);
@@ -9571,7 +9568,7 @@ public class MainTest {
         Thread.sleep(6000);
 
         //DEFAULT IS AVAILABLE
-        res = SecureLoanHelper.defaultSecureLoan(secureLoan,collateral);
+        res = SecureLoanHelper.defaultSecureLoan(secureLoan);
         secureLoan = res[0];
         collateral = res[1];
         secureLoan.addSignatureToSeal(lenderKey);
@@ -9645,8 +9642,6 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
         token = res[1];
-        collateral = res[2];
-        Contract serviceContract = res[3];
 
 
         //prepare repayment using second part
@@ -9658,9 +9653,8 @@ public class MainTest {
         System.out.println(ir);
 
         //set loan contract ot REPAID
-        res = SecureLoanHelper.repaySecureLoan(secureLoan,token,serviceContract);
+        res = SecureLoanHelper.repaySecureLoan(secureLoan,token);
         secureLoan = res[0];
-        token = res[1];
         secureLoan.addSignatureToSeal(borrowerKey);
 
         ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
@@ -9685,7 +9679,7 @@ public class MainTest {
         assertEquals(ir.state,ItemState.DECLINED);
 
         //close loan contract
-        res = SecureLoanHelper.closeSecureLoan(secureLoan,token,collateral);
+        res = SecureLoanHelper.closeSecureLoan(secureLoan);
         secureLoan = res[0];
         token = res[1];
         collateral = res[2];
@@ -9751,13 +9745,12 @@ public class MainTest {
         ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
-        collateral = res[2];
 
 
         Thread.sleep(6000);
 
         //DEFAULT LOAN
-        res = SecureLoanHelper.defaultSecureLoan(secureLoan,collateral);
+        res = SecureLoanHelper.defaultSecureLoan(secureLoan);
 
         secureLoan = res[0];
         secureLoan.addSignatureToSeal(lenderKey);
@@ -9826,8 +9819,6 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
         token = res[1];
-        collateral = res[2];
-        Contract serviceContract = res[3];
 
 
         //prepare repayment using second contract of 200
@@ -9841,9 +9832,8 @@ public class MainTest {
 
 
         //set loan contract ot REPAID
-        res = SecureLoanHelper.repaySecureLoan(secureLoan,token,serviceContract);
+        res = SecureLoanHelper.repaySecureLoan(secureLoan,token);
         secureLoan = res[0];
-        token = res[1];
         secureLoan.addSignatureToSeal(borrowerKey);
         ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
         System.out.println(ir);
@@ -9851,7 +9841,7 @@ public class MainTest {
 
 
         //close loan contract
-        res = SecureLoanHelper.closeSecureLoan(secureLoan,token,collateral);
+        res = SecureLoanHelper.closeSecureLoan(secureLoan);
         secureLoan = res[0];
         token = res[1];
         collateral = res[2];

@@ -39,6 +39,14 @@ public class SecureLoanHelper {
 
 
 
+    static final private String FIELD_REPAYMENT = "rep_id";
+    static final private String PATH_REPAYMENT = "state.data."+FIELD_REPAYMENT;
+
+    static final private String FIELD_COLLATERAL_ID = "col_id";
+    static final private String PATH_COLLATERAL_ID = "state.data."+FIELD_COLLATERAL_ID;
+
+
+
     static final private String FIELD_LENDER = "lender";
     static final private String PATH_LENDER = "definition.data."+FIELD_LENDER;
     static final private String FIELD_BORROWER = "borrower";
@@ -130,6 +138,33 @@ public class SecureLoanHelper {
         }
     }
 
+    private static Contract getCollateral(Contract secureLoan) {
+        HashId id = HashId.withDigest((String) secureLoan.get(PATH_COLLATERAL_ID));
+        if(secureLoan.get(PATH_STATUS).equals(STATUS_IN_PROGRESS)) {
+            return secureLoan.getTransactionPack().getSubItem(id);
+        } else if(secureLoan.get(PATH_STATUS).equals(STATUS_REPAID)) {
+            return secureLoan.getTransactionPack().getReferencedItems().get(id);
+        } else {
+            throw new IllegalArgumentException("invalid secure loan contract state. must be in progress or repaid");
+        }
+    }
+
+    private static Contract getServiceContract(Contract secureLoan) {
+        if(secureLoan.get(PATH_STATUS).equals(STATUS_IN_PROGRESS)) {
+            return secureLoan.getTransactionPack().getSubItem(HashId.withDigest((String) secureLoan.get(PATH_REPAYMENT_TEMPLATE)));
+        } else {
+            throw new IllegalArgumentException("invalid secure loan contract state. must be in progress");
+        }
+    }
+
+    private static Contract getRepayment(Contract secureLoan) {
+        if(secureLoan.get(PATH_STATUS).equals(STATUS_REPAID)) {
+            return secureLoan.getTransactionPack().getSubItem(HashId.withDigest((String) secureLoan.get(PATH_REPAYMENT)));
+        } else {
+            throw new IllegalArgumentException("invalid secure loan contract state. must be in repaid");
+        }
+    }
+
     /**
      * Prepares secure loan agreement contract and its satellites.
      *
@@ -145,8 +180,7 @@ public class SecureLoanHelper {
      * @param repaymentOrigin the expected origin of repayment token. passed for fixed supply tokens only. pass null otherwise.
      * @param repaymentIssuer the expected issuer of repayment token. passed for mintable tokens only. pass null otherwise.
      * @param repaymentCurrency the expected currency of repayment token. passed for mintable tokens only. pass null otherwise.
-     * @return the array of contracts [secure loan agreement contract, loan contract owned by borrower, collateral contract that can be claimed by either
-     * borrower or lender depending on loan status, service contract that is used in repayment procedure]
+     * @return the array of contracts [secure loan agreement contract, loan contract owned by borrower]
      */
 
     public static Contract[] initSecureLoan(KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Duration loanDuration, Contract collateral, String repaymentAmount, boolean mintable, HashId repaymentOrigin, KeyAddress repaymentIssuer, String repaymentCurrency) {
@@ -171,7 +205,7 @@ public class SecureLoanHelper {
                         Binder.of("fields",Binder.of(
                                 FIELD_STATUS,Do.listOf(STATUS_IN_PROGRESS),
                                 "/references",null,
-                                //FIELD_COLLATERAL_TEMPLATE, null,
+                                FIELD_COLLATERAL_ID, null,
                                 FIELD_REPAYMENT_TEMPLATE, null
                         )));
         secureLoan.addPermission(initPermission);
@@ -198,7 +232,10 @@ public class SecureLoanHelper {
 
         ModifyDataPermission repaidPermission =
                 new ModifyDataPermission(repaidRole,
-                        Binder.of("fields",Binder.of(FIELD_STATUS,Do.listOf(STATUS_REPAID))));
+                        Binder.of("fields",Binder.of(
+                                FIELD_STATUS,Do.listOf(STATUS_REPAID),
+                                FIELD_REPAYMENT, null
+                                )));
         secureLoan.addPermission(repaidPermission);
 
 
@@ -256,6 +293,9 @@ public class SecureLoanHelper {
         setCollateralOwnerAndRefs(collateral,secureLoan.getOrigin(),lenderAddress,borrowerAddress);
         collateral.seal();
 
+
+
+
         //transfer loan directry to borrower
         loan = loan.createRevision();
         loan.setOwnerKey(borrowerAddress);
@@ -266,7 +306,7 @@ public class SecureLoanHelper {
         secureLoan.setCreatorKeys(lenderAddress,borrowerAddress);
         secureLoan.getStateData().put(FIELD_STATUS,STATUS_IN_PROGRESS);
         secureLoan.getStateData().put(FIELD_REPAYMENT_TEMPLATE,repaymentTemplate.getId().toBase64String());
-
+        secureLoan.getStateData().put(FIELD_COLLATERAL_ID, collateral.getId().toBase64String());
 
 
         Reference refRepaymentTemplate = new Reference(secureLoan);
@@ -333,7 +373,7 @@ public class SecureLoanHelper {
 
         secureLoan.seal();
 
-        return new Contract[] {secureLoan,loan,collateral,repaymentTemplate};
+        return new Contract[] {secureLoan,loan};
     }
 
 
@@ -343,15 +383,17 @@ public class SecureLoanHelper {
      * Contract returned is not signed/registered. Must be signed (by lender) and registered to get collateral registered and usable by lender
      *
      * @param secureLoan secure loan agreement contract
-     * @param collateral contract that is acts as collateral for a loan
      * @return the array of contracts [secure loan agreement contract, collateral contract owner by lender]
      */
 
-    public static Contract[] defaultSecureLoan(Contract secureLoan, Contract collateral) {
+    public static Contract[] defaultSecureLoan(Contract secureLoan) {
         KeyAddress lenderAddress = getLender(secureLoan);
+        Contract collateral = getCollateral(secureLoan);
+
         secureLoan = secureLoan.createRevision();
         secureLoan.setCreatorKeys(lenderAddress);
         secureLoan.getStateData().set(FIELD_STATUS,STATUS_DEFAULT);
+
 
         collateral = collateral.createRevision();
         collateral.setCreatorKeys(lenderAddress);
@@ -371,26 +413,30 @@ public class SecureLoanHelper {
      *
      * @param secureLoan secure loan agreement contract
      * @param repayment contract owned by burrower by this time
-     * @param serviceContract contract provided on loan agreement contract creation
-     * @return the array of contracts [secure loan agreement contract, collateral contract owner by lender]
+     * @return the array of contracts [secure loan agreement contract]
      */
 
-    public static Contract[] repaySecureLoan(Contract secureLoan, Contract repayment, Contract serviceContract) {
+    public static Contract[] repaySecureLoan(Contract secureLoan, Contract repayment) {
+        Contract serviceContract = getServiceContract(secureLoan);
+        Contract collateral = getCollateral(secureLoan);
+
         KeyAddress borrowerAddress = getBorrower(secureLoan);
         KeyAddress lenderAddress = getLender(secureLoan);
         repayment = repayment.createRevision();
         repayment.setCreatorKeys(borrowerAddress);
         setRepaymentOwnerAndRefs(repayment,secureLoan.getOrigin(),lenderAddress);
-
+        repayment.seal();
 
         secureLoan = secureLoan.createRevision();
         secureLoan.setCreatorKeys(borrowerAddress);
         secureLoan.getStateData().set(FIELD_STATUS,STATUS_REPAID);
         secureLoan.addNewItems(repayment);
+        secureLoan.getStateData().put(FIELD_REPAYMENT,repayment.getId().toBase64String());
         secureLoan.seal();
         secureLoan.getTransactionPack().addReferencedItem(serviceContract);
+        secureLoan.getTransactionPack().addReferencedItem(collateral);
 
-        return new Contract[] {secureLoan,repayment};
+        return new Contract[] {secureLoan};
     }
 
 
@@ -400,12 +446,13 @@ public class SecureLoanHelper {
      * Contract returned is not signed/registered. Must be signed (by borrower and lender), service contract must be added as referenced item to transaction and transaction can be registered then
      *
      * @param secureLoan secure loan agreement contract
-     * @param repayment contract as it is after loan agreement was set to REPAID
-     * @param collateral contract that is acts as collateral for a loan
-     * @return the array of contracts [secure loan agreement contract, collateral contract owner by lender]
+     * @return the array of contracts [secure loan agreement contract, repayment contract owner by lender, collateral contract owner by borrower]
      */
 
-    public static Contract[] closeSecureLoan(Contract secureLoan, Contract repayment, Contract collateral) {
+    public static Contract[] closeSecureLoan(Contract secureLoan) {
+        Contract repayment = getRepayment(secureLoan);
+        Contract collateral = getCollateral(secureLoan);
+
         KeyAddress borrowerAddress = getBorrower(secureLoan);
         KeyAddress lenderAddress = getLender(secureLoan);
 
