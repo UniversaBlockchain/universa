@@ -9560,7 +9560,6 @@ public class MainTest {
     static final private String STATUS_REPAID = "repayed";
     static final private String STATUS_CLOSED = "closed";
 
-    private static final boolean MINTABLE = false;
 
 
     public void setCollateralOwnerAndRefs(Contract contract, HashId loanContractId, KeyAddress lenderAddress, KeyAddress borrowerAddress) {
@@ -9622,7 +9621,7 @@ public class MainTest {
 
 
 
-    public Contract[] initSecureLoan(Client client, PrivateKey initKey, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Contract collateral, String repaymentAmount) throws IOException {
+    public Contract[] initSecureLoan(Client client, PrivateKey initKey, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Contract collateral, String repaymentAmount, boolean mintable) throws IOException {
         Contract secureLoan = new Contract(initKey);
         secureLoan.setExpiresAt(ZonedDateTime.now().plusYears(100));
 
@@ -9688,9 +9687,9 @@ public class MainTest {
 
         secureLoan.getDefinition().getData().put(FIELD_LOAN_AMOUNT,loan.getStateData().get("amount"));
         secureLoan.getDefinition().getData().put(FIELD_REPAYMENT_AMOUNT,repaymentAmount);
-        if(MINTABLE) {
-            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_LOAN_CURRENCY, loan.getDefinition().getData().get("currency"));
-            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_REPAYMENT_CURRENCY, loan.getDefinition().getData().get("currency"));
+        if(mintable) {
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_LOAN_CURRENCY, loan.getDefinition().getData().get("short_currency"));
+            secureLoan.getDefinition().getData().put(FIELD_MINTABLE_REPAYMENT_CURRENCY, loan.getDefinition().getData().get("short_currency"));
 
             secureLoan.getDefinition().getData().put(FIELD_MINTABLE_LOAN_ISSUER, ((SimpleRole)loan.getIssuer()).getSimpleKeyAddresses().iterator().next().toString());
             secureLoan.getDefinition().getData().put(FIELD_MINTABLE_REPAYMENT_ISSUER, ((SimpleRole)loan.getIssuer()).getSimpleKeyAddresses().iterator().next().toString());
@@ -9796,7 +9795,7 @@ public class MainTest {
                 "ref.state.data.amount==this." + PATH_REPAYMENT_AMOUNT,
                 "ref.transactional.data.is_repayment==\"yes\""
         );
-        if(MINTABLE) {
+        if(mintable) {
             conditions.add("ref.issuer==this."+PATH_MINTABLE_REPAYMENT_ISSUER);
             conditions.add("ref.definition.data.currency==this."+PATH_MINTABLE_REPAYMENT_CURRENCY);
         } else {
@@ -9872,7 +9871,7 @@ public class MainTest {
 
 
         //create token for lender
-        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),"1000");
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),new BigDecimal("1000"));
         token.seal();
 
         assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
@@ -9890,7 +9889,7 @@ public class MainTest {
         collateral.seal();
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000");
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000",false);
 
         Contract secureLoan = res[0];
 
@@ -9991,7 +9990,228 @@ public class MainTest {
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //init loan contract
-        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000");
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000",false);
+
+        Contract secureLoan = res[0];
+
+        //add signatures
+
+        secureLoan.addSignatureToSeal(borrowerKey);
+        secureLoan.addSignatureToSeal(lenderKey);
+
+        ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        token = res[1];
+        collateral = res[2];
+        Contract repaymentTemplate = res[3];
+
+
+        //prepare repayment using second part
+        token = token.createRevision(borrowerKey);
+        token.addRevokingItems(rest);
+        token.getStateData().set("amount","1000");
+        setRepaymentOwnerAndRefs(token,secureLoan.getOrigin(),lenderAddress);
+        token.seal();
+
+        //set loan contract ot REPAID
+        secureLoan = secureLoan.createRevision(borrowerKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_REPAID);
+        secureLoan.addNewItems(token);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+
+        ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        //Check that token and collateral aren't available
+        Contract tokenAtempt = token.createRevision(lenderKey);
+        tokenAtempt.setOwnerKeys(initKey);
+        tokenAtempt.seal();
+        tokenAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(tokenAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        Contract collateralAtempt = collateral.createRevision(borrowerKey);
+        collateralAtempt.setOwnerKeys(initKey);
+        collateralAtempt.seal();
+        collateralAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(collateralAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        //close loan contract
+        secureLoan = secureLoan.createRevision(borrowerKey,lenderKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_CLOSED);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(secureLoan.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //Check that token and collateral are available
+        tokenAtempt = token.createRevision(lenderKey);
+        tokenAtempt.setOwnerKeys(initKey);
+        tokenAtempt.seal();
+        tokenAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(tokenAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        collateralAtempt = collateral.createRevision(borrowerKey);
+        collateralAtempt.setOwnerKeys(initKey);
+        collateralAtempt.seal();
+        collateralAtempt.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(collateralAtempt.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        ts.shutdown();
+
+    }
+
+
+    @Test
+    public void secureLoanTestDefaultMintable() throws Exception{
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        PrivateKey lenderKey = TestKeys.privateKey(1);
+        PrivateKey borrowerKey = TestKeys.privateKey(2);
+        PrivateKey initKey = TestKeys.privateKey(3);
+
+        KeyAddress lenderAddress = lenderKey.getPublicKey().getLongAddress();
+        KeyAddress borrowerAddress = borrowerKey.getPublicKey().getLongAddress();
+
+
+        //create 800 tokens for lender
+        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        //change public key to address in issuer. it is important for reference matching
+        token.setIssuerKeys(lenderAddress);
+        token.seal();
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //create 200 tokens for borrower
+        Contract rest = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(borrowerKey.getPublicKey())), new BigDecimal("200"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        //change public key to address in issuer. it is important for reference matching
+        rest.setIssuerKeys(lenderAddress);
+        rest.seal();
+        assertEquals(ts.client.register(rest.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+
+        //create collateral on behalf of borrower
+        Contract collateral = new Contract(borrowerKey);
+        collateral.getStateData().put("description","This is very valuable contract");
+        collateral.seal();
+        assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000",false);
+
+        Contract secureLoan = res[0];
+
+        secureLoan.addSignatureToSeal(borrowerKey);
+        secureLoan.addSignatureToSeal(lenderKey);
+
+        ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        token = res[1];
+        collateral = res[2];
+        Contract repaymentTemplate = res[3];
+
+
+        //colateral isn't owned by neither borrower nor lender.
+        Contract col1 = collateral.createRevision(borrowerKey,lenderKey);
+        col1.setOwnerKeys(initKey);
+        col1.seal();
+        col1.getTransactionPack().addReferencedItem(secureLoan);
+        ir = ts.client.register(col1.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        //DEFAULT IS NOT AVAILABLE
+        Contract defaultAttempt = secureLoan.createRevision(lenderKey);
+        defaultAttempt.getStateData().set(FIELD_STATUS,STATUS_DEFAULT);
+        defaultAttempt.seal();
+        defaultAttempt.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(defaultAttempt.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        Thread.sleep(6000);
+
+        //DEFAULT IS AVAILABLE
+        secureLoan = secureLoan.createRevision(lenderKey);
+        secureLoan.getStateData().set(FIELD_STATUS,STATUS_DEFAULT);
+        secureLoan.seal();
+        secureLoan.getTransactionPack().addReferencedItem(repaymentTemplate);
+        ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //colateral is now owner by lender
+        Contract col2 = collateral.createRevision(lenderKey);
+        col2.setOwnerKeys(initKey);
+        col2.seal();
+        col2.getTransactionPack().addReferencedItem(secureLoan);
+
+        col2 = Contract.fromPackedTransaction(col2.getPackedTransaction());
+        assertTrue(col2.check());
+        ir = ts.client.register(col2.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        ts.shutdown();
+    }
+
+
+
+    @Test
+    public void secureLoanTestRepaymentMintable() throws Exception{
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        PrivateKey lenderKey = TestKeys.privateKey(1);
+        PrivateKey borrowerKey = TestKeys.privateKey(2);
+        PrivateKey initKey = TestKeys.privateKey(3);
+
+        KeyAddress lenderAddress = lenderKey.getPublicKey().getLongAddress();
+        KeyAddress borrowerAddress = borrowerKey.getPublicKey().getLongAddress();
+
+
+        //create 800 tokens for lender
+        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        //change public key to address in issuer. it is important for reference matching
+        token.setIssuerKeys(lenderAddress);
+        token.seal();
+        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //create 200 tokens for borrower
+        Contract rest = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(borrowerKey.getPublicKey())), new BigDecimal("200"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        //change public key to address in issuer. it is important for reference matching
+        rest.setIssuerKeys(lenderAddress);
+        rest.seal();
+        assertEquals(ts.client.register(rest.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+
+        //create collateral on behalf of borrower
+        Contract collateral = new Contract(borrowerKey);
+        collateral.getStateData().put("description","This is very valuable contract");
+        collateral.seal();
+        assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        //init loan contract
+        Contract[] res = initSecureLoan(ts.client, initKey, lenderAddress, borrowerAddress, token, collateral, "1000",false);
 
         Contract secureLoan = res[0];
 
