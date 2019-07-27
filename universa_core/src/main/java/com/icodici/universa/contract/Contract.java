@@ -2011,8 +2011,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             result.remove("salt");
         }
         sealedBinary = Boss.pack(result);
-        transactionPack = null;
+        Collection<Contract> referencedItems = null;
+        if(transactionPack != null) {
+            referencedItems = new ArrayList<>(transactionPack.getReferencedItems().values());
+            transactionPack = null;
+        }
         this.id = HashId.of(sealedBinary);
+
+        if(referencedItems != null) {
+            TransactionPack tp = getTransactionPack();
+            referencedItems.forEach(ri -> tp.addReferencedItem(ri));
+        }
     }
 
     /**
