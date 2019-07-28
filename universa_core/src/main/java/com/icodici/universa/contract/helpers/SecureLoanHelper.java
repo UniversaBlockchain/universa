@@ -170,7 +170,7 @@ public class SecureLoanHelper {
      *
      * Contract returned is not signed/registered. Must be signed (by borrower and lender) and registered to get its satellites registered and usable
      *
-     * @param definitionData free-form data to put into loan contract definition.
+     * @param definitionData free-form data to put into loan contract definition.data section
      * @param lenderAddress address of lender key
      * @param borrowerAddress address of borrower key
      * @param loan contract that is given to borrower by lender. must be owned by lender by this time.

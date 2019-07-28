@@ -2276,5 +2276,45 @@ public class ContractsService {
 
         return unlimitContract;
     }
+
+
+
+
+    /**
+     * Create a compound contract, that includes nested contracts.
+     *
+     * There are two possible usages of compound contract technique.
+     * First is registering multiple contracts in single transaction, saving time and reducing U cost.
+     * Second is adding signatures to compound contract that will affect nested contracts without changing their binaries/IDs
+     *
+     * Note that if any of nested contracts fails, the whole compound is rejected.
+     * Note that all referenced items found transaction packs of nested contracts will be moved to transaction pack of compound automatically
+     *
+     * @param contracts to register all in one batch. Shuld be prepared and sealed.
+     * @return batch contract that includes all contracts as new items.
+     */
+    public static Contract createCompound(Contract... contracts) {
+        Contract compound = new Contract();
+        compound.setExpiresAt(ZonedDateTime.now().plusDays(14));
+        compound.registerRole(new RoleLink("creator","issuer"));
+        compound.registerRole(new RoleLink("owner","issuer"));
+
+        ListRole issuer = new ListRole("issuer");
+        ArrayList<Contract> referencedItems = new ArrayList<>();
+        for(Contract c : contracts) {
+            issuer.addRole(c.getCreator());
+            compound.addNewItems(c);
+            referencedItems.addAll(c.getTransactionPack().getReferencedItems().values());
+        }
+
+        compound.registerRole(issuer);
+
+        compound.seal();
+
+        for(Contract ri : referencedItems) {
+            compound.getTransactionPack().addReferencedItem(ri);
+        }
+        return compound;
+    }
 }
 
