@@ -293,6 +293,7 @@ public class SecureLoanHelper {
 
         //transfer collateral to complex secure loan status dependant role
         collateral = collateral.createRevision();
+        collateral.setCreatorKeys(borrowerAddress,lenderAddress);
         setCollateralOwnerAndRefs(collateral,secureLoan.getOrigin(),lenderAddress,borrowerAddress);
         collateral.seal();
 
@@ -301,6 +302,7 @@ public class SecureLoanHelper {
 
         //transfer loan directry to borrower
         loan = loan.createRevision();
+        loan.setCreatorKeys(borrowerAddress,lenderAddress);
         loan.setOwnerKey(borrowerAddress);
         loan.seal();
 

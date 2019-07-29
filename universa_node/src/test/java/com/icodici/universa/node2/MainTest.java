@@ -9516,20 +9516,27 @@ public class MainTest {
 
 
         //create token for lender
-        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),new BigDecimal("1000"));
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(TestKeys.privateKey(15))),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),new BigDecimal("1000"));
         token.seal();
 
         assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //split 200 and transfer to borrower
         token = ContractsService.createSplit(token,new BigDecimal("200"),"amount",new HashSet<>(Do.listOf(lenderKey)));
+        token.setCreatorKeys(lenderKey.getPublicKey());
         Contract rest = (Contract) token.getNewItems().iterator().next();
+        rest.setCreatorKeys(lenderKey.getPublicKey());
         rest.setOwnerKeys(borrowerAddress);
-        assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        rest.seal();
+        token.seal();
+        ItemResult ir = ts.client.register(token.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
 
 
         //create collateral on behalf of borrower
-        Contract collateral = new Contract(borrowerKey);
+        Contract collateral = new Contract(TestKeys.privateKey(15));
+        collateral.setOwnerKeys(borrowerKey);
         collateral.getStateData().put("description","This is very valuable contract");
         collateral.seal();
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
@@ -9541,7 +9548,7 @@ public class MainTest {
         secureLoan.addSignatureToSeal(borrowerKey);
         secureLoan.addSignatureToSeal(lenderKey);
 
-        ItemResult ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
+        ir = ts.client.register(secureLoan.getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9607,14 +9614,16 @@ public class MainTest {
 
 
         //create token for lender
-        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(lenderKey)),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),"1000");
+        Contract token = ContractsService.createTokenContract(new HashSet<>(Do.listOf(TestKeys.privateKey(15))),new HashSet<>(Do.listOf(lenderKey.getPublicKey())),"1000");
         token.seal();
 
         assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //split 200 and transfer to borrower
         token = ContractsService.createSplit(token,new BigDecimal("200"),"amount",new HashSet<>(Do.listOf(lenderKey)));
+        token.setCreatorKeys(lenderAddress);
         Contract rest = (Contract) token.getNewItems().iterator().next();
+        rest.setCreatorKeys(lenderAddress);
         rest.setOwnerKeys(borrowerAddress);
         rest.seal();
         token.seal();
@@ -9628,7 +9637,7 @@ public class MainTest {
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //init loan contract
-        Contract[] res =  SecureLoanHelper.initSecureLoan(Binder.of("description","bla bla bla"),lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",false,token.getOrigin(),null,null);
+        Contract[] res =  SecureLoanHelper.initSecureLoan(Binder.of("description","bla bla bla"),lenderAddress, borrowerAddress, token, Duration.ofSeconds(30), collateral, "1000",false,token.getOrigin(),null,null);
 
         Contract secureLoan = res[0];
 
@@ -9726,9 +9735,8 @@ public class MainTest {
 
 
         //create 800 tokens for lender
-        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(TestKeys.privateKey(15))), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
         //change public key to address in issuer. it is important for reference matching
-        token.setIssuerKeys(lenderAddress);
         token.seal();
         assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
@@ -9796,16 +9804,14 @@ public class MainTest {
 
 
         //create 800 tokens for lender
-        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        Contract token = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(TestKeys.privateKey(15))), new HashSet<>(Do.listOf(lenderKey.getPublicKey())), new BigDecimal("800"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
         //change public key to address in issuer. it is important for reference matching
-        token.setIssuerKeys(lenderAddress);
         token.seal();
         assertEquals(ts.client.register(token.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
         //create 200 tokens for borrower
-        Contract rest = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(lenderKey)), new HashSet<>(Do.listOf(borrowerKey.getPublicKey())), new BigDecimal("200"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
+        Contract rest = ContractsService.createMintableTokenContract(new HashSet<>(Do.listOf(TestKeys.privateKey(15))), new HashSet<>(Do.listOf(borrowerKey.getPublicKey())), new BigDecimal("200"), new BigDecimal("0.1"), "uEUR", "UniEuro", "Coin description");
         //change public key to address in issuer. it is important for reference matching
-        rest.setIssuerKeys(lenderAddress);
         rest.seal();
         assertEquals(ts.client.register(rest.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
@@ -9889,6 +9895,14 @@ public class MainTest {
 
         ts.shutdown();
 
+    }
+
+    @Test
+    public void test12345() throws Exception {
+        Contract c = Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/secure_loan_failed.unicon"));
+        c.check();
+        System.out.println(c.get(SecureLoanHelper.PATH_STATUS).toString());
+        System.out.println(c.getErrors());
     }
 
 }
