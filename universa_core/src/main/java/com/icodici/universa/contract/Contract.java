@@ -36,13 +36,13 @@ import java.time.chrono.ChronoZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.icodici.crypto.PublicKey.PUBLIC_KEY_BI_ADAPTER;
 import static com.icodici.universa.Errors.*;
-import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static java.util.Arrays.asList;
 
 @BiType(name = "UniversaContract")
@@ -75,6 +75,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private HashId id;
     private TransactionPack transactionPack;
     private Set<String> validRoleReferences = new HashSet<>();
+    private final List<String> predefinedRoles = Collections.unmodifiableList(Arrays.asList("creator", "owner", "issuer"));
 
     public Quantiser getQuantiser() {
         return quantiser;
@@ -652,8 +653,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // fill sealedByKeys from signatures matching with roles
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
-        roles.values().forEach(role -> {
-
+        Consumer<Role> extractKeys = role -> {
             RoleExtractor.extractKeys(role).forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
             RoleExtractor.extractAnonymousIds(role).forEach(anonId -> {
                 getTransactionPack().getKeysForPack().forEach(
@@ -681,7 +681,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         }
                 );
             });
-        });
+
+        };
+
+        roles.values().forEach(extractKeys);
+        state.roles.values().forEach(extractKeys);
 
         // verify signatures
         for (Object signature : (List) data.getOrThrow("signatures")) {
@@ -866,7 +870,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
 
-            boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
+            state.roles.values().forEach(v -> {if(!(v instanceof Role)) {
+                int a = 0;
+                a++;
+            }
+            });
+            boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || state.roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
 
             if(roleRefsOnly && !roleReference)
                 continue;
@@ -1465,7 +1474,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return role or null if not exist
      */
     public Role getRole(String roleName) {
-        return roles.get(roleName);
+        if(predefinedRoles.contains(roleName))
+            return roles.get(roleName);
+        else
+            return state.roles.get(roleName);
     }
 
     /**
@@ -1548,7 +1560,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
 
     public Map<String, Role> getRoles() {
-        return roles;
+        HashMap<String, Role> res = new HashMap<>(roles);
+        res.putAll(state.roles);
+        return res;
+
     }
 
     /**
@@ -1573,7 +1588,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public Role registerRole(Role role) {
         String name = role.getName();
-        roles.put(name, role);
+
+        if(predefinedRoles.contains(name)) {
+            roles.put(name, role);
+        } else {
+            state.roles.put(name, role);
+        }
+
         role.setContract(this);
         return role;
     }
@@ -1584,7 +1605,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
 
     public void anonymizeRole(String roleName) {
-        Role role = roles.get(roleName);
+        Role role = (predefinedRoles.contains(roleName) ? roles : state.roles).get(roleName);
         if (role != null)
             role.anonymize();
     }
@@ -1604,14 +1625,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Set<String> permissionIds;
 
     public void addPermission(Permission perm) {
+        if (permissionIds == null) {
+            permissionIds =
+                    getPermissions().values().stream()
+                            .map(x -> x.getId())
+                            .collect(Collectors.toSet());
+        }
+
         // We need to assign contract-unique id
         if (perm.getId() == null) {
-            if (permissionIds == null) {
-                permissionIds =
-                        getPermissions().values().stream()
-                                .map(x -> x.getId())
-                                .collect(Collectors.toSet());
-            }
             while (true) {
                 String id = Ut.randomString(6);
                 if (!permissionIds.contains(id)) {
@@ -1620,7 +1642,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     break;
                 }
             }
+        } else {
+            if(permissionIds.contains(perm.getId()))
+                throw new IllegalArgumentException("Permission with id '" + perm.getId() + "' already exists in contract");
+
+            permissionIds.add(perm.getId());
         }
+
         permissions.put(perm.getName(), perm);
     }
 
@@ -2569,6 +2597,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         return definition.data.getOrNull(name.substring(5));
                     if (name.startsWith("references."))
                         return (T) findReferenceByName(name.substring(11), "definition");
+                    if (name.startsWith("permissions."))
+                        return (T) findPermissisonById(name.substring(12));
+
             }
         } else if (name.startsWith("state.")) {
             name = name.substring(6);
@@ -2628,6 +2659,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getRole("creator");
         }
         throw new IllegalArgumentException("bad root: " + originalName);
+    }
+
+    private Permission findPermissisonById(String id) {
+        Optional<Permission> op = permissions.values().stream().filter(permission -> permission.getId().equals(id)).findAny();
+        return op.orElse(null);
     }
 
     /**
@@ -3112,6 +3148,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private Binder data = new Binder();
         private String branchId;
         private List<Reference> references = new ArrayList<>();
+        private Map<String, Role> roles = new HashMap<>();
 
         private State() {
             createdAt = definition.createdAt;
@@ -3170,7 +3207,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     "branch_id", branchId,
                     "origin", serializer.serialize(origin),
                     "parent", serializer.serialize(parent),
-                    "data", data
+                    "data", data,
+                    "roles", serializer.serialize(new HashMap<>(roles))
             );
 
             if (expiresAt != null)
@@ -3210,6 +3248,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             branchId = data.getString("branch_id", null);
             parent = d.deserialize(data.get("parent"));
             origin = d.deserialize(data.get("origin"));
+
+            this.roles = d.deserialize(data.getBinder("roles",new Binder()));
+            this.roles.values().forEach(v -> {if(!(v instanceof Role)) {
+                int a = 0;
+                a++;
+            }
+            });
         }
 
         private Integer branchRevision = null;

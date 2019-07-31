@@ -27,6 +27,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hamcrest.Matchers;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -1434,6 +1435,23 @@ public class ContractTest extends ContractTestBase {
                     Matchers.equalTo(TestKeys.publicKey(3).getShortAddress().toString()),
                     Matchers.equalTo(TestKeys.publicKey(4).getShortAddress().toString())
             ));
+    }
+
+
+    @Test
+    public void customContractRoles() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        SimpleRole role = new SimpleRole("qwerty123",Do.listOf(TestKeys.publicKey(1).getLongAddress()));
+        contract.registerRole(role);
+        RoleLink link = new RoleLink("owner","qwerty123");
+        contract.registerRole(link);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+
+        Role r = contract.getOwner().resolve();
+        assertEquals(r.getName(),"qwerty123");
+        assertTrue(r instanceof SimpleRole);
+        assertEquals(r.getSimpleAddress(),TestKeys.publicKey(1).getLongAddress());
     }
 
 }

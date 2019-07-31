@@ -10,6 +10,7 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -227,9 +228,13 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Permission)
-            return compareTo((Permission) obj) == 0;
-        return super.equals(obj);
+        if (!(obj instanceof Permission))
+            return false;
+
+        Binder dataThis = serialize(new BiSerializer());
+        Binder dataA = ((Permission)obj).serialize(new BiSerializer());
+        return dataThis.equals(dataA);
+
     }
 
     /**
@@ -242,5 +247,8 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     public int compareTo(Permission o) {
         return name.compareTo(o.name);
     }
+
+
+
 
 }
