@@ -9725,8 +9725,6 @@ public class MainTest {
         TestSpace ts = prepareTestSpace();
         ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
-        ts.client = new Client("mainnet",null,new PrivateKey(Do.read("/Users/romanu/Downloads/ru/uebank.private.unikey")));
-
         PrivateKey lenderKey = TestKeys.privateKey(1);
         PrivateKey borrowerKey = TestKeys.privateKey(2);
 
@@ -9898,11 +9896,11 @@ public class MainTest {
     }
 
     @Test
-    public void test12345() throws Exception {
-        Contract c = Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/secure_loan_failed.unicon"));
-        c.check();
-        System.out.println(c.get(SecureLoanHelper.PATH_STATUS).toString());
-        System.out.println(c.getErrors());
+    public void testMainTopology() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Client c = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),TestKeys.privateKey(1));
+        System.out.println(c.getVersion());
+        ts.shutdown();
     }
 
 }
