@@ -346,10 +346,10 @@ public class Main {
                               (String) settings.getListOrThrow("ip").get(0),
                               settings.containsKey("ipv6") ? (String) settings.getListOrThrow("ipv6").get(0) : null,
                               settings.getStringOrThrow("public_host"),
-                              settings.getInt("public_http_port",8080),
                               settings.getIntOrThrow("udp_server_port"),
                               settings.getIntOrThrow("http_client_port"),
-                              settings.getIntOrThrow("http_server_port")
+                              settings.getIntOrThrow("http_server_port"),
+                              settings.getInt("public_http_port",8080)
         );
 
         config.setIsFreeRegistrationsAllowedFromYaml(settingsShared.getBoolean("allow_free_registrations", false));
@@ -386,6 +386,10 @@ public class Main {
 
 
     private void startClientHttpServer() throws Exception {
+        if(myInfo.getClientAddress().getPort() == 6003) {
+            int a = 0;
+            a++;
+        }
         log("prepare to start client HTTP server on " + myInfo.getClientAddress().getPort());
 
         clientHTTPServer = new ClientHTTPServer(nodeKey, myInfo.getClientAddress().getPort(), logger);
