@@ -199,6 +199,8 @@ public class Main {
             int positive = (int) Math.round(n * 0.90);
             if(positive == 0)
                 positive = 1;
+            if(positive == n)
+                positive = n-1;
             if( negative+positive == n)
                 negative += 1;
             int resyncBreak = (int) Math.ceil(n * 0.2);
@@ -344,6 +346,7 @@ public class Main {
                               (String) settings.getListOrThrow("ip").get(0),
                               settings.containsKey("ipv6") ? (String) settings.getListOrThrow("ipv6").get(0) : null,
                               settings.getStringOrThrow("public_host"),
+                              settings.getInt("public_http_port",8080),
                               settings.getIntOrThrow("udp_server_port"),
                               settings.getIntOrThrow("http_client_port"),
                               settings.getIntOrThrow("http_server_port")

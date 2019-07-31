@@ -32,6 +32,7 @@ import java.sql.SQLException;
  * The preferred method of identifying the node is its integer id, see {@link #getNumber()}.
  */
 public class NodeInfo implements BiSerializable {
+    private int publicHttpPort;
     private String hostV6;
     private PublicKey publicKey;
     private InetSocketAddress nodeAddress;
@@ -66,6 +67,11 @@ public class NodeInfo implements BiSerializable {
 
     public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host, @Nullable String hostV6,
                     String publicHost, int datagramPort, int clientHttpPort, int serverHttpPort) {
+        this(publicKey,number,nodeName,host,hostV6,publicHost,datagramPort,clientHttpPort,serverHttpPort,8080);
+    }
+
+    public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host, @Nullable String hostV6,
+                    String publicHost, int datagramPort, int clientHttpPort, int serverHttpPort, int publicHttpPort) {
         assert number >= 0;
         assert datagramPort > 0;
         assert clientHttpPort > 0;
@@ -73,6 +79,7 @@ public class NodeInfo implements BiSerializable {
         this.number = number;
         this.nodeName = nodeName;
         this.publicHost = publicHost;
+        this.publicHttpPort = publicHttpPort;
         this.host = host;
         this.hostV6 = hostV6;
         nodeAddress = new InetSocketAddress(host, datagramPort);
@@ -163,7 +170,8 @@ public class NodeInfo implements BiSerializable {
                     b.getStringOrThrow("public_host"),
                     b.getIntOrThrow("udp_server_port"),
                     b.getIntOrThrow("http_client_port"),
-                    b.getIntOrThrow("http_server_port")
+                    b.getIntOrThrow("http_server_port"),
+                    b.getInt("public_http_port",8080)
             );
         } catch (Exception e) {
             System.err.println("failed to load node: " + fileName + ": " + e);
@@ -173,24 +181,24 @@ public class NodeInfo implements BiSerializable {
     }
 
     public String publicUrlString() {
-        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + publicHost + ":8080";
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + publicHost + ":" + publicHttpPort;
     }
 
     public String serverUrlString() {
-        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (host) + ":8080";
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (host) + ":" + publicHttpPort;
     }
 
     public String serverUrlStringV6() {
-        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (hostV6 != null ? "["+hostV6+"]" : host) + ":8080";
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + (hostV6 != null ? "["+hostV6+"]" : host) + ":" + publicHttpPort;
     }
 
 
     public String domainUrlStringV4() {
-        return publicHost.equals("localhost") ? "https://localhost:"+clientAddress.getPort() : "https://" + publicHost + ":8080";
+        return publicHost.equals("localhost") ? "https://localhost:"+clientAddress.getPort() : "https://" + publicHost + ":" + publicHttpPort;
     }
 
     public String directUrlStringV4() {
-        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":8080";
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + host + ":" + publicHttpPort;
     }
 
 
@@ -198,6 +206,7 @@ public class NodeInfo implements BiSerializable {
     public void deserialize(Binder data, BiDeserializer deserializer) {
         publicKey = deserializer.deserialize(data.getBinderOrThrow("publicKey"));
         publicHost = data.getStringOrThrow("publicHost");
+        publicHttpPort = data.getInt("public_http_port",8080);
         String host = data.getStringOrThrow("host");
         nodeAddress = new InetSocketAddress(host, data.getIntOrThrow("udpPort"));
         clientAddress = new InetSocketAddress(host, data.getIntOrThrow("clientPort"));
@@ -211,6 +220,7 @@ public class NodeInfo implements BiSerializable {
         return Binder.of(
                 "publicKey", serializer.serialize(publicKey),
                 "publicHost", publicHost,
+                "public_http_port", publicHttpPort,
                 "host", clientAddress.getHostName(),
                 "clientPort", clientAddress.getPort(),
                 "serverPort", serverAddress.getPort(),
