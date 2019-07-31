@@ -2627,6 +2627,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         return state.data.getOrNull(name.substring(5));
                     if (name.startsWith("references."))
                         return (T) findReferenceByName(name.substring(11), "state");
+                    if (name.startsWith("roles."))
+                        return (T) state.roles.get(name.substring(6));
             }
         } else if (name.startsWith("transactional.")) {
             if (transactional != null) {

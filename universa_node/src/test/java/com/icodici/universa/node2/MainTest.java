@@ -9903,4 +9903,48 @@ public class MainTest {
         ts.shutdown();
     }
 
+    @Test
+    public void testReferencesToPermissionsAndCustomRoles() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Client c = ts.client;
+
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        Contract contract2 = new Contract(TestKeys.privateKey(0));
+        ChangeNumberPermission changeNumberPermission = new ChangeNumberPermission(new RoleLink("@owner", "owner"), Binder.of(
+                "field_name", "field1",
+                "min_value", 33,
+                "max_value", 34,
+                "min_step", 1,
+                "max_step", 1
+        )
+        );
+
+        ChangeNumberPermission changeNumberPermission2 = new ChangeNumberPermission(new RoleLink("@owner", "owner"), Binder.of(
+                "field_name", "field1",
+                "min_value", 33,
+                "max_value", 34,
+                "min_step", 1,
+                "max_step", 1
+        )
+        );
+        changeNumberPermission.setId("changenumber");
+        changeNumberPermission2.setId("changenumber2");
+
+        contract.registerRole(new RoleLink("link_to_issuer","issuer"));
+        contract.addPermission(changeNumberPermission);
+        contract2.addPermission(changeNumberPermission2);
+        contract.seal();
+
+
+        Reference reference = new Reference(contract2);
+        reference.name = "test1";
+        reference.setConditions(Binder.of("all_of", Do.listOf("ref.id==\""+contract.getId().toBase64String()+"\"","this.definition.permissions.changenumber2==ref.definition.permissions.changenumber", "ref.definition.permissions.changenumber defined", "ref.state.roles.link_to_issuer defined", "ref.state.roles.link_to_issuer==this.owner")));
+        contract2.addReference(reference);
+        contract2.addNewItems(contract);
+        contract2.seal();
+        assertEquals(c.register(contract2.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertTrue(c.isApprovedByNetwork(contract2.getId(),0.9,8000));
+        ts.shutdown();
+    }
+
 }
