@@ -19,6 +19,7 @@ import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -399,6 +400,11 @@ public class Boss {
                         writeHeader(TYPE_NINT, bi.negate());
                     return this;
                 }
+                if(obj instanceof BigDecimal) {
+                    String s = obj.toString();
+                    return writeString(s);
+                }
+
                 // Should be double
                 double d = n.doubleValue();
                 if (d == 0) {
@@ -419,12 +425,7 @@ public class Boss {
             }
             if (obj instanceof CharSequence) {
                 String s = obj.toString();
-                if (!tryWriteReference(s)) {
-                    Bytes bb = new Bytes(s);
-                    writeHeader(TYPE_TEXT, bb.size());
-                    out.write(bb.toArray());
-                }
-                return this;
+                return writeString(s);
             }
             if (obj instanceof Bytes)
                 obj = ((Bytes) obj).toArray();
@@ -473,6 +474,15 @@ public class Boss {
             throw new IllegalArgumentException("unknown type: " + obj.getClass());
 //            put(biSerializer.serialize(obj));
 //            return this;
+        }
+
+        private Writer writeString(String s) throws IOException {
+            if (!tryWriteReference(s)) {
+                Bytes bb = new Bytes(s);
+                writeHeader(TYPE_TEXT, bb.size());
+                out.write(bb.toArray());
+            }
+            return this;
         }
 
         private void writeMap(Object obj) throws IOException {
