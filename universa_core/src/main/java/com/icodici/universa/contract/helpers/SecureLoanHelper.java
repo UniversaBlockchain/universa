@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.List;
 
 public class SecureLoanHelper {
@@ -34,8 +35,6 @@ public class SecureLoanHelper {
     static final private String PATH_FIXED_SUPPLY_REPAYMENT_ORIGIN= "definition.data."+FIELD_FIXED_SUPPLY_REPAYMENT_ORIGIN;
 
 
-    static final private String FIELD_REPAYMENT_TEMPLATE = "rep_template";
-    static final private String PATH_REPAYMENT_TEMPLATE= "state.data."+FIELD_REPAYMENT_TEMPLATE;
 
 
 
@@ -45,13 +44,7 @@ public class SecureLoanHelper {
     static final private String FIELD_COLLATERAL_ID = "col_id";
     static final private String PATH_COLLATERAL_ID = "state.data."+FIELD_COLLATERAL_ID;
 
-
-
-    static final private String FIELD_LENDER = "lender";
-    static final private String PATH_LENDER = "definition.data."+FIELD_LENDER;
-    static final private String FIELD_BORROWER = "borrower";
-    static final private String PATH_BORROWER = "definition.data."+FIELD_BORROWER;
-
+    static final private String FIELD_VERSION = "version";
 
     static final public String FIELD_STATUS = "status";
     static final public String PATH_STATUS = "state.data."+FIELD_STATUS;
@@ -60,7 +53,7 @@ public class SecureLoanHelper {
     static final public String STATUS_INIT = "init";
     static final public String STATUS_IN_PROGRESS = "in_progress";
     static final public String STATUS_DEFAULT = "default";
-    static final public String STATUS_REPAID = "repayed";
+    static final public String STATUS_REPAID = "repaid";
     static final public String STATUS_CLOSED = "closed";
 
 
@@ -107,35 +100,27 @@ public class SecureLoanHelper {
 
         contract.getTransactionalData().set("is_repayment","yes");
 
-        Reference refClosed = new Reference(contract);
-        refClosed.name = "refClosed";
-        refClosed.type = Reference.TYPE_TRANSACTIONAL;
-        refClosed.setConditions(Binder.of("all_of",Do.listOf(
+        Reference refClosedRepaymentCheck = new Reference(contract);
+        refClosedRepaymentCheck.name = "refClosedRepaymentCheck";
+        refClosedRepaymentCheck.type = Reference.TYPE_TRANSACTIONAL;
+        refClosedRepaymentCheck.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==\""+loanContractId.toBase64String()+"\"",
                 "ref."+PATH_STATUS+"==\""+STATUS_CLOSED+"\""
         )));
 
-        contract.addReference(refClosed);
+        contract.addReference(refClosedRepaymentCheck);
 
         SimpleRole owner = new SimpleRole("owner",Do.listOf(lenderAddress));
-        owner.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
+        owner.addRequiredReference("refClosedRepaymentCheck", Role.RequiredMode.ALL_OF);
         contract.registerRole(owner);
     }
 
     private static KeyAddress getLender(Contract secureLoan) {
-        try {
-            return new KeyAddress((String) secureLoan.get(PATH_LENDER));
-        } catch (KeyAddress.IllegalAddressException e) {
-            throw  new IllegalStateException("invalid secure lLoan contract " + e.getMessage());
-        }
+        return secureLoan.getRole("lender").getSimpleAddress();
     }
 
     private static KeyAddress getBorrower(Contract secureLoan) {
-        try {
-            return new KeyAddress((String) secureLoan.get(PATH_BORROWER));
-        } catch (KeyAddress.IllegalAddressException e) {
-            throw  new IllegalStateException("invalid secure lLoan contract " + e.getMessage());
-        }
+        return secureLoan.getRole("borrower").getSimpleAddress();
     }
 
     private static Contract getCollateral(Contract secureLoan) {
@@ -149,13 +134,6 @@ public class SecureLoanHelper {
         }
     }
 
-    private static Contract getServiceContract(Contract secureLoan) {
-        if(secureLoan.get(PATH_STATUS).equals(STATUS_IN_PROGRESS)) {
-            return secureLoan.getTransactionPack().getSubItem(HashId.withDigest((String) secureLoan.get(PATH_REPAYMENT_TEMPLATE)));
-        } else {
-            throw new IllegalArgumentException("invalid secure loan contract state. must be in progress");
-        }
-    }
 
     private static Contract getRepayment(Contract secureLoan) {
         if(secureLoan.get(PATH_STATUS).equals(STATUS_REPAID)) {
@@ -183,19 +161,54 @@ public class SecureLoanHelper {
      * @param repaymentCurrency the expected currency of repayment token. passed for mintable tokens only. pass null otherwise.
      * @return the array of contracts [secure loan agreement contract, loan contract owned by borrower]
      */
-
     public static Contract[] initSecureLoan(Binder definitionData, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Duration loanDuration, Contract collateral, String repaymentAmount, boolean mintable, HashId repaymentOrigin, KeyAddress repaymentIssuer, String repaymentCurrency) {
+        return initSecureLoan(Do.listOf(lenderAddress,borrowerAddress),definitionData,lenderAddress,borrowerAddress,loan,loanDuration,collateral,repaymentAmount,mintable,repaymentOrigin,repaymentIssuer,repaymentCurrency);
+    }
+
+    /**
+     * Prepares secure loan agreement contract and its satellites.
+     *
+     * Contract returned is not signed/registered. Must be signed (by borrower, lender and issuer keys) and registered to get its satellites registered and usable
+     *
+     * @param issuerKeys keys/addresses to set "issuer" of secure loan contract to.
+     * @param definitionData free-form data to put into loan contract definition.data section
+     * @param lenderAddress address of lender key
+     * @param borrowerAddress address of borrower key
+     * @param loan contract that is given to borrower by lender. must be owned by lender by this time.
+     * @param loanDuration duration of a loan
+     * @param collateral contract that is acts as collateral for a loan must be owned by borrower by this time.
+     * @param repaymentAmount the amount to be repaid at the end of the loan
+     * @param mintable flag indicates if repayment is mintable token. Fixed supply otherwise
+     * @param repaymentOrigin the expected origin of repayment token. passed for fixed supply tokens only. pass null otherwise.
+     * @param repaymentIssuer the expected issuer of repayment token. passed for mintable tokens only. pass null otherwise.
+     * @param repaymentCurrency the expected currency of repayment token. passed for mintable tokens only. pass null otherwise.
+     * @return the array of contracts [secure loan agreement contract, loan contract owned by borrower]
+     */
+    public static Contract[] initSecureLoan(Collection<?> issuerKeys, Binder definitionData, KeyAddress lenderAddress, KeyAddress borrowerAddress, Contract loan, Duration loanDuration, Contract collateral, String repaymentAmount, boolean mintable, HashId repaymentOrigin, KeyAddress repaymentIssuer, String repaymentCurrency) {
         Contract secureLoan = new Contract();
         secureLoan.setExpiresAt(ZonedDateTime.now().plusYears(100));
-        secureLoan.setIssuerKeys(lenderAddress,borrowerAddress);
+        secureLoan.setIssuerKeys(issuerKeys);
         secureLoan.setOwnerKeys(lenderAddress,borrowerAddress);
         secureLoan.setCreatorKeys(lenderAddress,borrowerAddress);
 
         if(definitionData != null)
             secureLoan.getDefinition().getData().putAll(definitionData);
 
-        secureLoan.getDefinition().getData().put(FIELD_LENDER,lenderAddress.toString());
-        secureLoan.getDefinition().getData().put(FIELD_BORROWER,borrowerAddress.toString());
+//        secureLoan.getDefinition().getData().put(FIELD_LENDER,lenderAddress.toString());
+//        secureLoan.getDefinition().getData().put(FIELD_BORROWER,borrowerAddress.toString());
+        secureLoan.getDefinition().getData().put(FIELD_VERSION,"2");
+
+        SimpleRole lenderRole = new SimpleRole("lender",Do.listOf(lenderAddress));
+        secureLoan.registerRole(lenderRole);
+
+        SimpleRole borrowerRole = new SimpleRole("borrower",Do.listOf(borrowerAddress));
+        secureLoan.registerRole(borrowerRole);
+
+        //this role is used to compare to repayment contract owner for equality
+        SimpleRole repaymentRole = new SimpleRole("repayment",Do.listOf(lenderAddress));
+        repaymentRole.addRequiredReference("refClosedRepaymentCheck", Role.RequiredMode.ALL_OF);
+        secureLoan.registerRole(repaymentRole);
+
 
 
         //MODIFY STATE DATA PERMISSIONS
@@ -208,8 +221,7 @@ public class SecureLoanHelper {
                         Binder.of("fields",Binder.of(
                                 FIELD_STATUS,Do.listOf(STATUS_IN_PROGRESS),
                                 "/references",null,
-                                FIELD_COLLATERAL_ID, null,
-                                FIELD_REPAYMENT_TEMPLATE, null
+                                FIELD_COLLATERAL_ID, null
                         )));
         secureLoan.addPermission(initPermission);
 
@@ -226,11 +238,9 @@ public class SecureLoanHelper {
 
         //IN_PROGRESS->REPAID
         SimpleRole repaidRole = new SimpleRole("@repaid",Do.listOf(borrowerAddress));
-        //these are here just to make them 'role reference'
         repaidRole.addRequiredReference("refRepayment", Role.RequiredMode.ALL_OF);
-        repaidRole.addRequiredReference("refRepaymentTemplate", Role.RequiredMode.ALL_OF);
-        //this is where the actual check happens
         repaidRole.addRequiredReference("refRepaid", Role.RequiredMode.ALL_OF);
+
 
 
         ModifyDataPermission repaidPermission =
@@ -252,7 +262,7 @@ public class SecureLoanHelper {
         secureLoan.addPermission(closedPermission);
 
 
-        secureLoan.getDefinition().getData().put(FIELD_EXPIRES,ZonedDateTime.now().plus(loanDuration).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))));
+        secureLoan.getDefinition().getData().put(FIELD_EXPIRES,ZonedDateTime.now().plus(loanDuration));
 
         secureLoan.getDefinition().getData().put(FIELD_REPAYMENT_AMOUNT,repaymentAmount);
         if(mintable) {
@@ -282,15 +292,6 @@ public class SecureLoanHelper {
 
 
 
-        Contract repaymentTemplate = new Contract();
-        repaymentTemplate.setExpiresAt(ZonedDateTime.now().plusYears(100));
-        repaymentTemplate.setIssuerKeys(lenderAddress);
-        repaymentTemplate.setCreatorKeys(lenderAddress);
-        setRepaymentOwnerAndRefs(repaymentTemplate,secureLoan.getOrigin(),lenderAddress);
-        repaymentTemplate.seal();
-
-
-
         //transfer collateral to complex secure loan status dependant role
         collateral = collateral.createRevision();
         collateral.setCreatorKeys(borrowerAddress,lenderAddress);
@@ -310,19 +311,21 @@ public class SecureLoanHelper {
         secureLoan = secureLoan.createRevision();
         secureLoan.setCreatorKeys(lenderAddress,borrowerAddress);
         secureLoan.getStateData().put(FIELD_STATUS,STATUS_IN_PROGRESS);
-        secureLoan.getStateData().put(FIELD_REPAYMENT_TEMPLATE,repaymentTemplate.getId().toBase64String());
         secureLoan.getStateData().put(FIELD_COLLATERAL_ID, collateral.getId().toBase64String());
 
 
-        Reference refRepaymentTemplate = new Reference(secureLoan);
-        refRepaymentTemplate.name = "refRepaymentTemplate";
-        refRepaymentTemplate.type = Reference.TYPE_EXISTING_STATE;
-        refRepaymentTemplate.setConditions(Binder.of("all_of",Do.listOf("ref.id==this."+PATH_REPAYMENT_TEMPLATE)));
-        secureLoan.addReference(refRepaymentTemplate);
+        //this reference is used to compare to corresponding repayment contract reference for equality
+        Reference refClosedRepaymentCheck = new Reference(secureLoan);
+        refClosedRepaymentCheck.name = "refClosedRepaymentCheck";
+        refClosedRepaymentCheck.type = Reference.TYPE_EXISTING_STATE;
+        refClosedRepaymentCheck.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==\""+secureLoan.getOrigin().toBase64String()+"\"",
+                "ref."+PATH_STATUS+"==\""+STATUS_CLOSED+"\""
+        )));
+        secureLoan.addReference(refClosedRepaymentCheck);
 
 
-
-        //Reference to repayment
+        //Reference to valid repayment contract
         Reference refRepayment = new Reference(secureLoan);
         refRepayment.name = "refRepayment";
         refRepayment.type = Reference.TYPE_EXISTING_STATE;
@@ -340,6 +343,7 @@ public class SecureLoanHelper {
         secureLoan.addReference(refRepayment);
 
 
+        //Reference reqiured to set secure loan contract to default
         Reference refDefault = new Reference(secureLoan);
         refDefault.name = "refDefault";
         refDefault.type = Reference.TYPE_EXISTING_STATE;
@@ -350,14 +354,17 @@ public class SecureLoanHelper {
                 )));
         secureLoan.addReference(refDefault);
 
+        //Reference reqiured to set secure loan contract to repaid.
+        // It checks that there is valid reference to repayment сontract
+        // and that repayment owner role and its (owner) reference are set correctly
         Reference refRepaid = new Reference(secureLoan);
         refRepaid.name = "refRepaid";
         refRepaid.type = Reference.TYPE_EXISTING_STATE;
         refRepaid.setConditions(Binder.of("all_of",
                 Do.listOf(
                         "this."+PATH_STATUS+"==\""+STATUS_IN_PROGRESS+"\"",
-                        "refRepayment.owner==refRepaymentTemplate.owner",
-                        "refRepayment.transactional.references.refClosed==refRepaymentTemplate.transactional.references.refClosed",
+                        "refRepayment.owner==this.state.roles.repayment",
+                        "refRepayment.transactional.references.refClosedRepaymentCheck==this.state.references.refClosedRepaymentCheck",
                         "now<this."+PATH_EXPIRES
                 )));
         secureLoan.addReference(refRepaid);
@@ -373,7 +380,6 @@ public class SecureLoanHelper {
 
         secureLoan.addNewItems(collateral);
         //secureLoan.addNewItems(collateralTemplate);
-        secureLoan.addNewItems(repaymentTemplate);
         secureLoan.addNewItems(loan);
         secureLoan.addNewItems(secureLoanRoot);
 
@@ -433,7 +439,6 @@ public class SecureLoanHelper {
         }
 
 
-        Contract serviceContract = getServiceContract(secureLoan);
         Contract collateral = getCollateral(secureLoan);
 
         KeyAddress borrowerAddress = getBorrower(secureLoan);
@@ -449,7 +454,6 @@ public class SecureLoanHelper {
         secureLoan.addNewItems(repayment);
         secureLoan.getStateData().put(FIELD_REPAYMENT,repayment.getId().toBase64String());
         secureLoan.seal();
-        secureLoan.getTransactionPack().addReferencedItem(serviceContract);
         secureLoan.getTransactionPack().addReferencedItem(collateral);
 
         return new Contract[] {secureLoan};
