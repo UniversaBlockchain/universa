@@ -175,6 +175,14 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
+    public boolean equalsIgnoreType(Reference a) {
+        Binder dataThis = serialize(new BiSerializer());
+        Binder dataA = a.serialize(new BiSerializer());
+        dataThis.remove("type");
+        dataA.remove("type");
+        return dataThis.equals(dataA);
+    }
+
     public boolean equals(Reference a) {
         Binder dataThis = serialize(new BiSerializer());
         Binder dataA = a.serialize(new BiSerializer());
@@ -808,6 +816,13 @@ public class Reference implements BiSerializable {
                             if (((indxOperator == NOT_EQUAL) && (leftTime != rightTime)) ||
                                 ((indxOperator == EQUAL) && (leftTime == rightTime)))
                                 ret = true;
+                        }  else if (((left != null) && left.getClass().getName().endsWith("Reference")) ||
+                                ((right != null) && right.getClass().getName().endsWith("Reference"))) {
+
+                            boolean equals = ((Reference)left).equalsIgnoreType((Reference) right);
+
+                            ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
+
                         } else if ((typeOfLeftOperand == compareOperandType.FIELD) && (typeOfRightOperand == compareOperandType.FIELD)) {   // operands is FIELDs
                             if ((left != null) && (right != null)) {
                                 boolean isNumbers = true;
