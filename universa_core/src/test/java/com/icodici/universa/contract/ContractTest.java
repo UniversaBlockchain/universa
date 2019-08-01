@@ -304,7 +304,7 @@ public class ContractTest extends ContractTestBase {
         {
             // Missing issuer
             final Contract c = new Contract(key);
-            c.getRoles().remove("issuer");
+            c.getPredefinedRoles().remove("issuer");
             c.seal();
 
             c.check();
@@ -317,7 +317,7 @@ public class ContractTest extends ContractTestBase {
         {
             // Missing creator
             final Contract c = new Contract(key);
-            c.getRoles().remove("creator");
+            c.getPredefinedRoles().remove("creator");
             c.seal();
 
             c.check();
@@ -330,7 +330,7 @@ public class ContractTest extends ContractTestBase {
         {
             // Missing owner
             final Contract c = new Contract(key);
-            c.getRoles().remove("owner");
+            c.getPredefinedRoles().remove("owner");
             c.seal();
 
             c.check();
@@ -344,7 +344,7 @@ public class ContractTest extends ContractTestBase {
             // Test chain of links (good), then test breaking it (bad).
             // issuer:key, creator->owner, owner->issuer
             final Contract c = new Contract(key);
-            c.getRoles().remove("creator");
+            c.getPredefinedRoles().remove("creator");
             c.registerRole(new RoleLink("creator", "owner"));
             c.seal();
 
@@ -356,7 +356,7 @@ public class ContractTest extends ContractTestBase {
             assertTrue(c.getCreator().isValid());
 
             // Let's break the link in the middle
-            c.getRoles().remove("owner");
+            c.getPredefinedRoles().remove("owner");
 
             // We haven't called `check` once again, so it's still ok
             assertTrue(c.isOk());
@@ -374,7 +374,7 @@ public class ContractTest extends ContractTestBase {
             // Test loop of links (bad).
             // issuer->creator, creator->owner, owner->issuer
             final Contract c = new Contract(key);
-            c.getRoles().clear();
+            c.getPredefinedRoles().clear();
             c.registerRole(new RoleLink("issuer", "creator"));
             c.registerRole(new RoleLink("creator", "owner"));
             c.registerRole(new RoleLink("owner", "issuer"));

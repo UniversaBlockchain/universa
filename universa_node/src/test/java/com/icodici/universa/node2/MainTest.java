@@ -9792,8 +9792,6 @@ public class MainTest {
         TestSpace ts = prepareTestSpace();
         ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
-        ts.client = new Client("mainnet",null,new PrivateKey(Do.read("/Users/romanu/Downloads/ru/uebank.private.unikey")));
-
         PrivateKey lenderKey = TestKeys.privateKey(1);
         PrivateKey borrowerKey = TestKeys.privateKey(2);
 
@@ -9821,14 +9819,19 @@ public class MainTest {
         assertEquals(ts.client.register(collateral.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
 
+
+        PrivateKey issuerKey = TestKeys.privateKey(13);
+
         //init loan contract
-        Contract[] res =  SecureLoanHelper.initSecureLoan(null, lenderAddress, borrowerAddress, token, Duration.ofSeconds(300), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
+        Contract[] res =  SecureLoanHelper.initSecureLoan(Do.listOf(issuerKey.getPublicKey().getLongAddress()),null, lenderAddress, borrowerAddress, token, Duration.ofSeconds(300), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
         Contract secureLoan = res[0];
+        secureLoan.seal();
 
         Contract compound = ContractsService.createCompound(secureLoan);
         //add signatures
         compound.addSignatureToSeal(borrowerKey);
         compound.addSignatureToSeal(lenderKey);
+        compound.addSignatureToSeal(issuerKey);
 
         ItemResult ir = ts.client.register(compound.getPackedTransaction(), 8000);
         System.out.println(ir);
