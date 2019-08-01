@@ -1562,8 +1562,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public Map<String, Role> getRoles() {
         HashMap<String, Role> res = new HashMap<>(roles);
         res.putAll(state.roles);
-        return res;
+        return Collections.unmodifiableMap(res);
 
+    }
+
+    /**
+     * Get predifined roles of the contract (issuer,owner,creator)
+     * @return roles map
+     */
+
+    public Map<String, Role> getPredefinedRoles() {
+        return roles;
+    }
+
+    /**
+     * Get custom roles of the contract stored in state.roles secion
+     * @return roles map
+     */
+
+    public Map<String, Role> getCustomRoles() {
+        return state.roles;
     }
 
     /**
