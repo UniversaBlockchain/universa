@@ -3834,7 +3834,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
@@ -3873,7 +3873,7 @@ public class BaseNetworkTest extends TestCase {
                 try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
                     try(ResultSet rs = ps.executeQuery()) {
                         assertTrue(rs.next());
-                        assertEquals(rs.getInt(1), 1);
+                        assertEquals(rs.getInt(1), 0);
                     }
                 }
 
@@ -3928,7 +3928,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
@@ -3968,7 +3968,7 @@ public class BaseNetworkTest extends TestCase {
                 try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?", parcel.getPaymentContract().getId().getDigest());) {
                     try(ResultSet rs = ps.executeQuery()) {
                         assertTrue(rs.next());
-                        assertEquals(rs.getInt(1), 1);
+                        assertEquals(rs.getInt(1), 0);
                     }
                 }
 
@@ -4207,7 +4207,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
@@ -4247,7 +4247,7 @@ public class BaseNetworkTest extends TestCase {
                 try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?", parcel.getPaymentContract().getId().getDigest());) {
                     try(ResultSet rs = ps.executeQuery()) {
                         assertTrue(rs.next());
-                        assertEquals(rs.getInt(1), 1);
+                        assertEquals(rs.getInt(1), 0);
                     }
                 }
 
@@ -4373,7 +4373,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertFalse(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
@@ -4432,7 +4432,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertFalse(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
@@ -12951,7 +12951,7 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().traceErrors();
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(!parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
