@@ -191,18 +191,22 @@ public class Main {
 
     private void startNode() throws SQLException, IOException {
 
+        //Minimum size of network is 10. Smaller configurations are treated as test networks.
+        //For such configurations we are using table data rather than formula
         config.setConsensusConfigUpdater((config, n) -> {
-            // Until we fix the announcer
-            int negative = (int) Math.ceil(n * 0.11);
-            if (negative < 1)
+            int negative;
+            int positive;
+            if(n < 3) {
                 negative = 1;
-            int positive = (int) Math.round(n * 0.90);
-            if(positive == 0)
-                positive = 1;
-            if(positive == n)
+                positive = n;
+            } else if(n < 10) {
+                negative = 2;
                 positive = n-1;
-            if( negative+positive == n)
-                negative += 1;
+            } else {
+                positive = (int) Math.ceil(n * 0.9);
+                negative = n + 1 - positive;
+            }
+
             int resyncBreak = (int) Math.ceil(n * 0.2);
             if (resyncBreak < 1)
                 resyncBreak = 1;
