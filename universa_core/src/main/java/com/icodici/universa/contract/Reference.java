@@ -964,7 +964,10 @@ public class Reference implements BiSerializable {
 
                         break;
                     case CAN_PLAY:
-                        if ((right == null) || !(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
+                        if (right == null)
+                            return false;
+
+                        if (!(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
