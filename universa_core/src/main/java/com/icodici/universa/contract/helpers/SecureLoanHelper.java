@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 
+@Deprecated
 public class SecureLoanHelper {
 
     static final private String FIELD_REPAYMENT_AMOUNT = "repayment_amount";

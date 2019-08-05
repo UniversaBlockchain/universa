@@ -2290,7 +2290,7 @@ public class ContractsService {
      * Note that if any of nested contracts fails, the whole compound is rejected.
      * Note that all referenced items found transaction packs of nested contracts will be moved to transaction pack of compound automatically
      *
-     * @param contracts to register all in one batch. Shuld be prepared and sealed.
+     * @param contracts to register all in one batch. Should be prepared and sealed.
      * @return batch contract that includes all contracts as new items.
      */
     public static Contract createCompound(Contract... contracts) {
@@ -2315,6 +2315,42 @@ public class ContractsService {
             compound.getTransactionPack().addReferencedItem(ri);
         }
         return compound;
+    }
+
+    /**
+     * Create a compound contract, that includes nested contracts.
+     *
+     * This is an extended version of {@link #createCompound(Contract...)} that includes string->id mapping stored in
+     * state.data of compound contract. This mapping can later be used to easily identify contracts in pack.
+     *
+     * @param contracts to register all in one batch. Should be prepared and sealed.
+     * @return batch contract that includes all contracts as new items.
+     */
+    public static Contract createCompound(Map<String,Contract> contracts) {
+        Contract compound = createCompound(contracts.values().toArray(new Contract[]{}));
+        contracts.forEach((k,v)->{
+            compound.getStateData().put(k,v.getId().toBase64String());
+        });
+        compound.seal();
+        return compound;
+    }
+
+
+    /**
+     * Finds contract within compound created with {@link #createCompound(Map)} by its mapping string (tag)
+     *
+     * @param compound contract to look into
+     * @param tag string to look for
+     *
+     * @return found contract or null
+     */
+    public static Contract findContractInCompound(Contract compound, String tag) {
+        try {
+            String stringId = compound.getStateData().getString(tag);
+            return compound.getTransactionPack().getSubItem(HashId.withDigest(stringId));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 }
 

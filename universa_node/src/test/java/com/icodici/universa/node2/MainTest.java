@@ -17,6 +17,7 @@ import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.helpers.EscrowHelper;
 import com.icodici.universa.contract.helpers.SecureLoanHelper;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
@@ -40,6 +41,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -3498,142 +3500,6 @@ public class MainTest {
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
-    }
-
-    //@Test
-    public void asdasd123() throws Exception {
-        Map<HashId, Map<ItemState, Set<Integer>>> results = new HashMap<>();
-        Map<HashId, Map<ItemState, Set<Integer>>> resultsRevoking = new HashMap<>();
-        Map<HashId, Map<ItemState, Set<Integer>>> resultsNew = new HashMap<>();
-        TransactionPack tp = TransactionPack.unpack(Do.read("/Users/romanu/Downloads/ru/token106.unicon"));
-        tp.getContract().check();
-        System.out.println("Processing cost " + tp.getContract().getProcessedCostU());
-
-
-        results.put(tp.getContract().getId(), new HashMap<>());
-        tp.getContract().getRevokingItems().forEach(a -> {
-            resultsRevoking.put(a.getId(), new HashMap<>());
-        });
-
-        tp.getContract().getNewItems().forEach(a -> {
-            resultsNew.put(a.getId(), new HashMap<>());
-        });
-
-        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
-        Client clients = new Client("http://node-" + 1 + "-com.utoken.io:8080", key, null, false);
-        System.out.println(clients.getVersion());
-
-       /* for (int i = 0; i < 33;i++) {
-            Client c = clients.getClient(i);
-            System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
-
-        }*/
-
-        //System.out.println(clients.getClient(30).resyncItem(HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE")));
-
-
-        for (int i = 0; i < 33; i++) {
-            try {
-
-                Client c = clients.getClient(i);
-                //System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
-                int finalI = i;
-
-                results.keySet().forEach(id -> {
-
-                    try {
-                        ItemResult ir = c.getState(id);
-                        System.out.println("this " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if (!results.get(id).containsKey(ir.state)) {
-                            results.get(id).put(ir.state, new HashSet<>());
-                        }
-                        results.get(id).get(ir.state).add(finalI + 1);
-
-                    } catch (ClientError clientError) {
-                        clientError.printStackTrace();
-                    }
-                });
-
-                resultsRevoking.keySet().forEach(id -> {
-
-                    try {
-                        ItemResult ir = c.getState(id);
-                        System.out.println("revoking " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if (!resultsRevoking.get(id).containsKey(ir.state)) {
-                            resultsRevoking.get(id).put(ir.state, new HashSet<>());
-                        }
-                        resultsRevoking.get(id).get(ir.state).add(finalI + 1);
-                    } catch (ClientError clientError) {
-                        clientError.printStackTrace();
-                    }
-                });
-
-                resultsNew.keySet().forEach(id -> {
-
-                    try {
-                        ItemResult ir = c.getState(id);
-                        System.out.println("new " + id + " node: " + finalI + " " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
-                        if (!resultsNew.get(id).containsKey(ir.state)) {
-                            resultsNew.get(id).put(ir.state, new HashSet<>());
-                        }
-                        resultsNew.get(id).get(ir.state).add(finalI + 1);
-                    } catch (ClientError clientError) {
-                        clientError.printStackTrace();
-                    }
-                });
-            } catch (IOException e) {
-                System.out.println("failed to connect to " + i);
-                e.printStackTrace();
-            }
-
-        }
-        System.out.println("----THIS---");
-        results.keySet().forEach(id -> {
-            System.out.println(id);
-            results.get(id).keySet().forEach(state -> {
-                System.out.println(state + ": " + results.get(id).get(state).size() + " " + results.get(id).get(state));
-            });
-        });
-
-        System.out.println("----REVOKING---");
-        resultsRevoking.keySet().forEach(id -> {
-            System.out.println(id);
-            resultsRevoking.get(id).keySet().forEach(state -> {
-                System.out.println(state + ": " + resultsRevoking.get(id).get(state).size() + " " + resultsRevoking.get(id).get(state));
-            });
-        });
-
-        System.out.println("----NEW---");
-        resultsNew.keySet().forEach(id -> {
-            System.out.println(id);
-            resultsNew.get(id).keySet().forEach(state -> {
-                System.out.println(state + ": " + resultsNew.get(id).get(state).size() + " " + resultsNew.get(id).get(state));
-            });
-        });
-
-    }
-
-    //@Test
-    public void asd() throws Exception {
-        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
-        Set<PrivateKey> issuers = new HashSet<>();
-        issuers.add(key);
-        Set<PublicKey> owners = new HashSet<>();
-        owners.add(key.getPublicKey());
-        TestSpace testSpace = prepareTestSpace();
-        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-        for (int i = 109; i < 110; i++) {
-            Contract c = ContractsService.createTokenContract(issuers, owners, new BigDecimal("100000.9"), new BigDecimal("0.01"));
-            c.setIssuerKeys(key.getPublicKey().getShortAddress());
-            c.setCreatorKeys(key.getPublicKey().getShortAddress());
-            c.setExpiresAt(ZonedDateTime.now().plusDays(10));
-            c.seal();
-            new FileOutputStream("/Users/romanu/Downloads/ru/token" + i + ".unicon").write(c.getPackedTransaction());
-
-            assertEquals(testSpace.client.register(Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/ru/token" + i + ".unicon")).getPackedTransaction(), 10000).state, ItemState.APPROVED);
-
-
-        }
     }
 
     private static final String REFERENCE_CONDITION_PREFIX = "ref.id==";
@@ -9792,6 +9658,7 @@ public class MainTest {
         TestSpace ts = prepareTestSpace();
         ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
+
         PrivateKey lenderKey = TestKeys.privateKey(1);
         PrivateKey borrowerKey = TestKeys.privateKey(2);
 
@@ -9911,6 +9778,7 @@ public class MainTest {
         TestSpace ts = prepareTestSpace();
         Client c = ts.client;
 
+
         Contract contract = new Contract(TestKeys.privateKey(0));
         Contract contract2 = new Contract(TestKeys.privateKey(0));
         ChangeNumberPermission changeNumberPermission = new ChangeNumberPermission(new RoleLink("@owner", "owner"), Binder.of(
@@ -9947,6 +9815,349 @@ public class MainTest {
         contract2.seal();
         assertEquals(c.register(contract2.getPackedTransaction(),8000).state,ItemState.APPROVED);
         assertTrue(c.isApprovedByNetwork(contract2.getId(),0.9,8000));
+        ts.shutdown();
+    }
+
+
+    @Test
+    public void escrowHelperTest() throws Exception {
+        KeyAddress issuerAddress = TestKeys.publicKey(9).getShortAddress();
+        KeyAddress contractorAddress = TestKeys.publicKey(10).getShortAddress();
+        KeyAddress customerAddress = TestKeys.publicKey(11).getShortAddress();
+        KeyAddress arbitratorAddress = TestKeys.publicKey(12).getShortAddress();
+        KeyAddress storageServiceAddress = TestKeys.publicKey(13).getShortAddress();
+
+        PrivateKey issuerKey = TestKeys.privateKey(9);
+        PrivateKey contractorKey = TestKeys.privateKey(10);
+        PrivateKey customerKey = TestKeys.privateKey(11);
+        PrivateKey arbitratorKey = TestKeys.privateKey(12);
+        PrivateKey storageServiceKey = TestKeys.privateKey(13);
+
+
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->{n.config.setIsFreeRegistrationsAllowedFromYaml(true); n.config.getAddressesWhiteList().add(ts.client.getSession().getPrivateKey().getPublicKey().getLongAddress());});
+
+
+        Contract payment;
+        Contract escrow;
+        ItemResult ir;
+        Contract[] res;
+
+        //INIT->ASSIGN->COMPLETE->CLOSE(customer accepts work)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(storageServiceKey);
+
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        res = EscrowHelper.closeEscrow(escrow,Do.listOf(customerAddress,storageServiceAddress));
+        escrow = res[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(storageServiceKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        res = EscrowHelper.obtainPaymentOnClosedEscrow(escrow);
+        payment = res[0];
+        payment.addSignatureToSeal(contractorKey);
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = payment.createRevision(contractorKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //INIT->ASSIGN->COMPLETE->CLOSE(arbitration)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(storageServiceKey);
+
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        res = EscrowHelper.closeEscrow(escrow,Do.listOf(arbitratorAddress,contractorAddress));
+        escrow = res[0];
+        escrow.addSignatureToSeal(arbitratorKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        res = EscrowHelper.obtainPaymentOnClosedEscrow(escrow);
+        payment = res[0];
+        payment.addSignatureToSeal(contractorKey);
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = payment.createRevision(contractorKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+
+        //INIT->ASSIGN->COMPLETE->CANCEL(cancel agreed)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(storageServiceKey);
+
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        res = EscrowHelper.cancelEscrow(escrow);
+        escrow = res[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = res[1];
+        payment = payment.createRevision(customerKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //INIT->ASSIGN->COMPLETE->CANCEL(arbitration)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(storageServiceKey);
+
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        res = EscrowHelper.cancelEscrow(escrow);
+        escrow = res[0];
+        escrow.addSignatureToSeal(arbitratorKey);
+        escrow.addSignatureToSeal(customerKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = res[1];
+        payment = payment.createRevision(customerKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+
+
+        //INIT->ASSIGN->CANCEL(contractor,customer)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        res = EscrowHelper.cancelEscrow(escrow);
+        escrow = res[0];
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(customerKey);
+
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = res[1];
+        payment = payment.createRevision(customerKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+        payment.getTransactionPack().addReferencedItem(escrow);
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //INIT->ASSIGN->CANCEL(customer,timeout)
+
+        payment = new Contract(customerKey);
+        payment.seal();
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(3))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        Thread.sleep(3000);
+
+        res = EscrowHelper.cancelEscrow(escrow);
+        escrow = res[0];
+        escrow.addSignatureToSeal(customerKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        payment = res[1];
+        payment = payment.createRevision(customerKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        //INIT->CANCEL(customer)
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(30000))[0];
+        escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(issuerKey);
+
+        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        res = EscrowHelper.cancelEscrow(escrow);
+        escrow = res[0];
+        escrow.addSignatureToSeal(customerKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        assertNull(res[1]);
+
+
         ts.shutdown();
     }
 
