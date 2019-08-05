@@ -391,6 +391,10 @@ public class ReferenceConditionsTest {
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
 
+        assertTrue(refContract1.getReferences().get("ref_null").matchingItems.isEmpty());
+
+        assertTrue(refContract1.getReferences().get("ref_cont_null").matchingItems.isEmpty());
+
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(refContract2));
@@ -435,6 +439,10 @@ public class ReferenceConditionsTest {
         assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(refContract1));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
+
+        assertTrue(refContract1.getReferences().get("ref_null").matchingItems.isEmpty());
+
+        assertTrue(refContract1.getReferences().get("ref_cont_null").matchingItems.isEmpty());
 
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
