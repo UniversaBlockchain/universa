@@ -110,6 +110,18 @@ definition:
        - this.definition.references.ref_cont defined
        - inherits this.definition.references.ref_cont
        - this.definition.origin == ref.definition.origin
+ - reference:
+     name: ref_null
+     where:
+       - ref.state.data.nobodyField defined
+ - reference:
+     name: ref_cont_null
+     where:
+       any_of:
+         - ref_null.state.data.amount defined
+         - ref_null.state.data.amount == ref_null.state.data.amount
+         - ref_null.state.data.amount + 1 > 0
+         - 0 != ref_null.state.data.amount * ref_null.state.data.amount
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:

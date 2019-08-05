@@ -570,7 +570,8 @@ public class Reference implements BiSerializable {
                                 leftOperandContract = checkedContract;
 
                         if (leftOperandContract == null)
-                            throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand);
+                            return false;
+                            //throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand);
                     }
                 } else if (leftOperand.equals("now"))
                     left = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -620,13 +621,30 @@ public class Reference implements BiSerializable {
                 right = rightOperandContract.get(rightOperand);
 
             if (leftExpression != null) {
-                left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+                try {
+                    left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+                } catch (IllegalArgumentException e) {
+                    if (e.getMessage().contains("Not found referenced contract for reference"))
+                        return false;
+                    else
+                        throw e;
+                }
+
                 typeOfLeftOperand = compareOperandType.FIELD;
                 if (left != null && left.getClass().getName().endsWith("BigDecimal"))
                     isBigDecimalConversion = true;
             }
+
             if (rightExpression != null) {
-                right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+                try {
+                    right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+                } catch (IllegalArgumentException e) {
+                    if (e.getMessage().contains("Not found referenced contract for reference"))
+                        return false;
+                    else
+                        throw e;
+                }
+
                 typeOfRightOperand = compareOperandType.FIELD;
                 if (right != null && right.getClass().getName().endsWith("BigDecimal"))
                     isBigDecimalConversion = true;
@@ -946,7 +964,10 @@ public class Reference implements BiSerializable {
 
                         break;
                     case CAN_PLAY:
-                        if ((right == null) || !(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
+                        if (right == null)
+                            return false;
+
+                        if (!(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
