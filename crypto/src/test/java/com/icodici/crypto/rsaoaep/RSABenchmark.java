@@ -3,8 +3,8 @@ package com.icodici.crypto.rsaoaep;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.HashType;
 import net.sergeych.tools.Hashable;
-import org.spongycastle.util.BigIntegers;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Test performance of RSAEngine implementation.
  * Reference data:
  * <p>
- * {@link org.spongycastle.crypto.engines.RSAEngine} running on 2.8 GHz Intel Core i7:
+ * {@link org.bouncycastle.crypto.engines.RSAEngine} running on 2.8 GHz Intel Core i7:
  * Encryption: 0.74091035 ms
  * Decryption: 42.92876898 ms
  * Signing: 43.26741285 ms

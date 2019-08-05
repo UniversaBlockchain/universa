@@ -7,7 +7,7 @@
 
 package com.icodici.crypto;
 
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import static org.junit.Assert.assertArrayEquals;
 

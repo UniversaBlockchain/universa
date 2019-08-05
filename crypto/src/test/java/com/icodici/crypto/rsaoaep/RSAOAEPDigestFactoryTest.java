@@ -8,9 +8,9 @@
 package com.icodici.crypto.rsaoaep;
 
 import org.junit.Test;
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA512Digest;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA512Digest;
+import org.bouncycastle.util.encoders.Hex;
 
 import static org.junit.Assert.*;
 

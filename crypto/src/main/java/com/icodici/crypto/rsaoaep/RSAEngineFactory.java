@@ -8,8 +8,8 @@
 package com.icodici.crypto.rsaoaep;
 
 import com.icodici.crypto.rsaoaep.scrsa.NativeRSAEngine;
-import org.spongycastle.crypto.engines.RSAEngine;
-import org.spongycastle.crypto.params.ParametersWithRandom;
+import org.bouncycastle.crypto.engines.RSAEngine;
+import org.bouncycastle.crypto.params.ParametersWithRandom;
 
 /**
  * One-stop shop to create an new RSA engine (which implementation may vary).

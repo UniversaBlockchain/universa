@@ -7,11 +7,11 @@ import com.squareup.jnagmp.GmpInteger;
 
 import java.math.BigInteger;
 
-import org.spongycastle.crypto.CipherParameters;
-import org.spongycastle.crypto.DataLengthException;
-import org.spongycastle.crypto.params.ParametersWithRandom;
-import org.spongycastle.crypto.params.RSAKeyParameters;
-import org.spongycastle.crypto.params.RSAPrivateCrtKeyParameters;
+import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.DataLengthException;
+import org.bouncycastle.crypto.params.ParametersWithRandom;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
 
 import static com.squareup.jnagmp.Gmp.modPowInsecure;
 import static com.squareup.jnagmp.Gmp.modPowSecure;

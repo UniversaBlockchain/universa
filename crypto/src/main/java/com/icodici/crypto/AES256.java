@@ -9,16 +9,16 @@ package com.icodici.crypto;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongycastle.crypto.CipherParameters;
-import org.spongycastle.crypto.engines.AESFastEngine;
-import org.spongycastle.crypto.params.KeyParameter;
+import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.engines.AESFastEngine;
+import org.bouncycastle.crypto.params.KeyParameter;
 
 /**
  * AES256 block cipher implementation.
  */
 public class AES256 implements BlockCipher {
 
-    private org.spongycastle.crypto.@NonNull BlockCipher aesEngine;
+    private org.bouncycastle.crypto.@NonNull BlockCipher aesEngine;
 
     @Nullable
     private byte[] key;

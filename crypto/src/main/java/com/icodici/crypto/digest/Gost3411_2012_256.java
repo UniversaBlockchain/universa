@@ -7,8 +7,8 @@
 
 package com.icodici.crypto.digest;
 
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.GOST3411_2012_256Digest;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.GOST3411_2012_256Digest;
 
 /**
  * GOST R 34.11-2012, 256 variation “Streebog” (GOST family) digest implementation.

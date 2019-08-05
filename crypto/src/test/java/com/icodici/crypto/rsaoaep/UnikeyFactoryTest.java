@@ -5,8 +5,8 @@ import com.icodici.crypto.PrivateKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.junit.Test;
-import org.spongycastle.util.BigIntegers;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;

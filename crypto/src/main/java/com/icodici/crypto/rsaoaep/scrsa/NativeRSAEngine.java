@@ -3,10 +3,10 @@ package com.icodici.crypto.rsaoaep.scrsa;
 // Copy of org.bouncycastle.crypto.engines.RSAEngine,
 // then copy of com.squareup.crypto.rsa;
 
-import org.spongycastle.crypto.AsymmetricBlockCipher;
-import org.spongycastle.crypto.CipherParameters;
-import org.spongycastle.crypto.DataLengthException;
-import org.spongycastle.crypto.engines.RSAEngine;
+import org.bouncycastle.crypto.AsymmetricBlockCipher;
+import org.bouncycastle.crypto.CipherParameters;
+import org.bouncycastle.crypto.DataLengthException;
+import org.bouncycastle.crypto.engines.RSAEngine;
 
 /**
  * this does your basic RSA algorithm.

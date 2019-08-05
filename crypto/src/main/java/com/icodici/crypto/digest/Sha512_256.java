@@ -7,15 +7,15 @@
 
 package com.icodici.crypto.digest;
 
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA512tDigest;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA512tDigest;
 
 /**
  * SHA-512/256 (SHA-2 family) digest implementation.
  */
 public class Sha512_256 extends SpongyCastleDigest {
 
-    final org.spongycastle.crypto.Digest md = new SHA512tDigest(256);
+    final org.bouncycastle.crypto.Digest md = new SHA512tDigest(256);
 
     public Sha512_256() {
     }

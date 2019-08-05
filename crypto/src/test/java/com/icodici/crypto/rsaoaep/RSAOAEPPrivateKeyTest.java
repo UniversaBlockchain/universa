@@ -11,10 +11,10 @@ import com.icodici.crypto.AbstractPrivateKey;
 import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.HashType;
 import org.junit.Test;
-import org.spongycastle.crypto.params.RSAKeyParameters;
-import org.spongycastle.crypto.params.RSAPrivateCrtKeyParameters;
-import org.spongycastle.util.BigIntegers;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.params.RSAPrivateCrtKeyParameters;
+import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.lang.reflect.Field;
 import java.math.BigInteger;

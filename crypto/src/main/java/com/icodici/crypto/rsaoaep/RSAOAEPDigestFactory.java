@@ -8,8 +8,8 @@
 package com.icodici.crypto.rsaoaep;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.*;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.*;
 
 import java.util.Collections;
 import java.util.HashMap;
