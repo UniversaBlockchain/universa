@@ -1,5 +1,4 @@
 group 'com.icodici'
-version '3.10.3'
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'

@@ -1,5 +1,4 @@
 group 'com.icodici'
-version '3.10.3'
 
 
 apply plugin: 'java'
@@ -92,4 +91,30 @@ task allJavadoc(type: Javadoc) {
     options.showFromProtected()
     destinationDir = file("../docs/javadoc")
     delete fileTree("../docs/javadoc")
+}
+
+
+task generateVersionSources {
+    inputs.property "version", project.version
+    outputs.dir "$buildDir/generated"
+    doFirst {
+        def versionFile = file("$buildDir/generated/com/icodici/universa/CoreGenerated.java")
+        versionFile.parentFile.mkdirs()
+        versionFile.text =
+                """
+package com.icodici.universa;
+
+public class CoreGenerated {
+	public static String getVersion() {
+		return "$project.version";
+	}
+}
+"""
+    }
+}
+
+compileJava.dependsOn generateVersionSources
+
+sourceSets.main.java {
+    srcDir "$buildDir/generated"
 }
