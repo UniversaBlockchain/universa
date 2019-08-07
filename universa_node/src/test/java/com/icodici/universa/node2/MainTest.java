@@ -9848,14 +9848,17 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
-
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
-        escrow.addSignatureToSeal(issuerKey);
-
-        assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
         assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500),payment)[0];
+        escrow.addSignatureToSeal(issuerKey);
+        escrow.addSignatureToSeal(customerKey);
+
+        ir = ts.client.register(escrow.getPackedTransaction(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -9902,16 +9905,15 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500),payment)[0];
         escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
-        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -9959,16 +9961,16 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500),payment)[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
-        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -10008,16 +10010,15 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500),payment)[0];
         escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
-        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -10060,16 +10061,15 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500))[0];
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofDays(500),payment)[0];
         escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
-        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -10102,16 +10102,16 @@ public class MainTest {
 
         payment = new Contract(customerKey);
         payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(3))[0];
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(3),payment)[0];
         escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
-        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
 
-        escrow = EscrowHelper.assignEscrow(escrow,payment,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
+        escrow = EscrowHelper.assignEscrow(escrow,contractorAddress,Binder.of("description","Assignment is done with additional info..."))[0];
         escrow.addSignatureToSeal(customerKey);
         escrow.addSignatureToSeal(contractorKey);
 
@@ -10140,9 +10140,13 @@ public class MainTest {
 
         //INIT->CANCEL(customer)
 
-        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(30000))[0];
+        payment = new Contract(customerKey);
+        payment.seal();
+        assertEquals(ts.client.register(payment.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+
+        escrow = EscrowHelper.initEscrow(Do.listOf(issuerAddress),Binder.of("description","This is description the work to be done"),customerAddress,arbitratorAddress,storageServiceAddress,Duration.ofSeconds(30000),payment)[0];
         escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(contractorKey);
         escrow.addSignatureToSeal(issuerKey);
 
         assertEquals(ts.client.register(escrow.getPackedTransaction(),8000).state,ItemState.APPROVED);
@@ -10155,7 +10159,14 @@ public class MainTest {
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        assertNull(res[1]);
+        payment = res[1];
+        payment = payment.createRevision(customerKey);
+        payment.setOwnerKeys(TestKeys.publicKey(20));
+        payment.seal();
+
+        ir = ts.client.register(payment.getPackedTransaction(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
 
 
         ts.shutdown();

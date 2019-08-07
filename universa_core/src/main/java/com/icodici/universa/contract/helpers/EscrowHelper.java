@@ -40,6 +40,7 @@ public class EscrowHelper {
     static final public String FIELD_STATUS = "status";
     static final public String PATH_STATUS = "state.data."+FIELD_STATUS;
 
+    static final public String STATUS_INIT = "init";
     static final public String STATUS_OPEN = "open";
     static final public String STATUS_ASSIGNED = "assigned";
     static final public String STATUS_CANCELED = "canceled";
@@ -48,23 +49,24 @@ public class EscrowHelper {
 
 
     /**
-     * Prepares escrow agreement contract
+     * Prepares escrow agreement contract and its satellites (payment contract with ownership that depends on status of escrow)
      *
-     * Contract returned is not signed/registered. Must be signed by issuer keys and registered
+     * Contract returned is not signed/registered. Must be signed by issuer and customer
      *
      * @param issuerKeys public keys/addresses to issue escrow with
      * @param escrowData escrow description data to put into definition
      * @param customerAddress escrow customer
      * @param arbitratorAddress escrow arbitrator
+     *
      * @param storageServiceAddress storage service is responsible for holding revision of an escrow.
      *                              Applicable when only one of customer/contractor signatures is required
      *                              to change state of escrow contract. Used to avoid situations when new
      *                              revision registered by one of the sides is not being sent to the other
      * @param escrowDuration duration of an escrow
-     *
+     * @param payment payment contract. Must be owned by customer at this point.
      * @return the array of contracts [escrow agreement contract]
      */
-    public static Contract[] initEscrow(Collection<?> issuerKeys, Binder escrowData, KeyAddress customerAddress, KeyAddress arbitratorAddress, KeyAddress storageServiceAddress, Duration escrowDuration) {
+    public static Contract[] initEscrow(Collection<?> issuerKeys, Binder escrowData, KeyAddress customerAddress, KeyAddress arbitratorAddress, KeyAddress storageServiceAddress, Duration escrowDuration, Contract payment) {
         Contract escrow = new Contract();
         escrow.setExpiresAt(ZonedDateTime.now().plusYears(5));
         escrow.setIssuerKeys(issuerKeys);
@@ -101,6 +103,11 @@ public class EscrowHelper {
         escrow.registerRole(listRole);
 
 
+        
+        //OPEN
+        RoleLink openEscrow = new RoleLink("open_escrow","customer");
+        openEscrow.addRequiredReference("ref_escrow_init", Role.RequiredMode.ALL_OF);
+        escrow.registerRole(openEscrow);
 
         //ASSIGN
         ListRole assignEscrow = new ListRole("assign_escrow");
@@ -198,12 +205,18 @@ public class EscrowHelper {
 
         escrow.getDefinition().getData().put(FIELD_VERSION,1);
         escrow.getDefinition().getData().put(FIELD_ESCROW_EXPIRES,ZonedDateTime.now().plus(escrowDuration));
-        escrow.getStateData().put(FIELD_STATUS, STATUS_OPEN);
+        escrow.getStateData().put(FIELD_STATUS, STATUS_INIT);
         escrow.getStateData().put(FIELD_PAYMENT,null);
         escrow.getStateData().put(FIELD_CONTRACTOR_ASSIGNMENT_INFO,null);
         escrow.getStateData().put(FIELD_CONTRACTOR_COMPLETION_INFO,null);
 
 
+
+        Reference refEscrowInit = new Reference(escrow);
+        refEscrowInit.type = Reference.TYPE_EXISTING_DEFINITION;
+        refEscrowInit.name = "ref_escrow_init";
+        refEscrowInit.setConditions(Binder.of("all_of",Do.listOf("this."+PATH_STATUS+"==\""+ STATUS_INIT +"\"")));
+        escrow.addReference(refEscrowInit);
 
         Reference refEscrowOpen = new Reference(escrow);
         refEscrowOpen.type = Reference.TYPE_EXISTING_DEFINITION;
@@ -231,11 +244,18 @@ public class EscrowHelper {
         refEscrowComplete.setConditions(Binder.of("all_of",Do.listOf("this."+PATH_STATUS+"==\""+ STATUS_COMPLETE +"\"")));
         escrow.addReference(refEscrowComplete);
 
-
+        ModifyDataPermission openEscrowPemission = new ModifyDataPermission(new RoleLink("@oep","open_escrow"),
+                Binder.of("fields",Binder.of(
+                        FIELD_STATUS,Do.listOf(STATUS_OPEN),
+                        FIELD_PAYMENT,null
+                )));
+        openEscrowPemission.setId("open_escrow");
+        escrow.addPermission(openEscrowPemission);
+        
+        
         ModifyDataPermission assignEscrowPemission = new ModifyDataPermission(new RoleLink("@aep","assign_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_ASSIGNED),
-                        FIELD_PAYMENT,null,
                         FIELD_CONTRACTOR_ASSIGNMENT_INFO,null
                 )));
         assignEscrowPemission.setId("assign_escrow");
@@ -268,36 +288,10 @@ public class EscrowHelper {
 
 
         escrow.seal();
-        return new Contract[]{escrow};
-    }
-
-    /**
-     * Assigns escrow agreement contract to a contractor and its satellites (payment contract with ownership that depends on status of escrow)
-     *
-     * Contract returned is not signed/registered. Must be signed (by customer, contractor and arbitrator keys) and registered
-     *
-     * @param escrow escrow agreement contract
-     * @param payment payment contract. Must be owned by customer at this point.
-     * @param contractorAddress contractor of an escrow
-     * @param assignData free-form data from the contractor to put into escrow contract
-     *
-     * @return the array of contracts [escrow agreement contract]
-     */
-
-    public static Contract[] assignEscrow(Contract escrow, Contract payment, KeyAddress contractorAddress, Binder assignData) {
+        Contract escrowInit = escrow;
 
         escrow = escrow.createRevision();
-
-        escrow.setOwnerKeys(contractorAddress);
-
-        ListRole creator = new ListRole("creator");
-        creator.setMode(ListRole.Mode.ALL);
-        creator.addRole(new RoleLink("@cu","customer"));
-        creator.addRole(new RoleLink("@co","contractor"));
-        escrow.registerRole(creator);
-
-        escrow.getStateData().set(FIELD_STATUS, STATUS_ASSIGNED);
-        escrow.getStateData().set(FIELD_CONTRACTOR_ASSIGNMENT_INFO,assignData);
+        escrow.setCreatorKeys(customerAddress);
 
         payment = payment.createRevision();
         payment.setCreatorKeys(escrow.getRole("customer").getSimpleAddress());
@@ -355,9 +349,44 @@ public class EscrowHelper {
         payment.seal();
 
         escrow.getStateData().set(FIELD_PAYMENT,payment.getId().toBase64String());
+        escrow.getStateData().set(FIELD_STATUS,STATUS_OPEN);
         escrow.addNewItems(payment);
+        escrow.addNewItems(escrowInit);
 
         escrow.seal();
+
+        return new Contract[]{escrow};
+    }
+
+    /**
+     * Assigns escrow agreement contract to a contractor
+     *
+     * Contract returned is not signed/registered. Must be signed by customer and contractor
+     *
+     * @param escrow escrow agreement contract
+     * @param contractorAddress contractor of an escrow
+     * @param assignData free-form data from the contractor to put into escrow contract
+     *
+     * @return the array of contracts [escrow agreement contract]
+     */
+
+    public static Contract[] assignEscrow(Contract escrow, KeyAddress contractorAddress, Binder assignData) {
+        Contract payment = getPayment(escrow);
+        escrow = escrow.createRevision();
+
+        escrow.setOwnerKeys(contractorAddress);
+
+        ListRole creator = new ListRole("creator");
+        creator.setMode(ListRole.Mode.ALL);
+        creator.addRole(new RoleLink("@cu","customer"));
+        creator.addRole(new RoleLink("@co","contractor"));
+        escrow.registerRole(creator);
+
+        escrow.getStateData().set(FIELD_STATUS, STATUS_ASSIGNED);
+        escrow.getStateData().set(FIELD_CONTRACTOR_ASSIGNMENT_INFO,assignData);
+
+        escrow.seal();
+        escrow.getTransactionPack().addReferencedItem(payment);
 
         return new Contract[] {escrow};
     }
@@ -369,9 +398,9 @@ public class EscrowHelper {
      * Cancels escrow agreement and returns payment to customer
      *
      * Contract returned is not signed/registered. Must be signed according to situation:
-     * customer - escrow is open or escrow is assigned and now expired,
-     * customer and contractor - escrow is assigned and not expired or escrow is complete
-     * customer and arbitrator - escrow is complete
+     * by customer - escrow is open or escrow is assigned and now expired,
+     * by customer and contractor - escrow is assigned and not expired or escrow is complete
+     * by customer and arbitrator - escrow is complete
      *
      * @param escrow escrow agreement contract
      * @return the array of contracts [escrow agreement contract, payment contract owned by customer]
@@ -383,15 +412,14 @@ public class EscrowHelper {
         escrow.registerRole(new RoleLink("creator","customer"));
         escrow.getStateData().set(FIELD_STATUS,STATUS_CANCELED);
 
-        if(payment != null) {
-            payment = payment.createRevision();
+        payment = payment.createRevision();
 
-            payment.setCreatorKeys(escrow.getRole("customer").getSimpleAddress());
-            payment.setOwnerKeys(escrow.getRole("customer").getSimpleAddress());
-            payment.seal();
+        payment.setCreatorKeys(escrow.getRole("customer").getSimpleAddress());
+        payment.setOwnerKeys(escrow.getRole("customer").getSimpleAddress());
+        payment.seal();
 
-            escrow.addNewItems(payment);
-        }
+        escrow.addNewItems(payment);
+
         escrow.seal();
 
         return new Contract[] {escrow,payment};
@@ -400,7 +428,7 @@ public class EscrowHelper {
     /**
      * Complete escrow agreement and add details on completion to state.data.contractor_completion_info
      *
-     * Contract returned is not signed/registered. Must be signed contractor and storage service (if available)
+     * Contract returned is not signed/registered. Must be signed by contractor and storage service (if available)
      *
      * @param escrow escrow agreement contract
      * @param completionData free-form data on escrow completion to put into escrow contract
@@ -425,7 +453,7 @@ public class EscrowHelper {
     /**
      * Closes escrow agreement
      *
-     * Contract returned is not signed/registered. Must be signed by:  customer and storage service (if available) or contractor and arbitrator
+     * Contract returned is not signed/registered. Must be signed by customer and storage service (if available) or contractor and arbitrator
      *
      * @param escrow escrow agreement contract
      * @param creatorKeys public keys/addresses escrow closing will be signed by
@@ -473,9 +501,9 @@ public class EscrowHelper {
     private static Contract getPayment(Contract escrow) {
         HashId id = escrow.getStateData().get(FIELD_PAYMENT) != null ? HashId.withDigest(escrow.getStateData().getString(FIELD_PAYMENT)) : null;
 
-        if(escrow.get(PATH_STATUS).equals(STATUS_ASSIGNED)) {
+        if(escrow.get(PATH_STATUS).equals(STATUS_OPEN)) {
             return escrow.getTransactionPack().getSubItem(id);
-        } else if(escrow.get(PATH_STATUS).equals(STATUS_COMPLETE) || escrow.get(PATH_STATUS).equals(STATUS_CLOSED)) {
+        } else if(escrow.get(PATH_STATUS).equals(STATUS_ASSIGNED) || escrow.get(PATH_STATUS).equals(STATUS_COMPLETE) || escrow.get(PATH_STATUS).equals(STATUS_CLOSED)) {
             return escrow.getTransactionPack().getReferencedItems().get(id);
         } else {
             return null;
