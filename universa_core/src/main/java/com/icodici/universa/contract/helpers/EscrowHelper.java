@@ -54,6 +54,7 @@ public class EscrowHelper {
      * Contract returned is not signed/registered. Must be signed by issuer and customer
      *
      * @param issuerKeys public keys/addresses to issue escrow with
+     * @param definitionData free-form data to put into loan contract definition.data section
      * @param escrowData escrow description data to put into definition
      * @param customerAddress escrow customer
      * @param arbitratorAddress escrow arbitrator
@@ -66,12 +67,14 @@ public class EscrowHelper {
      * @param payment payment contract. Must be owned by customer at this point.
      * @return the array of contracts [escrow agreement contract]
      */
-    public static Contract[] initEscrow(Collection<?> issuerKeys, Binder escrowData, KeyAddress customerAddress, KeyAddress arbitratorAddress, KeyAddress storageServiceAddress, Duration escrowDuration, Contract payment) {
+    public static Contract[] initEscrow(Collection<?> issuerKeys, Binder definitionData, Binder escrowData, KeyAddress customerAddress, KeyAddress arbitratorAddress, KeyAddress storageServiceAddress, Duration escrowDuration, Contract payment) {
         Contract escrow = new Contract();
         escrow.setExpiresAt(ZonedDateTime.now().plusYears(5));
         escrow.setIssuerKeys(issuerKeys);
         escrow.setCreatorKeys(issuerKeys);
 
+        if(definitionData != null)
+            escrow.getDefinition().getData().putAll(definitionData);
 
         escrow.getDefinition().getData().put(FIELD_CUSTOMER_ESCROW_INFO,escrowData);
 
