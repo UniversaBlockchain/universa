@@ -215,9 +215,12 @@ public class PrivateKey extends AbstractKey {
     }
 
     public byte[] packWithPassword(String password) throws EncryptionError {
+        return packWithPassword(password,1000000);
+    }
+
+    public byte[] packWithPassword(String password, int rounds) throws EncryptionError {
         byte[] packedKey = pack();
         byte[] salt = getClass().getCanonicalName().getBytes();
-        int rounds = getKDFRounds();
         KeyInfo.PRF function = KeyInfo.PRF.HMAC_SHA256;
         SymmetricKey key = new KeyInfo(function, rounds, salt, null)
                 .derivePassword(password);
