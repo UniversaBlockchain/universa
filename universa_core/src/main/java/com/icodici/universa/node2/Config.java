@@ -14,6 +14,7 @@ import com.icodici.universa.Core;
 import com.icodici.universa.contract.services.NSmartContract;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -27,13 +28,14 @@ public class Config {
     private KeyAddress networkReconfigKeyAddress = null;
     public Map<String, Integer> minPayment = new HashMap<>();
     public Map<String, BigDecimal> rate = new HashMap<>();
+    private KeyAddress authorizedNameServiceCenterAddress;
 
     public Config () {
         System.out.println("USING REAL CONFIG");
         try {
             networkAdminKeyAddress = new KeyAddress("bVmSQXWM7WvUtgcitUtjRd42WRbLycvsfPaRimpSNY3yZMUrVvEHV6mwb8A2DrKnzi795kJB");
             networkReconfigKeyAddress = new KeyAddress("JPgxNXkRSYNnWM82D8WKLSH3d98jFeEeCmDN4wLfzfi5kE6kvfopJUQrbDczrgpCqpo5ncG8");
-            authorizedNameServiceCenterKey = new PublicKey(Base64u.decodeCompactString("HggcAQABxAABg9ideX6A3Wk9CuwnZrakXdvhYDiIiO0HA+YWmLArcZvhhaGMrw1i1mA6S9L6NPAuhYcZzm8Mxtwr1RESyJqm+HFwU+49s0yXHhCJsXcvK23Yx7NEpIrpGkKt9OCCdBGhQkls0Yc1lBBmGYCrShMntPC9xY9DJZ4sbMuBPIUQzpnWLYgRAbZb+KuZFXAIr7hRO0rNTZ6hE5zp6oPwlQLh9hBy6CsvZD/73Cf2WtKDunHD1qKuQU/KqruqVMMv2fd6ZKo692esWsqqIAiQztg1+sArAhf0Cr8lhRf53G5rndiiQx7RDs1P9Pp1wWK9e93UL1KF4PpVx7e7SznrCHTEdw"));
+            authorizedNameServiceCenterAddress = new KeyAddress("btRFdPVBetub29orEGB7SBTQCheqwQb7kDKSBwjv8y27mz7DjbSYjQYhBKK8zavmYoMxiq5T");
 
             addressesWhiteList.add(new KeyAddress("J3uaVvHE7JqhvVb1c26RyDhfJw9eP2KR1KRhm2VdmYx7NwHpzdHTyEPjcmKpgkJAtzWLSPUw"));
             uIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
@@ -46,8 +48,6 @@ public class Config {
 
         } catch (KeyAddress.IllegalAddressException e) {
             e.printStackTrace();
-        } catch (EncryptionError encryptionError) {
-            encryptionError.printStackTrace();
         }
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(), new BigDecimal("4"));
@@ -96,7 +96,6 @@ public class Config {
         config.networkReconfigKeyAddress = networkReconfigKeyAddress;
         config.minPayment = new HashMap<>(minPayment);
         config.rate = new HashMap<>(rate);
-        config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
         config.queryContractsLimit = queryContractsLimit;
         config.followerCallbackExpiration = followerCallbackExpiration;
         config.followerCallbackDelay = followerCallbackDelay;
@@ -241,7 +240,6 @@ public class Config {
 
     private List<KeyAddress> addressesWhiteList = new ArrayList<>();
 
-    private PublicKey authorizedNameServiceCenterKey = null;
 
     public static String uTemplatePath = "./src/test_contracts/UTemplate.yml";
     public static String testUTemplatePath = "./src/test_contracts/TestUTemplate.yml";
@@ -435,16 +433,20 @@ public class Config {
 
 
     public void setAuthorizedNameServiceCenterKeyData(Bytes authorizedNameServiceCenterKeyData) {
-        try {
-            this.authorizedNameServiceCenterKey = new PublicKey(authorizedNameServiceCenterKeyData.getData());
-        } catch (EncryptionError encryptionError) {
-            encryptionError.printStackTrace();
-        }
+        throw new NotImplementedException();
     }
 
-    public PublicKey getAuthorizedNameServiceCenterKey() {
-        return authorizedNameServiceCenterKey;
+    public void setAuthorizedNameServiceCenterAddress(KeyAddress authorizedNameServiceCenterAddress) {
+            this.authorizedNameServiceCenterAddress = authorizedNameServiceCenterAddress;
+    }
 
+    public KeyAddress getAuthorizedNameServiceCenterAddress() {
+       return authorizedNameServiceCenterAddress;
+    }
+
+    @Deprecated
+    public PublicKey getAuthorizedNameServiceCenterKey() {
+        throw new NotImplementedException();
     }
 
     public String getUIssuerName() {

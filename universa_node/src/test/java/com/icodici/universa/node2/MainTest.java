@@ -580,6 +580,7 @@ public class MainTest {
         System.gc();
     }
 
+    @Ignore
     @Test
     public void reconfigurationContractTest() throws Exception {
         PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
@@ -2149,7 +2150,7 @@ public class MainTest {
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
         testSpace.nodes.forEach(m -> {
-            m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+            m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
             m.config.setIsFreeRegistrationsAllowedFromYaml(true);
         });
 
@@ -2719,44 +2720,7 @@ public class MainTest {
 
     private Config configForProvider = new Config();
 
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-        Config config = configForProvider;
-
-        @Override
-        public Set<KeyAddress> getUIssuerKeys() {
-            return config.getUIssuerKeys();
-        }
-
-        @Override
-        public String getUIssuerName() {
-            return config.getUIssuerName();
-        }
-
-        @Override
-        public int getMinPayment(String extendedType) {
-            return config.getMinPayment(extendedType);
-        }
-
-        @Override
-        @Deprecated
-        public double getRate(String extendedType) {
-            return config.getRate(extendedType);
-        }
-
-        @Override
-        public BigDecimal getServiceRate(String extendedType) {
-            return config.getServiceRate(extendedType);
-        }
-
-        @Override
-        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
-            Set<PublicKey> set = new HashSet<>();
-            if (extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
-                set.add(config.getAuthorizedNameServiceCenterKey());
-            }
-            return set;
-        }
-    };
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider(configForProvider);
 
     @Test
     public void checkUnsNodeMissedRevocation() throws Exception {
@@ -2774,7 +2738,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         String name = "test" + Instant.now().getEpochSecond();
 
@@ -2917,7 +2881,7 @@ public class MainTest {
         testSpace.nodes.forEach(m -> m.shutdown());
         Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
         //LAST NODE MISSED UNS2 REVOKE
@@ -2976,7 +2940,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         String name = "test" + Instant.now().getEpochSecond();
 
@@ -3130,7 +3094,7 @@ public class MainTest {
         testSpace.nodes.forEach(m -> m.shutdown());
         Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
         //LAST NODE MISSED UNS2 REVISION
@@ -3189,7 +3153,7 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         String name = "test" + Instant.now().getEpochSecond();
         String name2 = "test2" + Instant.now().getEpochSecond();
@@ -3273,7 +3237,7 @@ public class MainTest {
         testSpace.nodes.forEach(m -> m.shutdown());
         Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
-        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+        testSpace.nodes.forEach(m -> m.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(name));
         assertNotNull(testSpace.node.node.getLedger().getNameRecord(name2));
@@ -9776,7 +9740,8 @@ public class MainTest {
     @Test
     public void testReferencesToPermissionsAndCustomRoles() throws Exception {
         TestSpace ts = prepareTestSpace();
-        Client c = ts.client;
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        Client c = new Client("./src/test_node_config_v2/test_node_config_v2.json",System.getProperty("java.io.tmpdir"),ts.myKey);
 
 
         Contract contract = new Contract(TestKeys.privateKey(0));
@@ -9809,7 +9774,7 @@ public class MainTest {
 
         Reference reference = new Reference(contract2);
         reference.name = "test1";
-        reference.setConditions(Binder.of("all_of", Do.listOf("ref.id==\""+contract.getId().toBase64String()+"\"","this.definition.permissions.changenumber2==ref.definition.permissions.changenumber", "ref.definition.permissions.changenumber defined", "ref.state.roles.link_to_issuer defined", "ref.state.roles.link_to_issuer==this.owner")));
+        reference.setConditions(Binder.of("all_of", Do.listOf("ref.id==\""+contract.getId().toBase64String()+"\"","this.definition.permissions.changenumber2==ref.definition.permissions.changenumber")));
         contract2.addReference(reference);
         contract2.addNewItems(contract);
         contract2.seal();
@@ -10168,6 +10133,97 @@ public class MainTest {
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
+
+        ts.shutdown();
+    }
+
+
+    @Test
+    public void unsCase() throws Exception {
+        TestSpace ts = prepareTestSpace();
+
+        PrivateKey keyToRegister = new PrivateKey(2048);
+        PrivateKey contractToRegisterIssuer = TestKeys.privateKey(1);
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(2);
+        ts.nodes.forEach(n->n.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
+
+        Contract referencesContract = new Contract(contractToRegisterIssuer);
+        referencesContract.seal();
+
+
+        PrivateKey unsIssuer = TestKeys.privateKey(3);
+        UnsContract uns = ContractsService.createUnsContract(new HashSet<>(Do.listOf(unsIssuer)), new HashSet<>(Do.listOf(unsIssuer.getPublicKey())), nodeInfoProvider);
+
+        UnsName unsName = new UnsName("Universa"+ZonedDateTime.now(), "Universa keys and origins", "http://universablockchain.com");
+        unsName.setUnsReducedName(unsName.getUnsName());
+        UnsRecord unsRecord1 = new UnsRecord(keyToRegister.getPublicKey());
+        unsName.addUnsRecord(unsRecord1);
+        uns.addUnsName(unsName);
+
+        uns.getStateData().put("host","192.168.1.1");
+        ModifyDataPermission mdp = new ModifyDataPermission(new RoleLink("@mdp1","owner"),Binder.of("fields",Binder.of("host",null)));
+        uns.addPermission(mdp);
+        uns.seal();
+
+        uns.addSignatureToSeal(unsIssuer);
+        uns.addSignatureToSeal(keyToRegister);
+        uns.addSignatureToSeal(authorizedNameServiceKey);
+
+        Contract paymentContract = getApprovedUContract(ts);
+
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, new HashSet<>(Do.listOf(ts.myKey)), false);
+
+        assertEquals(ts.client.registerParcelWithState(parcel.pack(),8000).state,ItemState.APPROVED);
+
+        synchronized (ts.uContractLock) {
+            ts.uContract = parcel.getPaymentContract();
+        }
+
+        paymentContract = getApprovedUContract(ts);
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, new HashSet<>(Do.listOf(ts.myKey)), false);
+
+        ItemState ir = ts.client.registerParcelWithState(payingParcel.pack(), 8000).state;
+        System.out.println(ir);
+        assertEquals(ir,ItemState.APPROVED);
+
+        synchronized (ts.uContractLock) {
+            ts.uContract = payingParcel.getPaymentContract();
+        }
+
+        Binder record = ts.client.queryNameRecord(referencesContract.getOrigin());
+        System.out.println(record);
+        record = ts.client.queryNameRecord(keyToRegister.getPublicKey().getShortAddress().toString());
+        System.out.println(record);
+        record = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
+        System.out.println(record);
+        byte[] bytes = ts.client.queryNameContract(unsName.getUnsName());
+        UnsContract c = (UnsContract) Contract.fromPackedTransaction(bytes);
+        assertEquals(c.getId(),uns.getId());
+        assertEquals(c.get("state.data.host"),"192.168.1.1");
+
+
+        c = (UnsContract) c.createRevision(unsIssuer);
+        c.getStateData().put("host","192.168.1.2");
+        c.setNodeInfoProvider(nodeInfoProvider);
+        c.seal();
+        c.addSignatureToSeal(unsIssuer);
+//        c.addSignatureToSeal(keyToRegister);
+//        c.addSignatureToSeal(authorizedNameServiceKey);
+
+
+        paymentContract = getApprovedUContract(ts);
+
+        Parcel unsRevisionParcel = ContractsService.createParcel(c.getTransactionPack(), paymentContract, 1, new HashSet<>(Do.listOf(ts.myKey)), false);
+
+        assertEquals(ts.client.registerParcelWithState(unsRevisionParcel.pack(),8000).state,ItemState.APPROVED);
+
+
+        bytes = ts.client.queryNameContract(unsName.getUnsName());
+        Contract c2 = Contract.fromPackedTransaction(bytes);
+        assertEquals(c.getId(),c2.getId());
+        assertEquals(c2.get("state.data.host"),"192.168.1.2");
 
         ts.shutdown();
     }

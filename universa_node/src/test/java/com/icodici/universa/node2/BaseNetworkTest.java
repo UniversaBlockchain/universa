@@ -80,6 +80,7 @@ public class BaseNetworkTest extends TestCase {
         this.network = network;
         this.ledger = ledger;
         this.config = config;
+        this.nodeInfoProvider = new NodeConfigProvider(config);
     }
 
 
@@ -8140,43 +8141,7 @@ public class BaseNetworkTest extends TestCase {
 //        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
     }
 
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-
-        @Override
-        public Set<KeyAddress> getUIssuerKeys() {
-            return config.getUIssuerKeys();
-        }
-
-        @Override
-        public String getUIssuerName() {
-            return config.getUIssuerName();
-        }
-
-        @Override
-        public int getMinPayment(String extendedType) {
-            return config.getMinPayment(extendedType);
-        }
-
-        @Override
-        @Deprecated
-        public double getRate(String extendedType) {
-            return config.getRate(extendedType);
-        }
-
-        @Override
-        public BigDecimal getServiceRate(String extendedType) {
-            return config.getServiceRate(extendedType);
-        }
-
-        @Override
-        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
-            Set<PublicKey> set = new HashSet<>();
-            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
-                set.add(config.getAuthorizedNameServiceCenterKey());
-            }
-            return set;
-        }
-    };
+    private NSmartContract.NodeInfoProvider nodeInfoProvider;
 
     @Test
     public void registerSlotContract() throws Exception {
@@ -10992,7 +10957,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -11070,7 +11035,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         BigDecimal oldValue = config.getServiceRate(NSmartContract.SmartContractType.UNS1.name());
         config.setServiceRate(NSmartContract.SmartContractType.UNS1.name(),
@@ -11194,7 +11159,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -11309,7 +11274,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey4 = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -11574,7 +11539,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey5 = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -11834,7 +11799,7 @@ public class BaseNetworkTest extends TestCase {
     public void registerUnsContractOriginRevision() throws Exception {
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -11928,6 +11893,8 @@ public class BaseNetworkTest extends TestCase {
 
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
+        payingParcel = Parcel.unpack(payingParcel.pack());
+
         node.registerParcel(payingParcel);
         synchronized (uContractLock) {
             uContract = payingParcel.getPayloadContract().getNew().get(0);
@@ -11983,7 +11950,7 @@ public class BaseNetworkTest extends TestCase {
     public void checkUnsContractRefContractNotApproved() throws Exception {
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -12028,7 +11995,7 @@ public class BaseNetworkTest extends TestCase {
     public void checkUnsContractRefContractMissing() throws Exception {
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -12073,7 +12040,7 @@ public class BaseNetworkTest extends TestCase {
     public void checkUnsContractRefContractSigMissing() throws Exception {
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -12130,7 +12097,7 @@ public class BaseNetworkTest extends TestCase {
     public void checkUnsContractAddressSigMissing() throws Exception {
         PrivateKey randomPrivKey = new PrivateKey(2048);
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -12178,7 +12145,7 @@ public class BaseNetworkTest extends TestCase {
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         UnsContract uns = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
 
@@ -12221,7 +12188,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivateKey1 = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -12348,7 +12315,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivateKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -12471,7 +12438,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivateKey1 = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -12577,7 +12544,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -13212,7 +13179,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
@@ -13313,7 +13280,7 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));

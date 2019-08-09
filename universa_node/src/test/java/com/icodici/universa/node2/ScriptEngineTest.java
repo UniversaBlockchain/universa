@@ -164,43 +164,7 @@ public class ScriptEngineTest {
 
     private Config configForProvider = new Config();
 
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-        Config config = configForProvider;
-        @Override
-        public Set<KeyAddress> getUIssuerKeys() {
-            return config.getUIssuerKeys();
-        }
-
-        @Override
-        public String getUIssuerName() {
-            return config.getUIssuerName();
-        }
-
-        @Override
-        public int getMinPayment(String extendedType) {
-            return config.getMinPayment(extendedType);
-        }
-
-        @Override
-        @Deprecated
-        public double getRate(String extendedType) {
-            return config.getRate(extendedType);
-        }
-
-        @Override
-        public BigDecimal getServiceRate(String extendedType) {
-            return config.getServiceRate(extendedType);
-        }
-
-        @Override
-        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
-            Set<PublicKey> set = new HashSet<>();
-            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
-                set.add(config.getAuthorizedNameServiceCenterKey());
-            }
-            return set;
-        }
-    };
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider(configForProvider);
 
     @Before
     public void beforeScriptEngineTest() throws Exception {

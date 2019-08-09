@@ -128,43 +128,7 @@ public class Node {
         }
     });
 
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
-
-        @Override
-        public Set<KeyAddress> getUIssuerKeys() {
-            return config.getUIssuerKeys();
-        }
-
-        @Override
-        public String getUIssuerName() {
-            return config.getUIssuerName();
-        }
-
-        @Override
-        public int getMinPayment(String extendedType) {
-            return config.getMinPayment(extendedType);
-        }
-
-        @Override
-        @Deprecated
-        public double getRate(String extendedType) {
-            return config.getRate(extendedType);
-        }
-
-        @Override
-        public BigDecimal getServiceRate(String extendedType) {
-            return config.getServiceRate(extendedType);
-        }
-
-        @Override
-        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
-            Set<PublicKey> set = new HashSet<>();
-            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
-                set.add(config.getAuthorizedNameServiceCenterKey());
-            }
-            return set;
-        }
-    };
+    private NodeConfigProvider nodeInfoProvider;
 
     private ScheduledExecutorService lowPrioExecutorService = new ScheduledThreadPoolExecutor(16, new ThreadFactory() {
 
@@ -182,6 +146,7 @@ public class Node {
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey) {
 
         this.config = config;
+        this.nodeInfoProvider = new NodeConfigProvider(config);
         this.myInfo = myInfo;
         this.ledger = ledger;
         this.network = network;

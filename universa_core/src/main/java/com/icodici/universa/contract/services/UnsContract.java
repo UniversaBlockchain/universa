@@ -379,6 +379,27 @@ public class UnsContract extends NSmartContract {
 
     private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
 
+        //define what names are new/having name records updated
+        Map<String, UnsName> newOrChangedEntries = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
+        Map<String, UnsName> newOrChangedReduced = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
+
+
+        ime.nameRecords().forEach(nameRecord -> {
+            UnsName unsName = newOrChangedEntries.get(nameRecord.getName());
+            if (unsName != null &&
+                    unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
+                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(unsRecord::equalsTo))) {
+                newOrChangedEntries.remove(unsName.getUnsName());
+            }
+
+            unsName = newOrChangedReduced.get(nameRecord.getName());
+
+            if(unsName != null && unsName.getUnsReducedName().equals(nameRecord.getNameReduced())) {
+                newOrChangedReduced.remove(unsName.getUnsName());
+            }
+        });
+
+
         boolean checkResult;
 
         checkResult = ime != null;
@@ -400,7 +421,9 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = storedNames.stream().allMatch(n -> n.getUnsRecords().stream().allMatch(unsRecord -> {
+        checkResult = storedNames.stream().allMatch(n -> !newOrChangedEntries.containsKey(n.getUnsName()) ||
+                n.getUnsRecords().stream().allMatch(unsRecord -> {
+
             if(unsRecord.getOrigin() != null) {
                 if(!unsRecord.getAddresses().isEmpty()) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin AND addresses. Should be either origin or addresses");
@@ -456,7 +479,9 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = getEffectiveKeys().containsAll(getAdditionalKeysToSignWith());
+
+        //only check name service signature is there are new/changed name->reduced
+        checkResult = newOrChangedReduced.isEmpty() || getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)));
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
             return checkResult;
@@ -587,6 +612,7 @@ public class UnsContract extends NSmartContract {
         me.nameRecords().forEach(nameRecord -> {
             UnsName unsName = newNames.get(nameRecord.getName());
             if(unsName != null &&
+                    unsName.getUnsReducedName().equals(nameRecord.getNameReduced()) &&
                     unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
                     unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(unsRecord::equalsTo))) {
                 me.setNameRecordExpiresAt(nameRecord,expiresAt);

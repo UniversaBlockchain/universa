@@ -50,6 +50,9 @@ public class NSmartContract extends Contract implements NContract {
         double getRate(String extendedType);
 
         BigDecimal getServiceRate(String extendedType);
+        Collection<KeyAddress> getAdditionalKeysAddressesToSignWith(String extendedType);
+
+        @Deprecated
         Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType);
     };
 
@@ -277,8 +280,8 @@ public class NSmartContract extends Contract implements NContract {
         return nodeInfoProvider.getServiceRate(getExtendedType() + ":" + key);
     }
 
-    protected Collection<PublicKey> getAdditionalKeysToSignWith() {
-        return nodeInfoProvider.getAdditionalKeysToSignWith(getExtendedType());
+    protected Collection<KeyAddress> getAdditionalKeysAddressesToSignWith() {
+        return nodeInfoProvider.getAdditionalKeysAddressesToSignWith(getExtendedType());
     }
 
     /**

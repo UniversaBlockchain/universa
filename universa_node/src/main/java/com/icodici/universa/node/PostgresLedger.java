@@ -2517,7 +2517,7 @@ public class PostgresLedger implements Ledger {
                     String short_addr = rs.getString("short_addr");
                     String long_addr = rs.getString("long_addr");
                     byte[] origin = rs.getBytes("origin");
-                    NNameRecordEntry nameRecordEntry = new NNameRecordEntry(HashId.withDigest(origin), short_addr, long_addr);
+                    NNameRecordEntry nameRecordEntry = new NNameRecordEntry(origin != null ? HashId.withDigest(origin) : null, short_addr, long_addr);
                     nameRecordEntry.setId(entry_id);
                     nameRecordEntry.setNameRecordId(nameRecord_id);
                     entries.add(nameRecordEntry);
