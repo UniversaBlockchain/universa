@@ -7,7 +7,7 @@
 
 package com.icodici.crypto.rsaoaep;
 
-import org.spongycastle.util.BigIntegers;
+import org.bouncycastle.util.BigIntegers;
 
 import java.math.BigInteger;
 

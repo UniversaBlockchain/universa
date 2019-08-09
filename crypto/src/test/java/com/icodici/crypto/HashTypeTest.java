@@ -13,7 +13,7 @@ import com.icodici.crypto.digest.Sha512;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.util.Arrays;
 

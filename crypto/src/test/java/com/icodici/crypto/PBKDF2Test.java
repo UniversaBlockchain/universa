@@ -12,7 +12,7 @@ import com.icodici.crypto.digest.Sha256;
 import com.icodici.crypto.digest.Sha512;
 import net.sergeych.tools.Do;
 import org.junit.Test;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import static org.junit.Assert.assertArrayEquals;
 

@@ -17,7 +17,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.spongycastle.util.encoders.Base64;
+import org.bouncycastle.util.encoders.Base64;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;

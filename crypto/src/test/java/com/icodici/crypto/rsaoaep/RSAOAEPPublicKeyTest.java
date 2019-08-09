@@ -12,12 +12,12 @@ import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.HashType;
 import net.sergeych.tools.Hashable;
 import org.junit.Test;
-import org.spongycastle.crypto.AsymmetricCipherKeyPair;
-import org.spongycastle.crypto.generators.RSAKeyPairGenerator;
-import org.spongycastle.crypto.params.RSAKeyGenerationParameters;
-import org.spongycastle.crypto.params.RSAKeyParameters;
-import org.spongycastle.util.BigIntegers;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.generators.RSAKeyPairGenerator;
+import org.bouncycastle.crypto.params.RSAKeyGenerationParameters;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.util.BigIntegers;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.lang.reflect.Field;
 import java.math.BigInteger;

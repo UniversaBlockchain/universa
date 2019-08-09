@@ -1,11 +1,11 @@
 package com.icodici.crypto.digest;
 
 /**
- * Any digest implementation based on the SpongyCastle cryptography backend.
+ * Any digest implementation based on the BouncyCastle cryptography backend.
  */
 abstract class SpongyCastleDigest extends Digest {
 
-    protected abstract org.spongycastle.crypto.Digest getUnderlyingDigest();
+    protected abstract org.bouncycastle.crypto.Digest getUnderlyingDigest();
 
     @Override
     protected void _update(byte[] data, int offset, int size) {
@@ -14,7 +14,7 @@ abstract class SpongyCastleDigest extends Digest {
 
     @Override
     protected byte[] _digest() {
-        final org.spongycastle.crypto.Digest md = getUnderlyingDigest();
+        final org.bouncycastle.crypto.Digest md = getUnderlyingDigest();
         final byte[] result = new byte[md.getDigestSize()];
         md.doFinal(result, 0);
         return result;

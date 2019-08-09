@@ -9,7 +9,7 @@ package com.icodici.crypto;
 
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
 import org.junit.Test;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.util.HashMap;
 

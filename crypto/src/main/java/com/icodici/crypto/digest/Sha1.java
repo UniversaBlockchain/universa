@@ -7,15 +7,15 @@
 
 package com.icodici.crypto.digest;
 
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA1Digest;
 
 /**
  * SHA-1 digest implementation.
  */
 public class Sha1 extends SpongyCastleDigest {
 
-    final org.spongycastle.crypto.Digest md = new SHA1Digest();
+    final org.bouncycastle.crypto.Digest md = new SHA1Digest();
 
     public Sha1() {
     }

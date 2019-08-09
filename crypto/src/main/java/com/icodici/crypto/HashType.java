@@ -7,11 +7,11 @@
 
 package com.icodici.crypto;
 
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA1Digest;
-import org.spongycastle.crypto.digests.SHA256Digest;
-import org.spongycastle.crypto.digests.SHA3Digest;
-import org.spongycastle.crypto.digests.SHA512Digest;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.digests.SHA3Digest;
+import org.bouncycastle.crypto.digests.SHA512Digest;
 
 import java.util.Collections;
 import java.util.HashMap;

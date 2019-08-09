@@ -8,19 +8,19 @@
 package com.icodici.crypto.rsaoaep;
 
 import org.junit.Test;
-import org.spongycastle.crypto.AsymmetricBlockCipher;
-import org.spongycastle.crypto.AsymmetricCipherKeyPair;
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA1Digest;
-import org.spongycastle.crypto.digests.SHA224Digest;
-import org.spongycastle.crypto.digests.SHA256Digest;
-import org.spongycastle.crypto.digests.SHA512Digest;
-import org.spongycastle.crypto.encodings.OAEPEncoding;
-import org.spongycastle.crypto.generators.RSAKeyPairGenerator;
-import org.spongycastle.crypto.params.ParametersWithRandom;
-import org.spongycastle.crypto.params.RSAKeyGenerationParameters;
-import org.spongycastle.crypto.params.RSAKeyParameters;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.crypto.AsymmetricBlockCipher;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA1Digest;
+import org.bouncycastle.crypto.digests.SHA224Digest;
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.digests.SHA512Digest;
+import org.bouncycastle.crypto.encodings.OAEPEncoding;
+import org.bouncycastle.crypto.generators.RSAKeyPairGenerator;
+import org.bouncycastle.crypto.params.ParametersWithRandom;
+import org.bouncycastle.crypto.params.RSAKeyGenerationParameters;
+import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -32,7 +32,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test SpongyCastle implementation of OEAPEncoding.
+ * Test BouncyCastle implementation of OEAPEncoding.
  *
  * Created by amyodov on 15.04.16.
  */
@@ -60,7 +60,7 @@ public class OAEPEncodingTest {
     }
 
     /**
-     * Make sure the SpongyCastle OAEPEncoding encodes the block according
+     * Make sure the BouncyCastle OAEPEncoding encodes the block according
      * to the test vectors from RSA OAEP specification.
      *
      * @throws Exception
@@ -74,7 +74,7 @@ public class OAEPEncodingTest {
     }
 
     /**
-     * Make sure the SpongyCastle OAEPEncoding decodes the block according
+     * Make sure the BouncyCastle OAEPEncoding decodes the block according
      * to the test vectors from RSA OAEP specification.
      *
      * @throws Exception
@@ -150,7 +150,7 @@ public class OAEPEncodingTest {
 
 
     /**
-     * Make sure the SpongyCastle OAEPEncoding encoding and decoding operations
+     * Make sure the BouncyCastle OAEPEncoding encoding and decoding operations
      * do not lose or corrupt data.
      * We test it:
      * For each hash function we may use with OEAP (like, SHA1 or SHA512),

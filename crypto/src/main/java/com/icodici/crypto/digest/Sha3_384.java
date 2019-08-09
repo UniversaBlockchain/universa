@@ -7,8 +7,8 @@
 
 package com.icodici.crypto.digest;
 
-import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA3Digest;
+import org.bouncycastle.crypto.Digest;
+import org.bouncycastle.crypto.digests.SHA3Digest;
 
 /**
  * SHA3-256 (SHA-3 family) digest implementation.

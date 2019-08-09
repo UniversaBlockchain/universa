@@ -11,7 +11,7 @@ import com.icodici.crypto.AbstractPrivateKey;
 import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.HashType;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.security.SecureRandom;
 
