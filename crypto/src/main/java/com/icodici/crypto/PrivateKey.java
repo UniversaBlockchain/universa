@@ -211,11 +211,11 @@ public class PrivateKey extends AbstractKey {
     }
 
     private static int getKDFRounds() {
-        return Ut.isJUnitTest() ? 250 : 100000;
+        return Ut.isJUnitTest() ? 250 : 160000;
     }
 
     public byte[] packWithPassword(String password) throws EncryptionError {
-        return packWithPassword(password,1000000);
+        return packWithPassword(password,getKDFRounds());
     }
 
     public byte[] packWithPassword(String password, int rounds) throws EncryptionError {
