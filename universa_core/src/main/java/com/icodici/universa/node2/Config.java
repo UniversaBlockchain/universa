@@ -14,7 +14,6 @@ import com.icodici.universa.Core;
 import com.icodici.universa.contract.services.NSmartContract;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -433,7 +432,7 @@ public class Config {
 
 
     public void setAuthorizedNameServiceCenterKeyData(Bytes authorizedNameServiceCenterKeyData) {
-        throw new NotImplementedException();
+        throw new IllegalArgumentException("name service key is not supported. use key address instead");
     }
 
     public void setAuthorizedNameServiceCenterAddress(KeyAddress authorizedNameServiceCenterAddress) {
@@ -446,7 +445,7 @@ public class Config {
 
     @Deprecated
     public PublicKey getAuthorizedNameServiceCenterKey() {
-        throw new NotImplementedException();
+        throw new IllegalArgumentException("name service key is not supported. use key address instead");
     }
 
     public String getUIssuerName() {

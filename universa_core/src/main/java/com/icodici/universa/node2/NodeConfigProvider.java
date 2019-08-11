@@ -5,7 +5,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.services.NSmartContract;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -59,6 +58,6 @@ public class NodeConfigProvider implements NSmartContract.NodeInfoProvider {
 
     @Override
     public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
-        throw new NotImplementedException();
+        throw new IllegalArgumentException("keys are not supported here. use key addresses instead");
     }
 }
