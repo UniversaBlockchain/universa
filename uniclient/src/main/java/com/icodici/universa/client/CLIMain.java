@@ -359,6 +359,13 @@ public class CLIMain {
                         "to generate or unpack password protected keys. Use with -g or -k")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_password");
+                acceptsAll(asList("rounds"), "The number of iterations to use when packing " +
+                        "password protected key (default is 160000). The more iterations the longer it takes " +
+                        "to unpack private key so it becomes harder to brute force.")
+                        .withRequiredArg().ofType(String.class)
+                        .withValuesSeparatedBy(",").describedAs("key_password");
+
+
                 acceptsAll(asList("k-contract", "keys-contract"), "Use with -register by paying parcel. " +
                         "List of comma-separated private key files to" +
                         "use to sign contract in paying parcel, if appropriated.")
@@ -1989,7 +1996,11 @@ public class CLIMain {
         PrivateKey k = new PrivateKey((Integer) options.valueOf("s"));
         String name = (String) options.valueOf("g");
         if(options.has("password")) {
-            new FileOutputStream(name + ".private.unikey").write(k.packWithPassword((String) options.valueOf("password")));
+            if(options.has("rounds")) {
+                new FileOutputStream(name + ".private.unikey").write(k.packWithPassword((String) options.valueOf("password"),(Integer)options.valueOf("rounds")));
+            } else {
+                new FileOutputStream(name + ".private.unikey").write(k.packWithPassword((String) options.valueOf("password")));
+            }
         } else {
             new FileOutputStream(name + ".private.unikey").write(k.pack());
         }
