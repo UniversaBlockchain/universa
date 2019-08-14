@@ -12,6 +12,7 @@ public class BasicHttpClientSession {
     private SymmetricKey sessionKey;
     private long sessionId;
     private PublicKey nodePublicKey;
+    private int version;
 
     public BasicHttpClientSession()  {
     }
@@ -93,6 +94,18 @@ public class BasicHttpClientSession {
     public void setNodePublicKey(PublicKey nodePublicKey) {
         synchronized (this) {
             this.nodePublicKey = nodePublicKey;
+        }
+    }
+
+    public int getVersion() {
+        synchronized (this) {
+            return version;
+        }
+    }
+
+    public void setVersion(int version) {
+        synchronized (this) {
+            this.version = version;
         }
     }
 }

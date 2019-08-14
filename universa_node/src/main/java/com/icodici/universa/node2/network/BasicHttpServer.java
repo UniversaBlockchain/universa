@@ -46,6 +46,8 @@ public class BasicHttpServer {
 //            session.sessionKey = null;
 //    }
 //
+    private final static int SERVER_VERSION = 2;
+
     private interface Implementor {
         Binder apply(Session session) throws Exception;
     }
@@ -266,7 +268,7 @@ public class BasicHttpServer {
         private byte[] serverNonce;
         private byte[] encryptedAnswer;
         private long sessionId = sessionIds.incrementAndGet();
-
+        private int version;
 
         protected Session(PublicKey key) throws EncryptionError {
             publicKey = key;
@@ -291,6 +293,7 @@ public class BasicHttpServer {
                 serverNonce = Do.randomBytes(48);
             return Binder.fromKeysValues(
                     "server_nonce", serverNonce,
+                    "server_version", SERVER_VERSION,
                     "session_id", ""+sessionId
             );
         }
@@ -311,6 +314,9 @@ public class BasicHttpServer {
                                 "client_nonce", params.getBinaryOrThrow("client_nonce"),
                                 "encrypted_token", encryptedAnswer
                         );
+
+                        version = Math.min(SERVER_VERSION, params.getInt("client_version", 1));
+
                         byte[] packed = Boss.pack(result);
                         return Binder.fromKeysValues(
                                 "data", packed,
@@ -347,7 +353,9 @@ public class BasicHttpServer {
                         "result",
                         executeAuthenticatedCommand(
                                 Boss.unpack(
-                                        sessionKey.decrypt(params.getBinaryOrThrow("params"))
+                                        (version >= 2) ?
+                                                sessionKey.etaDecrypt(params.getBinaryOrThrow("params")) :
+                                                sessionKey.decrypt(params.getBinaryOrThrow("params"))
                                 )
                         )
                 );
@@ -361,7 +369,7 @@ public class BasicHttpServer {
             // encrypt and return result
             return Binder.fromKeysValues(
                     "result",
-                    sessionKey.encrypt(Boss.pack(result))
+                    (version >= 2) ? sessionKey.etaEncrypt(Boss.pack(result)) : sessionKey.encrypt(Boss.pack(result))
             );
         }
 
@@ -373,7 +381,9 @@ public class BasicHttpServer {
                         "result",
                         executeAuthenticatedProxyCommand(
                                 Boss.unpack(
-                                        sessionKey.decrypt(params.getBinaryOrThrow("params"))
+                                        (version >= 2) ?
+                                                sessionKey.etaDecrypt(params.getBinaryOrThrow("params")) :
+                                                sessionKey.decrypt(params.getBinaryOrThrow("params"))
                                 )
                         )
                 );
@@ -387,7 +397,7 @@ public class BasicHttpServer {
             // encrypt and return result
             return Binder.fromKeysValues(
                     "result",
-                    sessionKey.encrypt(Boss.pack(result))
+                    (version >= 2) ? sessionKey.etaEncrypt(Boss.pack(result)) : sessionKey.encrypt(Boss.pack(result))
             );
         }
 

@@ -44,6 +44,7 @@ public class BasicHttpClient {
     private final static int DEFAULT_RECONNECT_TIMES = 3;
     private final static int CONNECTION_READ_TIMEOUT = 5000;
     private final static int CONNECTION_TIMEOUT = 2000;
+    private final static int CLIENT_VERSION = 2;
 
     static private LogPrinter log = new LogPrinter("HTCL");
     private String url;
@@ -155,9 +156,16 @@ public class BasicHttpClient {
 
                 byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
                 byte[] client_nonce = Do.randomBytes(47);
+
+                int server_version = a.data.getInt("server_version", 1);
+
+                this.session.setVersion(Math.min(server_version, CLIENT_VERSION));
+
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce
+                        "server_nonce", server_nonce,
+                        "server_version", server_version,
+                        "client_version", CLIENT_VERSION
                 ));
 
                 a = requestOrThrow("get_token",
@@ -227,9 +235,16 @@ public class BasicHttpClient {
 
                 byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
                 byte[] client_nonce = Do.randomBytes(47);
+
+                int server_version = a.data.getInt("server_version", 1);
+
+                this.targetSession.setVersion(Math.min(server_version, CLIENT_VERSION));
+
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce
+                        "server_nonce", server_nonce,
+                        "server_version", server_version,
+                        "client_version", CLIENT_VERSION
                 ));
 
                 a = proxyRequestOrThrow("get_token",
@@ -327,11 +342,15 @@ public class BasicHttpClient {
                 try {
                     Answer a = requestOrThrow("command",
                             "command", "command",
-                            "params", session.getSessionKey().encrypt(Boss.pack(call)),
+                            "params", (session.getVersion() >= 2) ?
+                                    session.getSessionKey().etaEncrypt(Boss.pack(call)) :
+                                    session.getSessionKey().encrypt(Boss.pack(call)),
                             "session_id", session.getSessionId()
                     );
                     Binder data = Boss.unpack(
-                            session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
+                            (session.getVersion() >= 2) ?
+                                    session.getSessionKey().etaDecrypt(a.data.getBinaryOrThrow("result")) :
+                                    session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
                     );
                     Binder result = data.getBinder("result", null);
                     if (result != null)
@@ -376,11 +395,19 @@ public class BasicHttpClient {
 
     private Binder proxyCommand(String name, Binder params) throws IOException {
         Binder cmd = Binder.of("command", name, "params", params);
-        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
+        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(),
+                "params", (targetSession.getVersion() >= 2) ?
+                        targetSession.getSessionKey().etaEncrypt(Boss.pack(cmd)) :
+                        targetSession.getSessionKey().encrypt(Boss.pack(cmd))
+                );
         Binder ans = execCommand("proxy", Binder.of("url", targetNode.url, "command", "proxyCommand", "params", commandParams));
         Binder res = Binder.from(Boss.load(ans.getBytesOrThrow("result")));
         try {
-            res = Boss.unpack(targetSession.getSessionKey().decrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result")));
+            res = Boss.unpack(
+                    (targetSession.getVersion() >= 2) ?
+                            targetSession.getSessionKey().etaDecrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result")) :
+                            targetSession.getSessionKey().decrypt(res.getBinderOrThrow("response").getBinaryOrThrow("result"))
+            );
             return res.getBinderOrThrow("result");
         } catch (IllegalArgumentException e) {
             try {

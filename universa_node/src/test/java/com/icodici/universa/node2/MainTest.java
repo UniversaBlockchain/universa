@@ -9105,7 +9105,7 @@ public class MainTest {
         Client targetClient = clientProxy.getClient(2);
         BasicHttpClientSession targetSession = targetClient.getSession();
         Binder cmd = Binder.of("command", "getState", "params", Binder.of("itemId", testHashId));
-        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().encrypt(Boss.pack(cmd)));
+        Binder commandParams = Binder.of("session_id", targetSession.getSessionId(), "params", targetSession.getSessionKey().etaEncrypt(Boss.pack(cmd)));
 
         Binder answer = clientProxy.command("proxy", "url", targetClient.getUrl(), "command", "proxyCommand", "params", commandParams);
         String answerError = answer.getStringOrThrow("error");
@@ -9141,7 +9141,7 @@ public class MainTest {
         BasicHttpClientSession targetSession1 = targetClient1.getSession();
         BasicHttpClientSession targetSession2 = targetClient2.getSession();
         Binder cmd2 = Binder.of("command", "getState", "params", Binder.of("itemId", testHashId));
-        Binder command2Params = Binder.of("session_id", targetSession2.getSessionId(), "params", targetSession2.getSessionKey().encrypt(Boss.pack(cmd2)));
+        Binder command2Params = Binder.of("session_id", targetSession2.getSessionId(), "params", targetSession2.getSessionKey().etaEncrypt(Boss.pack(cmd2)));
         Binder answer = clientProxy.command("proxy", "url", targetClient2.getUrl(), "command", "command", "params", command2Params);
 
         Binder answerBinder = Boss.load(answer.getBinaryOrThrow("result"));
