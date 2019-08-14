@@ -59,7 +59,7 @@ public class PrivateKey extends AbstractKey {
 
     public PrivateKey(byte[] packedBinaryKey) throws EncryptionError {
         List parts = Boss.load(packedBinaryKey);
-        if ((Integer) parts.get(0) == 0) {
+        if ((Integer) parts.get(0) == TYPE_PRIVATE) {
             // e, p, q: private key
             try {
                 Binder pp = new Binder("e", ((Bytes) parts.get(1)).toArray(),
@@ -70,12 +70,12 @@ public class PrivateKey extends AbstractKey {
                 error.printStackTrace();
                 throw new EncryptionError("failed to parse private key", error);
             }
-        } else if ((Integer) parts.get(0) == 1) {
+        } else if ((Integer) parts.get(0) == TYPE_PUBLIC) {
             throw new EncryptionError("the key is public, not private");
-        } else if ((Integer) parts.get(0) == 2) {
+        } else if ((Integer) parts.get(0) == TYPE_PRIVATE_PASSWORD || (Integer) parts.get(0) == TYPE_PRIVATE_PASSWORD_V2) {
             throw new PasswordProtectedException("key is password protected");
         } else {
-            throw new EncryptionError("Bad or unknown private key type");
+            throw new IllegalArgumentException("Bad or unknown private key type");
         }
     }
 
@@ -130,7 +130,7 @@ public class PrivateKey extends AbstractKey {
     public byte[] pack() {
         @NonNull final Map<String, Object> params = privateKey.toHash();
         return Boss.dumpToArray(new Object[]{
-                0,
+                TYPE_PRIVATE,
                 params.get("e"),
                 params.get("p"),
                 params.get("q")
@@ -220,30 +220,27 @@ public class PrivateKey extends AbstractKey {
 
     public byte[] packWithPassword(String password, int rounds) throws EncryptionError {
         byte[] packedKey = pack();
-        byte[] salt = getClass().getCanonicalName().getBytes();
+
         KeyInfo.PRF function = KeyInfo.PRF.HMAC_SHA256;
-        SymmetricKey key = new KeyInfo(function, rounds, salt, null)
+        KeyInfo keyInfo = new KeyInfo(function, rounds, Do.randomBytes(12), null);
+        SymmetricKey key = keyInfo
                 .derivePassword(password);
 
-        byte[] packedEncryptedKey = key.encrypt(packedKey);
 
         return Boss.dumpToArray(new Object[]{
-                2,
-                rounds,
-                salt,
-                function.name(),
-                packedEncryptedKey,
-                new Crc32().update(packedKey).digest()
+                TYPE_PRIVATE_PASSWORD_V2,
+                keyInfo.pack(),
+                key.etaEncrypt(packedKey)
         });
     }
 
     public static PrivateKey unpackWithPassword(byte[] packedBinary, String password) throws EncryptionError {
         List params = Boss.load(packedBinary);
-        if ((Integer) params.get(0) == 0) {
+        if ((Integer) params.get(0) == TYPE_PRIVATE) {
             return new PrivateKey(packedBinary);
-        } else if ((Integer) params.get(0) == 1) {
+        } else if ((Integer) params.get(0) == TYPE_PUBLIC) {
             throw new EncryptionError("the key is public, not private");
-        } else if ((Integer) params.get(0) == 2) {
+        } else if ((Integer) params.get(0) == TYPE_PRIVATE_PASSWORD) {
             try {
                 int rounds = (int) params.get(1);
                 Bytes salt = (Bytes) params.get(2);
@@ -265,6 +262,20 @@ public class PrivateKey extends AbstractKey {
                     throw e;
 
                 throw new EncryptionError("failed to parse password protected private key", e);
+            }
+
+        } else if ((Integer) params.get(0) == TYPE_PRIVATE_PASSWORD_V2) {
+            try {
+                KeyInfo keyInfo = new KeyInfo(((Bytes)params.get(1)).getData());
+                SymmetricKey key = keyInfo
+                        .derivePassword(password);
+                byte[] packedKey = key.etaDecrypt(((Bytes) params.get(2)).getData());
+
+                return new PrivateKey(packedKey);
+            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+                throw new PasswordProtectedException("wrong password");
+            } catch (Exception e) {
+                throw new EncryptionError("failed to parse password protected private key");
             }
 
         } else {

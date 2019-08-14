@@ -8,6 +8,7 @@
 package com.icodici.crypto;
 
 import com.icodici.crypto.digest.Sha256;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -70,6 +71,23 @@ public class KeyInfoTest {
         assertEquals(h1.getPRF(), h2.getPRF());
         assertEquals(h1.getRounds(), h2.getRounds());
         assertEquals(h1.getKeyLength(), h2.getKeyLength());
+
+        assertEquals(KeyInfo.PRF.HMAC_SHA256, h2.getPRF());
+        assertEquals(KeyInfo.Algorythm.AES256, h2.getAlgorythm());
+
+        assertArrayEquals(h1.getTag(), h2.getTag());
+    }
+
+    @Test
+    public void packKdfSalt() throws Exception {
+        KeyInfo h1 = new KeyInfo(KeyInfo.PRF.HMAC_SHA256, 4096, Do.randomBytes(43),  Do.randomBytes(12));
+        KeyInfo h2 = new KeyInfo(h1.pack());
+        assertEquals(h1.getAlgorythm(), h2.getAlgorythm());
+        assertEquals(h1.getPRF(), h2.getPRF());
+        assertEquals(h1.getRounds(), h2.getRounds());
+        assertEquals(h1.getKeyLength(), h2.getKeyLength());
+        assertArrayEquals(h1.getSalt(), h2.getSalt());
+        assertArrayEquals(h1.getTag(), h2.getTag());
 
         assertEquals(KeyInfo.PRF.HMAC_SHA256, h2.getPRF());
         assertEquals(KeyInfo.Algorythm.AES256, h2.getAlgorythm());

@@ -15,6 +15,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.utils.Base64;
 
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -188,6 +189,12 @@ public class KeyInfo {
                 throw new IllegalArgumentException("unknown PBKDF type");
             rounds = r.readInt();
         }
+        try {
+            salt = r.readBinary();
+        } catch (EOFException ignore) {
+            salt = null;
+        }
+
         checkSanity();
     }
 
@@ -219,6 +226,7 @@ public class KeyInfo {
             if (isPassword()) {
                 w.write(0, rounds);
             }
+            w.write(salt);
             w.close();
             return baos.toByteArray();
         } catch (IOException e) {

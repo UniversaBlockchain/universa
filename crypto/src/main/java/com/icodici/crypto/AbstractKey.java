@@ -37,6 +37,12 @@ public abstract class AbstractKey implements Bindable, KeyMatcher {
     public static final int FINGERPRINT_SHA256 = 7;
     public static final int FINGERPRINT_SHA384 = 8;
 
+
+    public static final int TYPE_PRIVATE = 0;
+    public static final int TYPE_PUBLIC = 1;
+    public static final int TYPE_PRIVATE_PASSWORD = 2;
+    public static final int TYPE_PRIVATE_PASSWORD_V2 = 3;
+
     protected KeyInfo keyInfo;
 
     public byte[] encrypt(byte[] plain) throws EncryptionError {

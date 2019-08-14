@@ -75,10 +75,11 @@ public class PublicKey extends AbstractKey {
 
         List parts = Boss.load(bytes);
         switch ((Integer) parts.get(0)) {
-            case 0:
-            case 2:
+            case TYPE_PRIVATE:
+            case TYPE_PRIVATE_PASSWORD:
+            case TYPE_PRIVATE_PASSWORD_V2:
                 throw new EncryptionError("the key is private, not public");
-            case 1:
+            case TYPE_PUBLIC:
                 break;
             default:
                 throw new EncryptionError("invalid packed public key");
@@ -145,7 +146,7 @@ public class PublicKey extends AbstractKey {
     public byte[] pack() {
         Map<String, Object> params = publicKey.toHash();
         return Boss.dumpToArray(new Object[]{
-                1,
+                TYPE_PUBLIC,
                 params.get("e"),
                 params.get("n")
         });
