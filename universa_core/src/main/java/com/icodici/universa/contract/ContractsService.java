@@ -62,13 +62,13 @@ public class ContractsService {
         // by default, transactions expire in 30 days
         cd.setExpiresAt(tc.getCreatedAt().plusDays(30));
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",tc);
         for (PrivateKey k : keys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
             tc.addSignerKey(k);
         }
-        tc.registerRole(issuerRole);
+        tc.addRole(issuerRole);
         tc.createRole("owner", issuerRole);
         tc.createRole("creator", issuerRole);
 
@@ -351,13 +351,13 @@ public class ContractsService {
         // by default, transactions expire in 30 days
         cd.setExpiresAt(swapContract.getCreatedAt().plusDays(30));
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",swapContract);
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        swapContract.registerRole(issuerRole);
+        swapContract.addRole(issuerRole);
         swapContract.createRole("owner", issuerRole);
         swapContract.createRole("creator", issuerRole);
 
@@ -392,25 +392,6 @@ public class ContractsService {
         }
 
 
-        // prepare roles for references
-        // it should new owners and old creators in new revisions of contracts
-
-        SimpleRole ownerFrom = new SimpleRole("owner");
-        SimpleRole creatorFrom = new SimpleRole("creator");
-        for (PrivateKey k : fromKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            ownerFrom.addKeyRecord(kr);
-            creatorFrom.addKeyRecord(kr);
-        }
-
-        SimpleRole ownerTo = new SimpleRole("owner");
-        SimpleRole creatorTo = new SimpleRole("creator");
-        for (PublicKey k : toKeys) {
-            KeyRecord kr = new KeyRecord(k);
-            ownerTo.addKeyRecord(kr);
-            creatorTo.addKeyRecord(kr);
-        }
-
 
         // create references for contracts that point to each other and asks correct signs
         // and add this references to existing transactional section
@@ -422,6 +403,20 @@ public class ContractsService {
                 reference.type = Reference.TYPE_TRANSACTIONAL;
                 reference.required = true;
                 reference.signed_by = new ArrayList<>();
+
+                SimpleRole ownerFrom = new SimpleRole("owner",nc1);
+                for (PrivateKey k : fromKeys) {
+                    KeyRecord kr = new KeyRecord(k.getPublicKey());
+                    ownerFrom.addKeyRecord(kr);
+                }
+
+                SimpleRole creatorTo = new SimpleRole("creator",nc1);
+                for (PublicKey k : toKeys) {
+                    KeyRecord kr = new KeyRecord(k);
+                    creatorTo.addKeyRecord(kr);
+                }
+
+
                 reference.signed_by.add(ownerFrom);
                 reference.signed_by.add(creatorTo);
                 nc1.getTransactional().addReference(reference);
@@ -435,6 +430,19 @@ public class ContractsService {
                 reference.type = Reference.TYPE_TRANSACTIONAL;
                 reference.required = true;
                 reference.signed_by = new ArrayList<>();
+
+                SimpleRole creatorFrom = new SimpleRole("creator",nc2);
+                for (PrivateKey k : fromKeys) {
+                    KeyRecord kr = new KeyRecord(k.getPublicKey());
+                    creatorFrom.addKeyRecord(kr);
+                }
+
+                SimpleRole ownerTo = new SimpleRole("owner",nc2);
+                for (PublicKey k : toKeys) {
+                    KeyRecord kr = new KeyRecord(k);
+                    ownerTo.addKeyRecord(kr);
+                }
+
                 reference.signed_by.add(ownerTo);
                 reference.signed_by.add(creatorFrom);
                 nc2.getTransactional().addReference(reference);
@@ -598,13 +606,13 @@ public class ContractsService {
             twoSignContract.getKeysToSignWith().clear();
         }
 
-        SimpleRole creatorFrom = new SimpleRole("creator");
+        SimpleRole creatorFrom = new SimpleRole("creator",twoSignContract);
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             creatorFrom.addKeyRecord(kr);
         }
 
-        SimpleRole ownerTo = new SimpleRole("owner");
+        SimpleRole ownerTo = new SimpleRole("owner",twoSignContract);
         for (PublicKey k : toKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerTo.addKeyRecord(kr);
@@ -674,29 +682,28 @@ public class ContractsService {
         data.set("description", description);
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",tokenContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",tokenContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        tokenContract.registerRole(issuerRole);
+        tokenContract.addRole(issuerRole);
         tokenContract.createRole("issuer", issuerRole);
         tokenContract.createRole("creator", issuerRole);
 
-        tokenContract.registerRole(ownerRole);
+        tokenContract.addRole(ownerRole);
         tokenContract.createRole("owner", ownerRole);
 
         tokenContract.getStateData().set("amount", amount.toString());
 
-        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
-        ownerLink.setContract(tokenContract);
+        RoleLink ownerLink = new RoleLink("@owner_link",tokenContract, "owner");
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerLink);
         tokenContract.addPermission(changeOwnerPerm);
 
@@ -779,28 +786,28 @@ public class ContractsService {
         data.set("description", description);
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",tokenContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",tokenContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        tokenContract.registerRole(issuerRole);
+        tokenContract.addRole(issuerRole);
         tokenContract.createRole("issuer", issuerRole);
         tokenContract.createRole("creator", issuerRole);
 
-        tokenContract.registerRole(ownerRole);
+        tokenContract.addRole(ownerRole);
         tokenContract.createRole("owner", ownerRole);
 
         tokenContract.getStateData().set("amount", amount.toString());
 
-        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
+        RoleLink ownerLink = new RoleLink("@owner_link",tokenContract, "owner");
         ownerLink.setContract(tokenContract);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerLink);
         tokenContract.addPermission(changeOwnerPerm);
@@ -978,23 +985,23 @@ public class ContractsService {
         data.set("description", "Default share description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",shareContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",shareContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        shareContract.registerRole(issuerRole);
+        shareContract.addRole(issuerRole);
         shareContract.createRole("issuer", issuerRole);
         shareContract.createRole("creator", issuerRole);
 
-        shareContract.registerRole(ownerRole);
+        shareContract.addRole(ownerRole);
         shareContract.createRole("owner", ownerRole);
 
         shareContract.getStateData().set("amount", amount.toString());
@@ -1052,23 +1059,23 @@ public class ContractsService {
         data.set("holder_identifier", "default holder identifier");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",notaryContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",notaryContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        notaryContract.registerRole(issuerRole);
+        notaryContract.addRole(issuerRole);
         notaryContract.createRole("issuer", issuerRole);
         notaryContract.createRole("creator", issuerRole);
 
-        notaryContract.registerRole(ownerRole);
+        notaryContract.addRole(ownerRole);
         notaryContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1256,23 +1263,23 @@ public class ContractsService {
         data.set("description", "Default slot description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",slotContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",slotContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        slotContract.registerRole(issuerRole);
+        slotContract.addRole(issuerRole);
         slotContract.createRole("issuer", issuerRole);
         slotContract.createRole("creator", issuerRole);
 
-        slotContract.registerRole(ownerRole);
+        slotContract.addRole(ownerRole);
         slotContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1320,23 +1327,23 @@ public class ContractsService {
         data.set("description", "Default UNS contrac description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",UnsContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",UnsContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        UnsContract.registerRole(issuerRole);
+        UnsContract.addRole(issuerRole);
         UnsContract.createRole("issuer", issuerRole);
         UnsContract.createRole("creator", issuerRole);
 
-        UnsContract.registerRole(ownerRole);
+        UnsContract.addRole(ownerRole);
         UnsContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1392,23 +1399,23 @@ public class ContractsService {
         data.set("description", "Default UNS contract description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",UnsContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",UnsContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        UnsContract.registerRole(issuerRole);
+        UnsContract.addRole(issuerRole);
         UnsContract.createRole("issuer", issuerRole);
         UnsContract.createRole("creator", issuerRole);
 
-        UnsContract.registerRole(ownerRole);
+        UnsContract.addRole(ownerRole);
         UnsContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1470,23 +1477,23 @@ public class ContractsService {
         data.set("description", "Default UNS contract description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",UnsContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",UnsContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        UnsContract.registerRole(issuerRole);
+        UnsContract.addRole(issuerRole);
         UnsContract.createRole("issuer", issuerRole);
         UnsContract.createRole("creator", issuerRole);
 
-        UnsContract.registerRole(ownerRole);
+        UnsContract.addRole(ownerRole);
         UnsContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1539,23 +1546,23 @@ public class ContractsService {
         data.set("description", "Default follower description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",followerContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",followerContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        followerContract.registerRole(issuerRole);
+        followerContract.addRole(issuerRole);
         followerContract.createRole("issuer", issuerRole);
         followerContract.createRole("creator", issuerRole);
 
-        followerContract.registerRole(ownerRole);
+        followerContract.addRole(ownerRole);
         followerContract.createRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -1803,8 +1810,8 @@ public class ContractsService {
     public static Contract createBatch(Collection<PrivateKey> keys, Contract... contracts) {
         Contract batch = new Contract();
         batch.setIssuerKeys(keys);
-        batch.registerRole(new RoleLink("creator","issuer"));
-        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.addRole(new RoleLink("creator",batch,"issuer"));
+        batch.addRole(new RoleLink("owner",batch,"issuer"));
         batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
 
         for(Contract c : contracts) {
@@ -1831,10 +1838,9 @@ public class ContractsService {
         Contract consent = new Contract();
         consent.setExpiresAt(ZonedDateTime.now().plusDays(10));
         consent.setIssuerKeys(Arrays.asList(consentKeyAddresses));
-        consent.registerRole(new RoleLink("creator","issuer"));
-        consent.registerRole(new RoleLink("owner","issuer"));
-        RoleLink ownerLink = new RoleLink("@owner_link","owner");
-        consent.registerRole(ownerLink);
+        consent.addRole(new RoleLink("creator",consent,"issuer"));
+        consent.addRole(new RoleLink("owner",consent,"issuer"));
+        RoleLink ownerLink = new RoleLink("@owner_link",consent,"owner");
         consent.addPermission(new RevokePermission(ownerLink));
         consent.addPermission(new ChangeOwnerPermission(ownerLink));
         consent.createTransactionalSection();
@@ -1919,27 +1925,26 @@ public class ContractsService {
 
         escrow.getStateData().set("status", "opened");
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",escrow);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        escrow.registerRole(issuerRole);
+        escrow.addRole(issuerRole);
         escrow.createRole("issuer", issuerRole);
         escrow.createRole("creator", issuerRole);
 
         // quorum role
         Collection<Role> quorumCollection = new HashSet();
-        quorumCollection.add(new SimpleRole("customer", customerKeys));
-        quorumCollection.add(new SimpleRole("executor", executorKeys));
-        quorumCollection.add(new SimpleRole("arbitrator", arbitratorKeys));
-        Role quorumOwner = new ListRole("owner", 2, quorumCollection);
+        quorumCollection.add(new SimpleRole("customer",escrow, customerKeys));
+        quorumCollection.add(new SimpleRole("executor",escrow, executorKeys));
+        quorumCollection.add(new SimpleRole("arbitrator",escrow, arbitratorKeys));
+        Role quorumOwner = new ListRole("owner", escrow,2, quorumCollection);
 
-        escrow.registerRole(quorumOwner);
+        escrow.addRole(quorumOwner);
 
-        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
-        ownerLink.setContract(escrow);
+        RoleLink ownerLink = new RoleLink("@owner_link",escrow, "owner");
 
         // modify permission
         HashMap<String, Object> fieldsMap = new HashMap<>();
@@ -1991,21 +1996,22 @@ public class ContractsService {
      */
     public static Contract createExternalEscrowContract(Contract internalEscrow, Collection<PrivateKey> issuerKeys) {
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        Contract escrowPack = new Contract();
+
+        SimpleRole issuerRole = new SimpleRole("issuer",escrowPack);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
         // Create external escrow contract (escrow pack)
-        Contract escrowPack = new Contract();
         escrowPack.setApiLevel(3);
 
         escrowPack.getDefinition().setExpiresAt(escrowPack.getCreatedAt().plusMonths(60));
 
         escrowPack.getDefinition().getData().set("EscrowOrigin", internalEscrow.getOrigin().toBase64String());
 
-        escrowPack.registerRole(issuerRole);
+        escrowPack.addRole(issuerRole);
         escrowPack.createRole("issuer", issuerRole);
         escrowPack.createRole("owner", issuerRole);
         escrowPack.createRole("creator", issuerRole);
@@ -2084,9 +2090,9 @@ public class ContractsService {
         executorConditions.set("all_of", listExecutorConditions);
         executorRef.setConditions(executorConditions);
 
-        Role customer = new SimpleRole("customer", customerKeys);
+        Role customer = new SimpleRole("customer",payment, customerKeys);
         customer.addRequiredReference(customerRef, Role.RequiredMode.ALL_OF);
-        Role executor = new SimpleRole("executor", executorKeys);
+        Role executor = new SimpleRole("executor",payment, executorKeys);
         executor.addRequiredReference(executorRef, Role.RequiredMode.ALL_OF);
 
         payment.createTransactionalSection();
@@ -2098,10 +2104,10 @@ public class ContractsService {
         Collection<Role> roleCollection = new HashSet();
         roleCollection.add(customer);
         roleCollection.add(executor);
-        Role paymentOwner = new ListRole("owner", ListRole.Mode.ANY, roleCollection);
+        Role paymentOwner = new ListRole("owner",payment, ListRole.Mode.ANY, roleCollection);
 
         // Modify payment contract
-        payment.registerRole(paymentOwner);
+        payment.addRole(paymentOwner);
 
         if ((paymentOwnerKeys != null) && (paymentOwnerKeys.size() > 0))
             payment.addSignerKeys(paymentOwnerKeys);
@@ -2296,10 +2302,10 @@ public class ContractsService {
     public static Contract createCompound(Contract... contracts) {
         Contract compound = new Contract();
         compound.setExpiresAt(ZonedDateTime.now().plusDays(14));
-        compound.registerRole(new RoleLink("creator","issuer"));
-        compound.registerRole(new RoleLink("owner","issuer"));
+        compound.addRole(new RoleLink("creator",compound,"issuer"));
+        compound.addRole(new RoleLink("owner",compound,"issuer"));
 
-        ListRole issuer = new ListRole("issuer");
+        ListRole issuer = new ListRole("issuer",compound);
         ArrayList<Contract> referencedItems = new ArrayList<>();
         for(Contract c : contracts) {
             issuer.addRole(c.getCreator());
@@ -2307,7 +2313,7 @@ public class ContractsService {
             referencedItems.addAll(c.getTransactionPack().getReferencedItems().values());
         }
 
-        compound.registerRole(issuer);
+        compound.addRole(issuer);
 
         compound.seal();
 

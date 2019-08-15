@@ -180,9 +180,7 @@ public class Client {
      * @param nodePublicKey node key
      * @param session set to null or to the reconstructed instance
      * @throws IOException
-     * @deprecated use {@link #Client(String, String, PrivateKey)} instead.
      */
-    @Deprecated
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
                   PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(rootUrlString);
@@ -907,7 +905,7 @@ public class Client {
         final List<ErrorRecord> errors = new ArrayList<>();
 
         final AsyncEvent<Void> consensusFound = new AsyncEvent<>();
-        final int checkConsensus = getNodes().size() / 3;
+        final int checkConsensus = size() / 3;
 
         final AtomicInteger nodesLeft = new AtomicInteger(nodes.size());
 

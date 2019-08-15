@@ -41,7 +41,19 @@ public class RoleLink extends Role {
      * Create empty link role. To be initialized from dsl later
      *
      * @param name new role name
+     * @param contract is contract role belongs to
      */
+    public RoleLink(String name,Contract contract) {
+        super(name,contract);
+    }
+
+    /**
+     * Create empty link role. To be initialized from dsl later
+     *
+     * @param name new role name
+     * @deprecated use {@link #RoleLink(String, Contract)}
+     */
+    @Deprecated
     public RoleLink(String name) {
         super(name);
     }
@@ -52,8 +64,26 @@ public class RoleLink extends Role {
      * #setContract(Contract)} before using the instance.
      *
      * @param name new role name
+     * @param contract is contract role belongs to
      * @param roleName existing role name
      */
+    public RoleLink(String name, Contract contract, String roleName) {
+        super(name, contract);
+        if (name.equals(roleName))
+            throw new IllegalArgumentException("RoleLink: name and target name are equals: " + name);
+        this.roleName = roleName;
+    }
+
+    /**
+     * Create a link to a named role. Note that such links can be created ahead of time, e.g. when there is no bound
+     * contract or the target role does not yet exist. Just be sure to bind the contract with {@link
+     * #setContract(Contract)} before using the instance.
+     *
+     * @param name new role name
+     * @param roleName existing role name
+     * @deprecated use {@link #RoleLink(String, Contract, String)}
+     */
+    @Deprecated
     public RoleLink(String name, String roleName) {
         super(name);
         if (name.equals(roleName))

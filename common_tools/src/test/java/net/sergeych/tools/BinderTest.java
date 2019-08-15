@@ -19,12 +19,12 @@ public class BinderTest {
         Binder x = b.getOrCreateBinder("inner");
         x.put("foo", "bar");
         assertFalse(b.isFrozen());
-        assertFalse(b.of("inner").isFrozen());
+        assertFalse(b.getBinder("inner").isFrozen());
 
         b.freeze();
         assertTrue(b.isFrozen());
-        assertTrue(b.of("inner").isFrozen());
-        assertEquals("bar", b.of("inner").get("foo"));
+        assertTrue(b.getBinder("inner").isFrozen());
+        assertEquals("bar", b.getBinder("inner").get("foo"));
 
         Binder e = Binder.EMPTY;
         assertTrue(e.isFrozen());

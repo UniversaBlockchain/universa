@@ -77,17 +77,17 @@ public class SecuredLoanHelper {
 
         contract.addReference(refClosed);
 
-        SimpleRole borrower = new SimpleRole("@b",Do.listOf(borrowerAddress));
+        SimpleRole borrower = new SimpleRole("@b",contract,Do.listOf(borrowerAddress));
         borrower.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
 
-        SimpleRole lender = new SimpleRole("@l",Do.listOf(lenderAddress));
+        SimpleRole lender = new SimpleRole("@l",contract,Do.listOf(lenderAddress));
         lender.addRequiredReference("refDefault", Role.RequiredMode.ALL_OF);
 
-        ListRole owner = new ListRole("owner");
+        ListRole owner = new ListRole("owner",contract);
         owner.addRole(borrower);
         owner.addRole(lender);
         owner.setMode(ListRole.Mode.ANY);
-        contract.registerRole(owner);
+        contract.addRole(owner);
 
     }
 
@@ -106,9 +106,9 @@ public class SecuredLoanHelper {
 
         contract.addReference(refClosedRepaymentCheck);
 
-        SimpleRole owner = new SimpleRole("owner",Do.listOf(lenderAddress));
+        SimpleRole owner = new SimpleRole("owner",contract,Do.listOf(lenderAddress));
         owner.addRequiredReference("refClosedRepaymentCheck", Role.RequiredMode.ALL_OF);
-        contract.registerRole(owner);
+        contract.addRole(owner);
     }
 
     private static KeyAddress getLender(Contract securedLoan) {
@@ -194,22 +194,22 @@ public class SecuredLoanHelper {
 //        securedLoan.getDefinition().getData().put(FIELD_BORROWER,borrowerAddress.toString());
         securedLoan.getDefinition().getData().put(FIELD_VERSION,"2");
 
-        SimpleRole lenderRole = new SimpleRole("lender",Do.listOf(lenderAddress));
-        securedLoan.registerRole(lenderRole);
+        SimpleRole lenderRole = new SimpleRole("lender",securedLoan,Do.listOf(lenderAddress));
+        securedLoan.addRole(lenderRole);
 
-        SimpleRole borrowerRole = new SimpleRole("borrower",Do.listOf(borrowerAddress));
-        securedLoan.registerRole(borrowerRole);
+        SimpleRole borrowerRole = new SimpleRole("borrower",securedLoan,Do.listOf(borrowerAddress));
+        securedLoan.addRole(borrowerRole);
 
         //this role is used to compare to repayment contract owner for equality
-        SimpleRole repaymentRole = new SimpleRole("repayment",Do.listOf(lenderAddress));
+        SimpleRole repaymentRole = new SimpleRole("repayment",securedLoan,Do.listOf(lenderAddress));
         repaymentRole.addRequiredReference("refClosedRepaymentCheck", Role.RequiredMode.ALL_OF);
-        securedLoan.registerRole(repaymentRole);
+        securedLoan.addRole(repaymentRole);
 
 
 
         //MODIFY STATE DATA PERMISSIONS
         //INIT->IN_PROGRESS
-        SimpleRole initRole = new SimpleRole("@init",Do.listOf(lenderAddress,borrowerAddress));
+        SimpleRole initRole = new SimpleRole("@init",securedLoan,Do.listOf(lenderAddress,borrowerAddress));
         initRole.addRequiredReference("refInit", Role.RequiredMode.ALL_OF);
 
         ModifyDataPermission initPermission =
@@ -222,7 +222,7 @@ public class SecuredLoanHelper {
         securedLoan.addPermission(initPermission);
 
         //IN_PROGRESS->DEFAULT
-        SimpleRole defaultRole = new SimpleRole("@default",Do.listOf(lenderAddress));
+        SimpleRole defaultRole = new SimpleRole("@default",securedLoan,Do.listOf(lenderAddress));
         defaultRole.addRequiredReference("refDefault", Role.RequiredMode.ALL_OF);
 
         ModifyDataPermission defaultPermission =
@@ -233,7 +233,7 @@ public class SecuredLoanHelper {
 
 
         //IN_PROGRESS->REPAID
-        SimpleRole repaidRole = new SimpleRole("@repaid",Do.listOf(borrowerAddress));
+        SimpleRole repaidRole = new SimpleRole("@repaid",securedLoan,Do.listOf(borrowerAddress));
         repaidRole.addRequiredReference("refRepayment", Role.RequiredMode.ALL_OF);
         repaidRole.addRequiredReference("refRepaid", Role.RequiredMode.ALL_OF);
 
@@ -249,7 +249,7 @@ public class SecuredLoanHelper {
 
 
         //REPAID->CLOSED
-        SimpleRole closedRole = new SimpleRole("@closed",Do.listOf(borrowerAddress,lenderAddress));
+        SimpleRole closedRole = new SimpleRole("@closed",securedLoan,Do.listOf(borrowerAddress,lenderAddress));
         closedRole.addRequiredReference("refClosed", Role.RequiredMode.ALL_OF);
 
         ModifyDataPermission closedPermission =

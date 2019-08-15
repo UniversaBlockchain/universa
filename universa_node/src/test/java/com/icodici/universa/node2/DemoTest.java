@@ -218,14 +218,13 @@ public class DemoTest {
         Contract rurToken = new Contract(bank);
 
 
-        SimpleRole tokenOwner = new SimpleRole("owner");
+        SimpleRole tokenOwner = new SimpleRole("owner",rurToken);
         tokenOwner.addRequiredReference("canplayaccowner", Role.RequiredMode.ALL_OF);
-        rurToken.registerRole(tokenOwner);
+        rurToken.addRole(tokenOwner);
         rurToken.getStateData().put("account", account1rur.getId().toBase64String());
         rurToken.getStateData().put(TOKEN_VALUE_FIELD, "100000");
 
-        RoleLink rl = new RoleLink("@owner", "owner");
-        rurToken.registerRole(rl);
+        RoleLink rl = new RoleLink("@owner",rurToken, "owner");
         SplitJoinPermission sjp =
                 new SplitJoinPermission(rl, Binder.of("field_name", TOKEN_VALUE_FIELD,
                         "join_match_fields", Do.listOf("state.origin", TOKEN_ACCOUNT_PATH)));

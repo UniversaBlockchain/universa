@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.AnonymousId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -44,21 +45,61 @@ public class SimpleRole extends Role {
      *
      * @param name is name of role
      * @param keyRecord is {@link KeyRecord} associated with role
+     * @deprecated use {@link #SimpleRole(String, Contract, KeyRecord)} instead
      */
+    @Deprecated
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
         keyRecords.put(keyRecord.getPublicKey(), keyRecord);
     }
 
+    /**
+     * Create new {@link SimpleRole} and add one {@link KeyRecord} associated with role.
+     *
+     * @param name is name of role
+     * @param keyRecord is {@link KeyRecord} associated with role
+     */
+    public SimpleRole(String name, Contract contract, @NonNull KeyRecord keyRecord) {
+        super(name,contract);
+        keyRecords.put(keyRecord.getPublicKey(), keyRecord);
+    }
+
     private SimpleRole() {}
+
+
+    /**
+     * Create new empty {@link SimpleRole}. Keys or records to role may be added with {@link #addKeyRecord(KeyRecord)}.
+     *
+     * @param name is name of role
+     * @deprecated use {@link #SimpleRole(String, Contract)}
+     */
+    @Deprecated
+    public SimpleRole(String name) {
+        super(name);
+    }
 
     /**
      * Create new empty {@link SimpleRole}. Keys or records to role may be added with {@link #addKeyRecord(KeyRecord)}.
      *
      * @param name is name of role
      */
-    public SimpleRole(String name) {
+    public SimpleRole(String name,Contract contract) {
+        super(name,contract);
+    }
+
+
+    /**
+     * Create new {@link SimpleRole}. Records are initialized from the collection and can have the following types:
+     * {@link PublicKey}, {@link PrivateKey}, {@link KeyRecord}, {@link KeyAddress}, {@link AnonymousId}.
+     *
+     * @param name is name of role
+     * @param records is collection of records to initialize role
+     * @deprecated use {@link #SimpleRole(String, Contract, Collection)} instead
+     */
+    @Deprecated
+    public SimpleRole(String name, @NonNull Collection records) {
         super(name);
+        initWithRecords(records);
     }
 
     /**
@@ -68,8 +109,8 @@ public class SimpleRole extends Role {
      * @param name is name of role
      * @param records is collection of records to initialize role
      */
-    public SimpleRole(String name, @NonNull Collection records) {
-        super(name);
+    public SimpleRole(String name, Contract contract, @NonNull Collection records) {
+        super(name,contract);
         initWithRecords(records);
     }
 
@@ -329,9 +370,28 @@ public class SimpleRole extends Role {
      * More or less ;)
      *
      * @param name is new name for the role
+     * @param contract is contract role will be cloned for
+     * @return cloned {@link SimpleRole}
+     */
+    public SimpleRole cloneAs(String name,Contract contract) {
+        SimpleRole r = new SimpleRole(name,contract);
+        keyRecords.values().forEach(kr -> r.addKeyRecord(kr));
+        anonymousIds.forEach(aid -> r.anonymousIds.add(aid));
+        keyAddresses.forEach(keyAddr -> r.keyAddresses.add(keyAddr));
+
+        return r;
+    }
+
+    /**
+     * Clone the role with a different names, using the same (not copied) key records, in the new copy of the container.
+     * So, it is safe to edit cloned keyRecords, while keys itself are not copied and are packed with Boss effeciently.
+     * More or less ;)
+     *
+     * @param name is new name for the role
      *
      * @return cloned {@link SimpleRole}
      */
+    @Deprecated
     public SimpleRole cloneAs(String name) {
         SimpleRole r = new SimpleRole(name);
         keyRecords.values().forEach(kr -> r.addKeyRecord(kr));

@@ -361,10 +361,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // issuer role is a key for a new contract
         setIssuerKeys(key.getPublicKey());
         // issuer is owner, link roles
-        registerRole(new RoleLink("owner", "issuer"));
-        registerRole(new RoleLink("creator", "issuer"));
-        RoleLink roleLink = new RoleLink("@change_ower_role","owner");
-        roleLink.setContract(this);
+        addRole(new RoleLink("owner", this, "issuer"));
+        addRole(new RoleLink("creator", this,"issuer"));
+        RoleLink roleLink = new RoleLink("@change_ower_role",this,"owner");
         // owner can change permission
         addPermission(new ChangeOwnerPermission(roleLink));
         // issuer should sign
@@ -1451,9 +1450,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return created {@link Role}
      */
     @NonNull
+    //TODO: deprecate?
     public Role createRole(String roleName, Object roleObject) {
         if (roleObject instanceof CharSequence) {
-            return registerRole(new RoleLink(roleName, roleObject.toString()));
+            return registerRole(new RoleLink(roleName, this,roleObject.toString()));
         }
         if (roleObject instanceof Role)
             if(((Role)roleObject).getName() != null && ((Role)roleObject).getName().equals(roleName))
@@ -1602,9 +1602,31 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Register new role. Name must be unique otherwise existing role will be overwritten
      * @param role
      * @return registered role
+     * @deprecated use {@link #addRole(Role)} instead
      */
 
+    @Deprecated
     public Role registerRole(Role role) {
+        String name = role.getName();
+        roles.put(name, role);
+        role.setContract(this);
+        return role;
+    }
+
+
+    /**
+     * Adds new role to contract. Name must be unique otherwise existing role will be overwritten. Predefined roles: issuer, owner,
+     * creator are going the their special sections inside contract while all other custom roles are going to state.roles and can also
+     * be accessed by name using {@link #get(String)} method by passing "state.roles.$ROLE_NAME"
+     *
+     * Note: this method creates persistent named role within contract. Do not use this method for permission roles
+     * as these roles should only be present inside of permission. It you want this role to be persistent named AND
+     * be present within permission it is better to make a {@link RoleLink} within permission to persistent role by its name.
+     *
+     * @param role
+     * @return role added to contract
+     */
+    public Role addRole(Role role) {
         String name = role.getName();
 
         if(predefinedRoles.contains(name)) {
@@ -1790,7 +1812,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Add reference to the references list of the contract
+     * Add reference to the references list of the contract.
+     *
+     * Note: section of contract reference to be added to depends on {@link Reference#type}
+     *
+     *
      * @param reference reference to add
      */
     public void addReference(Reference reference) {
@@ -2311,6 +2337,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
+    @Deprecated
     public Role setCreator(Role role) {
         return registerRole(role);
     }
@@ -2383,6 +2410,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return registened role
      */
     @NonNull
+    //TODO: deprecate?
     private Role setRole(String name, Collection keys) {
         return registerRole(new SimpleRole(name, keys));
     }
@@ -2712,7 +2740,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     Role role = value.getOrThrow("data");
                     if (!role.getName().equals(subname))
                         throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
-                    registerRole(role);
+                    addRole(role);
                     return;
                 default:
                     if (subname.startsWith("data."))
@@ -2753,7 +2781,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     Role role = value.getOrThrow("data");
                     if (!role.getName().equals(subname))
                         throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
-                    registerRole(role);
+                    addRole(role);
                     return;
                 case "parent":
                     if (value.getOrThrow("data").getClass().equals(HashId.class))
@@ -2826,7 +2854,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 Role role = value.getOrThrow("data");
                 if (!role.getName().equals(name))
                     throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
-                registerRole(role);
+                addRole(role);
                 return;
         }
         throw new IllegalArgumentException("bad root: " + name);
@@ -3258,10 +3286,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             if (revision <= 0)
                 throw new IllegalArgumentException("illegal revision number: " + revision);
-            Role r = registerRole(d.deserialize(data.getBinderOrThrow("owner")));
+            Role r = addRole(d.deserialize(data.getBinderOrThrow("owner")));
             if (!r.getName().equals("owner"))
                 throw new IllegalArgumentException("bad owner role name");
-            r = registerRole(d.deserialize(data.getBinderOrThrow("created_by")));
+            r = addRole(d.deserialize(data.getBinderOrThrow("created_by")));
             if (!r.getName().equals("creator"))
                 throw new IllegalArgumentException("bad creator role name");
             this.data = data.getBinder("data", Binder.EMPTY);
@@ -3395,7 +3423,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Object t = definition.getOrDefault("expires_at", null);
             if (t != null)
                 expiresAt = decodeDslTime(t);
-            registerRole(issuer);
+            addRole(issuer);
             data = definition.getBinder("data");
 
             extendedType = definition.getString("extended_type", null);
@@ -3485,7 +3513,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 Object x = binderParams.getOrThrow("role");
                 if (x instanceof Role) {
                     // serialized, role object
-                    role = registerRole((Role) x);
+                    role = addRole((Role) x);
                 }
                 else if (x instanceof Map) {
                     // if Map object - create role from Map
@@ -3548,7 +3576,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public void deserializeWith(Binder data, BiDeserializer d) {
-            registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
+            addRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTime("expires_at", null);
             extendedType = data.getString("extended_type", null);

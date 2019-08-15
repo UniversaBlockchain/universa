@@ -135,8 +135,7 @@ public class SlotContract extends NSmartContract {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.SLOT1.name()))
             getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
-        RoleLink ownerLink = new RoleLink("owner_link", "owner");
-        registerRole(ownerLink);
+        RoleLink ownerLink = new RoleLink("owner_link",this, "owner");
         HashMap<String, Object> fieldsMap = new HashMap<>();
         fieldsMap.put("action", null);
         fieldsMap.put("/expires_at", null);

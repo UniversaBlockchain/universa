@@ -1078,6 +1078,10 @@ public class MainTest {
         public void shutdown() {
             nodes.forEach(n->n.shutdown());
         }
+
+        public Set<PrivateKey> getUKeys() {
+            return new HashSet<PrivateKey>(Do.listOf(myKey));
+        }
     }
 
     private static final int MAX_PACKET_SIZE = 512;
@@ -9746,7 +9750,7 @@ public class MainTest {
 
         Contract contract = new Contract(TestKeys.privateKey(0));
         Contract contract2 = new Contract(TestKeys.privateKey(0));
-        ChangeNumberPermission changeNumberPermission = new ChangeNumberPermission(new RoleLink("@owner", "owner"), Binder.of(
+        ChangeNumberPermission changeNumberPermission = new ChangeNumberPermission(new RoleLink("@owner", contract,"owner"), Binder.of(
                 "field_name", "field1",
                 "min_value", 33,
                 "max_value", 34,
@@ -9755,7 +9759,7 @@ public class MainTest {
         )
         );
 
-        ChangeNumberPermission changeNumberPermission2 = new ChangeNumberPermission(new RoleLink("@owner", "owner"), Binder.of(
+        ChangeNumberPermission changeNumberPermission2 = new ChangeNumberPermission(new RoleLink("@owner", contract2,"owner"), Binder.of(
                 "field_name", "field1",
                 "min_value", 33,
                 "max_value", 34,
@@ -9766,7 +9770,7 @@ public class MainTest {
         changeNumberPermission.setId("changenumber");
         changeNumberPermission2.setId("changenumber2");
 
-        contract.registerRole(new RoleLink("link_to_issuer","issuer"));
+        contract.addRole(new RoleLink("link_to_issuer",contract,"issuer"));
         contract.addPermission(changeNumberPermission);
         contract2.addPermission(changeNumberPermission2);
         contract.seal();
@@ -10226,6 +10230,41 @@ public class MainTest {
         assertEquals(c2.get("state.data.host"),"192.168.1.2");
 
         ts.shutdown();
+    }
+
+    @Ignore
+    @Test
+    public void inspectContract() throws Exception {
+        Contract contract = Contract.fromPackedTransaction(Do.read("."));
+        contract.check();
+        System.out.println(contract.getErrors());
+        System.out.println(contract.getProcessedCostU());
+    }
+
+
+    @Test
+    public void errorsFromParcel() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.setIssuerKeys(TestKeys.privateKey(1).getPublicKey().getLongAddress());
+        contract.setOwnerKeys(TestKeys.privateKey(1).getPublicKey().getLongAddress());
+        contract.seal();
+        assertEquals(ts.client.register(contract.getPackedTransaction(),8000).state,ItemState.APPROVED);
+
+        contract = contract.createRevision(TestKeys.privateKey(2));
+        contract.setOwnerKeys(TestKeys.privateKey(2));
+        contract.seal();
+
+        contract.check();
+        Contract u = getApprovedUContract(ts);
+        Parcel p = ContractsService.createParcel(contract,u,contract.getProcessedCostU(),ts.getUKeys());
+        ItemResult ir = ts.client.registerParcelWithState(p.pack(), 8000);
+        assertEquals(ir.state,ItemState.DECLINED);
+        assertEquals(ir.errors.size(),contract.getErrors().size());
+
+
     }
 
 }

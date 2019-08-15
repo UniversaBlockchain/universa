@@ -116,6 +116,11 @@ public abstract class Role implements BiSerializable {
     protected Role() {
     }
 
+    protected Role(String name, Contract contract) {
+        this.name = name;
+        this.contract = contract;
+    }
+
     protected Role(String name) {
         this.name = name;
     }
@@ -462,10 +467,7 @@ public abstract class Role implements BiSerializable {
      * @return linked {@link RoleLink}
      */
     public RoleLink linkAs(String roleName) {
-        RoleLink newRole = new RoleLink(roleName, name);
-        if (contract != null)
-            contract.registerRole(newRole);
-        return newRole;
+        return new RoleLink(roleName, contract, name);
     }
 
 

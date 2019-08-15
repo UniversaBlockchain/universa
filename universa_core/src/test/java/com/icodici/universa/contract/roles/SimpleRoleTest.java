@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.TestKeys;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -38,7 +39,7 @@ public class SimpleRoleTest {
 
     @Test
     public void serializeOne() throws Exception {
-        SimpleRole sr = new SimpleRole("tr1");
+        SimpleRole sr = new SimpleRole("tr1",(Contract)null);
         sr.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
         sr.setComment("<New role comment>");
 
@@ -55,7 +56,7 @@ public class SimpleRoleTest {
 
     @Test
     public void serializeMany() throws Exception {
-        SimpleRole sr = new SimpleRole("tr1");
+        SimpleRole sr = new SimpleRole("tr1",(Contract)null);
         keys.forEach(k-> sr.addKeyRecord(new KeyRecord(k.getPublicKey())));
         Binder serialized = DefaultBiMapper.serialize(sr);
         Role r1 = DefaultBiMapper.deserialize(serialized);
@@ -69,7 +70,7 @@ public class SimpleRoleTest {
         Set<KeyAddress> keyAddresses = new HashSet<>();
         keyAddresses.add(new KeyAddress(keys.get(0).getPublicKey(), 0, true));
 
-        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+        SimpleRole sr = new SimpleRole("tr1",null, keyAddresses);
 
         Binder serialized = DefaultBiMapper.serialize(sr);
         Role r1 = DefaultBiMapper.deserialize(serialized);
@@ -88,10 +89,10 @@ public class SimpleRoleTest {
         Set<KeyAddress> keyAddresses = new HashSet<>();
         keyAddresses.add(new KeyAddress(keys.get(0).getPublicKey(), 0, true));
 
-        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+        SimpleRole sr = new SimpleRole("tr1",null, keyAddresses);
 
-        SimpleRole r1 = sr.cloneAs("tr2");
-        SimpleRole r2 = r1.cloneAs("tr1");
+        SimpleRole r1 = sr.cloneAs("tr2",null);
+        SimpleRole r2 = r1.cloneAs("tr1",null);
 
         assertEquals(sr, r2);
     }
@@ -101,13 +102,13 @@ public class SimpleRoleTest {
     public void testGetSimpleAddress() throws Exception {
         Set<Object> keyAddresses = new HashSet<>();
         keyAddresses.add(keys.get(0).getPublicKey().getShortAddress());
-        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+        SimpleRole sr = new SimpleRole("tr1",null, keyAddresses);
         assertEquals(sr.getSimpleAddress(),keyAddresses.iterator().next());
         keyAddresses.add(keys.get(1).getPublicKey());
-        sr = new SimpleRole("tr1", keyAddresses);
+        sr = new SimpleRole("tr1", null, keyAddresses);
         assertNull(sr.getSimpleAddress());
         keyAddresses.remove(keys.get(0).getPublicKey().getShortAddress());
-        sr = new SimpleRole("tr1", keyAddresses);
+        sr = new SimpleRole("tr1", null, keyAddresses);
         assertEquals(sr.getSimpleAddress(),keys.get(1).getPublicKey().getShortAddress());
 
         sr.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);

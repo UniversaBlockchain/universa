@@ -3077,9 +3077,9 @@ public class CLIMainTest {
 
         Set<KeyAddress> keyAddresses = new HashSet<>();
         keyAddresses.add(new KeyAddress(TestKeys.publicKey(0), 0, true));
-        SimpleRole sr1 = new SimpleRole("owner", keyAddresses);
+        SimpleRole sr1 = new SimpleRole("owner",contract, keyAddresses);
 
-        contract.registerRole(sr1);
+        contract.addRole(sr1);
         contract.addSignerKey(TestKeys.privateKey(0));
         contract.seal();
 
@@ -3860,10 +3860,10 @@ public class CLIMainTest {
         owners.add(key1.getPublicKey());
 
         Contract contract = ContractsService.createTokenContract(issuers, owners, new BigDecimal("10000.50"), new BigDecimal("0.01"));
-        SimpleRole issuer1 = new SimpleRole("issuer1",new KeyRecord(key1.getPublicKey()));
-        SimpleRole issuer2 = new SimpleRole("issuer2",new KeyRecord(key2.getPublicKey()));
-        ListRole issuer = new ListRole("issuer",ListRole.Mode.ALL,Do.listOf(issuer1,issuer2));
-        contract.registerRole(issuer);
+        SimpleRole issuer1 = new SimpleRole("issuer1",contract,new KeyRecord(key1.getPublicKey()));
+        SimpleRole issuer2 = new SimpleRole("issuer2",contract,new KeyRecord(key2.getPublicKey()));
+        ListRole issuer = new ListRole("issuer",contract,ListRole.Mode.ALL,Do.listOf(issuer1,issuer2));
+        contract.addRole(issuer);
         contract.seal();
         contract.check();
         assertFalse(contract.isOk());

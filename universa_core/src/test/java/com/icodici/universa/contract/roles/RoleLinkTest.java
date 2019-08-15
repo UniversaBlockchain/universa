@@ -23,10 +23,10 @@ public class RoleLinkTest {
     @Test
     public void resolve() throws Exception {
         Contract c = new Contract();
-        SimpleRole s1 = new SimpleRole("owner");
-        c.registerRole(s1);
-        RoleLink r1 = new RoleLink("lover", "owner");
-        c.registerRole(r1);
+        SimpleRole s1 = new SimpleRole("owner",c);
+        c.addRole(s1);
+        RoleLink r1 = new RoleLink("lover",c, "owner");
+        c.addRole(r1);
         RoleLink r2 = r1.linkAs("mucker");
         assertSame(s1, s1.resolve());
         assertSame(s1, r1.resolve());
@@ -71,11 +71,11 @@ public class RoleLinkTest {
     public void testGetSimpleAddress() throws Exception {
         Set<Object> keyAddresses = new HashSet<>();
         keyAddresses.add(TestKeys.publicKey(0).getLongAddress());
-        SimpleRole sr = new SimpleRole("sr", keyAddresses);
         Contract c = new Contract();
-        c.registerRole(sr);
-        RoleLink rl = new RoleLink("rl",sr.getName());
-        c.registerRole(rl);
+        SimpleRole sr = new SimpleRole("sr",c, keyAddresses);
+        c.addRole(sr);
+        RoleLink rl = new RoleLink("rl",c,sr.getName());
+        c.addRole(rl);
         assertEquals(rl.getSimpleAddress(),TestKeys.publicKey(0).getLongAddress());
 
         rl.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);

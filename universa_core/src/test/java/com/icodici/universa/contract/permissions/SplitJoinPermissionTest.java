@@ -536,8 +536,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         contract.getDefinition().getData().set("currency","UTN");
 
         Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.data.currency","definition.issuer"));
-        Role ownerLink = new RoleLink("@onwer_link","owner");
-        contract.registerRole(ownerLink);
+        Role ownerLink = new RoleLink("@onwer_link",contract,"owner");
         SplitJoinPermission  splitJoinPermission = new SplitJoinPermission(ownerLink,params);
         contract.addPermission(splitJoinPermission);
         contract.getStateData().set("amount","1000.5");
@@ -547,9 +546,8 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         Contract contractToJoin = new Contract(ownerKey1);
         contractToJoin.getDefinition().getData().set("currency","UTN");
-        ownerLink = new RoleLink("@onwer_link","owner");
+        ownerLink = new RoleLink("@onwer_link",contractToJoin,"owner");
         contractToJoin.getStateData().set("amount","100.0");
-        contractToJoin.registerRole(ownerLink);
         //RevokePermission revokePermission = new RevokePermission(ownerLink);
         //contractToJoin.addPermission(revokePermission);
 
@@ -583,8 +581,8 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         contract.getDefinition().getData().set("currency","UTN");
 
         Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.data.currency","definition.issuer"));
-        Role ownerLink = new RoleLink("@onwer_link","owner");
-        contract.registerRole(ownerLink);
+        Role ownerLink = new RoleLink("@onwer_link",contract,"owner");
+
         SplitJoinPermission  splitJoinPermission = new SplitJoinPermission(ownerLink,params);
         contract.addPermission(splitJoinPermission);
         contract.getStateData().set("amount","1000.5");
@@ -595,9 +593,9 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         Contract contractToJoin = new Contract(ownerKey1);
         contractToJoin.setOwnerKey(ownerKey2.getPublicKey());
         contractToJoin.getDefinition().getData().set("currency","UTN");
-        ownerLink = new RoleLink("@onwer_link","owner");
+        ownerLink = new RoleLink("@onwer_link",contractToJoin,"owner");
         contractToJoin.getStateData().set("amount","100.0");
-        contractToJoin.registerRole(ownerLink);
+
 
         splitJoinPermission = new SplitJoinPermission(ownerLink,params);
         contractToJoin.addPermission(splitJoinPermission);

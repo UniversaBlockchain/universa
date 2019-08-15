@@ -5150,8 +5150,7 @@ public class BaseNetworkTest extends TestCase {
 
         // add modify_data permission
 
-        RoleLink ownerLink = new RoleLink("issuer_link", "issuer");
-        llcProperty.registerRole(ownerLink);
+        RoleLink ownerLink = new RoleLink("issuer_link",llcProperty, "issuer");
         HashMap<String,Object> fieldsMap = new HashMap<>();
         fieldsMap.put("/references", null);
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
@@ -5285,8 +5284,7 @@ public class BaseNetworkTest extends TestCase {
 
         // add modify_data permission
 
-        RoleLink ownerLink = new RoleLink("issuer_link", "issuer");
-        llcProperty.registerRole(ownerLink);
+        RoleLink ownerLink = new RoleLink("issuer_link",llcProperty, "issuer");
         HashMap<String,Object> fieldsMap = new HashMap<>();
         fieldsMap.put("account_origin", null);
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
@@ -6573,15 +6571,14 @@ public class BaseNetworkTest extends TestCase {
         // by default, transactions expire in 30 days
         cd.setExpiresAt(swapContract.getCreatedAt().plusDays(30));
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",swapContract);
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
-
-        swapContract.registerRole(issuerRole);
-        swapContract.registerRole((issuerRole).linkAs("owner"));
-        swapContract.registerRole((issuerRole).linkAs("creator"));
+        swapContract.addRole(issuerRole);
+        swapContract.addRole((issuerRole).linkAs("owner"));
+        swapContract.addRole((issuerRole).linkAs("creator"));
 
         // now we will prepare new revisions of contracts
 
@@ -6599,16 +6596,16 @@ public class BaseNetworkTest extends TestCase {
         // prepare roles for references
         // it should new owners and old creators in new revisions of contracts
 
-        SimpleRole ownerFrom = new SimpleRole("owner");
-        SimpleRole creatorFrom = new SimpleRole("creator");
+        SimpleRole ownerFrom = new SimpleRole("owner",newContract1);
+        SimpleRole creatorFrom = new SimpleRole("creator",newContract2);
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             ownerFrom.addKeyRecord(kr);
             creatorFrom.addKeyRecord(kr);
         }
 
-        SimpleRole ownerTo = new SimpleRole("owner");
-        SimpleRole creatorTo = new SimpleRole("creator");
+        SimpleRole ownerTo = new SimpleRole("owner",newContract2);
+        SimpleRole creatorTo = new SimpleRole("creator",newContract1);
         for (PublicKey k : toKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerTo.addKeyRecord(kr);
@@ -7293,10 +7290,10 @@ public class BaseNetworkTest extends TestCase {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
 
         PrivateKey manufactureFakePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer",payment);
         KeyRecord kr = new KeyRecord(manufactureFakePrivateKey.getPublicKey());
         issuerRole.addKeyRecord(kr);
-        payment.registerRole(issuerRole);
+        payment.addRole(issuerRole);
 
         boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
@@ -7461,8 +7458,8 @@ public class BaseNetworkTest extends TestCase {
 
         ContractsService.addReferenceToContract(llcProperty, jobCertificate, "certification_contract", Reference.TYPE_EXISTING_DEFINITION, listConditions, true);
 
-        ListRole listRole = new ListRole("list_role");
-        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        ListRole listRole = new ListRole("list_role",llcProperty);
+        SimpleRole ownerRole = new SimpleRole("owner",llcProperty, stepaPrivateKeys);
         listRole.addRole(ownerRole);
         listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
 
@@ -7538,8 +7535,8 @@ public class BaseNetworkTest extends TestCase {
 
         ContractsService.addReferenceToContract(llcProperty, jobCertificate, "certification_contract", Reference.TYPE_EXISTING_DEFINITION, listConditions, true);
 
-        ListRole listRole = new ListRole("list_role");
-        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        ListRole listRole = new ListRole("list_role",llcProperty);
+        SimpleRole ownerRole = new SimpleRole("owner",llcProperty, stepaPrivateKeys);
         listRole.addRole(ownerRole);
         listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
 
@@ -7621,8 +7618,8 @@ public class BaseNetworkTest extends TestCase {
 
         ContractsService.addReferenceToContract(llcProperty, jobCertificate, "certification_contract", Reference.TYPE_EXISTING_DEFINITION, listConditions, true);
 
-        ListRole listRole = new ListRole("list_role");
-        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        ListRole listRole = new ListRole("list_role",llcProperty);
+        SimpleRole ownerRole = new SimpleRole("owner",llcProperty, stepaPrivateKeys);
         listRole.addRole(ownerRole);
         listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
 
@@ -7700,8 +7697,8 @@ public class BaseNetworkTest extends TestCase {
 
         ContractsService.addReferenceToContract(llcProperty, jobCertificate, "certification_contract", Reference.TYPE_EXISTING_DEFINITION, listConditions, true);
 
-        ListRole listRole = new ListRole("list_role");
-        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        ListRole listRole = new ListRole("list_role",llcProperty);
+        SimpleRole ownerRole = new SimpleRole("owner",llcProperty, stepaPrivateKeys);
         listRole.setMode(ListRole.Mode.ALL);
         listRole.addRole(ownerRole);
         listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
@@ -8538,10 +8535,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -9392,10 +9390,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -9684,10 +9683,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -9797,10 +9797,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -9958,10 +9959,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -10103,10 +10105,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -10363,10 +10366,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -10432,10 +10436,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -10589,10 +10594,11 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for storing
 
-        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, slotIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -15581,11 +15587,12 @@ public class BaseNetworkTest extends TestCase {
             assertNotNull(networkNode.getLedger().getEnvironment(followerContract.getId()));
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        Contract simpleContract2 = new Contract(key2);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract2, simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
         // contract2 for follow
-        Contract simpleContract2 = new Contract(key2);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract2.seal();
         simpleContract2.check();
@@ -15775,13 +15782,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
         simpleIssuerPublicKeys.add(key.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
         //nodes.forEach(n -> n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE));
 
         // contract for follow
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -16116,13 +16124,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
         simpleIssuerPublicKeys.add(key.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        // contract for follow
+        Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
         //nodes.forEach(n -> n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE));
 
-        // contract for follow
-        Contract simpleContract = new Contract(key);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -16460,13 +16469,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
         simpleIssuerPublicKeys.add(key.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        // contract for follow
+        Contract simpleContract = new Contract(key2);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
 
         //nodes.forEach(n -> n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE));
 
-        // contract for follow
-        Contract simpleContract = new Contract(key2);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -16819,12 +16829,13 @@ public class BaseNetworkTest extends TestCase {
 
         //nodes.forEach(n -> n.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED));
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
+        // contract for follow
+        Contract simpleContract = new Contract(key2);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, simpleIssuerPublicKeys);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         RevokePermission revokePermission = new RevokePermission(ownerRole);
 
-        // contract for follow
-        Contract simpleContract = new Contract(key2);
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -17463,11 +17474,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> simpleIssuerPublicKeys = new HashSet<>();
         simpleIssuerPublicKeys.add(key2.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
-        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-
         // contract for follow
         Contract simpleContract = new Contract(key2);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, simpleIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -17736,11 +17748,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
         followerIssuerPublicKeys.add(key.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", followerIssuerPublicKeys);
-        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-
         // contract for follow
         Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner", simpleContract, followerIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -17810,11 +17823,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> followerIssuerPublicKeys = new HashSet<>();
         followerIssuerPublicKeys.add(key.getPublicKey());
 
-        SimpleRole ownerRole = new SimpleRole("owner", followerIssuerPublicKeys);
-        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-
         // contract for follow
         Contract simpleContract = new Contract(key);
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, followerIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.seal();
         simpleContract.check();
@@ -18131,13 +18145,14 @@ public class BaseNetworkTest extends TestCase {
 
         //nodes.forEach(n -> n.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED));
 
-        List<Role> followerRoles = Do.listOf(new SimpleRole("followers", followerIssuerPublicKeys));
-
-        SimpleRole ownerRole = new SimpleRole("owner", simpleIssuerPublicKeys);
-        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-
         // contract for follow
         Contract simpleContract = new Contract(key);
+
+        List<Role> followerRoles = Do.listOf(new SimpleRole("followers", simpleContract, followerIssuerPublicKeys));
+
+        SimpleRole ownerRole = new SimpleRole("owner",simpleContract, simpleIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
         simpleContract.addPermission(changeOwnerPerm);
         simpleContract.getDefinition().getData().set(FOLLOWER_ROLES_FIELD_NAME, followerRoles);
         simpleContract.seal();
@@ -18448,17 +18463,17 @@ public class BaseNetworkTest extends TestCase {
         ref.setConditions(conditionAfter);
         contract.addReference(ref);
 
-        SimpleRole ownerBefore = new SimpleRole("ownerBefore", new KeyRecord(ownerKeyBefore.getPublicKey()));
+        SimpleRole ownerBefore = new SimpleRole("ownerBefore",contract, new KeyRecord(ownerKeyBefore.getPublicKey()));
         ownerBefore.addRequiredReference("ref_before", Role.RequiredMode.ALL_OF);
-        SimpleRole ownerAfter = new SimpleRole("ownerAfter", new KeyRecord(ownerKeyAfter.getPublicKey()));
+        SimpleRole ownerAfter = new SimpleRole("ownerAfter",contract, new KeyRecord(ownerKeyAfter.getPublicKey()));
         ownerAfter.addRequiredReference("ref_after", Role.RequiredMode.ALL_OF);
 
         Collection<Role> roleCollection = new HashSet();
         roleCollection.add(ownerBefore);
         roleCollection.add(ownerAfter);
-        Role listRole = new ListRole("owner", ListRole.Mode.ANY, roleCollection);
+        Role listRole = new ListRole("owner",contract, ListRole.Mode.ANY, roleCollection);
 
-        contract.registerRole(listRole);
+        contract.addRole(listRole);
 
         contract.getPermissions().remove("change_owner");
         contract.getPermissions().remove("revoke");
@@ -18568,8 +18583,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         Contract unregistered = new Contract(TestKeys.privateKey(10));
-        RoleLink rl = new RoleLink("@revoke", "owner");
-        unregistered.registerRole(rl);
+        RoleLink rl = new RoleLink("@revoke", unregistered,"owner");
         unregistered.addPermission(new RevokePermission(rl));
         unregistered.getSealedByKeys().clear();
         unregistered.seal();
@@ -18603,7 +18617,7 @@ public class BaseNetworkTest extends TestCase {
         for (int i = 0; i < 10; i++) {
             rev = rev.createRevision(TestKeys.privateKey(1));
             rev.setOwnerKeys(TestKeys.privateKey(i + 2).getPublicKey());
-            rev.registerRole(new RoleLink("creator","issuer"));
+            rev.addRole(new RoleLink("creator",rev,"issuer"));
             rev.seal();
             contractsList.add(rev);
             keyList.add(TestKeys.privateKey(i + 2));
@@ -18611,8 +18625,8 @@ public class BaseNetworkTest extends TestCase {
 
         Contract batch = new Contract();
         batch.setIssuerKeys(keyList);
-        batch.registerRole(new RoleLink("creator","issuer"));
-        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.addRole(new RoleLink("creator",batch,"issuer"));
+        batch.addRole(new RoleLink("owner",batch,"issuer"));
         batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
 
         for(Contract c : contractsList) {
@@ -18644,15 +18658,15 @@ public class BaseNetworkTest extends TestCase {
                 rev.setOwnerKeys(TestKeys.privateKey(i + 2).getPublicKey());
                 keyList.add(TestKeys.privateKey(i + 2));
             }
-            rev.registerRole(new RoleLink("creator","issuer"));
+            rev.addRole(new RoleLink("creator",rev,"issuer"));
             rev.seal();
             contractsList.add(rev);
         }
 
         Contract batch = new Contract();
         batch.setIssuerKeys(keyList);
-        batch.registerRole(new RoleLink("creator","issuer"));
-        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.addRole(new RoleLink("creator",batch,"issuer"));
+        batch.addRole(new RoleLink("owner",batch,"issuer"));
         batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
 
         for(Contract c : contractsList) {

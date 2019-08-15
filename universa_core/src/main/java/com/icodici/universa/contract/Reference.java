@@ -809,12 +809,12 @@ public class Reference implements BiSerializable {
                                     if (compareOperand.length() > 72) {
                                         // Key
                                         PublicKey publicKey = new PublicKey(Base64u.decodeCompactString(compareOperand));
-                                        SimpleRole simpleRole = new SimpleRole(role.getName(), Do.listOf(publicKey));
+                                        SimpleRole simpleRole = new SimpleRole(role.getName(),null, Do.listOf(publicKey));
                                         ret = role.equalsIgnoreName(simpleRole);
                                     } else {
                                         // Address
                                         KeyAddress ka = new KeyAddress(compareOperand);
-                                        SimpleRole simpleRole = new SimpleRole(role.getName(), Do.listOf(ka));
+                                        SimpleRole simpleRole = new SimpleRole(role.getName(),null, Do.listOf(ka));
                                         ret = role.equalsIgnoreName(simpleRole);
                                     }
                                 }

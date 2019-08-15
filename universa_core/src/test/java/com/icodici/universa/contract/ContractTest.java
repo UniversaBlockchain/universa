@@ -345,7 +345,7 @@ public class ContractTest extends ContractTestBase {
             // issuer:key, creator->owner, owner->issuer
             final Contract c = new Contract(key);
             c.getPredefinedRoles().remove("creator");
-            c.registerRole(new RoleLink("creator", "owner"));
+            c.addRole(new RoleLink("creator",c, "owner"));
             c.seal();
 
             c.check();
@@ -375,9 +375,9 @@ public class ContractTest extends ContractTestBase {
             // issuer->creator, creator->owner, owner->issuer
             final Contract c = new Contract(key);
             c.getPredefinedRoles().clear();
-            c.registerRole(new RoleLink("issuer", "creator"));
-            c.registerRole(new RoleLink("creator", "owner"));
-            c.registerRole(new RoleLink("owner", "issuer"));
+            c.addRole(new RoleLink("issuer",c, "creator"));
+            c.addRole(new RoleLink("creator",c, "owner"));
+            c.addRole(new RoleLink("owner",c, "issuer"));
             c.seal();
 
             c.check(); // and now it is no more ok.
@@ -1325,8 +1325,8 @@ public class ContractTest extends ContractTestBase {
 
         llcProperty.addReference(referenceState);
 
-        ListRole listRole = new ListRole("list_role");
-        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        ListRole listRole = new ListRole("list_role",llcProperty);
+        SimpleRole ownerRole = new SimpleRole("owner", llcProperty,stepaPrivateKeys);
         listRole.addRole(ownerRole);
         listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
 
@@ -1420,11 +1420,11 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void getAllAddresses() throws Exception {
         Contract contract = new Contract(TestKeys.privateKey(0));
-        ListRole owner = new ListRole("owner");
-        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(0), TestKeys.publicKey(1))));
-        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(2).getLongAddress())));
-        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(3).getShortAddress(), TestKeys.publicKey(4))));
-        contract.registerRole(owner);
+        ListRole owner = new ListRole("owner",contract);
+        owner.addRole(new SimpleRole("owner",contract, Arrays.asList(TestKeys.publicKey(0), TestKeys.publicKey(1))));
+        owner.addRole(new SimpleRole("owner",contract, Arrays.asList(TestKeys.publicKey(2).getLongAddress())));
+        owner.addRole(new SimpleRole("owner",contract, Arrays.asList(TestKeys.publicKey(3).getShortAddress(), TestKeys.publicKey(4))));
+        contract.addRole(owner);
         List<String> addresses = contract.getRole("owner").getAllAddresses();
         System.out.println("owner: " + addresses);
         for (String addr : addresses)
@@ -1441,10 +1441,10 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void customContractRoles() throws Exception {
         Contract contract = new Contract(TestKeys.privateKey(0));
-        SimpleRole role = new SimpleRole("qwerty123",Do.listOf(TestKeys.publicKey(1).getLongAddress()));
-        contract.registerRole(role);
-        RoleLink link = new RoleLink("owner","qwerty123");
-        contract.registerRole(link);
+        SimpleRole role = new SimpleRole("qwerty123",contract,Do.listOf(TestKeys.publicKey(1).getLongAddress()));
+        contract.addRole(role);
+        RoleLink link = new RoleLink("owner",contract,"qwerty123");
+        contract.addRole(link);
         contract.seal();
         contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
 

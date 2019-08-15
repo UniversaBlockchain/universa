@@ -1467,9 +1467,9 @@ public class CLIMain {
                     }
 
                 } else {
-//                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-//                    registerContract(contract, (int) options.valueOf("wait"));
-                    addError(Errors.COMMAND_FAILED.name(), uSource, "payment contract or private keys for payment contract is missing");
+                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+                    registerContract(contract, (int) options.valueOf("wait"));
+//                    addError(Errors.COMMAND_FAILED.name(), uSource, "payment contract or private keys for payment contract is missing");
                 }
             }
         }
@@ -2151,8 +2151,8 @@ public class CLIMain {
                         value = value.subtract(partSize);
                         partContracts[i].getStateData().set(fieldName, partSize);
                         try {
-                            SimpleRole role = new SimpleRole("owner", asList(new KeyAddress((String) owners.get(i))));
-                            partContracts[i].registerRole(role);
+                            SimpleRole role = new SimpleRole("owner",partContracts[i], asList(new KeyAddress((String) owners.get(i))));
+                            partContracts[i].addRole(role);
                             partContracts[i].setCreatorKeys(keysMap().values());
                         } catch (KeyAddress.IllegalAddressException e) {
                             System.out.println("Not a valid address: " + owners.get(i));
@@ -2584,10 +2584,9 @@ public class CLIMain {
         }
         contract.setIssuerKeys(privateKeys);
         contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
-        contract.registerRole(new RoleLink("owner", "issuer"));
-        contract.registerRole(new RoleLink("creator", "issuer"));
-        RoleLink roleLink = new RoleLink("@change_owner_role","owner");
-        roleLink.setContract(contract);
+        contract.addRole(new RoleLink("owner",contract, "issuer"));
+        contract.addRole(new RoleLink("creator",contract, "issuer"));
+        RoleLink roleLink = new RoleLink("@change_owner_role",contract,"owner");
         contract.addPermission(new ChangeOwnerPermission(roleLink));
         contract.addSignerKeys(privateKeys);
         String filename = Paths.get(jsFile).getFileName().toString();

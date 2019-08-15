@@ -64,13 +64,13 @@ public class InnerContractsService {
             u = Contract.fromDslFile(Config.uTemplatePath);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner");
+        SimpleRole ownerRole = new SimpleRole("owner",u);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        u.registerRole(ownerRole);
+        u.addRole(ownerRole);
         u.createRole("owner", ownerRole);
 
         u.getStateData().set("transaction_units", amount);

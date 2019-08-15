@@ -80,79 +80,79 @@ public class EscrowHelper {
 
 
 
-        SimpleRole customerRole = new SimpleRole("customer",Do.listOf(customerAddress));
-        escrow.registerRole(customerRole);
+        SimpleRole customerRole = new SimpleRole("customer",escrow,Do.listOf(customerAddress));
+        escrow.addRole(customerRole);
 
-        RoleLink contractorRole = new RoleLink("contractor","owner");
-        escrow.registerRole(contractorRole);
+        RoleLink contractorRole = new RoleLink("contractor",escrow,"owner");
+        escrow.addRole(contractorRole);
 
-        SimpleRole arbitratorRole = new SimpleRole("arbitrator",Do.listOf(arbitratorAddress));
-        escrow.registerRole(arbitratorRole);
+        SimpleRole arbitratorRole = new SimpleRole("arbitrator",escrow,Do.listOf(arbitratorAddress));
+        escrow.addRole(arbitratorRole);
 
         if(storageServiceAddress != null) {
-            escrow.registerRole(new SimpleRole("storage_service",Do.listOf(storageServiceAddress)));
+            escrow.addRole(new SimpleRole("storage_service",escrow,Do.listOf(storageServiceAddress)));
         }
 
         //owner role to be changed by customer to contractor key address upon assignment
-        RoleLink ownerRole = new RoleLink("owner","customer");
-        escrow.registerRole(ownerRole);
+        RoleLink ownerRole = new RoleLink("owner",escrow,"customer");
+        escrow.addRole(ownerRole);
 
 
-        ListRole listRole = new ListRole("two_of_three");
+        ListRole listRole = new ListRole("two_of_three",escrow);
         listRole.setQuorum(2);
-        listRole.addRole(new RoleLink("@cu","customer"));
-        listRole.addRole(new RoleLink("@co","contractor"));
-        listRole.addRole(new RoleLink("@ar","arbitrator"));
-        escrow.registerRole(listRole);
+        listRole.addRole(new RoleLink("@cu",escrow,"customer"));
+        listRole.addRole(new RoleLink("@co",escrow,"contractor"));
+        listRole.addRole(new RoleLink("@ar",escrow,"arbitrator"));
+        escrow.addRole(listRole);
 
 
         
         //OPEN
-        RoleLink openEscrow = new RoleLink("open_escrow","customer");
+        RoleLink openEscrow = new RoleLink("open_escrow",escrow,"customer");
         openEscrow.addRequiredReference("ref_escrow_init", Role.RequiredMode.ALL_OF);
-        escrow.registerRole(openEscrow);
+        escrow.addRole(openEscrow);
 
         //ASSIGN
-        ListRole assignEscrow = new ListRole("assign_escrow");
+        ListRole assignEscrow = new ListRole("assign_escrow",escrow);
         assignEscrow.setMode(ListRole.Mode.ALL);
-        assignEscrow.addRole(new RoleLink("@cu","customer"));
-        assignEscrow.addRole(new RoleLink("@co","contractor"));
+        assignEscrow.addRole(new RoleLink("@cu",escrow,"customer"));
+        assignEscrow.addRole(new RoleLink("@co",escrow,"contractor"));
         assignEscrow.addRequiredReference("ref_escrow_open", Role.RequiredMode.ALL_OF);
-        escrow.registerRole(assignEscrow);
+        escrow.addRole(assignEscrow);
 
         //CANCEL
-        ListRole cancelEscrow = new ListRole("cancel_escrow");
+        ListRole cancelEscrow = new ListRole("cancel_escrow",escrow);
         cancelEscrow.setMode(ListRole.Mode.ANY);
 
         //Customer cancels open escrow
-        RoleLink cancelsOpenEscrow = new RoleLink("customer_cancels","customer");
+        RoleLink cancelsOpenEscrow = new RoleLink("customer_cancels",escrow,"customer");
         cancelsOpenEscrow.addRequiredReference("ref_escrow_open", Role.RequiredMode.ALL_OF);
 
         //Customer cancels assigned escrow by timeout
-        RoleLink cancelAssignedEscrowTimeout = new RoleLink("customer+timeout","customer");
+        RoleLink cancelAssignedEscrowTimeout = new RoleLink("customer+timeout",escrow,"customer");
         cancelAssignedEscrowTimeout.addRequiredReference("ref_escrow_assigned_timeout", Role.RequiredMode.ALL_OF);
 
         //Contractor+customer cancel assigned escrow anytime
-        ListRole cancelAssignedEscrow = new ListRole("c+c");
+        ListRole cancelAssignedEscrow = new ListRole("c+c",escrow);
         cancelAssignedEscrow.setMode(ListRole.Mode.ALL);
-        cancelAssignedEscrow.addRole(new RoleLink("@co","contractor"));
-        cancelAssignedEscrow.addRole(new RoleLink("@cu","customer"));
+        cancelAssignedEscrow.addRole(new RoleLink("@co",escrow,"contractor"));
+        cancelAssignedEscrow.addRole(new RoleLink("@cu",escrow,"customer"));
         cancelAssignedEscrow.addRequiredReference("ref_escrow_assigned", Role.RequiredMode.ALL_OF);
 
         //c+c or a+customer may cancel completed escrow
-        ListRole cancelCompletedEscrow = new ListRole("cancel_completed_escrow");
+        ListRole cancelCompletedEscrow = new ListRole("cancel_completed_escrow",escrow);
         cancelCompletedEscrow.setMode(ListRole.Mode.ANY);
 
-        ListRole cnc = new ListRole("c+c");
+        ListRole cnc = new ListRole("c+c",escrow);
         cnc.setMode(ListRole.Mode.ALL);
-        cnc.addRole(new RoleLink("@co","contractor"));
-        cnc.addRole(new RoleLink("@cu","customer"));
+        cnc.addRole(new RoleLink("@co",escrow,"contractor"));
+        cnc.addRole(new RoleLink("@cu",escrow,"customer"));
         cancelCompletedEscrow.addRole(cnc);
 
-        ListRole ancustomer = new ListRole("a+customer");
+        ListRole ancustomer = new ListRole("a+customer",escrow);
         ancustomer.setMode(ListRole.Mode.ALL);
-        ancustomer.addRole(new RoleLink("@ar","arbitrator"));
-        ancustomer.addRole(new RoleLink("@cu","customer"));
+        ancustomer.addRole(new RoleLink("@ar",escrow,"arbitrator"));
+        ancustomer.addRole(new RoleLink("@cu",escrow,"customer"));
         cancelCompletedEscrow.addRole(ancustomer);
 
 
@@ -163,47 +163,47 @@ public class EscrowHelper {
         cancelEscrow.addRole(cancelAssignedEscrowTimeout);
         cancelEscrow.addRole(cancelAssignedEscrow);
         cancelEscrow.addRole(cancelCompletedEscrow);
-        escrow.registerRole(cancelEscrow);
+        escrow.addRole(cancelEscrow);
 
         //COMPLETE
         //Contractor completes assigned escrow before timeout
-        ListRole completeEscrow = new ListRole("complete_escrow");
+        ListRole completeEscrow = new ListRole("complete_escrow",escrow);
         completeEscrow.setMode(ListRole.Mode.ALL);
-        completeEscrow.addRole(new RoleLink("@co","contractor"));
+        completeEscrow.addRole(new RoleLink("@co",escrow,"contractor"));
         if(escrow.getRole("storage_service") != null) {
-            completeEscrow.addRole(new RoleLink("@ss","storage_service"));
+            completeEscrow.addRole(new RoleLink("@ss",escrow,"storage_service"));
         }
         completeEscrow.addRequiredReference("ref_escrow_assigned", Role.RequiredMode.ALL_OF);
-        escrow.registerRole(completeEscrow);
+        escrow.addRole(completeEscrow);
 
         //CLOSE
         //2 of 3 close complete escrow
-        ListRole closeEscrow = new ListRole("close_escrow");
+        ListRole closeEscrow = new ListRole("close_escrow",escrow);
         closeEscrow.setMode(ListRole.Mode.ANY);
 
-        ListRole ancontractor = new ListRole("a+contractor");
+        ListRole ancontractor = new ListRole("a+contractor",escrow);
         ancontractor.setMode(ListRole.Mode.ALL);
-        ancontractor.addRole(new RoleLink("@co","contractor"));
-        ancontractor.addRole(new RoleLink("@ar","arbitrator"));
+        ancontractor.addRole(new RoleLink("@co",escrow,"contractor"));
+        ancontractor.addRole(new RoleLink("@ar",escrow,"arbitrator"));
         closeEscrow.addRole(ancontractor);
 
-        ListRole customerAcceptsWork = new ListRole("customer_accepts_work");
+        ListRole customerAcceptsWork = new ListRole("customer_accepts_work",escrow);
         customerAcceptsWork.setMode(ListRole.Mode.ALL);
-        customerAcceptsWork.addRole(new RoleLink("@cu","customer"));
+        customerAcceptsWork.addRole(new RoleLink("@cu",escrow,"customer"));
         if(escrow.getRole("storage_service") != null) {
-            customerAcceptsWork.addRole(new RoleLink("@ss","storage_service"));
+            customerAcceptsWork.addRole(new RoleLink("@ss",escrow,"storage_service"));
         }
         closeEscrow.addRole(customerAcceptsWork);
 
 
         if(escrow.getRole("storage_service") != null) {
-            completeEscrow.addRole(new RoleLink("@ss","storage_service"));
+            completeEscrow.addRole(new RoleLink("@ss",escrow,"storage_service"));
         }
 
 
 
         closeEscrow.addRequiredReference("ref_escrow_completed", Role.RequiredMode.ALL_OF);
-        escrow.registerRole(closeEscrow);
+        escrow.addRole(closeEscrow);
 
 
         escrow.getDefinition().getData().put(FIELD_VERSION,1);
@@ -247,7 +247,7 @@ public class EscrowHelper {
         refEscrowComplete.setConditions(Binder.of("all_of",Do.listOf("this."+PATH_STATUS+"==\""+ STATUS_COMPLETE +"\"")));
         escrow.addReference(refEscrowComplete);
 
-        ModifyDataPermission openEscrowPemission = new ModifyDataPermission(new RoleLink("@oep","open_escrow"),
+        ModifyDataPermission openEscrowPemission = new ModifyDataPermission(new RoleLink("@oep",escrow,"open_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_OPEN),
                         FIELD_PAYMENT,null
@@ -256,7 +256,7 @@ public class EscrowHelper {
         escrow.addPermission(openEscrowPemission);
         
         
-        ModifyDataPermission assignEscrowPemission = new ModifyDataPermission(new RoleLink("@aep","assign_escrow"),
+        ModifyDataPermission assignEscrowPemission = new ModifyDataPermission(new RoleLink("@aep",escrow,"assign_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_ASSIGNED),
                         FIELD_CONTRACTOR_ASSIGNMENT_INFO,null
@@ -264,14 +264,14 @@ public class EscrowHelper {
         assignEscrowPemission.setId("assign_escrow");
         escrow.addPermission(assignEscrowPemission);
 
-        ModifyDataPermission cancelEscrowPemission = new ModifyDataPermission(new RoleLink("@canep","cancel_escrow"),
+        ModifyDataPermission cancelEscrowPemission = new ModifyDataPermission(new RoleLink("@canep",escrow,"cancel_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_CANCELED)
                 )));
         cancelEscrowPemission.setId("cancel_escrow");
         escrow.addPermission(cancelEscrowPemission);
 
-        ModifyDataPermission completeEscrowPemission = new ModifyDataPermission(new RoleLink("@comep","complete_escrow"),
+        ModifyDataPermission completeEscrowPemission = new ModifyDataPermission(new RoleLink("@comep",escrow,"complete_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_COMPLETE),
                         FIELD_CONTRACTOR_COMPLETION_INFO,null
@@ -279,14 +279,14 @@ public class EscrowHelper {
         completeEscrowPemission.setId("complete_escrow");
         escrow.addPermission(completeEscrowPemission);
 
-        ModifyDataPermission closeEscrowPemission = new ModifyDataPermission(new RoleLink("@cloep","close_escrow"),
+        ModifyDataPermission closeEscrowPemission = new ModifyDataPermission(new RoleLink("@cloep",escrow,"close_escrow"),
                 Binder.of("fields",Binder.of(
                         FIELD_STATUS,Do.listOf(STATUS_CLOSED)
                 )));
         closeEscrowPemission.setId("close_escrow");
         escrow.addPermission(closeEscrowPemission);
 
-        ChangeOwnerPermission assignContractorPermission = new ChangeOwnerPermission(new RoleLink("@cu","customer"));
+        ChangeOwnerPermission assignContractorPermission = new ChangeOwnerPermission(new RoleLink("@cu",escrow,"customer"));
         escrow.addPermission(assignContractorPermission);
 
 
@@ -336,19 +336,19 @@ public class EscrowHelper {
         payment.addReference(canPlayEscrowContractor);
 
 
-        SimpleRole moneyForCustomer = new SimpleRole("customer_takes_payment");
+        SimpleRole moneyForCustomer = new SimpleRole("customer_takes_payment",payment);
         moneyForCustomer.addRequiredReference("can_play_escrow_customer", Role.RequiredMode.ALL_OF);
         moneyForCustomer.addRequiredReference("escrow_canceled", Role.RequiredMode.ALL_OF);
 
-        SimpleRole moneyForContractor = new SimpleRole("contractor_takes_payment");
+        SimpleRole moneyForContractor = new SimpleRole("contractor_takes_payment",payment);
         moneyForContractor.addRequiredReference("can_play_escrow_contractor", Role.RequiredMode.ALL_OF);
         moneyForContractor.addRequiredReference("escrow_closed", Role.RequiredMode.ALL_OF);
 
-        ListRole moneyOwner = new ListRole("owner");
+        ListRole moneyOwner = new ListRole("owner",payment);
         moneyOwner.setMode(ListRole.Mode.ANY);
         moneyOwner.addRole(moneyForCustomer);
         moneyOwner.addRole(moneyForContractor);
-        payment.registerRole(moneyOwner);
+        payment.addRole(moneyOwner);
         payment.seal();
 
         escrow.getStateData().set(FIELD_PAYMENT,payment.getId().toBase64String());
@@ -379,11 +379,11 @@ public class EscrowHelper {
 
         escrow.setOwnerKeys(contractorAddress);
 
-        ListRole creator = new ListRole("creator");
+        ListRole creator = new ListRole("creator",escrow);
         creator.setMode(ListRole.Mode.ALL);
-        creator.addRole(new RoleLink("@cu","customer"));
-        creator.addRole(new RoleLink("@co","contractor"));
-        escrow.registerRole(creator);
+        creator.addRole(new RoleLink("@cu",escrow,"customer"));
+        creator.addRole(new RoleLink("@co",escrow,"contractor"));
+        escrow.addRole(creator);
 
         escrow.getStateData().set(FIELD_STATUS, STATUS_ASSIGNED);
         escrow.getStateData().set(FIELD_CONTRACTOR_ASSIGNMENT_INFO,assignData);
@@ -412,7 +412,7 @@ public class EscrowHelper {
     public static Contract[] cancelEscrow(Contract escrow) {
         Contract payment = getPayment(escrow);
         escrow = escrow.createRevision();
-        escrow.registerRole(new RoleLink("creator","customer"));
+        escrow.addRole(new RoleLink("creator",escrow,"customer"));
         escrow.getStateData().set(FIELD_STATUS,STATUS_CANCELED);
 
         payment = payment.createRevision();
@@ -443,7 +443,7 @@ public class EscrowHelper {
         Contract payment = getPayment(escrow);
 
         escrow = escrow.createRevision();
-        escrow.registerRole(new RoleLink("creator","contractor"));
+        escrow.addRole(new RoleLink("creator",escrow,"contractor"));
         escrow.getStateData().set(FIELD_STATUS, STATUS_COMPLETE);
         escrow.getStateData().set(FIELD_CONTRACTOR_COMPLETION_INFO,completionData);
         escrow.seal();
@@ -467,7 +467,7 @@ public class EscrowHelper {
         Contract payment = getPayment(escrow);
 
         escrow = escrow.createRevision();
-        escrow.registerRole(new SimpleRole("creator",creatorKeys));
+        escrow.addRole(new SimpleRole("creator",escrow,creatorKeys));
         escrow.getStateData().set(FIELD_STATUS, STATUS_CLOSED);
 
         escrow.seal();

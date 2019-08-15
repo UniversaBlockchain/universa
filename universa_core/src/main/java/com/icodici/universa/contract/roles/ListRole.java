@@ -48,7 +48,19 @@ public class ListRole extends Role {
      * Create empty role combining other roles (sub-roles). To be initialized from dsl later.
      *
      * @param name is role name
+     * @param contract is contract role belongs to
      */
+    public ListRole(String name,Contract contract) {
+        super(name,contract);
+    }
+
+    /**
+     * Create empty role combining other roles (sub-roles). To be initialized from dsl later.
+     *
+     * @param name is role name
+     * @deprecated use {@link #ListRole(String, Contract)} instead
+     */
+    @Deprecated
     public ListRole(String name) {
         super(name);
     }
@@ -57,12 +69,44 @@ public class ListRole extends Role {
      * Create new role combining other roles (sub-roles)
      *
      * @param name is role name
+     * @param contract is contract role belongs to
      * @param mode is mode of sub-roles combining: "and", "or" and "any N of" principle
      * @param roles is collection of sub-roles
      */
+    public ListRole(String name, Contract contract, Mode mode, @NonNull Collection<Role> roles) {
+        super(name,contract);
+        setMode(mode);
+        addAll(roles);
+    }
+
+    /**
+     * Create new role combining other roles (sub-roles)
+     *
+     * @param name is role name
+     * @param mode is mode of sub-roles combining: "and", "or" and "any N of" principle
+     * @param roles is collection of sub-roles
+     * @deprecated use {@link #ListRole(String, Contract, Mode, Collection)}
+     */
+    @Deprecated
     public ListRole(String name, Mode mode, @NonNull Collection<Role> roles) {
         super(name);
         setMode(mode);
+        addAll(roles);
+    }
+
+
+    /**
+     * Create new role combining other roles (sub-roles) in the "any N of" principle ({@link Mode#QUORUM}).
+     *
+     * @param name is role name
+     * @param contract is contract role belongs to
+     * @param quorumSize is N in "any N of" principle
+     * @param roles is collection of sub-roles
+     */
+    public ListRole(String name, Contract contract, int quorumSize, @NonNull Collection<Role> roles) {
+        super(name,contract);
+        this.mode = Mode.QUORUM;
+        this.quorumSize = quorumSize;
         addAll(roles);
     }
 
@@ -72,7 +116,9 @@ public class ListRole extends Role {
      * @param name is role name
      * @param quorumSize is N in "any N of" principle
      * @param roles is collection of sub-roles
+     * @deprecated use {@link #ListRole(String, Contract, int, Collection)}
      */
+    @Deprecated
     public ListRole(String name, int quorumSize, @NonNull Collection<Role> roles) {
         super(name);
         this.mode = Mode.QUORUM;
@@ -237,7 +283,7 @@ public class ListRole extends Role {
         roleBinders.stream().forEach(x -> {
 
             if(x instanceof String) {
-                roles.add(new RoleLink(x+"link"+ Instant.now().toEpochMilli(), (String) x));
+                roles.add(new RoleLink(x+"link"+ Instant.now().toEpochMilli(),getContract(), (String) x));
             } else {
                 Binder binder = Binder.of(x);
                 if (binder.size() == 1) {
