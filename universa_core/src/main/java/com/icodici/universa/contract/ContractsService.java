@@ -2285,7 +2285,6 @@ public class ContractsService {
 
 
 
-
     /**
      * Create a compound contract, that includes nested contracts.
      *
@@ -2304,20 +2303,21 @@ public class ContractsService {
         compound.setExpiresAt(ZonedDateTime.now().plusDays(14));
         compound.addRole(new RoleLink("creator",compound,"issuer"));
         compound.addRole(new RoleLink("owner",compound,"issuer"));
-
         ListRole issuer = new ListRole("issuer",compound);
-        ArrayList<Contract> referencedItems = new ArrayList<>();
+        Map<HashId,Contract> referencedItems = new HashMap<>();
         for(Contract c : contracts) {
-            issuer.addRole(c.getCreator());
+            issuer.addRole(c.getCreator().resolve());
             compound.addNewItems(c);
-            referencedItems.addAll(c.getTransactionPack().getReferencedItems().values());
+            c.getTransactionPack().getReferencedItems().values().forEach(ri->referencedItems.put(c.getId(),ri));
         }
-
+        Binder references = new Binder();
+        referencedItems.forEach((k,v)->references.put(v.getId().toBase64String(),k.toBase64String()));
+        compound.getDefinition().getData().put("references",references);
         compound.addRole(issuer);
 
         compound.seal();
 
-        for(Contract ri : referencedItems) {
+        for(Contract ri : referencedItems.values()) {
             compound.getTransactionPack().addReferencedItem(ri);
         }
         return compound;
@@ -2334,9 +2334,10 @@ public class ContractsService {
      */
     public static Contract createCompound(Map<String,Contract> contracts) {
         Contract compound = createCompound(contracts.values().toArray(new Contract[]{}));
-        contracts.forEach((k,v)->{
-            compound.getStateData().put(k,v.getId().toBase64String());
-        });
+        Binder contractsBinder = new Binder();
+        contracts.forEach((k,v)-> contractsBinder.put(k,v.getId().toBase64String()));
+        compound.getDefinition().getData().put("contracts",contractsBinder);
+
         compound.seal();
         return compound;
     }
@@ -2351,12 +2352,28 @@ public class ContractsService {
      * @return found contract or null
      */
     public static Contract findContractInCompound(Contract compound, String tag) {
+
         try {
-            String stringId = compound.getStateData().getString(tag);
-            return compound.getTransactionPack().getSubItem(HashId.withDigest(stringId));
+            HashId id = HashId.withDigest(compound.getDefinition().getData().getBinder("contracts", new Binder()).getString(tag));
+            return extractContractFromCompound(compound,id);
         } catch (IllegalArgumentException ignored) {
             return null;
         }
+    }
+
+    public static Contract extractContractFromCompound(Contract compound, HashId id) {
+
+        Contract contract = compound.getTransactionPack().getSubItem(id);
+        TransactionPack transactionPack = new TransactionPack(contract);
+        contract.setTransactionPack(transactionPack);
+        compound.getDefinition().getData().getBinder("references").forEach((k,v)->{
+            HashId contractId = HashId.withDigest((String)v);
+            if(contractId.equals(id)) {
+                HashId riId = HashId.withDigest(k);
+                transactionPack.addReferencedItem(compound.getTransactionPack().getReferencedItems().get(riId));
+            }
+        });
+        return contract;
     }
 }
 

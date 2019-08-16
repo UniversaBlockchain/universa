@@ -10267,4 +10267,28 @@ public class MainTest {
 
     }
 
+
+    @Test
+    public void testCompound() throws Exception {
+        Contract referencedItem = new Contract(TestKeys.privateKey(1));
+        referencedItem.seal();
+        Contract contract = new Contract(TestKeys.privateKey(2));
+        contract.seal();
+
+        contract.getTransactionPack().addReferencedItem(referencedItem);
+
+        Map<String, Contract> contractMap = new HashMap<>();
+        contractMap.put("main",contract);
+        Contract compound = ContractsService.createCompound(contractMap);
+
+        Contract c1 = ContractsService.findContractInCompound(compound,"main");
+
+        assertEquals(c1.getId(),contract.getId());
+        assertEquals(c1.getTransactionPack().getReferencedItems(),c1.getTransactionPack().getReferencedItems());
+
+
+
+    }
+
+
 }
