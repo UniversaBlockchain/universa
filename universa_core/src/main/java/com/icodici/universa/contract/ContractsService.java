@@ -2316,20 +2316,21 @@ public class ContractsService {
         compound.addRole(new RoleLink("owner",compound,"issuer"));
 
 
-        Map<HashId,Contract> referencedItems = new HashMap<>();
+        Binder referencedItemsMapping = new Binder();
+        Set<Contract> referencedItems = new HashSet<>();
         for(Contract c : contracts) {
             compound.addNewItems(c);
-            c.getTransactionPack().getReferencedItems().values().forEach(ri->referencedItems.put(c.getId(),ri));
+            referencedItems.addAll(c.getTransactionPack().getReferencedItems().values());
+            referencedItemsMapping.put(c.getId().toBase64String(),c.getTransactionPack().getReferencedItems()
+                    .values().stream().map(ri->ri.getId().toBase64String()).collect(Collectors.toList()));
         }
 
 
-        Binder references = new Binder();
-        referencedItems.forEach((k,v)->references.put(v.getId().toBase64String(),k.toBase64String()));
-        compound.getDefinition().getData().put("references",references);
+        compound.getDefinition().getData().put("referencedItems",referencedItemsMapping);
 
         compound.seal();
 
-        for(Contract ri : referencedItems.values()) {
+        for(Contract ri : referencedItems) {
             compound.getTransactionPack().addReferencedItem(ri);
         }
         return compound;
@@ -2378,13 +2379,11 @@ public class ContractsService {
         Contract contract = compound.getTransactionPack().getSubItem(id);
         TransactionPack transactionPack = new TransactionPack(contract);
         contract.setTransactionPack(transactionPack);
-        compound.getDefinition().getData().getBinder("references").forEach((k,v)->{
-            HashId contractId = HashId.withDigest((String)v);
-            if(contractId.equals(id)) {
-                HashId riId = HashId.withDigest(k);
-                transactionPack.addReferencedItem(compound.getTransactionPack().getReferencedItems().get(riId));
-            }
-        });
+
+        List<String> referencedItemsIds = compound.getDefinition().getData().getBinder("referencedItems").getList(id.toBase64String(), new ArrayList<>());
+
+        referencedItemsIds.forEach(riId ->transactionPack.addReferencedItem(
+                compound.getTransactionPack().getReferencedItems().get(HashId.withDigest(riId))));
         return contract;
     }
 }
