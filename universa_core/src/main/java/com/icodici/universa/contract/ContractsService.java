@@ -2326,7 +2326,7 @@ public class ContractsService {
         }
 
 
-        compound.getDefinition().getData().put("referencedItems",referencedItemsMapping);
+        compound.getDefinition().getData().put("referenced_items",referencedItemsMapping);
 
         compound.seal();
 
@@ -2349,7 +2349,7 @@ public class ContractsService {
         Contract compound = createCompound(contracts.values().toArray(new Contract[]{}));
         Binder contractsBinder = new Binder();
         contracts.forEach((k,v)-> contractsBinder.put(k,v.getId().toBase64String()));
-        compound.getDefinition().getData().put("contracts",contractsBinder);
+        compound.getDefinition().getData().put("contract_tags",contractsBinder);
 
         compound.seal();
         return compound;
@@ -2367,7 +2367,7 @@ public class ContractsService {
     public static Contract findContractInCompound(Contract compound, String tag) {
 
         try {
-            HashId id = HashId.withDigest(compound.getDefinition().getData().getBinder("contracts", new Binder()).getString(tag));
+            HashId id = HashId.withDigest(compound.getDefinition().getData().getBinder("contract_tags", new Binder()).getString(tag));
             return extractContractFromCompound(compound,id);
         } catch (IllegalArgumentException ignored) {
             return null;
@@ -2380,7 +2380,7 @@ public class ContractsService {
         TransactionPack transactionPack = new TransactionPack(contract);
         contract.setTransactionPack(transactionPack);
 
-        List<String> referencedItemsIds = compound.getDefinition().getData().getBinder("referencedItems").getList(id.toBase64String(), new ArrayList<>());
+        List<String> referencedItemsIds = compound.getDefinition().getData().getBinder("referenced_items").getList(id.toBase64String(), new ArrayList<>());
 
         referencedItemsIds.forEach(riId ->transactionPack.addReferencedItem(
                 compound.getTransactionPack().getReferencedItems().get(HashId.withDigest(riId))));
