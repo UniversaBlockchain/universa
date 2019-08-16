@@ -17,6 +17,7 @@ import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.helpers.Compound;
 import com.icodici.universa.contract.helpers.EscrowHelper;
 import com.icodici.universa.contract.helpers.SecureLoanHelper;
 import com.icodici.universa.contract.permissions.*;
@@ -30,7 +31,6 @@ import com.icodici.universa.node2.network.*;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hamcrest.MatcherAssert;
@@ -41,8 +41,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.*;
@@ -54,7 +52,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
@@ -9583,11 +9580,13 @@ public class MainTest {
         Contract[] res =  SecureLoanHelper.initSecureLoan(new Binder(),lenderAddress, borrowerAddress, token, Duration.ofSeconds(3), collateral, "1000",true,null,token.getIssuer().getSimpleAddress(), (String) token.getDefinition().getData().get("currency"));
         Contract secureLoan = res[0];
 
-        Contract compound = ContractsService.createCompound(secureLoan);
-        compound.addSignatureToSeal(borrowerKey);
-        compound.addSignatureToSeal(lenderKey);
 
-        ItemResult ir = ts.client.register(compound.getPackedTransaction(), 8000);
+        Compound compound = new Compound();
+        compound.addContract("loan",secureLoan,null);
+        compound.getCompoundContract().addSignatureToSeal(borrowerKey);
+        compound.getCompoundContract().addSignatureToSeal(lenderKey);
+
+        ItemResult ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9599,11 +9598,14 @@ public class MainTest {
 
         secureLoan = res[0];
 
-        compound = ContractsService.createCompound(secureLoan);
-        compound.addSignatureToSeal(lenderKey);
+
+        compound = new Compound();
+        compound.addContract("loan",secureLoan,null);
+        compound.getCompoundContract().addSignatureToSeal(lenderKey);
+
 
         collateral = res[1];
-        ir = ts.client.register(compound.getPackedTransaction(), 8000);
+        ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9662,13 +9664,14 @@ public class MainTest {
         Contract secureLoan = res[0];
         secureLoan.seal();
 
-        Contract compound = ContractsService.createCompound(secureLoan);
+        Compound compound = new Compound();
+        compound.addContract("loan",secureLoan,null);
         //add signatures
-        compound.addSignatureToSeal(borrowerKey);
-        compound.addSignatureToSeal(lenderKey);
-        compound.addSignatureToSeal(issuerKey);
+        compound.getCompoundContract().addSignatureToSeal(borrowerKey);
+        compound.getCompoundContract().addSignatureToSeal(lenderKey);
+        compound.getCompoundContract().addSignatureToSeal(issuerKey);
 
-        ItemResult ir = ts.client.register(compound.getPackedTransaction(), 8000);
+        ItemResult ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9689,11 +9692,12 @@ public class MainTest {
         res = SecureLoanHelper.repaySecureLoan(secureLoan,token);
         secureLoan = res[0];
 
-        compound = ContractsService.createCompound(secureLoan);
+        compound = new Compound();
+        compound.addContract("loan",secureLoan,null);
         //add signatures
-        compound.addSignatureToSeal(borrowerKey);
+        compound.getCompoundContract().addSignatureToSeal(borrowerKey);
 
-        ir = ts.client.register(compound.getPackedTransaction(),8000);
+        ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(),8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9704,12 +9708,14 @@ public class MainTest {
         token = res[1];
         collateral = res[2];
 
-        compound = ContractsService.createCompound(secureLoan);
-        //add signatures
-        compound.addSignatureToSeal(lenderKey);
-        compound.addSignatureToSeal(borrowerKey);
 
-        ir = ts.client.register(compound.getPackedTransaction(),8000);
+        compound = new Compound();
+        compound.addContract("loan",secureLoan,null);
+        //add signatures
+        compound.getCompoundContract().addSignatureToSeal(borrowerKey);
+        compound.getCompoundContract().addSignatureToSeal(lenderKey);
+
+        ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(),8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
@@ -9837,35 +9843,34 @@ public class MainTest {
 
         escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
 
-        HashMap<String,Contract> map = new HashMap<>();
-        map.put("escrow",escrow);
-        Contract compound = ContractsService.createCompound(map);
+        Compound compound = new Compound();
+        compound.addContract("escrow",escrow,null);
+        //add signatures
+        compound.getCompoundContract().addSignatureToSeal(contractorKey);
+        compound.getCompoundContract().addSignatureToSeal(storageServiceKey);
 
-        compound.addSignatureToSeal(contractorKey);
-        compound.addSignatureToSeal(storageServiceKey);
 
 
-        ir = ts.client.register(compound.getPackedTransaction(), 8000);
+        ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        escrow = ContractsService.findContractInCompound(compound,"escrow");
+        escrow = compound.getContract("escrow");
 
         res = EscrowHelper.closeEscrow(escrow,Do.listOf(customerAddress,storageServiceAddress));
         escrow = res[0];
 
-        map = new HashMap<>();
-        map.put("escrow",escrow);
-        compound = ContractsService.createCompound(map);
+        compound = new Compound();
+        compound.addContract("escrow",escrow,null);
+        //add signatures
+        compound.getCompoundContract().addSignatureToSeal(customerKey);
+        compound.getCompoundContract().addSignatureToSeal(storageServiceKey);
 
-        compound.addSignatureToSeal(customerKey);
-        compound.addSignatureToSeal(storageServiceKey);
-
-        ir = ts.client.register(compound.getPackedTransaction(), 8000);
+        ir = ts.client.register(compound.getCompoundContract().getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        escrow = ContractsService.findContractInCompound(compound,"escrow");
+        escrow = compound.getContract("escrow");
 
         res = EscrowHelper.obtainPaymentOnClosedEscrow(escrow);
         payment = res[0];
@@ -10285,21 +10290,32 @@ public class MainTest {
     public void testCompound() throws Exception {
         Contract referencedItem = new Contract(TestKeys.privateKey(1));
         referencedItem.seal();
+
         Contract contract = new Contract(TestKeys.privateKey(2));
         contract.seal();
-
         contract.getTransactionPack().addReferencedItem(referencedItem);
 
-        Map<String, Contract> contractMap = new HashMap<>();
-        contractMap.put("main",contract);
-        Contract compound = ContractsService.createCompound(contractMap);
-
-        Contract c1 = ContractsService.findContractInCompound(compound,"main");
-
-        assertEquals(c1.getId(),contract.getId());
-        assertEquals(c1.getTransactionPack().getReferencedItems(),c1.getTransactionPack().getReferencedItems());
+        Contract contract2 = new Contract(TestKeys.privateKey(2));
+        contract2.seal();
+        contract2.getTransactionPack().addReferencedItem(referencedItem);
 
 
+        Compound compound = new Compound();
+
+        compound.addContract("main",contract,Binder.of("foo","bar"));
+        compound.addContract("second",contract2,Binder.of("key","value"));
+
+
+
+        compound = new Compound(compound.getCompoundContract().getPackedTransaction());
+
+        System.out.println(compound.getTags());
+        System.out.println(compound.getData("main"));
+        Contract main = compound.getContract("main");
+        assertEquals(main.getId(),contract.getId());
+        assertEquals(compound.getContract("second").getId(),contract2.getId());
+
+        assertEquals(main.getTransactionPack().getReferencedItems().keySet(),contract.getTransactionPack().getReferencedItems().keySet());
 
     }
 
