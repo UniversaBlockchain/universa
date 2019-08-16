@@ -13,12 +13,10 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.roles.*;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.Config;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
@@ -35,6 +33,7 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -2301,19 +2300,32 @@ public class ContractsService {
     public static Contract createCompound(Contract... contracts) {
         Contract compound = new Contract();
         compound.setExpiresAt(ZonedDateTime.now().plusDays(14));
+
+        //in order ot create roles without keys we create dummy reference and add it as required for the roles
+        Reference dummyReference = new Reference(compound);
+        dummyReference.name = "dummy";
+        dummyReference.setConditions(Binder.of("any_of",Do.listOf("this.state.parent undefined")));
+        compound.addReference(dummyReference);
+
+        SimpleRole issuer = new SimpleRole("issuer",compound);
+        issuer.addRequiredReference("dummy", Role.RequiredMode.ALL_OF);
+        compound.addRole(issuer);
+
+
         compound.addRole(new RoleLink("creator",compound,"issuer"));
         compound.addRole(new RoleLink("owner",compound,"issuer"));
-        ListRole issuer = new ListRole("issuer",compound);
+
+
         Map<HashId,Contract> referencedItems = new HashMap<>();
         for(Contract c : contracts) {
-            issuer.addRole(c.getCreator().resolve());
             compound.addNewItems(c);
             c.getTransactionPack().getReferencedItems().values().forEach(ri->referencedItems.put(c.getId(),ri));
         }
+
+
         Binder references = new Binder();
         referencedItems.forEach((k,v)->references.put(v.getId().toBase64String(),k.toBase64String()));
         compound.getDefinition().getData().put("references",references);
-        compound.addRole(issuer);
 
         compound.seal();
 

@@ -9836,23 +9836,36 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
         escrow = EscrowHelper.completeEscrow(escrow,Binder.of("description","Completion details"))[0];
-        escrow.addSignatureToSeal(contractorKey);
-        escrow.addSignatureToSeal(storageServiceKey);
+
+        HashMap<String,Contract> map = new HashMap<>();
+        map.put("escrow",escrow);
+        Contract compound = ContractsService.createCompound(map);
+
+        compound.addSignatureToSeal(contractorKey);
+        compound.addSignatureToSeal(storageServiceKey);
 
 
-        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        ir = ts.client.register(compound.getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
+
+        escrow = ContractsService.findContractInCompound(compound,"escrow");
 
         res = EscrowHelper.closeEscrow(escrow,Do.listOf(customerAddress,storageServiceAddress));
         escrow = res[0];
-        escrow.addSignatureToSeal(customerKey);
-        escrow.addSignatureToSeal(storageServiceKey);
 
-        ir = ts.client.register(escrow.getPackedTransaction(), 8000);
+        map = new HashMap<>();
+        map.put("escrow",escrow);
+        compound = ContractsService.createCompound(map);
+
+        compound.addSignatureToSeal(customerKey);
+        compound.addSignatureToSeal(storageServiceKey);
+
+        ir = ts.client.register(compound.getPackedTransaction(), 8000);
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
+        escrow = ContractsService.findContractInCompound(compound,"escrow");
 
         res = EscrowHelper.obtainPaymentOnClosedEscrow(escrow);
         payment = res[0];
