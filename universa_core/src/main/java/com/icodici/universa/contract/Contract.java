@@ -869,11 +869,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
 
-            state.roles.values().forEach(v -> {if(!(v instanceof Role)) {
-                int a = 0;
-                a++;
-            }
-            });
             boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || state.roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
 
             if(roleRefsOnly && !roleReference)
@@ -1450,7 +1445,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return created {@link Role}
      */
     @NonNull
-    //TODO: deprecate?
+    @Deprecated
     public Role createRole(String roleName, Object roleObject) {
         if (roleObject instanceof CharSequence) {
             return registerRole(new RoleLink(roleName, this,roleObject.toString()));
@@ -1465,6 +1460,52 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return registerRole(r);
         }
         throw new IllegalArgumentException("cant make role from " + roleObject);
+    }
+
+    /**
+     * Resolve object describing role and create either: - new role object - symlink to named role instance, ensure it
+     * is added as persistent named role to a contract and return it.
+     *
+     * @param roleName is name of the role
+     * @param roleObject is object for role creating
+     *
+     * @return created {@link Role}
+     */
+    @NonNull
+    public Role addRole(String roleName, Object roleObject) {
+        return createRole(roleName,roleObject,true);
+    }
+
+    /**
+     * Resolve object describing role and create either: - new role object - symlink to named role instance return it.
+     *
+     * @param roleName is name of the role
+     * @param roleObject is object for role creating
+     * @param addToContract flag indicating if constructed role should also be added to a contract as persistent named role
+     *
+     * @return created {@link Role}
+     */
+    public Role createRole(String roleName, Object roleObject,boolean addToContract) {
+        Role result = null;
+        if (roleObject instanceof CharSequence) {
+            result = new RoleLink(roleName, this,roleObject.toString());
+        }
+        if (roleObject instanceof Role)
+            if(((Role)roleObject).getName() != null && ((Role)roleObject).getName().equals(roleName))
+                result = (Role) roleObject;
+            else
+                result = ((Role) roleObject).linkAs(roleName);
+        if (roleObject instanceof Map) {
+            Role r = Role.fromDslBinder(roleName, Binder.from(roleObject));
+            r.setContract(this);
+            result = r;
+        }
+        if(result == null)
+            throw new IllegalArgumentException("cant make role from " + roleObject);
+        result.setContract(this);
+        if(addToContract)
+            addRole(result);
+        return result;
     }
 
 
@@ -2333,7 +2374,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
 
     public Role setCreator(Collection<KeyRecord> records) {
-        return setRole("creator", records);
+        return addRole(new SimpleRole("creator",this, records));
     }
 
 
@@ -2351,7 +2392,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @NonNull
     public Role setCreatorKeys(Object... keys) {
-        return setRole("creator", asList(keys));
+        return setCreatorKeys(asList(keys));
     }
 
     /**
@@ -2361,7 +2402,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     @NonNull
     public Role setCreatorKeys(Collection<?> keys) {
-        return setRole("creator", keys);
+        return addRole(new SimpleRole("creator",this,keys));
     }
 
     /**
@@ -2380,7 +2421,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @NonNull
     public Role setOwnerKey(Object keyOrRecord) {
-        return setRole("owner", Do.listOf(keyOrRecord));
+        return addRole(new SimpleRole("owner",this, Do.listOf(keyOrRecord)));
     }
 
     /**
@@ -2390,7 +2431,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     @NonNull
     public Role setOwnerKeys(Collection<?> keys) {
-        return setRole("owner", keys);
+        return addRole(new SimpleRole("owner",this,keys));
     }
 
     /**
@@ -2410,7 +2451,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return registened role
      */
     @NonNull
-    //TODO: deprecate?
+    @Deprecated
     private Role setRole(String name, Collection keys) {
         return registerRole(new SimpleRole(name, keys));
     }
@@ -2446,7 +2487,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
 
     public Role setIssuerKeys(Collection<?> keys) {
-        return setRole("issuer", keys);
+        return addRole(new SimpleRole("issuer",this,keys));
     }
 
     /**
@@ -2456,7 +2497,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
 
     public Role setIssuerKeys(Object... keys) {
-        return setRole("issuer", asList(keys));
+        return setIssuerKeys(asList(keys));
     }
 
     /**
@@ -3219,8 +3260,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     throw new IllegalArgumentException("state.created_at must be set for revisions > 1");
                 createdAt = definition.createdAt;
             }
-            createRole("owner", state.get("owner"));
-            createRole("creator", state.getOrThrow("created_by"));
+            addRole("owner", state.get("owner"));
+            addRole("creator", state.getOrThrow("created_by"));
 
             List<LinkedHashMap<String, Binder>> refList = state.getList("references", null);
             if (refList != null) {
@@ -3300,7 +3341,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if(o == null) {
                 this.roles = new HashMap<>();
             } else if(o instanceof Map) {
-                this.roles = d.deserialize(roles);
+                this.roles = d.deserialize(o);
             } else if(o instanceof List) {
                 List<Role> roleObjects = d.deserialize(o);
                 roleObjects.forEach(ro->this.roles.put(ro.getName(),ro));
@@ -3420,7 +3461,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         private Definition initializeWithDsl(Binder definition) {
             this.definition = definition;
-            Role issuer = createRole("issuer", definition.getOrThrow("issuer"));
+            Role issuer = addRole("issuer", definition.getOrThrow("issuer"));
             createdAt = definition.getZonedDateTimeOrThrow("created_at");
             Object t = definition.getOrDefault("expires_at", null);
             if (t != null)
@@ -3519,7 +3560,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
                 else if (x instanceof Map) {
                     // if Map object - create role from Map
-                    role = createRole("@" + name, (Map) x);
+                    role = createRole("@" + name, (Map) x,false);
                 }
                 else {
                     // yaml, extended form: permission: { role: name, ... }
@@ -3528,7 +3569,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
             if (role == null && roleName != null) {
                 // we need to create alias to existing role
-                role = createRole("@" + name, roleName);
+                role = createRole("@" + name, roleName,false);
             }
             if (role == null)
                 throw new IllegalArgumentException("permission " + name + " refers to missing role: " + roleName);

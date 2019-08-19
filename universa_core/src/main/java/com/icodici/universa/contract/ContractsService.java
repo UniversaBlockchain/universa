@@ -68,8 +68,8 @@ public class ContractsService {
             tc.addSignerKey(k);
         }
         tc.addRole(issuerRole);
-        tc.createRole("owner", issuerRole);
-        tc.createRole("creator", issuerRole);
+        tc.addRole("owner", issuerRole);
+        tc.addRole("creator", issuerRole);
 
         if (!tc.getRevokingItems().contains(c)) {
             Binder data = tc.getDefinition().getData();
@@ -134,8 +134,8 @@ public class ContractsService {
             splitFrom.addSignerKey(key);
         }
         if (andSetCreator) {
-            splitTo.createRole("creator", splitTo.getRole("owner"));
-            splitFrom.createRole("creator", splitFrom.getRole("owner"));
+            splitTo.addRole("creator", splitTo.getRole("owner"));
+            splitFrom.addRole("creator", splitFrom.getRole("owner"));
         }
         splitTo.seal();
         splitFrom.seal();
@@ -357,8 +357,8 @@ public class ContractsService {
         }
 
         swapContract.addRole(issuerRole);
-        swapContract.createRole("owner", issuerRole);
-        swapContract.createRole("creator", issuerRole);
+        swapContract.addRole("owner", issuerRole);
+        swapContract.addRole("creator", issuerRole);
 
         // now we will prepare new revisions of contracts
 
@@ -694,11 +694,11 @@ public class ContractsService {
         }
 
         tokenContract.addRole(issuerRole);
-        tokenContract.createRole("issuer", issuerRole);
-        tokenContract.createRole("creator", issuerRole);
+        tokenContract.addRole("issuer", issuerRole);
+        tokenContract.addRole("creator", issuerRole);
 
         tokenContract.addRole(ownerRole);
-        tokenContract.createRole("owner", ownerRole);
+        tokenContract.addRole("owner", ownerRole);
 
         tokenContract.getStateData().set("amount", amount.toString());
 
@@ -798,11 +798,11 @@ public class ContractsService {
         }
 
         tokenContract.addRole(issuerRole);
-        tokenContract.createRole("issuer", issuerRole);
-        tokenContract.createRole("creator", issuerRole);
+        tokenContract.addRole("issuer", issuerRole);
+        tokenContract.addRole("creator", issuerRole);
 
         tokenContract.addRole(ownerRole);
-        tokenContract.createRole("owner", ownerRole);
+        tokenContract.addRole("owner", ownerRole);
 
         tokenContract.getStateData().set("amount", amount.toString());
 
@@ -997,11 +997,11 @@ public class ContractsService {
         }
 
         shareContract.addRole(issuerRole);
-        shareContract.createRole("issuer", issuerRole);
-        shareContract.createRole("creator", issuerRole);
+        shareContract.addRole("issuer", issuerRole);
+        shareContract.addRole("creator", issuerRole);
 
         shareContract.addRole(ownerRole);
-        shareContract.createRole("owner", ownerRole);
+        shareContract.addRole("owner", ownerRole);
 
         shareContract.getStateData().set("amount", amount.toString());
 
@@ -1071,11 +1071,11 @@ public class ContractsService {
         }
 
         notaryContract.addRole(issuerRole);
-        notaryContract.createRole("issuer", issuerRole);
-        notaryContract.createRole("creator", issuerRole);
+        notaryContract.addRole("issuer", issuerRole);
+        notaryContract.addRole("creator", issuerRole);
 
         notaryContract.addRole(ownerRole);
-        notaryContract.createRole("owner", ownerRole);
+        notaryContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         notaryContract.addPermission(changeOwnerPerm);
@@ -1275,11 +1275,11 @@ public class ContractsService {
         }
 
         slotContract.addRole(issuerRole);
-        slotContract.createRole("issuer", issuerRole);
-        slotContract.createRole("creator", issuerRole);
+        slotContract.addRole("issuer", issuerRole);
+        slotContract.addRole("creator", issuerRole);
 
         slotContract.addRole(ownerRole);
-        slotContract.createRole("owner", ownerRole);
+        slotContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         slotContract.addPermission(changeOwnerPerm);
@@ -1339,11 +1339,11 @@ public class ContractsService {
         }
 
         UnsContract.addRole(issuerRole);
-        UnsContract.createRole("issuer", issuerRole);
-        UnsContract.createRole("creator", issuerRole);
+        UnsContract.addRole("issuer", issuerRole);
+        UnsContract.addRole("creator", issuerRole);
 
         UnsContract.addRole(ownerRole);
-        UnsContract.createRole("owner", ownerRole);
+        UnsContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         UnsContract.addPermission(changeOwnerPerm);
@@ -1411,11 +1411,11 @@ public class ContractsService {
         }
 
         UnsContract.addRole(issuerRole);
-        UnsContract.createRole("issuer", issuerRole);
-        UnsContract.createRole("creator", issuerRole);
+        UnsContract.addRole("issuer", issuerRole);
+        UnsContract.addRole("creator", issuerRole);
 
         UnsContract.addRole(ownerRole);
-        UnsContract.createRole("owner", ownerRole);
+        UnsContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         UnsContract.addPermission(changeOwnerPerm);
@@ -1489,11 +1489,11 @@ public class ContractsService {
         }
 
         UnsContract.addRole(issuerRole);
-        UnsContract.createRole("issuer", issuerRole);
-        UnsContract.createRole("creator", issuerRole);
+        UnsContract.addRole("issuer", issuerRole);
+        UnsContract.addRole("creator", issuerRole);
 
         UnsContract.addRole(ownerRole);
-        UnsContract.createRole("owner", ownerRole);
+        UnsContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         UnsContract.addPermission(changeOwnerPerm);
@@ -1558,11 +1558,11 @@ public class ContractsService {
         }
 
         followerContract.addRole(issuerRole);
-        followerContract.createRole("issuer", issuerRole);
-        followerContract.createRole("creator", issuerRole);
+        followerContract.addRole("issuer", issuerRole);
+        followerContract.addRole("creator", issuerRole);
 
         followerContract.addRole(ownerRole);
-        followerContract.createRole("owner", ownerRole);
+        followerContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         followerContract.addPermission(changeOwnerPerm);
@@ -1931,8 +1931,8 @@ public class ContractsService {
         }
 
         escrow.addRole(issuerRole);
-        escrow.createRole("issuer", issuerRole);
-        escrow.createRole("creator", issuerRole);
+        escrow.addRole("issuer", issuerRole);
+        escrow.addRole("creator", issuerRole);
 
         // quorum role
         Collection<Role> quorumCollection = new HashSet();
@@ -2011,9 +2011,9 @@ public class ContractsService {
         escrowPack.getDefinition().getData().set("EscrowOrigin", internalEscrow.getOrigin().toBase64String());
 
         escrowPack.addRole(issuerRole);
-        escrowPack.createRole("issuer", issuerRole);
-        escrowPack.createRole("owner", issuerRole);
-        escrowPack.createRole("creator", issuerRole);
+        escrowPack.addRole("issuer", issuerRole);
+        escrowPack.addRole("owner", issuerRole);
+        escrowPack.addRole("creator", issuerRole);
 
         escrowPack.addNewItems(internalEscrow);
 
