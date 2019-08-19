@@ -3296,13 +3296,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             branchId = data.getString("branch_id", null);
             parent = d.deserialize(data.get("parent"));
             origin = d.deserialize(data.get("origin"));
-
-            this.roles = d.deserialize(data.getBinder("roles",new Binder()));
-            this.roles.values().forEach(v -> {if(!(v instanceof Role)) {
-                int a = 0;
-                a++;
+            Object o = data.get("roles");
+            if(o == null) {
+                this.roles = new HashMap<>();
+            } else if(o instanceof Map) {
+                this.roles = d.deserialize(roles);
+            } else if(o instanceof List) {
+                List<Role> roleObjects = d.deserialize(o);
+                roleObjects.forEach(ro->this.roles.put(ro.getName(),ro));
             }
-            });
         }
 
         private Integer branchRevision = null;
