@@ -9857,7 +9857,7 @@ public class MainTest {
 
         escrow = compound.getContract("escrow");
 
-        res = EscrowHelper.closeEscrow(escrow,Do.listOf(customerAddress,storageServiceAddress));
+        res = EscrowHelper.closeByCustomer(escrow);
         escrow = res[0];
 
         compound = new Compound();
@@ -9917,10 +9917,11 @@ public class MainTest {
         System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);
 
-        res = EscrowHelper.closeEscrow(escrow,Do.listOf(arbitratorAddress,contractorAddress));
+        res = EscrowHelper.closeByArbitration(escrow);
         escrow = res[0];
         escrow.addSignatureToSeal(arbitratorKey);
         escrow.addSignatureToSeal(contractorKey);
+        escrow.addSignatureToSeal(storageServiceKey);
 
         ir = ts.client.register(escrow.getPackedTransaction(), 8000);
         System.out.println(ir);
@@ -10026,6 +10027,7 @@ public class MainTest {
         escrow = res[0];
         escrow.addSignatureToSeal(arbitratorKey);
         escrow.addSignatureToSeal(customerKey);
+        escrow.addSignatureToSeal(storageServiceKey);
 
         ir = ts.client.register(escrow.getPackedTransaction(), 8000);
         System.out.println(ir);

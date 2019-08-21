@@ -98,12 +98,12 @@ public class EscrowHelper {
         escrow.addRole(ownerRole);
 
 
-        ListRole listRole = new ListRole("two_of_three",escrow);
+/*        ListRole listRole = new ListRole("two_of_three",escrow);
         listRole.setQuorum(2);
         listRole.addRole(new RoleLink("@cu",escrow,"customer"));
         listRole.addRole(new RoleLink("@co",escrow,"contractor"));
         listRole.addRole(new RoleLink("@ar",escrow,"arbitrator"));
-        escrow.addRole(listRole);
+        escrow.addRole(listRole);*/
 
 
         
@@ -153,6 +153,10 @@ public class EscrowHelper {
         ancustomer.setMode(ListRole.Mode.ALL);
         ancustomer.addRole(new RoleLink("@ar",escrow,"arbitrator"));
         ancustomer.addRole(new RoleLink("@cu",escrow,"customer"));
+        if(escrow.getRole("storage_service") != null) {
+            ancustomer.addRole(new RoleLink("@ss",escrow,"storage_service"));
+        }
+
         cancelCompletedEscrow.addRole(ancustomer);
 
 
@@ -185,6 +189,10 @@ public class EscrowHelper {
         ancontractor.setMode(ListRole.Mode.ALL);
         ancontractor.addRole(new RoleLink("@co",escrow,"contractor"));
         ancontractor.addRole(new RoleLink("@ar",escrow,"arbitrator"));
+        if(escrow.getRole("storage_service") != null) {
+            ancontractor.addRole(new RoleLink("@ss",escrow,"storage_service"));
+        }
+
         closeEscrow.addRole(ancontractor);
 
         ListRole customerAcceptsWork = new ListRole("customer_accepts_work",escrow);
@@ -402,8 +410,8 @@ public class EscrowHelper {
      *
      * Contract returned is not signed/registered. Must be signed according to situation:
      * by customer - escrow is open or escrow is assigned and now expired,
-     * by customer and contractor - escrow is assigned and not expired or escrow is complete
-     * by customer and arbitrator - escrow is complete
+     * by customer, contractor - escrow is assigned and not expired or escrow is complete
+     * by customer, arbitrator and storage service (if available) - escrow is complete
      *
      * @param escrow escrow agreement contract
      * @return the array of contracts [escrow agreement contract, payment contract owned by customer]
@@ -476,6 +484,32 @@ public class EscrowHelper {
 
         return new Contract[] {escrow};
     }
+
+    /**
+     * Customer accepts word and closes an escrow
+     *
+     * Contract returned is not signed/registered. Must be signed by customer and storage service (if available)
+     *
+     * @param escrow escrow agreement contract
+     * @return the array of contracts [escrow agreement contract]
+     */
+    public static Contract[] closeByCustomer(Contract escrow) {
+        return closeEscrow(escrow,Do.listOf(escrow.getRole("customer").getSimpleAddress()));
+    }
+
+    /**
+     * Contractor closes an escrow by arbitration
+     *
+     * Contract returned is not signed/registered. Must be signed by contractor, arbitrator and storage service (if available)
+     *
+     * @param escrow escrow agreement contract
+     * @return the array of contracts [escrow agreement contract]
+     */
+    public static Contract[] closeByArbitration(Contract escrow) {
+        return closeEscrow(escrow,Do.listOf(escrow.getRole("contractor").getSimpleAddress(),
+                escrow.getRole("arbitrator").getSimpleAddress()));
+    }
+
 
     /**
      * Transfers payment of closed escrow to contractor
