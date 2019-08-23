@@ -34,7 +34,7 @@ public class Config {
         try {
             networkAdminKeyAddress = new KeyAddress("bVmSQXWM7WvUtgcitUtjRd42WRbLycvsfPaRimpSNY3yZMUrVvEHV6mwb8A2DrKnzi795kJB");
             networkReconfigKeyAddress = new KeyAddress("JPgxNXkRSYNnWM82D8WKLSH3d98jFeEeCmDN4wLfzfi5kE6kvfopJUQrbDczrgpCqpo5ncG8");
-            authorizedNameServiceCenterAddress = new KeyAddress("btRFdPVBetub29orEGB7SBTQCheqwQb7kDKSBwjv8y27mz7DjbSYjQYhBKK8zavmYoMxiq5T");
+            authorizedNameServiceCenterAddress = new KeyAddress("bfj7QxZRtaKVnQe245MDCrnVcxrvWb5tAAhaWTcgDgHCaEjHZkHQioCSRJp2x5s3pYSH2rum");
 
             addressesWhiteList.add(new KeyAddress("J3uaVvHE7JqhvVb1c26RyDhfJw9eP2KR1KRhm2VdmYx7NwHpzdHTyEPjcmKpgkJAtzWLSPUw"));
             uIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
