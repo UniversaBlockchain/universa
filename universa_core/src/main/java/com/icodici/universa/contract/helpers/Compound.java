@@ -19,15 +19,15 @@ public class Compound {
     public static final String TYPE = "universa_compound";
     public static final int VERSION = 1;
 
-    Contract compoundContract;
+    private Contract compoundContract;
 
     /**
-     * Create Compound from packed transaction of compound contract
-     * @param packedTransaction
-     * @throws IOException
+     * Create Compound from compound contract
+     * @param compoundContract unpacked compound contract
      */
-    public Compound(byte[] packedTransaction) throws IOException {
-        compoundContract = Contract.fromPackedTransaction(packedTransaction);
+
+    public Compound(Contract compoundContract) {
+        this.compoundContract = compoundContract;
         String type = compoundContract.getDefinition().getData().getString("type","");
         if(!type.equals(TYPE)) {
             throw new IllegalArgumentException("Invalid 'definition.data.type':'"+type+"', expected:'"+TYPE+"'");
@@ -38,7 +38,15 @@ public class Compound {
         if(version > VERSION) {
             throw new IllegalArgumentException("'definition.data.version':'"+version+"' is not supported. Maximum supported version is " + VERSION);
         }
+    }
 
+    /**
+     * Create Compound from packed transaction of compound contract
+     * @param packedTransaction
+     * @throws IOException
+     */
+    public Compound(byte[] packedTransaction) throws IOException {
+        this(Contract.fromPackedTransaction(packedTransaction));
     }
 
     /**
