@@ -157,7 +157,7 @@ public class TopologyBuilder {
         String topologyName;
 
         ClassLoader classLoader = getClass().getClassLoader();
-        Files.createDirectories(Paths.get(TOPOLOGY_DIR));
+        Files.createDirectories(Paths.get(topologyCacheDir));
 
 
         //create new / update existing from a given file
@@ -187,8 +187,8 @@ public class TopologyBuilder {
                 topology = cachedTopology;
             }
         } else {
-            if (!new File(TOPOLOGY_DIR).exists())
-                Files.createDirectories(Paths.get(TOPOLOGY_DIR));
+            if (!new File(topologyCacheDir).exists())
+                Files.createDirectories(Paths.get(topologyCacheDir));
         }
 
         if (resourceStream != null) {
