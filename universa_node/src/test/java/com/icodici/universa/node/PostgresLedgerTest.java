@@ -19,6 +19,7 @@ import org.junit.Test;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -659,6 +660,24 @@ public class PostgresLedgerTest extends TestCase {
         //assertEquals(stats.thisMonthPaidAmount,200*now.getDayOfMonth());
         //assertEquals(stats.lastMonthPaidAmount,200*now.minusMonths(1).getMonth().length(now.getYear() % 4 == 0));
 
+    }
+
+    @Test
+    public void clearExpiredEnvironment() throws Exception {
+        HashId hashId = HashId.createRandom();
+        long id = ledger.getDb().queryOne("INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack)" +
+                "VALUES(?,?,?,?) RETURNING id;", "aaa", hashId.getDigest(), hashId.getDigest(), hashId.getDigest());
+        ledger.getDb().update("INSERT INTO name_storage (name_reduced,name_full,expires_at,environment_id)" +
+                "VALUES(?,?,?,?);", hashId.toBase64String(), hashId.toBase64String(), 0, id);
+        ledger.getDb().update("INSERT INTO name_entry (short_addr,long_addr,origin,environment_id,kvdata)" +
+                "VALUES(?,?,?,?,cast(? as json));", "ccc", "ccc", hashId.getDigest(), id, "{}");
+        assertEquals(1, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM environments WHERE id=?", id));
+        assertEquals(1, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM name_storage WHERE environment_id=?", id));
+        assertEquals(1, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM name_entry WHERE environment_id=?", id));
+        ledger.clearExpiredNameRecords(Duration.ofDays(30));
+        assertEquals(0, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM environments WHERE id=?", id));
+        assertEquals(0, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM name_storage WHERE environment_id=?", id));
+        assertEquals(0, (long)ledger.getDb().queryOne("SELECT COUNT(*) FROM name_entry WHERE environment_id=?", id));
     }
 
 /*
