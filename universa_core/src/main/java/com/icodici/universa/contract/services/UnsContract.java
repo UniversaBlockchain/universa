@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
@@ -16,6 +17,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
@@ -44,6 +46,8 @@ public class UnsContract extends NSmartContract {
     private static final int REFERENCE_CONDITION_OPERATOR = 7;       // EQUAL
 
     private List<UnsName> storedNames = new ArrayList<>();
+    private List<UnsRecord> storedRecords = new ArrayList<>();
+
     private int paidU = 0;
     private double prepaidNamesForDays = 0;
     private long storedEarlyEntries = 0;
@@ -218,11 +222,11 @@ public class UnsContract extends NSmartContract {
     private void saveOriginReferencesToState() {
         Set<HashId> origins = new HashSet<>();
 
-        storedNames.forEach(sn->sn.getUnsRecords().forEach(unsRecord -> {
+        storedRecords.forEach(unsRecord -> {
             if(unsRecord.getOrigin()!=null) {
                 origins.add(unsRecord.getOrigin());
             }
-        }));
+        });
 
         Set<Reference> refsToRemove = new HashSet<>();
 
@@ -523,10 +527,9 @@ public class UnsContract extends NSmartContract {
 
     private List<HashId> getOriginsToCheck() {
         Set<HashId> origins = new HashSet<>();
-        for (UnsName unsName : storedNames)
-            for (UnsRecord unsRecord : unsName.getUnsRecords())
-                if (unsRecord.getOrigin() != null)
-                    origins.add(unsRecord.getOrigin());
+        for (UnsRecord unsRecord : storedRecords)
+            if (unsRecord.getOrigin() != null)
+                origins.add(unsRecord.getOrigin());
         for (Approvable revoked : getRevokingItems())
             removeRevokedOrigins(revoked, origins);
         return new ArrayList<>(origins);
@@ -535,10 +538,9 @@ public class UnsContract extends NSmartContract {
     private void removeRevokedOrigins(Approvable approvable, Set<HashId> set) {
         if (approvable instanceof UnsContract) {
             UnsContract unsContract = (UnsContract) approvable;
-            for (UnsName unsName : unsContract.storedNames)
-                for (UnsRecord unsRecord : unsName.getUnsRecords())
-                    if (unsRecord.getOrigin() != null)
-                        set.remove(unsRecord.getOrigin());
+            for (UnsRecord unsRecord : unsContract.storedRecords)
+                if (unsRecord.getOrigin() != null)
+                    set.remove(unsRecord.getOrigin());
         }
         for (Approvable revoked : approvable.getRevokingItems())
             removeRevokedOrigins(revoked, set);
@@ -546,10 +548,9 @@ public class UnsContract extends NSmartContract {
 
     private List<String> getAddressesToCheck() {
         Set<String> addresses = new HashSet<>();
-        for (UnsName unsName : storedNames)
-            for (UnsRecord unsRecord : unsName.getUnsRecords())
-                for (KeyAddress keyAddress : unsRecord.getAddresses())
-                    addresses.add(keyAddress.toString());
+        for (UnsRecord unsRecord : storedRecords)
+            for (KeyAddress keyAddress : unsRecord.getAddresses())
+                addresses.add(keyAddress.toString());
         for (Approvable revoked : getRevokingItems())
             removeRevokedAddresses(revoked, addresses);
         return new ArrayList<>(addresses);
@@ -558,8 +559,7 @@ public class UnsContract extends NSmartContract {
     private void removeRevokedAddresses(Approvable approvable, Set<String> set) {
         if (approvable instanceof UnsContract) {
             UnsContract unsContract = (UnsContract) approvable;
-            for (UnsName unsName : unsContract.storedNames)
-                for (UnsRecord unsRecord : unsName.getUnsRecords())
+            for (UnsRecord unsRecord : unsContract.storedRecords)
                     for (KeyAddress keyAddress : unsRecord.getAddresses())
                         set.remove(keyAddress.toString());
         }
@@ -580,6 +580,7 @@ public class UnsContract extends NSmartContract {
         calculatePrepaidNamesForDays(false);
         ZonedDateTime expiresAt = calcExpiresAt();
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
+        storedRecords.forEach(sr ->me.createNameRecordEntry(sr));
         return Binder.fromKeysValues("status", "ok");
     }
 
@@ -608,12 +609,10 @@ public class UnsContract extends NSmartContract {
         ZonedDateTime expiresAt = calcExpiresAt();
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
+
         me.nameRecords().forEach(nameRecord -> {
             UnsName unsName = newNames.get(nameRecord.getName());
-            if(unsName != null &&
-                    unsName.getUnsReducedName().equals(nameRecord.getNameReduced()) &&
-                    unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
-                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(unsRecord::equalsTo))) {
+            if(unsName != null && unsName.equalsTo(nameRecord)) {
                 me.setNameRecordExpiresAt(nameRecord,expiresAt);
                 newNames.remove(nameRecord.getName());
             } else
@@ -621,6 +620,18 @@ public class UnsContract extends NSmartContract {
         });
 
         newNames.values().forEach(sn -> me.createNameRecord(sn,expiresAt));
+
+        Set<UnsRecord> newRecords = storedRecords.stream().collect(Collectors.toSet());
+        me.nameRecordEntries().forEach(nre -> {
+            Optional<UnsRecord> ur = newRecords.stream().filter(unsRecord -> unsRecord.equalsTo(nre)).findAny();
+            if(ur.isPresent()) {
+                newRecords.remove(ur.get());
+            } else {
+                me.destroyNameRecordEntry(nre);
+            }
+        });
+
+        newRecords.forEach(sr -> me.createNameRecordEntry(sr));
 
         return Binder.fromKeysValues("status", "ok");
     }
@@ -649,34 +660,87 @@ public class UnsContract extends NSmartContract {
 
     }
 
-    /**
-     * If {@link UnsName} references to origin contract, this contract should be placed into UnsContract with this method.
-     * @param contract
-     */
-    public void addOriginContract(Contract contract) {
-        originContracts.put(contract.getOrigin() != null ? contract.getOrigin() : contract.getId(),contract);
-    }
 
-
-    /**
-     * Add {@link UnsName} record that describes name that will be stored by this UnsContract.
-     * @param unsName
-     */
-    public void addUnsName(UnsName unsName) {
-        storedNames.add(unsName);
-    }
-
-    /**
-     * Returns {@link UnsName} record by it's name.
-     */
-    public UnsName getUnsName(String name) {
-        for(UnsName unsName : storedNames) {
-            if(unsName.getUnsName().equals(name)) {
-                return unsName;
-            }
+    public void addName(String name,String reducedName,String description) {
+        Optional<UnsName> exists = storedNames.stream().filter(unsName -> unsName.getUnsReducedName().equals(reducedName)).findAny();
+        if(exists.isPresent()) {
+            throw new IllegalArgumentException("Name '" + name + "'/'" + reducedName +"' already exists");
         }
-        return null;
+        UnsName un = new UnsName(name, description);
+        un.setUnsReducedName(reducedName);
+        storedNames.add(un);
     }
+
+    public boolean removeName(String name) {
+        return storedNames.removeIf(unsName -> unsName.getUnsName().equals(name));
+    }
+
+    public Set<String>  getNames() {
+        return storedNames.stream().map(unsName -> unsName.getUnsName()).collect(Collectors.toSet());
+    }
+
+    public void addOrigin(Contract contract) {
+        HashId origin = contract.getOrigin();
+        Optional<UnsRecord> exists = storedRecords.stream().filter(unsRecord -> unsRecord.getOrigin() != null && unsRecord.getOrigin().equals(origin)).findAny();
+        if(exists.isPresent()) {
+            throw new IllegalArgumentException("Origin '" + origin + "' already exists");
+        }
+        storedRecords.add(new UnsRecord(origin));
+        originContracts.put(contract.getOrigin(),contract);
+    }
+
+    public Set<HashId> getOrigins() {
+        return storedRecords.stream().map(unsRecord -> unsRecord.getOrigin()).filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
+    public boolean removeOrigin(HashId origin) {
+        return storedRecords.removeIf(unsRecord -> unsRecord.getOrigin() != null && unsRecord.getOrigin().equals(origin));
+    }
+
+    public void addKey(PublicKey publicKey) {
+        Set<KeyAddress> addresses = getAddresses();
+        KeyAddress shortAddress = publicKey.getShortAddress();
+        KeyAddress longAddress = publicKey.getLongAddress();
+        if(addresses.containsAll(Do.listOf(longAddress,shortAddress))) {
+            throw new IllegalArgumentException("Key addresses '" + publicKey.getLongAddress() + "'/'" + publicKey.getShortAddress()+ "' already exist");
+        }
+
+        Optional<UnsRecord> record = storedRecords.stream().filter(unsRecord -> unsRecord.getAddresses().contains(shortAddress) || unsRecord.getAddresses().contains(longAddress)).findAny();
+        if(record.isPresent()) {
+            storedRecords.remove(record.get());
+        }
+
+        storedRecords.add(new UnsRecord(publicKey));
+
+    }
+
+    public void addAddress(KeyAddress keyAddress) {
+        Set<KeyAddress> addresses = getAddresses();
+        if(addresses.contains(keyAddress)) {
+            throw new IllegalArgumentException("Key address '" + keyAddress +  "' already exist");
+        }
+
+        storedRecords.add(new UnsRecord(keyAddress));
+
+    }
+
+    public Set<KeyAddress> getAddresses() {
+        Set<KeyAddress> result = new HashSet<>();
+        storedRecords.forEach(unsRecord -> result.addAll(unsRecord.getAddresses()));
+        return result;
+    }
+
+    public boolean removeAddress(KeyAddress keyAddress) {
+        return storedRecords.removeIf(unsRecord -> unsRecord.getAddresses().contains(keyAddress));
+    }
+
+    public boolean removeKey(PublicKey publicKey) {
+        return storedRecords.removeIf(unsRecord -> unsRecord.getAddresses().contains(publicKey.getShortAddress()) || unsRecord.getAddresses().contains(publicKey.getLongAddress()));
+    }
+
+
+    //4 ключа больших + 4 кб тескта минимальный платеж за год
+    //1 - 1 имя 4 + записи
 
     static {
         Config.forceInit(UnsRecord.class);
@@ -687,21 +751,6 @@ public class UnsContract extends NSmartContract {
         DefaultBiMapper.registerClass(UnsContract.class);
     }
 
-    /**
-     * Remove {@link UnsName} record from names collection of stored by this UnsContract.
-     * @param name
-     */
-    public void removeName(String name) {
-        UnsName nameToRemove = null;
-        for(UnsName unsName : storedNames) {
-            if(unsName.getUnsName().equals(name)) {
-                nameToRemove = unsName;
-                break;
-            }
-        }
-        if(nameToRemove != null) {
-            storedNames.remove(nameToRemove);
-        }
-    }
+
 }
 

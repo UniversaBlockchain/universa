@@ -18,53 +18,21 @@ public class UnsName implements BiSerializable {
     private String unsReducedName;
     private String unsName;
     private String unsDescription;
-    private String unsURL;
-    private List<UnsRecord> unsRecords = new ArrayList<>();
 
     public static final String NAME_FIELD_NAME = "name";
     public static final String NAME_REDUCED_FIELD_NAME = "reduced_name";
     public static final String DESCRIPTION_FIELD_NAME = "description";
-    public static final String URL_FIELD_NAME = "url";
-    public static final String ENTRIES_FIELD_NAME = "entries";
 
     public UnsName() {}
 
-    public UnsName(String name, String description, String URL) {
+    public UnsName(String name, String description) {
         unsName = name;
         unsDescription = description;
-        unsURL = URL;
-    }
-
-    public UnsName(String name, String description, String URL, UnsRecord record) {
-        unsName = name;
-        unsDescription = description;
-        unsURL = URL;
-        unsRecords.add(record);
-    }
-
-    public UnsName(String name, String description, String URL, List<UnsRecord> records) {
-        unsName = name;
-        unsDescription = description;
-        unsURL = URL;
-        unsRecords.addAll(records);
     }
 
     protected UnsName initializeWithDsl(Binder binder) {
         unsName = binder.getString(NAME_FIELD_NAME, null);
         unsDescription = binder.getString(DESCRIPTION_FIELD_NAME, null);
-        unsURL = binder.getString(URL_FIELD_NAME, null);
-
-        ArrayList<?> entries = binder.getArray(ENTRIES_FIELD_NAME);
-        for (Object entry: entries) {
-            Binder b;
-            if (entry.getClass().getName().endsWith("Binder"))
-                b = (Binder) entry;
-            else
-                b = new Binder((Map) entry);
-
-            UnsRecord unsRecord = new UnsRecord().initializeWithDsl(b);
-            unsRecords.add(unsRecord);
-        }
 
         return this;
     }
@@ -72,60 +40,10 @@ public class UnsName implements BiSerializable {
     public String getUnsReducedName() { return unsReducedName; }
     public String getUnsName() { return unsName; }
     public String getUnsDescription() { return unsDescription; }
-    public String getUnsURL() { return unsURL; }
 
     public void setUnsReducedName(String nameReduced) { unsReducedName = nameReduced; }
     public void setUnsName(String name) { unsName = name; }
     public void setUnsDescription(String description) { unsDescription = description; }
-    public void setUnsURL(String URL) { unsURL = URL; }
-
-    public int getRecordsCount() { return unsRecords.size(); }
-
-    public void addUnsRecord(UnsRecord record) {
-        unsRecords.add(record);
-    }
-
-    public void addUnsRecord(List<UnsRecord> records) {
-        unsRecords.addAll(records);
-    }
-
-    public UnsRecord getUnsRecord(int index) {
-        if ((index < 0) || index >= unsRecords.size())
-            return null;
-        else
-            return unsRecords.get(index);
-    }
-
-    public int findUnsRecordByAddress(KeyAddress address) {
-        for (int i = 0; i < unsRecords.size(); i++)
-            if (unsRecords.get(i).isMatchingAddress(address))
-                return i;
-
-        return -1;
-    }
-
-    public int findUnsRecordByKey(AbstractKey key) {
-        for (int i = 0; i < unsRecords.size(); i++)
-            if (unsRecords.get(i).isMatchingKey(key))
-                return i;
-
-        return -1;
-    }
-
-    public int findUnsRecordByOrigin(HashId origin) {
-        for (int i = 0; i < unsRecords.size(); i++)
-            if (unsRecords.get(i).isMatchingOrigin(origin))
-                return i;
-
-        return -1;
-    }
-
-    public void removeUnsRecord(int index) {
-        if ((index < 0) || index >= unsRecords.size())
-            throw new IllegalArgumentException("Index of removing record is outbound");
-        else
-            unsRecords.remove(index);
-    }
 
     @Override
     public Binder serialize(BiSerializer serializer) {
@@ -136,8 +54,6 @@ public class UnsName implements BiSerializable {
 
         data.set(NAME_FIELD_NAME, serializer.serialize(unsName));
         data.set(DESCRIPTION_FIELD_NAME, serializer.serialize(unsDescription));
-        data.set(URL_FIELD_NAME, serializer.serialize(unsURL));
-        data.set(ENTRIES_FIELD_NAME, serializer.serialize(unsRecords));
 
         return data;
     }
@@ -147,12 +63,24 @@ public class UnsName implements BiSerializable {
         this.unsReducedName = data.containsKey(NAME_REDUCED_FIELD_NAME) ? data.getString(NAME_REDUCED_FIELD_NAME) : null;
         this.unsName = data.getString(NAME_FIELD_NAME);
         this.unsDescription = data.getString(DESCRIPTION_FIELD_NAME);
-        this.unsURL = data.getString(URL_FIELD_NAME);
-        this.unsRecords = deserializer.deserialize(data.getList(ENTRIES_FIELD_NAME, null));
     }
 
-    public List<UnsRecord> getUnsRecords() {
-        return unsRecords;
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof UnsName)) {
+            return false;
+        }
+
+        return unsName.equals(((UnsName) obj).unsName)
+                && unsReducedName.equals(((UnsName) obj).unsReducedName)
+                && unsDescription.equals(((UnsName) obj).unsDescription);
+    }
+
+    public boolean equalsTo(NameRecord nr) {
+        return unsName.equals(nr.getName())
+                && unsReducedName.equals(nr.getNameReduced())
+                && unsDescription.equals(nr.getDescription());
+
     }
 
     static {

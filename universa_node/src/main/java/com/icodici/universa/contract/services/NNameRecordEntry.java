@@ -20,8 +20,9 @@ import java.util.Set;
 public class NNameRecordEntry implements NameRecordEntry,BiSerializable {
 
     private long id = 0;
-    private long nameRecordId = 0;
+    private long environmentId = 0;
     private HashId origin;
+    private Binder data;
     private String longAddress;
     private String shortAddress;
 
@@ -29,10 +30,11 @@ public class NNameRecordEntry implements NameRecordEntry,BiSerializable {
 
     }
 
-    public NNameRecordEntry(HashId origin, String shortAddress, String longAddress) {
+    public NNameRecordEntry(HashId origin, String shortAddress, String longAddress, Binder data) {
         this.origin = origin;
         this.longAddress = longAddress;
         this.shortAddress = shortAddress;
+        this.data = data;
     }
 
     @Override
@@ -50,12 +52,17 @@ public class NNameRecordEntry implements NameRecordEntry,BiSerializable {
         return origin;
     }
 
-    public long getNameRecordId() {
-        return nameRecordId;
+    @Override
+    public Binder getData() {
+        return data;
     }
 
-    public void setNameRecordId(long nameRecordId) {
-        this.nameRecordId = nameRecordId;
+    public long getEnvironmentId() {
+        return environmentId;
+    }
+
+    public void setEnvironmentId(long environmentId) {
+        this.environmentId = environmentId;
     }
 
     public long getId() {

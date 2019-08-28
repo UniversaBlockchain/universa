@@ -2258,7 +2258,8 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void removeNameRecord(final String nameReduced) {
+    public void removeNameRecord(NNameRecord nameRecord) {
+        final String nameReduced = nameRecord.getNameReduced();
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =

@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -22,12 +23,16 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     private Set<NNameRecord> nameRecordsToDestroy = new HashSet<>();
     private Set<NNameRecord> nameRecordsToSave = new HashSet<>();
 
+    private Set<NNameRecordEntry> nameRecordEntriesToAdd = new HashSet<>();
+    private Set<NNameRecordEntry> nameRecordEntriesToDestroy = new HashSet<>();
+
+
     private Set<NContractStorage> storagesToAdd = new HashSet<>();
     private Set<NContractStorage> storagesToDestroy = new HashSet<>();
     private Set<NContractStorage> storagesToSave = new HashSet<>();
 
     public NMutableEnvironment(NImmutableEnvironment ime) {
-        super(ime.contract, ime.kvStore, ime.subscriptionsSet, ime.storagesSet, ime.nameRecordsSet, ime.followerService, ime.ledger);
+        super(ime.contract, ime.kvStore, ime.subscriptionsSet, ime.storagesSet, ime.nameRecordsSet,ime.nameRecordEntriesSet, ime.followerService, ime.ledger);
         setNameCache(ime.nameCache);
         setId(ime.getId());
         immutable = ime;
@@ -103,6 +108,21 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         return nr;
     }
 
+    @Override
+    public @NonNull NameRecordEntry createNameRecordEntry(@NonNull UnsRecord unsRecord) {
+        String shortAddress = null;
+        String longAddress = null;
+        for(KeyAddress a : unsRecord.getAddresses()) {
+            if(a.isLong()) {longAddress = a.toString(); } else {shortAddress = a.toString(); }
+        }
+
+        NNameRecordEntry nre = new NNameRecordEntry(unsRecord.getOrigin(),shortAddress,longAddress,unsRecord.getData());
+        nre.setEnvironmentId(this.getId());
+        nameRecordEntriesToAdd.add(nre);
+
+        return nre;
+    }
+
 
     @Override
     public void setNameRecordExpiresAt(NameRecord nameRecord, ZonedDateTime expiresAt) {
@@ -116,6 +136,11 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     @Override
     public void destroyNameRecord(NameRecord nameRecord) {
         nameRecordsToDestroy.add((NNameRecord) nameRecord);
+    }
+
+    @Override
+    public void destroyNameRecordEntry(NameRecordEntry nameRecordEntry) {
+        nameRecordEntriesToDestroy.add((NNameRecordEntry) nameRecordEntry);
     }
 
     public void save() {
@@ -143,7 +168,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                 }
         );
 
-        nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord.getNameReduced()));
+        nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord));
+        nameRecordEntriesToDestroy.forEach(nameRecordEntry -> ledger.removeNameRecordEntry(nameRecordEntry));
 
         ledger.clearExpiredStorageContractBinaries();
 
@@ -152,41 +178,29 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         List<HashId> originsList = new LinkedList<>();
 
 
+        nameRecordEntriesToAdd.forEach( nre -> {
+            ledger.addNameRecordEntry(nre);
+            if(nre.getOrigin() != null) {
+                originsList.add(nre.getOrigin());
+            }
+
+            if(nre.getLongAddress() != null) {
+                addressList.add(nre.getLongAddress());
+            }
+
+            if(nre.getShortAddress() != null) {
+                addressList.add(nre.getShortAddress());
+            }
+
+        });
+
         nameRecordsToSave.forEach(nameRecord -> {
             ledger.updateNameRecord(nameRecord.getId(),nameRecord.expiresAt());
             nameList.add(nameRecord.getNameReduced());
-            nameRecord.getEntries().forEach( e -> {
-                if(e.getOrigin() != null) {
-                    originsList.add(e.getOrigin());
-                }
-
-                if(e.getLongAddress() != null) {
-                    addressList.add(e.getLongAddress());
-                }
-
-                if(e.getShortAddress() != null) {
-                    addressList.add(e.getShortAddress());
-                }
-
-            });
         });
         nameRecordsToAdd.forEach(nameRecord -> {
             ledger.addNameRecord(nameRecord);
             nameList.add(nameRecord.getNameReduced());
-            nameRecord.getEntries().forEach( e -> {
-                if(e.getOrigin() != null) {
-                    originsList.add(e.getOrigin());
-                }
-
-                if(e.getLongAddress() != null) {
-                    addressList.add(e.getLongAddress());
-                }
-
-                if(e.getShortAddress() != null) {
-                    addressList.add(e.getShortAddress());
-                }
-
-            });
         });
 
 
@@ -202,6 +216,10 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
 
         immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
         immutable.nameRecordsSet.addAll(nameRecordsToAdd);
+
+        immutable.nameRecordEntriesSet.removeAll(nameRecordEntriesToDestroy);
+        immutable.nameRecordEntriesSet.addAll(nameRecordEntriesToAdd);
+
 
         immutable.kvStore.clear();
         for (String key : kvStore.keySet()) {

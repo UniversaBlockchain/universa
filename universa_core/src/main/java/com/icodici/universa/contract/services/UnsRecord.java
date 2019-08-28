@@ -16,14 +16,20 @@ import java.util.List;
 public class UnsRecord implements BiSerializable {
     private List<KeyAddress> unsAddresses = new ArrayList<>();
     private HashId unsOrigin;
+    private Binder unsData;
 
     public static final String ADDRESSES_FIELD_NAME = "addresses";
     public static final String ORIGIN_FIELD_NAME = "origin";
+    public static final String DATA_FIELD_NAME = "data";
 
     public UnsRecord() {}
 
     public UnsRecord(HashId origin) {
         unsOrigin = origin;
+    }
+
+    public UnsRecord(Binder data) {
+        unsData = data;
     }
 
     public UnsRecord(KeyAddress address) {
@@ -51,6 +57,8 @@ public class UnsRecord implements BiSerializable {
     }
 
     public HashId getOrigin() { return unsOrigin; }
+    public Binder getData() { return unsData; }
+
     public List<KeyAddress> getAddresses() { return unsAddresses; }
 
     public boolean isMatchingAddress(KeyAddress address) {
@@ -75,7 +83,10 @@ public class UnsRecord implements BiSerializable {
 
     protected UnsRecord initializeWithDsl(Binder binder) {
         String digest = binder.getString(ORIGIN_FIELD_NAME, null);
-        if (digest != null) {
+        Binder data = binder.getBinder(DATA_FIELD_NAME, null);
+        if(data != null) {
+            unsData = data;
+        } else if (digest != null) {
             unsOrigin = HashId.withDigest(digest);
         } else {
             ArrayList<?> list = binder.getArray(ADDRESSES_FIELD_NAME);
@@ -101,6 +112,9 @@ public class UnsRecord implements BiSerializable {
         if (unsOrigin != null)
             data.set("origin", serializer.serialize(unsOrigin));
 
+        if (unsData != null)
+            data.set("data", serializer.serialize(unsData));
+
         return data;
     }
 
@@ -110,6 +124,10 @@ public class UnsRecord implements BiSerializable {
         Object originObj = data.get("origin");
         if (originObj != null)
             this.unsOrigin = deserializer.deserialize(originObj);
+
+        Object dataObj = data.get("data");
+        if (dataObj != null)
+            this.unsData = deserializer.deserialize(dataObj);
     }
 
     static {
@@ -134,6 +152,16 @@ public class UnsRecord implements BiSerializable {
             checkResult = unsOrigin.equals(entry.getOrigin());
         } else {
             checkResult = unsOrigin == null && entry.getOrigin() == null;
+        }
+
+        if(!checkResult)
+            return false;
+
+
+        if(unsData != null && entry.getData() != null) {
+            checkResult = unsData.equals(entry.getData());
+        } else {
+            checkResult = unsData == null && entry.getData() == null;
         }
 
         if(!checkResult)

@@ -55,6 +55,7 @@ public interface ImmutableEnvironment {
     Iterable<ContractSubscription> subscriptions();
     Iterable<ContractStorage> storages();
     Iterable<NameRecord> nameRecords();
+    Iterable<NameRecordEntry> nameRecordEntries();
     FollowerService getFollowerService(boolean init);
     FollowerService getFollowerService();
 
