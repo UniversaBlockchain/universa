@@ -2490,13 +2490,14 @@ public class PostgresLedger implements Ledger {
                                             "  name_storage.name_full AS name_full, " +
                                             "  name_storage.description AS description, " +
                                             "  name_storage.expires_at AS expires_at, " +
-                                            "  name_storage.environment_id AS environment_id, " +
+                                            "  name_storage.environment_id AS environment_id " +
                                             "FROM name_storage " +
                                             whereQueryPard
                             )
             ) {
                 paramsFromLambda.accept(statement);
                 statement.closeOnCompletion();
+                System.out.println("~~~~~~~~~~~~~~ kek: " + statement.toString());
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("getNameBy failed: returning null");
@@ -2608,7 +2609,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public List<NNameRecord> getNamesByOrigin (byte[] origin) {
-        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE origin=?) ", (statement)-> {
+        return getNameBy("WHERE name_storage.environment_id=(SELECT environment_id FROM name_entry WHERE origin=?) ", (statement)-> {
             try {
                 statement.setBytes(1, origin);
             } catch (SQLException e) {
