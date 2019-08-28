@@ -163,22 +163,9 @@ public class UnsContract extends NSmartContract {
                 getStateData().set(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
 
             // calculate num of entries
-            int storingEntries = 0;
-            for (Object name: storedNames) {
-                if (name.getClass().getName().endsWith("UnsName"))
-                    storingEntries += ((UnsName) name).getRecordsCount();
-                else {
-                    Binder binder;
-                    if (name.getClass().getName().endsWith("Binder"))
-                        binder = (Binder) name;
-                    else
-                        binder = new Binder((Map) name);
+            int storingEntries = storedNames.size();
+            //TODO: storingEntries = max(storingEntries,storedDataSize/FREE_KILO_PER_NAME)
 
-                    ArrayList<?> entries = binder.getArray(ENTRIES_FIELD_NAME);
-                    if (entries != null)
-                        storingEntries += entries.size();
-                }
-            }
             getStateData().set(STORED_ENTRIES_FIELD_NAME, storingEntries);
 
             getStateData().set(SPENT_ND_FIELD_NAME, spentNDs);
@@ -382,60 +369,58 @@ public class UnsContract extends NSmartContract {
 
     private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
 
-        //define what names are new/having name records updated
-        Map<String, UnsName> newOrChangedEntries = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
-        Map<String, UnsName> newOrChangedReduced = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
+        boolean checkResult = ime != null;
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "Environment should be not null");
+            return false;
+        }
 
 
+        Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
         ime.nameRecords().forEach(nameRecord -> {
-            UnsName unsName = newOrChangedEntries.get(nameRecord.getName());
-            if (unsName != null &&
-                    unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
-                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(unsRecord::equalsTo))) {
-                newOrChangedEntries.remove(unsName.getUnsName());
+            UnsName unsName = newNames.get(nameRecord.getName());
+            if(unsName != null && unsName.equalsTo(nameRecord)) {
+                newNames.remove(nameRecord.getName());
             }
+        });
 
-            unsName = newOrChangedReduced.get(nameRecord.getName());
-
-            if(unsName != null && unsName.getUnsReducedName().equals(nameRecord.getNameReduced())) {
-                newOrChangedReduced.remove(unsName.getUnsName());
+        Set<UnsRecord> newRecords = storedRecords.stream().collect(Collectors.toSet());
+        ime.nameRecordEntries().forEach(nre -> {
+            Optional<UnsRecord> ur = newRecords.stream().filter(unsRecord -> unsRecord.equalsTo(nre)).findAny();
+            if(ur.isPresent()) {
+                newRecords.remove(ur.get());
             }
         });
 
 
-        boolean checkResult;
-
-        checkResult = ime != null;
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, "Environment should be not null");
-            return checkResult;
-        }
-
         checkResult = getExtendedType().equals(SmartContractType.UNS1.name());
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.UNS1.name() + " instead " + getExtendedType());
-            return checkResult;
+            return false;
         }
 
 
         checkResult = (storedNames.size() > 0);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names for storing is missing");
-            return checkResult;
+            return false;
         }
 
-        checkResult = storedNames.stream().allMatch(n -> !newOrChangedEntries.containsKey(n.getUnsName()) ||
-                n.getUnsRecords().stream().allMatch(unsRecord -> {
-
+        checkResult = newRecords.stream().allMatch(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
                 if(!unsRecord.getAddresses().isEmpty()) {
-                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin AND addresses. Should be either origin or addresses");
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin AND addresses found. Should be either origin or addresses or data");
+                    return false;
+                }
+
+                if(unsRecord.getData() != null) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin AND data found. Should be either origin or addresses or data");
                     return false;
                 }
 
                 //check reference exists in contract (ensures that matching contract was checked by system for being approved)
                 if(!isOriginReferenceExists(unsRecord.getOrigin())) {
-                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding reference is found");
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding reference is found");
                     return false;
                 }
 
@@ -445,46 +430,54 @@ public class UnsContract extends NSmartContract {
                         .collect(Collectors.toList());
 
                 if(matchingContracts.isEmpty()) {
-                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding referenced contract is found");
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding referenced contract is found");
                     return false;
                 }
 
                 Contract contract = matchingContracts.get(0);
                 if(!contract.getRole("issuer").isAllowedForKeys(getEffectiveKeys())) {
-                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
                     return false;
                 }
 
                 return true;
             }
 
-            if(unsRecord.getAddresses().isEmpty()) {
-                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " is missing both addresses and origin.");
-                return false;
+            if(!unsRecord.getAddresses().isEmpty()) {
+
+                if(unsRecord.getData() != null) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to addresses AND data found. Should be either origin or addresses or data");
+                    return false;
+                }
+
+
+                if (unsRecord.getAddresses().size() > 2)
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "Addresses list should not be contains more 2 addresses");
+
+                if ((unsRecord.getAddresses().size() == 2) && unsRecord.getAddresses().get(0).isLong() == unsRecord.getAddresses().get(1).isLong())
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "Addresses list may only contain one short and one long addresses");
+
+                if (!unsRecord.getAddresses().stream().allMatch(keyAddress -> getEffectiveKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "Address used is missing corresponding key UNS contract signed with.");
+                    return false;
+                }
             }
 
-
-            if (unsRecord.getAddresses().size() > 2)
-                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list should not be contains more 2 addresses");
-
-            if ((unsRecord.getAddresses().size() == 2) && unsRecord.getAddresses().get(0).isLong() == unsRecord.getAddresses().get(1).isLong())
-                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list may only contain one short and one long addresses");
-
-            if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getEffectiveKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
-                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " using address that missing corresponding key UNS contract signed with.");
+            if(unsRecord.getData() == null) {
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "Record is empty. Should reference to either origin or addresses or data");
                 return false;
             }
 
             return true;
-        }));
+        });
 
         if (!checkResult) {
-            return checkResult;
+            return false;
         }
 
 
         //only check name service signature is there are new/changed name->reduced
-        checkResult = newOrChangedReduced.isEmpty() || getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)));
+        checkResult = newNames.isEmpty() || getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)));
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
             return checkResult;
@@ -586,17 +579,13 @@ public class UnsContract extends NSmartContract {
 
     private ZonedDateTime calcExpiresAt() {
         // get number of entries
-        int entries = 0;
-        for (UnsName sn: storedNames)
-            entries += sn.getRecordsCount();
-        if (entries == 0)
-            entries = 1;
+        int entries = storedNames.size();
 
-        final int finalEntries = entries;
+        //TODO: entries = max(entries,storedDataSize/FREE_KILO_PER_NAME)
 
         // calculate time that will be added to now as new expiring time
         // it is difference of all prepaid ND (names*days) and already spent divided to new number of entries.
-        double days = (prepaidNamesForDays - spentNDs) / finalEntries;
+        double days = (prepaidNamesForDays - spentNDs) / entries;
         long seconds = (long) (days * 24 * 3600);
 
         return spentNDsTime.plusSeconds(seconds);
