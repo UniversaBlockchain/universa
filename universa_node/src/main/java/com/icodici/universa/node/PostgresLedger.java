@@ -1149,7 +1149,7 @@ public class PostgresLedger implements Ledger {
                             db.statement(
                                     "" +
                                             "SELECT DISTINCT name_storage.name_reduced AS name_reduced " +
-                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            "FROM name_storage " +
                                             "WHERE name_storage.environment_id=?"
                             )
             ) {
@@ -2129,7 +2129,7 @@ public class PostgresLedger implements Ledger {
                     PreparedStatement statement =
                             db.statement("" +
                                     "INSERT INTO name_storage (name_reduced,name_full,description,expires_at,environment_id) " +
-                                    "VALUES (?,?,?,?,?,?) " +
+                                    "VALUES (?,?,?,?,?) " +
                                     "ON CONFLICT (name_reduced) DO UPDATE SET " +
                                     "  name_full=EXCLUDED.name_full, " +
                                     "  description=EXCLUDED.description, " +
@@ -2196,7 +2196,6 @@ public class PostgresLedger implements Ledger {
         long nameStorageId = addNameStorage(nameRecord);
         if (nameStorageId != 0) {
             nameRecord.setId(nameStorageId);
-            removeNameRecordEntries(nameStorageId);
         } else {
             throw new Failure("addNameRecord failed");
         }
@@ -2272,26 +2271,6 @@ public class PostgresLedger implements Ledger {
         } catch (Exception e) {
             e.printStackTrace();
             throw new Failure("removeNameRecord failed: " + e);
-        }
-    }
-
-    private void removeNameRecordEntries(final long nameStorageId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM name_entry WHERE name_storage_id=?"
-                            )
-            ) {
-                statement.setLong(1, nameStorageId);
-                db.updateWithStatement(statement);
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("removeNameRecordEntries failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Failure("removeNameRecordEntries failed: " + e);
         }
     }
 
