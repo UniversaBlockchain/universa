@@ -107,6 +107,7 @@ public class UnsContract extends NSmartContract {
         fieldsMap.put("/expires_at", null);
         fieldsMap.put("/references", null);
         fieldsMap.put(NAMES_FIELD_NAME, null);
+        fieldsMap.put(ENTRIES_FIELD_NAME, null);
         fieldsMap.put(PAID_U_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
@@ -262,6 +263,7 @@ public class UnsContract extends NSmartContract {
 
     private void saveNamesToState() {
         getStateData().put(NAMES_FIELD_NAME,storedNames);
+        getStateData().put(ENTRIES_FIELD_NAME,storedRecords);
     }
 
 
@@ -276,6 +278,7 @@ public class UnsContract extends NSmartContract {
     private void deserializeForUns(BiDeserializer deserializer) {
 
         storedNames = deserializer.deserialize(getStateData().getList(NAMES_FIELD_NAME, null));
+        storedRecords = deserializer.deserialize(getStateData().getList(ENTRIES_FIELD_NAME, null));
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNamesForDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
