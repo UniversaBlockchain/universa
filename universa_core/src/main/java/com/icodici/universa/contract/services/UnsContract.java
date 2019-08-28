@@ -405,7 +405,7 @@ public class UnsContract extends NSmartContract {
 
         checkResult = (storedNames.size() > 0);
         if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names for storing is missing");
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names for storing are missing");
             return false;
         }
 
