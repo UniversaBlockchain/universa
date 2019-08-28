@@ -1401,12 +1401,10 @@ public class PostgresLedger implements Ledger {
                 "FROM name_storage JOIN environments ON name_storage.environment_id=environments.id " +
                 "WHERE name_storage.name_reduced IN ("+qpNames+") AND environments.ncontract_hash_id<>?) ";
         String sqlOrigins = "(SELECT environments.ncontract_hash_id " +
-                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
-                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "FROM name_entry JOIN environments ON name_entry.environment_id=environments.id " +
                 "WHERE name_entry.origin IN ("+qpOrigins+") AND environments.ncontract_hash_id<>?)";
         String sqlAddresses = "(SELECT environments.ncontract_hash_id " +
-                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
-                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "FROM name_entry JOIN environments ON name_entry.environment_id=environments.id " +
                 "WHERE (name_entry.short_addr IN ("+qpAddresses+") OR name_entry.long_addr IN ("+qpAddresses+")) AND environments.ncontract_hash_id<>?)";
 
         List<String> queries = new ArrayList<>();
