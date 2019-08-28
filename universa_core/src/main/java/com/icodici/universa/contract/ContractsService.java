@@ -1429,7 +1429,7 @@ public class ContractsService {
         unsContract.addUnsSpecific();
 
         unsContract.addName(name,null,description);
-        unsContract.addOrigin(unsContract);
+        unsContract.addOrigin(namedContract);
         unsContract.seal();
         unsContract.addSignatureToSeal(issuerKeys);
 
