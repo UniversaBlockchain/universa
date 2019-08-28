@@ -7,7 +7,7 @@
 package net.sergeych.tools;
 
 /**
- * Memory and calculation-effectiver way to calculate average and standard deviation over arbitrary
+ * Memory and calculation-effective way to calculate average and standard deviation over arbitrary
  * number of samples. Memory usage does not depend on the number of samples, and all operations have
  * complexity of O(1).
  */
