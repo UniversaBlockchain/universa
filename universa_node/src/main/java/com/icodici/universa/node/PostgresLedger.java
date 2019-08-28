@@ -2506,20 +2506,15 @@ public class PostgresLedger implements Ledger {
                 long nameRecord_id = 0;
                 ZonedDateTime nameRecord_expiresAt = ZonedDateTime.now();
                 long nameRecord_environmentId = 0;
-                Set<NNameRecordEntry> entries = new HashSet<>();
-                boolean firstRow = true;
                 List<NNameRecord> res = new ArrayList<>();
                 while (rs.next()) {
-                    if (firstRow) {
-                        nameRecord_id = rs.getLong("id");
-                        unsName.setUnsReducedName(rs.getString("name_reduced"));
-                        unsName.setUnsName(rs.getString("name_full"));
-                        unsName.setUnsDescription(rs.getString("description"));
-                        nameRecord_expiresAt = Ut.getTime(rs.getLong("expires_at"));
-                        nameRecord_environmentId = rs.getLong("environment_id");
-                        firstRow = false;
-                    }
-                    res.add(new NNameRecord(unsName, nameRecord_expiresAt, entries, nameRecord_id, nameRecord_environmentId));
+                    nameRecord_id = rs.getLong("id");
+                    unsName.setUnsReducedName(rs.getString("name_reduced"));
+                    unsName.setUnsName(rs.getString("name_full"));
+                    unsName.setUnsDescription(rs.getString("description"));
+                    nameRecord_expiresAt = Ut.getTime(rs.getLong("expires_at"));
+                    nameRecord_environmentId = rs.getLong("environment_id");
+                    res.add(new NNameRecord(unsName, nameRecord_expiresAt, nameRecord_id, nameRecord_environmentId));
                 }
                 rs.close();
                 return res;
@@ -2544,8 +2539,11 @@ public class PostgresLedger implements Ledger {
                 throw new Failure("getNameRecord failed: " + e);
             }
         });
-        if (res.size() >= 1)
+
+        if (res.size() == 1)
             return res.get(0);
+        if(res.size() == 0)
+            return null;
         throw new Failure("getNameRecord failed");
     }
 

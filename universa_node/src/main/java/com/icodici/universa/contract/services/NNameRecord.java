@@ -36,7 +36,7 @@ public class NNameRecord implements NameRecord,BiSerializable {
         this.expiresAt = expiresAt;
     }
 
-    public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt, Set<NNameRecordEntry> entries, long id, long environmentId) {
+    public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt, long id, long environmentId) {
         this(unsName, expiresAt);
         this.id = id;
         this.environmentId = environmentId;
