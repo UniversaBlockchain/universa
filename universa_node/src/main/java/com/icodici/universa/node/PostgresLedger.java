@@ -2497,7 +2497,6 @@ public class PostgresLedger implements Ledger {
             ) {
                 paramsFromLambda.accept(statement);
                 statement.closeOnCompletion();
-                System.out.println("~~~~~~~~~~~~~~ kek: " + statement.toString());
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("getNameBy failed: returning null");
@@ -2594,7 +2593,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public List<NNameRecord> getNamesByAddress (String address) {
-        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE short_addr=? OR long_addr=? LIMIT 1) ", (statement)-> {
+        return getNameBy("WHERE name_storage.environment_id=(SELECT environment_id FROM name_entry WHERE short_addr=? OR long_addr=? LIMIT 1) ", (statement)-> {
             try {
                 statement.setString(1, address);
                 statement.setString(2, address);
