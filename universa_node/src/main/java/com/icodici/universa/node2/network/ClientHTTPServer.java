@@ -309,7 +309,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         Binder b = new Binder();
-        NNameRecord loadedNameRecord;
+        List<NNameRecord> loadedNameRecords;
         String address = params.getString("address",null);
         byte[] origin = params.getBinary("origin");
 
@@ -317,14 +317,12 @@ public class ClientHTTPServer extends BasicHttpServer {
             throw new IOException("invalid arguments");
 
         if (address != null)
-            loadedNameRecord = node.getLedger().getNameByAddress(address);
+            loadedNameRecords = node.getLedger().getNamesByAddress(address);
         else
-            loadedNameRecord = node.getLedger().getNameByOrigin(origin);
+            loadedNameRecords = node.getLedger().getNamesByOrigin(origin);
 
-        if (loadedNameRecord != null) {
-            b.put("name", loadedNameRecord.getName());
-            b.put("description", loadedNameRecord.getDescription());
-            b.put("url", loadedNameRecord.getUrl());
+        if (loadedNameRecords != null) {
+            b.put("names",loadedNameRecords);
         }
         return b;
     }

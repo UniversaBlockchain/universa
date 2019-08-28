@@ -1105,7 +1105,7 @@ public class Client {
      * Look for the name associated with a given origin (passed as an argument).
      *
      * @param origin to look for
-     * @return {@link Binder} containing name, description and url associated with origin;
+     * @return {@link Binder} containing names - an array of objects containing name and description associated with given origin
      * or {@code null} if not found
      * @throws ClientError
      */
@@ -1120,7 +1120,7 @@ public class Client {
      * Look for the name associated with some address (passed as an argument).
      *
      * @param address to look for
-     * @return {@link Binder} containing name, description and url associated with address;
+     * @return {@link Binder} containing names - an array of objects containing name and description associated with given origin
      * or {@code null} if not found
      * @throws ClientError
      */

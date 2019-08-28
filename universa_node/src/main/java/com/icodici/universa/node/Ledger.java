@@ -253,8 +253,8 @@ public interface Ledger {
     void removeNameRecordEntry(NNameRecordEntry nameRecordEntry);
 
     NNameRecord getNameRecord(final String nameReduced);
-    NNameRecord getNameByAddress (String address);
-    NNameRecord getNameByOrigin (byte[] origin);
+    List<NNameRecord> getNamesByAddress (String address);
+    List<NNameRecord> getNamesByOrigin (byte[] origin);
     List<String> isAllNameRecordsAvailable(final Collection<String> reducedNames);
     List<String> isAllOriginsAvailable(final Collection<HashId> origins);
     List<String> isAllAddressesAvailable(final Collection<String> addresses);
