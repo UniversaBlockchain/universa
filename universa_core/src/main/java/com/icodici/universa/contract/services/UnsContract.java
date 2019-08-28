@@ -731,6 +731,25 @@ public class UnsContract extends NSmartContract {
     }
 
 
+
+
+    public void addData(Binder data) {
+        Optional<UnsRecord> exists = storedRecords.stream().filter(unsRecord -> unsRecord.getData() != null && unsRecord.getData().equals(data)).findAny();
+        if(exists.isPresent()) {
+            throw new IllegalArgumentException("Data '" + data + "' already exists");
+        }
+        storedRecords.add(new UnsRecord(data));
+
+    }
+
+    public List<Binder> getAllData() {
+        return storedRecords.stream().map(unsRecord -> unsRecord.getData()).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
+    public boolean removeData(Binder data) {
+        return storedRecords.removeIf(unsRecord -> unsRecord.getData() != null && unsRecord.getData().equals(data));
+    }
+
     //4 ключа больших + 4 кб тескта минимальный платеж за год
     //1 - 1 имя 4 + записи
 
@@ -743,6 +762,11 @@ public class UnsContract extends NSmartContract {
         DefaultBiMapper.registerClass(UnsContract.class);
     }
 
+
+    public UnsName getName(String name) {
+        Optional<UnsName> k = storedNames.stream().filter(unsName -> unsName.getUnsName().equals(name)).findAny();
+        return k.isPresent() ? k.get() : null;
+    }
 
 }
 

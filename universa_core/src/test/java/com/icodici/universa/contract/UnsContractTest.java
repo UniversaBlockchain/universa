@@ -45,17 +45,9 @@ public class UnsContractTest extends ContractTestBase {
 
         String reducedName = "testUnsContract" + Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(reducedName, "test description", "http://test.com");
-        unsName.setUnsReducedName(reducedName);
-        unsName.setUnsDescription("test description modified");
-        unsName.setUnsURL("http://test_modified.com");
-
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        uns.addName(reducedName,reducedName,"test description");
+        uns.addKey(randomPrivKey.getPublicKey());
+        uns.addOrigin(referencesContract);
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addNewItems(paymentDecreased);
@@ -78,13 +70,12 @@ public class UnsContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(uns.getUnsName(reducedName).getUnsReducedName(), reducedName);
-        assertEquals(uns.getUnsName(reducedName).getUnsDescription(), "test description modified");
-        assertEquals(uns.getUnsName(reducedName).getUnsURL(), "http://test_modified.com");
+        assertEquals(uns.getName(reducedName).getUnsReducedName(), reducedName);
+        assertEquals(uns.getName(reducedName).getUnsDescription(), "test description");
 
-        assertNotEquals(uns.getUnsName(reducedName).findUnsRecordByOrigin(referencesContract.getOrigin()), -1);
-        assertNotEquals(uns.getUnsName(reducedName).findUnsRecordByKey(randomPrivKey.getPublicKey()), -1);
-        assertNotEquals(uns.getUnsName(reducedName).findUnsRecordByAddress(new KeyAddress(randomPrivKey.getPublicKey(), 0, true)), -1);
+        assertTrue(uns.getOrigins().contains(referencesContract.getOrigin()));
+        assertTrue(uns.getAddresses().contains(randomPrivKey.getPublicKey().getLongAddress()));
+        assertTrue(uns.getAddresses().contains(randomPrivKey.getPublicKey().getShortAddress()));
     }
 
     @Test
@@ -129,14 +120,10 @@ public class UnsContractTest extends ContractTestBase {
 
         String reducedName = "testUnsContract" + Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(reducedName, "test description", "http://test.com");
-        unsName.setUnsReducedName(reducedName);
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        uns.addName(reducedName,reducedName,"test description");
+        uns.addKey(randomPrivKey.getPublicKey());
+        uns.addOrigin(referencesContract);
+
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addNewItems(paymentDecreased);
@@ -162,13 +149,12 @@ public class UnsContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(((UnsContract)desUns).getUnsName(reducedName).getUnsReducedName(), reducedName);
-        assertEquals(((UnsContract)desUns).getUnsName(reducedName).getUnsDescription(), "test description");
-        assertEquals(((UnsContract)desUns).getUnsName(reducedName).getUnsURL(), "http://test.com");
+        assertEquals(((UnsContract)desUns).getName(reducedName).getUnsReducedName(), reducedName);
+        assertEquals(((UnsContract)desUns).getName(reducedName).getUnsDescription(), "test description");
 
-        assertNotEquals(((UnsContract)desUns).getUnsName(reducedName).findUnsRecordByOrigin(referencesContract.getOrigin()), -1);
-        assertNotEquals(((UnsContract)desUns).getUnsName(reducedName).findUnsRecordByKey(randomPrivKey.getPublicKey()), -1);
-        assertNotEquals(((UnsContract)desUns).getUnsName(reducedName).findUnsRecordByAddress(new KeyAddress(randomPrivKey.getPublicKey(), 0, true)), -1);
+        assertTrue(((UnsContract)desUns).getOrigins().contains(referencesContract.getOrigin()));
+        assertTrue(((UnsContract)desUns).getAddresses().contains(randomPrivKey.getPublicKey().getShortAddress()));
+        assertTrue(((UnsContract)desUns).getAddresses().contains(randomPrivKey.getPublicKey().getLongAddress()));
 
         Contract copiedUns = uns.copy();
 
@@ -184,13 +170,12 @@ public class UnsContractTest extends ContractTestBase {
         assertNotNull(mdp);
         assertTrue(((ModifyDataPermission)mdp.iterator().next()).getFields().containsKey("action"));
 
-        assertEquals(((UnsContract)copiedUns).getUnsName(reducedName).getUnsReducedName(), reducedName);
-        assertEquals(((UnsContract)copiedUns).getUnsName(reducedName).getUnsDescription(), "test description");
-        assertEquals(((UnsContract)copiedUns).getUnsName(reducedName).getUnsURL(), "http://test.com");
+        assertEquals(((UnsContract)copiedUns).getName(reducedName).getUnsReducedName(), reducedName);
+        assertEquals(((UnsContract)copiedUns).getName(reducedName).getUnsDescription(), "test description");
 
-        assertNotEquals(((UnsContract)copiedUns).getUnsName(reducedName).findUnsRecordByOrigin(referencesContract.getOrigin()), -1);
-        assertNotEquals(((UnsContract)copiedUns).getUnsName(reducedName).findUnsRecordByKey(randomPrivKey.getPublicKey()), -1);
-        assertNotEquals(((UnsContract)copiedUns).getUnsName(reducedName).findUnsRecordByAddress(new KeyAddress(randomPrivKey.getPublicKey(), 0, true)), -1);
+        assertTrue(((UnsContract)copiedUns).getOrigins().contains(referencesContract.getOrigin()));
+        assertTrue(((UnsContract)copiedUns).getAddresses().contains(randomPrivKey.getPublicKey().getShortAddress()));
+        assertTrue(((UnsContract)copiedUns).getAddresses().contains(randomPrivKey.getPublicKey().getLongAddress()));
     }
 
     private Config config = new Config();

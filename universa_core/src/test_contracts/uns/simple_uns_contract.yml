@@ -118,7 +118,7 @@ state:
      - name: test_from_dsl              # network-unique
        description: "test description"  # optional
        url: "http://test.com"           # optional
-       entries:
-         - addresses: [26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R, bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z]
+   entries:
+     - addresses: [26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R, bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z]
 
 
