@@ -2243,7 +2243,7 @@ public class MainTest {
         System.out.println("Name: " + nameInfo.getString("name", ""));
         System.out.println("Description: " + nameInfo.getString("description", ""));
         System.out.println("URL: " + nameInfo.getString("url", ""));
-        assertEquals(unsTestName, nameInfo.getString("name", ""));
+        assertEquals(unsTestName, ((Binder)nameInfo.getListOrThrow("names").get(0)).getString("name", ""));
 
         unsContractBytes = testSpace.client.queryNameContract(unsTestName);
         System.out.println("unsContractBytes: " + unsContractBytes);

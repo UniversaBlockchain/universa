@@ -464,6 +464,7 @@ public class UnsContract extends NSmartContract {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "Address used is missing corresponding key UNS contract signed with.");
                     return false;
                 }
+                return true;
             }
 
             if(unsRecord.getData() == null) {

@@ -36,6 +36,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
@@ -322,7 +323,11 @@ public class ClientHTTPServer extends BasicHttpServer {
             loadedNameRecords = node.getLedger().getNamesByOrigin(origin);
 
         if (loadedNameRecords != null) {
-            b.put("names",loadedNameRecords);
+            b.put("names",loadedNameRecords.stream().map(nameRecord -> Binder.of(
+                    "name",nameRecord.getName(),
+                    "description",nameRecord.getDescription(),
+                    "expiresAt",nameRecord.expiresAt()))
+                    .collect(Collectors.toList()));
         }
         return b;
     }

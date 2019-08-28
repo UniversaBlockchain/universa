@@ -2547,7 +2547,8 @@ public class PostgresLedger implements Ledger {
                 String short_addr = rs.getString("short_addr");
                 String long_addr = rs.getString("long_addr");
                 byte[] origin = rs.getBytes("origin");
-                Binder kvdata = Binder.from(JsonTool.fromJson(rs.getString("kvdata")));
+                String kvDataString = rs.getString("kvdata");
+                Binder kvdata = kvDataString != null ? Binder.from(JsonTool.fromJson(kvDataString)) : null;
                 NNameRecordEntry nameRecordEntry = new NNameRecordEntry(origin != null ? HashId.withDigest(origin) : null, short_addr, long_addr, kvdata);
                 nameRecordEntry.setId(entry_id);
                 nameRecordEntry.setEnvironmentId(environmentId);
