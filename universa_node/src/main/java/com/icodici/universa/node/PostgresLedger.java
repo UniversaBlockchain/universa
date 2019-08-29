@@ -2429,7 +2429,9 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-
+    private void clearEmptyEnvironments(PooledDb db) throws SQLException {
+        db.update("DELETE FROM environments WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id=environments.id) = 0");
+    }
 
     public void clearExpiredNameRecords(Duration holdDuration) {
         try (PooledDb db = dbPool.db()) {
@@ -2443,6 +2445,7 @@ public class PostgresLedger implements Ledger {
                 statement.setLong(1, Ut.unixTime(before));
                 statement.closeOnCompletion();
                 statement.executeUpdate();
+                clearEmptyEnvironments(db);
             }
         } catch (SQLException se) {
             se.printStackTrace();
