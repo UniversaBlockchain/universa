@@ -25,8 +25,6 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -149,11 +147,14 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public byte[] seal() {
-        saveNamesToState();
+        saveNamesAndRecordsToState();
         saveOriginReferencesToState();
         calculatePrepaidNameDays(true);
 
-        return super.seal();
+        byte[] res = super.seal();
+
+        originContracts.values().forEach(oc->getTransactionPack().addReferencedItem(oc));
+        return res;
     }
 
     private boolean isOriginCondition(Object condition, HashId origin) {
@@ -179,13 +180,12 @@ public class UnsContract extends NSmartContract {
     }
 
     private void saveOriginReferencesToState() {
-        Set<HashId> origins = new HashSet<>();
 
-        storedRecords.forEach(unsRecord -> {
-            if(unsRecord.getOrigin()!=null) {
-                origins.add(unsRecord.getOrigin());
-            }
-        });
+        Set<HashId> newOrigins = new HashSet<>(getOrigins());
+        UnsContract parentContract = (UnsContract) getRevokingItem(getParent());
+        if(parentContract != null) {
+            newOrigins.removeAll(parentContract.getOrigins());
+        }
 
         Set<Reference> refsToRemove = new HashSet<>();
 
@@ -211,28 +211,21 @@ public class UnsContract extends NSmartContract {
                     }
                 }
 
-                if ((o != null) && (!origins.contains(o)))
+                if ((o != null) && (!newOrigins.contains(o)))
                     refsToRemove.add(ref);
             });
         });
 
         refsToRemove.forEach(ref -> removeReference(ref));
 
-        origins.forEach( origin -> {
-            if(!isOriginReferenceExists(origin)) {
+        newOrigins.forEach( origin -> {
+            if(!isOriginReferenceExists(origin))
                 addOriginReference(origin);
-            } else {
-                Reference reference = getReferences().values().stream().filter(ref ->
-                        ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
-                                isOriginCondition(cond, origin))).collect(Collectors.toList()).get(0);
-                if(reference.matchingItems.isEmpty() && originContracts.containsKey(origin))
-                    reference.addMatchingItem(originContracts.get(origin));
-            }
         });
     }
 
 
-    private void saveNamesToState() {
+    private void saveNamesAndRecordsToState() {
         getStateData().put(NAMES_FIELD_NAME,storedNames);
         getStateData().put(ENTRIES_FIELD_NAME,storedRecords);
     }
@@ -267,6 +260,19 @@ public class UnsContract extends NSmartContract {
 
             UnsName unsName = new UnsName().initializeWithDsl(binder);
             storedNames.add(unsName);
+        }
+
+
+        ArrayList<?> arrayRecords = root.getBinder("state").getBinder("data").getArray(ENTRIES_FIELD_NAME);
+        for (Object record: arrayRecords) {
+            Binder binder;
+            if (record.getClass().getName().endsWith("Binder"))
+                binder = (Binder) record;
+            else
+                binder = new Binder((Map) record);
+
+            UnsRecord unsName = new UnsRecord().initializeWithDsl(binder);
+            storedRecords.add(unsName);
         }
         return this;
     }
