@@ -10199,9 +10199,9 @@ public class MainTest {
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, new HashSet<>(Do.listOf(ts.myKey)), false);
 
-        ItemState ir = ts.client.registerParcelWithState(payingParcel.pack(), 8000).state;
+        ItemResult ir = ts.client.registerParcelWithState(payingParcel.pack(), 8000);
         System.out.println(ir);
-        assertEquals(ir,ItemState.APPROVED);
+        assertEquals(ir.state,ItemState.APPROVED);
 
         synchronized (ts.uContractLock) {
             ts.uContract = payingParcel.getPaymentContract();
@@ -10231,8 +10231,9 @@ public class MainTest {
         paymentContract = getApprovedUContract(ts);
 
         Parcel unsRevisionParcel = ContractsService.createParcel(c.getTransactionPack(), paymentContract, 1, new HashSet<>(Do.listOf(ts.myKey)), false);
-
-        assertEquals(ts.client.registerParcelWithState(unsRevisionParcel.pack(),8000).state,ItemState.APPROVED);
+        ir = ts.client.registerParcelWithState(unsRevisionParcel.pack(),8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
 
 
         bytes = ts.client.queryNameContract(name);

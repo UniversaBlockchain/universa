@@ -37,10 +37,7 @@ public class UnsContract extends NSmartContract {
     public static final String ENTRIES_FIELD_NAME = "entries";
 
     public static final String PREPAID_ND_FIELD_NAME = "prepaid_ND";
-    public static final String PREPAID_ND_FROM_TIME_FIELD_NAME = "prepaid_ND_from";
-    public static final String STORED_ENTRIES_FIELD_NAME = "stored_entries";
-    public static final String SPENT_ND_FIELD_NAME = "spent_ND";
-    public static final String SPENT_ND_TIME_FIELD_NAME = "spent_ND_time";
+
     private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
     private static final String REFERENCE_CONDITION_LEFT = "ref.state.origin";
     private static final int REFERENCE_CONDITION_OPERATOR = 7;       // EQUAL
@@ -48,13 +45,10 @@ public class UnsContract extends NSmartContract {
     private List<UnsName> storedNames = new ArrayList<>();
     private List<UnsRecord> storedRecords = new ArrayList<>();
 
-    private int paidU = 0;
-    private double prepaidNamesForDays = 0;
-    private long storedEarlyEntries = 0;
-    private double spentEarlyNDs = 0;
-    private double spentNDs = 0;
-    private ZonedDateTime spentNDsTime = null;
+    private double prepaidNameDays = 0;
+
     private Map<HashId,Contract> originContracts = new HashMap<>();
+    private int paidU;
 
 
     /**
@@ -110,10 +104,6 @@ public class UnsContract extends NSmartContract {
         fieldsMap.put(ENTRIES_FIELD_NAME, null);
         fieldsMap.put(PAID_U_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
-        fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
-        fieldsMap.put(STORED_ENTRIES_FIELD_NAME, null);
-        fieldsMap.put(SPENT_ND_FIELD_NAME, null);
-        fieldsMap.put(SPENT_ND_TIME_FIELD_NAME, null);
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
         addPermission(modifyDataPermission);
@@ -123,64 +113,45 @@ public class UnsContract extends NSmartContract {
     }
 
     @Deprecated
-    public double getPrepaidNamesForDays() {
-        return prepaidNamesForDays;
+    public double getPrepaidNameDays() {
+        return prepaidNameDays;
     }
 
     public BigDecimal getPrepaidNamesDays() {
-        return new BigDecimal(prepaidNamesForDays);
+        return new BigDecimal(prepaidNameDays);
     }
 
-    private double calculatePrepaidNamesForDays(boolean withSaveToState) {
+    private int getStoredUnitsCount() {
+        return storedNames.size();
+        //TODO: return max(storedNames.size(),storedDataSize/FREE_KILO_PER_NAME)
+    }
+
+    private double calculatePrepaidNameDays(boolean withSaveToState) {
 
         paidU = getPaidU();
 
-        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        double wasPrepaidNamesForDays;
-        long spentEarlyNDsTimeSecs = now.toEpochSecond();
-        Contract parentContract = getRevokingItem(getParent());
+        UnsContract parentContract = (UnsContract) getRevokingItem(getParent());
+        double prepaidNameDaysLeft = 0;
         if(parentContract != null) {
-            wasPrepaidNamesForDays = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-            storedEarlyEntries = parentContract.getStateData().getLong(STORED_ENTRIES_FIELD_NAME, 0);
-            spentEarlyNDs = parentContract.getStateData().getDouble(SPENT_ND_FIELD_NAME);
-            spentEarlyNDsTimeSecs = parentContract.getStateData().getLong(SPENT_ND_TIME_FIELD_NAME, now.toEpochSecond());
-        } else {
-            wasPrepaidNamesForDays = 0;
+            prepaidNameDaysLeft = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
+            prepaidNameDaysLeft -= parentContract.getStoredUnitsCount()*((double)(getCreatedAt().toEpochSecond()-parentContract.getCreatedAt().toEpochSecond()))/(3600*24);
         }
 
-        prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate().doubleValue();
-
-        spentNDsTime = now;
-
-        long spentSeconds = (spentNDsTime.toEpochSecond() - spentEarlyNDsTimeSecs);
-        double spentDays = (double) spentSeconds / (3600 * 24);
-        spentNDs = spentEarlyNDs + spentDays * storedEarlyEntries;
+        prepaidNameDays = prepaidNameDaysLeft + paidU * getRate().doubleValue();
 
         if(withSaveToState) {
             getStateData().set(PAID_U_FIELD_NAME, paidU);
-
-            getStateData().set(PREPAID_ND_FIELD_NAME, prepaidNamesForDays);
-            if(getRevision() == 1)
-                getStateData().set(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
-
-            // calculate num of entries
-            int storingEntries = storedNames.size();
-            //TODO: storingEntries = max(storingEntries,storedDataSize/FREE_KILO_PER_NAME)
-
-            getStateData().set(STORED_ENTRIES_FIELD_NAME, storingEntries);
-
-            getStateData().set(SPENT_ND_FIELD_NAME, spentNDs);
-            getStateData().set(SPENT_ND_TIME_FIELD_NAME, spentNDsTime.toEpochSecond());
+            getStateData().set(PREPAID_ND_FIELD_NAME, prepaidNameDays);
         }
 
-        return prepaidNamesForDays;
+        return prepaidNameDays;
     }
 
     @Override
     public byte[] seal() {
         saveNamesToState();
         saveOriginReferencesToState();
-        calculatePrepaidNamesForDays(true);
+        calculatePrepaidNameDays(true);
 
         return super.seal();
     }
@@ -281,7 +252,7 @@ public class UnsContract extends NSmartContract {
         storedRecords = deserializer.deserialize(getStateData().getList(ENTRIES_FIELD_NAME, null));
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
-        prepaidNamesForDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
+        prepaidNameDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
     }
 
     protected UnsContract initializeWithDsl(Binder root) throws EncryptionError {
@@ -315,54 +286,68 @@ public class UnsContract extends NSmartContract {
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
 
-        boolean checkResult = true;
-
-        calculatePrepaidNamesForDays(false);
-
-        int paidU = getPaidU();
-        if(paidU == 0) {
-            if(getPaidU(true) > 0) {
-                addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing storing names");
-            }
-            checkResult = false;
-        } else if(paidU < getMinPayment()) {
-            addError(Errors.FAILED_CHECK, "Payment for UNS contract is below minimum level of " + getMinPayment() + "U");
-            checkResult = false;
+        if(!checkPaymentAndRelatedFields(false)) {
+            return false;
         }
 
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, "UNS contract hasn't valid payment");
-            return checkResult;
+        if(!additionallyUnsCheck(c)) {
+            return false;
         }
 
-        checkResult = prepaidNamesForDays == getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
-                    "Should be sum of early paid U and paid U by current revision.");
-            return checkResult;
-        }
-
-        checkResult = additionallyUnsCheck(c);
-
-        return checkResult;
+        return true;
     }
 
     @Override
     public boolean beforeUpdate(ImmutableEnvironment c) {
-        boolean checkResult = false;
 
-        calculatePrepaidNamesForDays(false);
-
-        checkResult = prepaidNamesForDays == getStateData().getDouble(PREPAID_ND_FIELD_NAME);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
-                    "Should be sum of early paid U and paid U by current revision.");
-            return checkResult;
+        if(!checkPaymentAndRelatedFields(true)) {
+            return false;
         }
 
-        checkResult = additionallyUnsCheck(c);
+        if(!additionallyUnsCheck(c)) {
+            return false;
+        }
 
-        return checkResult;
+        return true;
+    }
+
+    private boolean checkPaymentAndRelatedFields(boolean allowNoPayment) {
+        boolean paymentCheck = true;
+
+        calculatePrepaidNameDays(false);
+
+        if(paidU == 0) {
+            if(!allowNoPayment) {
+                if (getPaidU(true) > 0) {
+                    addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing storing names");
+                }
+                paymentCheck = false;
+            }
+        } else if(paidU < getMinPayment()) {
+            addError(Errors.FAILED_CHECK, "Payment for UNS contract is below minimum level of " + getMinPayment() + "U");
+            paymentCheck = false;
+        }
+
+        if (!paymentCheck) {
+            addError(Errors.FAILED_CHECK, "UNS contract hasn't valid payment");
+            return false;
+        }
+
+        if (paidU != getStateData().getInt(PAID_U_FIELD_NAME, 0)) {
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PAID_U_FIELD_NAME + "] value. " +
+                    "Should be amount of U paid by current paying parcel.");
+            return false;
+        }
+
+
+        if (prepaidNameDays != getStateData().getDouble(PREPAID_ND_FIELD_NAME)) {
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
+                    "Should be sum of early prepaid name days left and prepaid name days of current revision. " +
+                    "Make sure contract was prepared using correct UNS1 rate.");
+            return false;
+        }
+
+        return true;
     }
 
     @Override
@@ -371,9 +356,7 @@ public class UnsContract extends NSmartContract {
     }
 
     private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
-
-        boolean checkResult = ime != null;
-        if (!checkResult) {
+        if (ime == null) {
             addError(Errors.FAILED_CHECK, "Environment should be not null");
             return false;
         }
@@ -396,20 +379,18 @@ public class UnsContract extends NSmartContract {
         });
 
 
-        checkResult = getExtendedType().equals(SmartContractType.UNS1.name());
-        if (!checkResult) {
+        if (!getExtendedType().equals(SmartContractType.UNS1.name())) {
             addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.UNS1.name() + " instead " + getExtendedType());
             return false;
         }
 
 
-        checkResult = (storedNames.size() > 0);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names for storing are missing");
+        if (storedNames.size() == 0) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names are missing");
             return false;
         }
 
-        checkResult = newRecords.stream().allMatch(unsRecord -> {
+        if (!newRecords.stream().allMatch(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
                 if(!unsRecord.getAddresses().isEmpty()) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin AND addresses found. Should be either origin or addresses or data");
@@ -473,18 +454,16 @@ public class UnsContract extends NSmartContract {
             }
 
             return true;
-        });
-
-        if (!checkResult) {
+        })) {
             return false;
         }
 
 
         //only check name service signature is there are new/changed name->reduced
-        checkResult = newNames.isEmpty() || getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)));
-        if(!checkResult) {
+
+        if(!newNames.isEmpty() && !getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)))) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
-            return checkResult;
+            return false;
         }
 
         List<String> reducedNamesToCkeck = getReducedNamesToCheck();
@@ -493,13 +472,12 @@ public class UnsContract extends NSmartContract {
 
         List<ErrorRecord> allocationErrors = ime.tryAllocate(reducedNamesToCkeck,originsToCheck,addressesToCheck);
         if (allocationErrors.size() > 0) {
-            checkResult = false;
             for (ErrorRecord errorRecord : allocationErrors)
                 addError(errorRecord);
-            return checkResult;
+            return false;
         }
 
-        return checkResult;
+        return true;
     }
 
 
@@ -574,7 +552,7 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
-        calculatePrepaidNamesForDays(false);
+        calculatePrepaidNameDays(false);
         ZonedDateTime expiresAt = calcExpiresAt();
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
         storedRecords.forEach(sr ->me.createNameRecordEntry(sr));
@@ -583,21 +561,17 @@ public class UnsContract extends NSmartContract {
 
     private ZonedDateTime calcExpiresAt() {
         // get number of entries
-        int entries = storedNames.size();
+        int entries = getStoredUnitsCount();
 
-        //TODO: entries = max(entries,storedDataSize/FREE_KILO_PER_NAME)
-
-        // calculate time that will be added to now as new expiring time
-        // it is difference of all prepaid ND (names*days) and already spent divided to new number of entries.
-        double days = (prepaidNamesForDays - spentNDs) / entries;
+        double days = prepaidNameDays / entries;
         long seconds = (long) (days * 24 * 3600);
 
-        return spentNDsTime.plusSeconds(seconds);
+        return getCreatedAt().plusSeconds(seconds);
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        calculatePrepaidNamesForDays(false);
+        calculatePrepaidNameDays(false);
 
         ZonedDateTime expiresAt = calcExpiresAt();
 
@@ -674,12 +648,16 @@ public class UnsContract extends NSmartContract {
 
     public void addOrigin(Contract contract) {
         HashId origin = contract.getOrigin();
+        addOrigin(origin);
+        originContracts.put(contract.getOrigin(),contract);
+    }
+
+    public void addOrigin(HashId origin) {
         Optional<UnsRecord> exists = storedRecords.stream().filter(unsRecord -> unsRecord.getOrigin() != null && unsRecord.getOrigin().equals(origin)).findAny();
         if(exists.isPresent()) {
             throw new IllegalArgumentException("Origin '" + origin + "' already exists");
         }
         storedRecords.add(new UnsRecord(origin));
-        originContracts.put(contract.getOrigin(),contract);
     }
 
     public Set<HashId> getOrigins() {

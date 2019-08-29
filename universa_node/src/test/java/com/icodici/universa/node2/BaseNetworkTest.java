@@ -11150,6 +11150,7 @@ public class BaseNetworkTest extends TestCase {
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
         ItemResult ir = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        System.out.println(ir);
         assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
@@ -12489,9 +12490,9 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivateKey2 = new PrivateKey(2048);
         name = "testbusyorigin"+Instant.now().getEpochSecond()+"sSSS";
 
-        uns1.addName(name,name,"");
-        uns1.addKey(randomPrivateKey2.getPublicKey());
-        uns1.addOrigin(nameContract);
+        uns2.addName(name,name,"");
+        uns2.addKey(randomPrivateKey2.getPublicKey());
+        uns2.addOrigin(nameContract);
 
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
