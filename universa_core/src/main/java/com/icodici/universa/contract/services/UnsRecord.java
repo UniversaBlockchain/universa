@@ -186,4 +186,42 @@ public class UnsRecord implements BiSerializable {
 
         return checkResult;
     }
+
+
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof UnsRecord))
+            return false;
+
+        UnsRecord to = (UnsRecord) obj;
+
+        if(to.unsOrigin != null) {
+            if(unsOrigin == null)
+                return false;
+
+            if(!to.unsOrigin.equals(unsOrigin))
+                return false;
+        } else {
+            if(unsOrigin != null)
+                return false;
+        }
+
+        if(!getAddresses().equals(to.getAddresses())) {
+            return false;
+        }
+
+
+        if(to.unsData != null) {
+            if(unsData == null)
+                return false;
+
+            if(!to.unsData.equals(unsData))
+                return false;
+        } else {
+            if(unsData != null)
+                return false;
+        }
+
+        return true;
+    }
 }

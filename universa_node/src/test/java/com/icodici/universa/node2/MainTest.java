@@ -67,7 +67,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.*;
 
-@Ignore("start it manually")
+//@Ignore("start it manually")
 public class MainTest {
 
 
@@ -10156,6 +10156,55 @@ public class MainTest {
     }
 
 
+
+
+    public ItemResult registerWithMinimumKeys(Contract contract, Collection<PrivateKey> signatures, TestSpace ts, int payingParcelAmount) throws Exception {
+        for(PrivateKey key : signatures) {
+            HashSet<PrivateKey> currentKeys = new HashSet<>(signatures);
+            currentKeys.remove(key);
+            contract.getKeysToSignWith().clear();
+            contract.getKeysToSignWith().addAll(currentKeys);
+            contract.seal();
+            Contract u = getApprovedUContract(ts);
+
+            Parcel parcel;
+            if(payingParcelAmount > 0) {
+                parcel = ContractsService.createPayingParcel(contract.getTransactionPack(),u,1,payingParcelAmount,new HashSet<PrivateKey>(Do.listOf(ts.myKey)),false);
+            } else {
+                parcel = ContractsService.createParcel(contract,u,1,new HashSet<PrivateKey>(Do.listOf(ts.myKey)));
+            }
+            assertEquals(ts.client.registerParcelWithState(parcel.pack(),8000).state,ItemState.DECLINED);
+            synchronized (ts.uContractLock) {
+                ts.uContract = parcel.getPaymentContract();
+            }
+        }
+
+        HashSet<PrivateKey> currentKeys = new HashSet<>(signatures);
+        contract.getKeysToSignWith().clear();
+        contract.getKeysToSignWith().addAll(currentKeys);
+        contract.seal();
+        Contract u = getApprovedUContract(ts);
+
+        Parcel parcel;
+        if(payingParcelAmount > 0) {
+            parcel = ContractsService.createPayingParcel(contract.getTransactionPack(),u,10,payingParcelAmount,new HashSet<PrivateKey>(Do.listOf(ts.myKey)),false);
+        } else {
+            parcel = ContractsService.createParcel(contract,u,10, new HashSet<>(Do.listOf(ts.myKey)));
+        }
+        ItemResult ir = ts.client.registerParcelWithState(parcel.pack(), 8000);
+        System.out.println(ir);
+        assertEquals(ir.state,ItemState.APPROVED);
+        synchronized (ts.uContractLock) {
+            if(payingParcelAmount > 0) {
+                ts.uContract = (Contract) parcel.getPayloadContract().getNewItems().stream().filter(c -> c.isU(ts.node.config.getUIssuerKeys(), ts.node.config.getUIssuerName())).findFirst().get();
+            } else {
+                ts.uContract = parcel.getPaymentContract();
+            }
+        }
+        return ir;
+    }
+
+
     @Test
     public void unsCase() throws Exception {
         TestSpace ts = prepareTestSpace();
@@ -10180,66 +10229,10 @@ public class MainTest {
 
         uns.seal();
 
-        uns.addSignatureToSeal(unsIssuer);
-        uns.addSignatureToSeal(keyToRegister);
-        uns.addSignatureToSeal(authorizedNameServiceKey);
-
-        Contract paymentContract = getApprovedUContract(ts);
-
-        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, new HashSet<>(Do.listOf(ts.myKey)), false);
-
-        assertEquals(ts.client.registerParcelWithState(parcel.pack(),8000).state,ItemState.APPROVED);
-
-        synchronized (ts.uContractLock) {
-            ts.uContract = parcel.getPaymentContract();
-        }
-
-        paymentContract = getApprovedUContract(ts);
+        registerWithMinimumKeys(referencesContract,Do.listOf(contractToRegisterIssuer),ts,0);
+        registerWithMinimumKeys(uns,Do.listOf(unsIssuer,keyToRegister,authorizedNameServiceKey),ts,1470);
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, new HashSet<>(Do.listOf(ts.myKey)), false);
-
-        ItemResult ir = ts.client.registerParcelWithState(payingParcel.pack(), 8000);
-        System.out.println(ir);
-        assertEquals(ir.state,ItemState.APPROVED);
-
-        synchronized (ts.uContractLock) {
-            ts.uContract = payingParcel.getPaymentContract();
-        }
-
-        Binder record = ts.client.queryNameRecord(referencesContract.getOrigin());
-        System.out.println(record);
-        record = ts.client.queryNameRecord(keyToRegister.getPublicKey().getShortAddress().toString());
-        System.out.println(record);
-        record = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
-        System.out.println(record);
-        byte[] bytes = ts.client.queryNameContract(name);
-        UnsContract c = (UnsContract) Contract.fromPackedTransaction(bytes);
-        assertEquals(c.getId(),uns.getId());
-        assertEquals(c.getAllData().get(0).getString("host"),"192.168.1.1");
-
-
-        c = (UnsContract) c.createRevision(unsIssuer);
-        c.getAllData().get(0).put("host","192.168.1.2");
-        c.setNodeInfoProvider(nodeInfoProvider);
-        c.seal();
-        c.addSignatureToSeal(unsIssuer);
-//        c.addSignatureToSeal(keyToRegister);
-//        c.addSignatureToSeal(authorizedNameServiceKey);
-
-
-        paymentContract = getApprovedUContract(ts);
-
-        Parcel unsRevisionParcel = ContractsService.createParcel(c.getTransactionPack(), paymentContract, 1, new HashSet<>(Do.listOf(ts.myKey)), false);
-        ir = ts.client.registerParcelWithState(unsRevisionParcel.pack(),8000);
-        System.out.println(ir);
-        assertEquals(ir.state,ItemState.APPROVED);
-
-
-        bytes = ts.client.queryNameContract(name);
-        UnsContract c2 = (UnsContract) Contract.fromPackedTransaction(bytes);
-        assertEquals(c.getId(),c2.getId());
-        assertEquals(c2.getAllData().get(0).getString("host"),"192.168.1.2");
 
         ts.shutdown();
     }

@@ -50,7 +50,7 @@ public class NodeConfigProvider implements NSmartContract.NodeInfoProvider {
     @Override
     public Collection<KeyAddress> getAdditionalKeysAddressesToSignWith(String extendedType) {
         Set<KeyAddress> set = new HashSet<>();
-        if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+        if(extendedType.equals(NSmartContract.SmartContractType.UNS1.name())) {
             set.add(config.getAuthorizedNameServiceCenterAddress());
         }
         return set;
