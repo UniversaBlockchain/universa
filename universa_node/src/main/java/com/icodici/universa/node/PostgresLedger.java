@@ -2510,10 +2510,10 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public NNameRecord getNameRecord(final String nameReduced) {
-        List<NNameRecord> res = getNameBy("WHERE name_storage.name_reduced=? ", (statement)-> {
+    public NNameRecord getNameRecord(final String name) {
+        List<NNameRecord> res = getNameBy("WHERE name_storage.name_full=? ", (statement)-> {
             try {
-                statement.setString(1, nameReduced);
+                statement.setString(1, name);
             } catch (SQLException e) {
                 throw new Failure("getNameRecord failed: " + e);
             }

@@ -162,7 +162,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (reducedNames.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableNamesCache = nameCache.lockNameList(reducedNames);
+        List<String> unavailableNamesCache = nameCache.lockNameList(reducedNames, contract.getId());
         if (unavailableNamesCache.size() > 0) {
             return unavailableNamesCache;
         }
@@ -180,7 +180,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (origins.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableOriginsCache = nameCache.lockOriginList(origins);
+        List<String> unavailableOriginsCache = nameCache.lockOriginList(origins, contract.getId());
         if (unavailableOriginsCache.size() > 0) {
             return unavailableOriginsCache;
         }
@@ -198,7 +198,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (addresses.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableAddressesCache = nameCache.lockAddressList(addresses);
+        List<String> unavailableAddressesCache = nameCache.lockAddressList(addresses, contract.getId());
         if (unavailableAddressesCache.size() > 0) {
             return unavailableAddressesCache;
         }

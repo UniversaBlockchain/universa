@@ -719,12 +719,7 @@ public class UnsContract extends NSmartContract {
 
 
     public void addData(Binder data) {
-        Optional<UnsRecord> exists = storedRecords.stream().filter(unsRecord -> unsRecord.getData() != null && unsRecord.getData().equals(data)).findAny();
-        if(exists.isPresent()) {
-            throw new IllegalArgumentException("Data '" + data + "' already exists");
-        }
         storedRecords.add(new UnsRecord(data));
-
     }
 
     public List<Binder> getAllData() {

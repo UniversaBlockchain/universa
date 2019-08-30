@@ -32,10 +32,10 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.*;
 
 public class TestCase {
-    public void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2) {
+    public static void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2) {
         assertAlmostSame(t1, t2, 2L);
     }
-    public void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2, long expectedDelta) {
+    public static void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2, long expectedDelta) {
         if (t1 == null && t2 == null)
             return;
         long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());

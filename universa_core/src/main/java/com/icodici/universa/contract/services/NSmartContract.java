@@ -37,6 +37,11 @@ public class NSmartContract extends Contract implements NContract {
         this.nodeInfoProvider = nodeInfoProvider;
     }
 
+
+    public NodeInfoProvider getNodeInfoProvider() {
+        return nodeInfoProvider;
+    }
+
     /**
      * Instance of this provider should be passed into setNodeInfoProvider of smart contract.
      */
