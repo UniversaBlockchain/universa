@@ -62,7 +62,7 @@ public class TestCase {
         }
     }
 
-    protected void assertErrorsContainsSubstr(Collection<ErrorRecord> errors, String substr) {
+    public static void assertErrorsContainsSubstr(Collection<ErrorRecord> errors, String substr) {
         boolean contains = false;
         for (ErrorRecord er : errors) {
             if (er.getMessage().contains(substr)) {

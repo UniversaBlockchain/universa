@@ -1142,6 +1142,39 @@ public class PostgresLedger implements Ledger {
     }
 
 
+
+    private List<String> getNames(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT DISTINCT name_storage.name_full AS name_full " +
+                                            "FROM name_storage " +
+                                            "WHERE name_storage.environment_id=?"
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNames failed: returning null");
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(rs.getString(1));
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNames failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getNames failed: " + e);
+        }
+    }
+
     private List<String> getReducedNames(long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
@@ -1239,10 +1272,10 @@ public class PostgresLedger implements Ledger {
             Collection<ContractSubscription> contractSubscriptions = getContractSubscriptions(environmentId);
             Collection<ContractStorage> contractStorages = getContractStorages(environmentId);
             FollowerService followerService = getFollowerService(environmentId);
-            List<String> reducedNames = getReducedNames(environmentId);
+            List<String> names = getNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
-            for (String reducedName : reducedNames) {
-                NNameRecord nr = getNameRecord(reducedName);
+            for (String name : names) {
+                NNameRecord nr = getNameRecord(name);
                 //nr.setId(nrModel.id);
                 nameRecords.add(nr);
             }
@@ -1250,6 +1283,8 @@ public class PostgresLedger implements Ledger {
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder,
                     contractSubscriptions, contractStorages, nameRecords, nameRecordEntries, followerService, this);
             nImmutableEnvironment.setId(environmentId);
+
+
             return nImmutableEnvironment;
         });
     }

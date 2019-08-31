@@ -25,27 +25,35 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertTrue;
 
 public class UnsMainTest extends BaseMainTest {
+
+
+
     @Test
     public void unsCase() throws Exception {
+
         TestSpace ts = prepareTestSpace();
 
         PrivateKey keyToRegister = new PrivateKey(2048);
         PrivateKey contractToRegisterIssuer = TestKeys.privateKey(1);
-        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(2);
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+
+
         ts.nodes.forEach(n->n.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
 
         Contract referencesContract = new Contract(contractToRegisterIssuer);
         referencesContract.seal();
 
 
-        PrivateKey unsIssuer = TestKeys.privateKey(3);
+        PrivateKey unsIssuer = TestKeys.privateKey(2);
 
         //create initial contract
-        UnsContract uns = ContractsService.createUnsContract(new HashSet<>(Do.listOf(unsIssuer)), new HashSet<>(Do.listOf(unsIssuer.getPublicKey())), nodeInfoProvider);
+        UnsContract uns = new UnsContract(unsIssuer);
+        //NodeConfigProvider nodeInfoProvider = new NodeConfigProvider();
+        uns.setNodeInfoProvider(nodeInfoProvider);
 
         String name = "Universa"+ ZonedDateTime.now();
         String desc = "Universa keys and origins";
-        uns.addName(name,name,desc);
+        uns.addName(name,name+"_reduced",desc);
         uns.addKey(keyToRegister.getPublicKey());
         uns.addData(Binder.of("host","192.168.1.1"));
 
@@ -99,8 +107,51 @@ public class UnsMainTest extends BaseMainTest {
         expires = created.plusSeconds((long) (3600*24*(paidU+paidU2)*configForProvider.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue()));
         TestCase.assertAlmostSame(((ZonedDateTime)names.get(0).get("expiresAt")),expires);
 
+        ZonedDateTime created2 = uns.getCreatedAt();
+
+        uns = (UnsContract) uns.createRevision();
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        String name2 = "Universa_"+ ZonedDateTime.now();
+        uns.addName(name2,name2,"test description");
+        uns.seal();
+
+        registerWithMinimumKeys(uns,Do.listOf(unsIssuer,authorizedNameServiceKey),ts,0);
+
+
+        res = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
+        names = res.getListOrThrow("names");
+        assertEquals(names.get(0).getString("name"),name);
+
+        long spentSeconds = created2.toEpochSecond()-created.toEpochSecond();
+        long leftSeconds = (long) (3600*24*(paidU+paidU2)*configForProvider.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue()) - spentSeconds;
+
+        expires = created.plusSeconds(spentSeconds+leftSeconds/2);
+        TestCase.assertAlmostSame(((ZonedDateTime)names.get(0).get("expiresAt")),expires,4);
+
+
+
+
+
+        //create initial contract
+        UnsContract uns2 = new UnsContract(unsIssuer);
+        //NodeConfigProvider nodeInfoProvider = new NodeConfigProvider();
+        uns2.setNodeInfoProvider(nodeInfoProvider);
+
+        uns2.addName(name+"_unused",name+"_reduced",desc);
+        uns2.addData(Binder.of("foo","bar"));
+        uns2.seal();
+        uns2.addSignerKeys(Do.listOf(unsIssuer,authorizedNameServiceKey));
+
+
+        Parcel parcel = ContractsService.createPayingParcel(uns2.getTransactionPack(),getApprovedUContract(ts),10,1760,new HashSet<>(Do.listOf(ts.myKey)),false);
+
+        ItemResult ir = ts.client.registerParcelWithState(parcel.pack(), 10000);
+        assertEquals(ir.state,ItemState.DECLINED);
+        TestCase.assertErrorsContainsSubstr(ir.errors, "name '"+name+"_reduced' is not available");
 
         ts.shutdown();
+
+
     }
 
     @Test

@@ -1980,7 +1980,7 @@ public class Node {
                             checkPassed = item.check();
 
                             // if item is smart contract we check it additionally
-                            if(item instanceof NSmartContract) {
+                            if(checkPassed && item instanceof NSmartContract) {
                                 // slot contract need ledger, node's config and nodeInfo to work
                                 ((NSmartContract) item).setNodeInfoProvider(nodeInfoProvider);
 

@@ -11,6 +11,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.RoleLink;
@@ -82,6 +83,12 @@ public class UnsContract extends NSmartContract {
      */
     public UnsContract(PrivateKey key) {
         super(key);
+
+        RevokePermission revokePerm1 = new RevokePermission(new RoleLink("@owner", this,"owner"));
+        addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(new RoleLink("@issuer", this,"issuer"));
+        addPermission(revokePerm2);
 
         addUnsSpecific();
     }
@@ -367,14 +374,20 @@ public class UnsContract extends NSmartContract {
             return false;
         }
 
-
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
-        ime.nameRecords().forEach(nameRecord -> {
-            UnsName unsName = newNames.get(nameRecord.getName());
-            if(unsName != null && unsName.equalsTo(nameRecord)) {
-                newNames.remove(nameRecord.getName());
-            }
-        });
+
+        
+        try {
+
+            ime.nameRecords().forEach(nameRecord -> {
+                UnsName unsName = newNames.get(nameRecord.getName());
+                if(unsName != null && unsName.equalsTo(nameRecord)) {
+                    newNames.remove(nameRecord.getName());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         Set<UnsRecord> newRecords = storedRecords.stream().collect(Collectors.toSet());
         ime.nameRecordEntries().forEach(nre -> {
