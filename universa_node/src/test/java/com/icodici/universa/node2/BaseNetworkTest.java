@@ -10979,14 +10979,12 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsName.setUnsReducedName("test"+Instant.now().getEpochSecond());
+        String name = "test"+Instant.now().getEpochSecond();
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        uns.addName(name,name, "test description");
+        uns.addOrigin(referencesContract);
+        uns.addKey(randomPrivKey.getPublicKey());
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
@@ -11030,9 +11028,9 @@ public class BaseNetworkTest extends TestCase {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameEntries(name).size(),2));
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2);
+        assertEquals(ledger.getNameEntries(name).size(),2);
     }
 
     @Test(timeout = 90000)
@@ -11060,7 +11058,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns3 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns3.getUnsName(name).setUnsReducedName(name);
+        uns3.getName(name).setUnsReducedName(name);
         uns3.addSignatureToSeal(authorizedNameServiceKey);
         uns3.addSignatureToSeal(randomPrivKey);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -11070,7 +11068,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns2.getUnsName(name).setUnsReducedName(name);
+        uns2.getName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -11080,7 +11078,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -11104,14 +11102,15 @@ public class BaseNetworkTest extends TestCase {
 
         Thread.sleep(5000);
         // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameEntries(name).size(),1));
 
-        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
+        assertEquals(ledger.getNameEntries(name).size(),1);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         Thread.sleep(11000);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         NNameRecord nr = ledger.getNameRecord(name);
-        assertEquals(nr.getEntries().size(),1);
+        List<NNameRecordEntry> nrEntries = ledger.getNameEntries(name);
+        assertEquals(nrEntries.size(),1);
         assertTrue(nr.expiresAt().isBefore(ZonedDateTime.now()));
         paymentContract = getApprovedUContract();
 
@@ -11151,6 +11150,7 @@ public class BaseNetworkTest extends TestCase {
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
         ItemResult ir = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        System.out.println(ir);
         assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
@@ -11179,7 +11179,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -11189,7 +11189,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns2.getUnsName(name).setUnsReducedName(name);
+        uns2.getName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -11216,9 +11216,9 @@ public class BaseNetworkTest extends TestCase {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameEntries(name).size(),1));
 
-        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
+        assertEquals(ledger.getNameEntries(name).size(),1);
 
 
         //REVOKE UNS1
@@ -11266,11 +11266,12 @@ public class BaseNetworkTest extends TestCase {
         Thread.sleep(5000);
 
         // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(name).getEntries().size(),1));
+        nodes.forEach(n -> assertEquals(n.getLedger().getNameEntries(name).size(),1));
 
-        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
+        assertEquals(ledger.getNameEntries(name).size(),1);
     }
 
+    /*
     @Test(timeout = 90000)
     public void registerUnsContractRevision() throws Exception {
 
@@ -11304,14 +11305,10 @@ public class BaseNetworkTest extends TestCase {
 
         uns.seal();
 
-        UnsName unsNameToChange = new UnsName("change"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsNameToChange.setUnsReducedName("change"+Instant.now().getEpochSecond());
-        UnsName unsNameToAdd = new UnsName("add"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsNameToAdd.setUnsReducedName("add"+Instant.now().getEpochSecond());
-        UnsName unsNameToRemove = new UnsName("remove"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsNameToRemove.setUnsReducedName("remove"+Instant.now().getEpochSecond());
+        String nameToChange = "change"+Instant.now().getEpochSecond();
+        String nameToAdd = "add"+Instant.now().getEpochSecond();
+        String nameToRemove = "remove"+Instant.now().getEpochSecond();
 
-        UnsRecord unsRecordToChange = new UnsRecord(randomPrivKey1.getPublicKey());
         UnsRecord unsRecordToAdd = new UnsRecord(randomPrivKey2.getPublicKey());
         UnsRecord unsRecordToRemove = new UnsRecord(randomPrivKey3.getPublicKey());
 
@@ -11800,157 +11797,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),2);
         assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
     }
-
-    @Test(timeout = 90000)
-    public void registerUnsContractOriginRevision() throws Exception {
-
-        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
-        config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress());
-
-        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
-        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
-        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
-        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-
-        Contract referencesContract1 = new Contract(TestKeys.privateKey(1));
-        referencesContract1.seal();
-
-        String reducedName = "name"+Instant.now().getEpochSecond();
-        String name = "change"+Instant.now().getEpochSecond();
-
-        Set<PublicKey> manufacturePublicKeys = new HashSet<>();
-        manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
-        UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                reducedName, "test description", "http://test.com", referencesContract1);
-
-        uns.getUnsName(reducedName).setUnsReducedName(reducedName);
-        uns.addSignerKey(TestKeys.privateKey(1));
-        uns.addSignerKey(authorizedNameServiceKey);
-        uns.seal();
-        uns.check();
-        uns.traceErrors();
-
-        Contract paymentContract = getApprovedUContract();
-
-        Parcel parcel = ContractsService.createParcel(referencesContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
-
-        node.registerParcel(parcel);
-        synchronized (uContractLock) {
-            uContract = parcel.getPaymentContract();
-        }
-        // wait parcel
-        node.waitParcel(parcel.getId(), 8000);
-        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract1.getId(), 8000).state);
-
-        paymentContract = getApprovedUContract();
-
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
-
-        node.registerParcel(payingParcel);
-        synchronized (uContractLock) {
-            uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
-
-        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
-
-        assertEquals(1, ledger.getNameRecord(reducedName).getEntries().size());
-
-        Set<PrivateKey> keys = new HashSet<>();
-        keys.add(TestKeys.privateKey(1));
-        keys.add(manufacturePrivateKeys.iterator().next());
-        keys.add(authorizedNameServiceKey);
-
-        Contract referencesContract2 = referencesContract1.createRevision(TestKeys.privateKey(1));
-        referencesContract2.setOwnerKeys(TestKeys.privateKey(8));
-        referencesContract2.seal();
-        paymentContract = getApprovedUContract();
-
-        parcel = ContractsService.createParcel(referencesContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
-
-        node.registerParcel(parcel);
-        synchronized (uContractLock) {
-            uContract = parcel.getPaymentContract();
-        }
-        // wait parcel
-        node.waitParcel(parcel.getId(), 8000);
-        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract2.getId(), 8000).state);
-
-        UnsContract unsOriginal = uns;
-
-        //Create revision to add payment without any changes. Should be declined
-        uns = (UnsContract) unsOriginal.createRevision(keys);
-        uns.addOriginContract(referencesContract1);
-        uns.setNodeInfoProvider(nodeInfoProvider);
-        uns.seal();
-
-        paymentContract = getApprovedUContract();
-
-        payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
-
-        payingParcel = Parcel.unpack(payingParcel.pack());
-
-        node.registerParcel(payingParcel);
-        synchronized (uContractLock) {
-            uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.UNDEFINED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
-
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
-
-        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
-
-        uns = (UnsContract) unsOriginal.createRevision(keys);
-        uns.addOriginContract(referencesContract2);
-        uns.setNodeInfoProvider(nodeInfoProvider);
-        uns.seal();
-
-        paymentContract = getApprovedUContract();
-
-        payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
-
-        payingParcel = Parcel.unpack(payingParcel.pack());
-
-        node.registerParcel(payingParcel);
-        synchronized (uContractLock) {
-            uContract = payingParcel.getPayloadContract().getNew().get(0);
-        }
-        // wait parcel
-        node.waitParcel(payingParcel.getId(), 8000);
-        // check payment and payload contracts
-        ItemResult ir = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, ir.state);
-        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
-
-        assertEquals("ok", ir.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-
-        Thread.sleep(5000);
-
-        // additional check for all network nodes
-        nodes.forEach(n -> assertEquals(n.getLedger().getNameRecord(reducedName).getEntries().size(),1));
-
-        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
-    }
+*/
 
     @Test(timeout = 90000)
     public void checkUnsContractRefContractNotApproved() throws Exception {
@@ -11973,7 +11820,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", referencesContract);
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -12018,7 +11865,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", referencesContract);
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -12063,7 +11910,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", referencesContract);
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
         uns.check();
@@ -12117,7 +11964,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
                 name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
-        uns.getUnsName(name).setUnsReducedName(name);
+        uns.getName(name).setUnsReducedName(name);
 
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
@@ -12155,11 +12002,11 @@ public class BaseNetworkTest extends TestCase {
 
         UnsContract uns = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
 
-        UnsName unsName = uns.getUnsName("test_from_dsl");
-        unsName.removeUnsRecord(0);
+        UnsName unsName = uns.getName("test_from_dsl");
+        uns.removeAddress(uns.getAddresses().iterator().next());
         unsName.setUnsName("test_from_dsl" + Instant.now().getEpochSecond());
         unsName.setUnsReducedName("test_from_dsl" + Instant.now().getEpochSecond());
-        unsName.addUnsRecord(new UnsRecord(randomPrivKey.getPublicKey()));
+        uns.addKey(randomPrivKey.getPublicKey());
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(manufacturePrivateKeys.iterator().next());
@@ -12214,14 +12061,9 @@ public class BaseNetworkTest extends TestCase {
 
         String name = "testname"+Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(name, "testname description", "http://testname.com");
-        unsName.setUnsReducedName(name);
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey1.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(nameContract1.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns1.addUnsName(unsName);
-        uns1.addOriginContract(nameContract1);
+        uns1.addName(name,name, "testname description");
+        uns1.addOrigin(nameContract1);
+
 
         uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.seal();
@@ -12267,14 +12109,10 @@ public class BaseNetworkTest extends TestCase {
         uns2.seal();
 
         PrivateKey randomPrivateKey2 = new PrivateKey(2048);
-        unsName = new UnsName(name, "testname description", "http://testname.com");
-        unsName.setUnsReducedName(name);
-        unsRecord1 = new UnsRecord(randomPrivateKey2.getPublicKey());
-        unsRecord2 = new UnsRecord(nameContract2.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns2.addUnsName(unsName);
-        uns2.addOriginContract(nameContract2);
+
+        uns2.addName(name,name, "testname description");
+        uns2.addOrigin(nameContract2);
+
 
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
@@ -12309,7 +12147,7 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, irPayload.state);
-        assertErrorsContainsSubstr(irPayload.errors, "name '"+unsName.getUnsReducedName()+"' is not available");
+        assertErrorsContainsSubstr(irPayload.errors, "name '"+name+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
@@ -12337,19 +12175,16 @@ public class BaseNetworkTest extends TestCase {
 
         UnsContract uns1 = ContractsService.createUnsContract(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider);
         uns1.addSignerKey(authorizedNameServiceKey);
+        uns1.addSignerKey(randomPrivateKey);
+        uns1.addSignerKey(TestKeys.privateKey(8));
 
-        UnsName unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
-        unsName.setUnsReducedName("testbusyaddress"+Instant.now().getEpochSecond());
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(nameContract1.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns1.addUnsName(unsName);
-        uns1.addOriginContract(nameContract1);
+
+        String name ="testbusyaddress"+Instant.now().getEpochSecond();
+        uns1.addName(name,name,"");
+        uns1.addKey(randomPrivateKey.getPublicKey());
+        uns1.addOrigin(nameContract1);
 
         uns1.seal();
-        uns1.addSignatureToSeal(randomPrivateKey);
-        uns1.addSignatureToSeal(TestKeys.privateKey(8));
         uns1.check();
         uns1.traceErrors();
 
@@ -12387,21 +12222,17 @@ public class BaseNetworkTest extends TestCase {
 
         UnsContract uns2 = ContractsService.createUnsContract(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider);
         uns2.addSignerKey(authorizedNameServiceKey);
+        uns2.addSignerKey(randomPrivateKey);
+        uns2.addSignerKey(TestKeys.privateKey(9));
         uns2.seal();
 
-        unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
-        unsName.setUnsReducedName("testbusyaddress"+Instant.now().getEpochSecond());
-        unsRecord1 = new UnsRecord(randomPrivateKey.getPublicKey());
-        unsRecord2 = new UnsRecord(nameContract2.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns2.addUnsName(unsName);
-        uns2.addOriginContract(nameContract2);
+        name ="testbusyaddress"+Instant.now().getEpochSecond()+"aaa";
+        uns2.addName(name,name,"");
+        uns2.addKey(randomPrivateKey.getPublicKey());
+        uns2.addOrigin(nameContract2);
 
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
-        uns2.addSignatureToSeal(randomPrivateKey);
-        uns2.addSignatureToSeal(TestKeys.privateKey(9));
         uns2.check();
         uns2.traceErrors();
 
@@ -12431,8 +12262,8 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, irPayload.state);
-        assertErrorsContainsSubstr(irPayload.errors, "address '"+unsRecord1.getAddresses().get(0)+"' is not available");
-        assertErrorsContainsSubstr(irPayload.errors, "address '"+unsRecord1.getAddresses().get(1)+"' is not available");
+        assertErrorsContainsSubstr(irPayload.errors, "address '"+randomPrivateKey.getPublicKey().getShortAddress()+"' is not available");
+        assertErrorsContainsSubstr(irPayload.errors, "address '"+randomPrivateKey.getPublicKey().getLongAddress()+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
@@ -12462,14 +12293,11 @@ public class BaseNetworkTest extends TestCase {
         uns1.addSignerKey(authorizedNameServiceKey);
         uns1.seal();
 
-        UnsName unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
-        unsName.setUnsReducedName("testbusyorigin"+Instant.now().getEpochSecond());
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey1.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(nameContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns1.addUnsName(unsName);
-        uns1.addOriginContract(nameContract);
+        String name = "testbusyorigin"+Instant.now().getEpochSecond();
+
+        uns1.addName(name,name,"");
+        uns1.addKey(randomPrivateKey1.getPublicKey());
+        uns1.addOrigin(nameContract);
 
         uns1.seal();
         uns1.addSignatureToSeal(randomPrivateKey1);
@@ -12511,14 +12339,11 @@ public class BaseNetworkTest extends TestCase {
         uns2.seal();
 
         PrivateKey randomPrivateKey2 = new PrivateKey(2048);
-        unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
-        unsName.setUnsReducedName("testbusyorigin"+Instant.now().getEpochSecond());
-        unsRecord1 = new UnsRecord(randomPrivateKey2.getPublicKey());
-        unsRecord2 = new UnsRecord(nameContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns2.addUnsName(unsName);
-        uns2.addOriginContract(nameContract);
+        name = "testbusyorigin"+Instant.now().getEpochSecond()+"sSSS";
+
+        uns2.addName(name,name,"");
+        uns2.addKey(randomPrivateKey2.getPublicKey());
+        uns2.addOrigin(nameContract);
 
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
@@ -12540,7 +12365,7 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, irPayload.state);
-        assertErrorsContainsSubstr(irPayload.errors, "origin '"+unsRecord2.getOrigin().toBase64String()+"' is not available");
+        assertErrorsContainsSubstr(irPayload.errors, "origin '"+nameContract.getOrigin().toBase64String()+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
     }
@@ -12567,14 +12392,10 @@ public class BaseNetworkTest extends TestCase {
 
         String reducedName = "testTime" + Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(reducedName, "test description", "http://test.com");
-        unsName.setUnsReducedName(reducedName);
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+
+        uns.addName(reducedName,reducedName,"");
+        uns.addOrigin(referencesContract);
+        uns.addKey(randomPrivKey.getPublicKey());
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
@@ -12614,10 +12435,10 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2);
+        assertEquals(ledger.getNameEntries(reducedName).size(), 2);
 
         // check calculation expiration time
-        double days = (double) 1470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / uns.getUnsName(reducedName).getRecordsCount();
+        double days = (double) 1470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / uns.getNames().size();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
@@ -12646,19 +12467,19 @@ public class BaseNetworkTest extends TestCase {
         refilledUnsContract.addSignerKey(randomPrivKey);
         refilledUnsContract.addSignerKey(TestKeys.privateKey(8));
         refilledUnsContract.addSignerKey(authorizedNameServiceKey);
-        refilledUnsContract.addOriginContract(referencesContract);
+        //refilledUnsContract.addOriginContract(referencesContract);
         refilledUnsContract.seal();
 
         paymentContract = getApprovedUContract();
 
-        payingParcel = ContractsService.createPayingParcel(refilledUnsContract.getTransactionPack(), paymentContract, 1, 1000, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(refilledUnsContract.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         refilledUnsContract.check();
         refilledUnsContract.traceErrors();
         assertTrue(refilledUnsContract.isOk());
 
         // check remaining balance
-        assertEquals(2470 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue(), refilledUnsContract.getPrepaidNamesDays().doubleValue(), 0.01);
+        assertEquals(1470 * 2 * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue(), refilledUnsContract.getPrepaidNamesDays().doubleValue(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -12667,19 +12488,20 @@ public class BaseNetworkTest extends TestCase {
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
+        ItemResult ir = node.checkItem(payingParcel.getPayloadContract().getId());
+        System.out.println(ir);
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(refilledUnsContract.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(), 2);
-        assertEquals(refilledUnsContract.getUnsName(reducedName).getRecordsCount(), 2);
+        assertEquals(ledger.getNameEntries(reducedName).size(), 2);
 
         // check prolongation
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentNDs = (double) spentSeconds / (3600 * 24);
 
-        days = (double) (2470 - spentNDs) * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / refilledUnsContract.getUnsName(reducedName).getRecordsCount();
+        days = (double) (1470 * 2 - spentNDs) * config.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue() / refilledUnsContract.getNames().size();
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
@@ -13200,14 +13022,10 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test_stat" + Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsName.setUnsReducedName("test_stat" + Instant.now().getEpochSecond());
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        String name = "test_stat" + Instant.now().getEpochSecond();
+        uns.addName(name,name,"");
+        uns.addKey(randomPrivKey.getPublicKey());
+        uns.addOrigin(referencesContract);
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
@@ -13301,14 +13119,10 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test_stat_declined" + Instant.now().getEpochSecond(), "test description", "http://test.com");
-        unsName.setUnsReducedName("test_stat_declined" + Instant.now().getEpochSecond());
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        String name = "test_stat_declined" + Instant.now().getEpochSecond();
+        uns.addName(name,name,"");
+        uns.addKey(randomPrivKey.getPublicKey());
+        uns.addOrigin(referencesContract);
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
@@ -13516,14 +13330,9 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         String name = HashId.createRandom().toBase64String();
-        UnsName unsName = new UnsName(name, "test description", "http://test.com");
-        unsName.setUnsReducedName(name);
-        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
-        unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
-        uns.addOriginContract(referencesContract);
+        uns.addName(name,name,"");
+        uns.addKey(randomPrivKey.getPublicKey());
+        uns.addOrigin(referencesContract);
 
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();

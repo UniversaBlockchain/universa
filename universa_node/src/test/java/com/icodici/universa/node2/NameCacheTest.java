@@ -19,18 +19,21 @@ public class NameCacheTest {
     public void busyTest() throws Exception {
         NameCache nameCache = new NameCache(Duration.ofMillis(10));
         String testName = "testName";
-        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName)).isEmpty());
-        assertEquals(false, nameCache.lockNameList(Arrays.asList(testName)).isEmpty());
+        HashId id = HashId.createRandom();
+        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName),id).isEmpty());
+        assertEquals(false, nameCache.lockNameList(Arrays.asList(testName),id).isEmpty());
         Thread.sleep(15);
         nameCache.cleanUp();
-        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName)).isEmpty());
+        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName),id).isEmpty());
         nameCache.unlockNameList(Arrays.asList(testName));
-        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName)).isEmpty());
+        assertEquals(true, nameCache.lockNameList(Arrays.asList(testName),id).isEmpty());
     }
 
 
     @Test
     public void multiLock() throws Exception {
+        HashId id = HashId.createRandom();
+
         NameCache nameCache = new NameCache(Duration.ofMillis(10));
         List<HashId> values1hashes = Arrays.asList(HashId.createRandom(), HashId.createRandom(), HashId.createRandom());
         List<HashId> values2hashes = Arrays.asList(HashId.createRandom(), HashId.createRandom());
@@ -45,46 +48,46 @@ public class NameCacheTest {
         valuesEx.addAll(values1);
         valuesEx.addAll(values2);
 
-        assertTrue(nameCache.lockNameList(values1).isEmpty());
-        assertFalse(nameCache.lockNameList(valuesEx).isEmpty());
-        assertTrue(nameCache.lockNameList(values2).isEmpty());
+        assertTrue(nameCache.lockNameList(values1,id).isEmpty());
+        assertFalse(nameCache.lockNameList(valuesEx,id).isEmpty());
+        assertTrue(nameCache.lockNameList(values2,id).isEmpty());
 
-        assertTrue(nameCache.lockOriginList(values1hashes).isEmpty());
-        assertFalse(nameCache.lockOriginList(valuesExhashes).isEmpty());
-        assertTrue(nameCache.lockOriginList(values2hashes).isEmpty());
+        assertTrue(nameCache.lockOriginList(values1hashes,id).isEmpty());
+        assertFalse(nameCache.lockOriginList(valuesExhashes,id).isEmpty());
+        assertTrue(nameCache.lockOriginList(values2hashes,id).isEmpty());
 
-        assertTrue(nameCache.lockAddressList(values1).isEmpty());
-        assertFalse(nameCache.lockAddressList(valuesEx).isEmpty());
-        assertTrue(nameCache.lockAddressList(values2).isEmpty());
+        assertTrue(nameCache.lockAddressList(values1,id).isEmpty());
+        assertFalse(nameCache.lockAddressList(valuesEx,id).isEmpty());
+        assertTrue(nameCache.lockAddressList(values2,id).isEmpty());
 
         nameCache.unlockNameList(values1);
         nameCache.unlockOriginList(values1hashes);
         nameCache.unlockAddressList(values1);
 
-        assertFalse(nameCache.lockNameList(valuesEx).isEmpty());
-        assertFalse(nameCache.lockOriginList(valuesExhashes).isEmpty());
-        assertFalse(nameCache.lockAddressList(valuesEx).isEmpty());
+        assertFalse(nameCache.lockNameList(valuesEx,id).isEmpty());
+        assertFalse(nameCache.lockOriginList(valuesExhashes,id).isEmpty());
+        assertFalse(nameCache.lockAddressList(valuesEx,id).isEmpty());
 
         nameCache.unlockNameList(values2);
         nameCache.unlockOriginList(values2hashes);
         nameCache.unlockAddressList(values2);
 
-        assertTrue(nameCache.lockNameList(valuesEx).isEmpty());
-        assertTrue(nameCache.lockOriginList(valuesExhashes).isEmpty());
-        assertTrue(nameCache.lockAddressList(valuesEx).isEmpty());
+        assertTrue(nameCache.lockNameList(valuesEx,id).isEmpty());
+        assertTrue(nameCache.lockOriginList(valuesExhashes,id).isEmpty());
+        assertTrue(nameCache.lockAddressList(valuesEx,id).isEmpty());
 
         nameCache.cleanUp();
 
-        assertFalse(nameCache.lockNameList(valuesEx).isEmpty());
-        assertFalse(nameCache.lockOriginList(valuesExhashes).isEmpty());
-        assertFalse(nameCache.lockAddressList(valuesEx).isEmpty());
+        assertFalse(nameCache.lockNameList(valuesEx,id).isEmpty());
+        assertFalse(nameCache.lockOriginList(valuesExhashes,id).isEmpty());
+        assertFalse(nameCache.lockAddressList(valuesEx,id).isEmpty());
 
         Thread.sleep(15);
         nameCache.cleanUp();
 
-        assertTrue(nameCache.lockNameList(valuesEx).isEmpty());
-        assertTrue(nameCache.lockOriginList(valuesExhashes).isEmpty());
-        assertTrue(nameCache.lockAddressList(valuesEx).isEmpty());
+        assertTrue(nameCache.lockNameList(valuesEx,id).isEmpty());
+        assertTrue(nameCache.lockOriginList(valuesExhashes,id).isEmpty());
+        assertTrue(nameCache.lockAddressList(valuesEx,id).isEmpty());
     }
 
 }

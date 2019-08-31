@@ -40,21 +40,21 @@ public class NameCache {
         cleanerTimer.purge();
     }
 
-    private boolean lockStringValue(String name_reduced) {
-        Record prev = records.putIfAbsent(name_reduced, new Record(name_reduced));
+    private boolean lockStringValue(String value, HashId lockedBy) {
+        Record prev = records.putIfAbsent(value, new Record(value, lockedBy));
         return (prev == null);
     }
 
-    private void unlockStringValue(String name_reduced) {
-        records.remove(name_reduced);
+    private void unlockStringValue(String value) {
+        records.remove(value);
     }
 
-    private List<String> lockStringList(String prefix, Collection<String> stringList) {
+    private List<String> lockStringList(String prefix, Collection<String> stringList, HashId lockedBy) {
         List<String> unavailableStrings = new ArrayList<>();
         List<String> lockedByThisCall = new ArrayList<>();
         for (String str : stringList) {
             String strWithPrefix = prefix + str;
-            if (lockStringValue(strWithPrefix)) {
+            if (lockStringValue(strWithPrefix, lockedBy)) {
                 lockedByThisCall.add(strWithPrefix);
             } else {
                 unavailableStrings.add(str);
@@ -72,19 +72,19 @@ public class NameCache {
             unlockStringValue(prefix + str);
     }
 
-    public List<String> lockNameList(Collection<String> reducedNameList) {
-        return lockStringList(NAME_PREFIX, reducedNameList);
+    public List<String> lockNameList(Collection<String> reducedNameList, HashId lockedBy) {
+        return lockStringList(NAME_PREFIX, reducedNameList, lockedBy);
     }
 
     public void unlockNameList(Collection<String> reducedNameList) {
         unlockStringList(NAME_PREFIX, reducedNameList);
     }
 
-    public List<String> lockOriginList(Collection<HashId> originList) {
+    public List<String> lockOriginList(Collection<HashId> originList, HashId lockedBy) {
         List<String> stringList = new ArrayList<>();
         for (HashId origin : originList)
             stringList.add(origin.toBase64String());
-        return lockStringList(ORIGIN_PREFIX, stringList);
+        return lockStringList(ORIGIN_PREFIX, stringList, lockedBy);
     }
 
     public void unlockOriginList(Collection<HashId> originList) {
@@ -94,8 +94,8 @@ public class NameCache {
         unlockStringList(ORIGIN_PREFIX, stringList);
     }
 
-    public List<String> lockAddressList(Collection<String> addressList) {
-        return lockStringList(ADDRESS_PREFIX, addressList);
+    public List<String> lockAddressList(Collection<String> addressList, HashId lockedBy) {
+        return lockStringList(ADDRESS_PREFIX, addressList, lockedBy);
     }
 
     public void unlockAddressList(Collection<String> addressList) {
@@ -108,19 +108,36 @@ public class NameCache {
         return records.size();
     }
 
+    public void unlockByLockerId(HashId lockerId) {
+        Set<String> valuesToUnlock = records.values().stream().filter(record -> record.getLockedBy().equals(lockerId)).map(r -> r.getValue()).collect(Collectors.toSet());
+        if(!valuesToUnlock.isEmpty()) {
+            unlockStringList("", valuesToUnlock);
+        }
+    }
+
     private class Record {
         private Instant expiresAt;
-        private String name_reduced;
+        private String value;
+        private HashId lockedBy;
 
-        private Record(String name_reduced) {
+        private Record(String value, HashId lockedBy) {
             expiresAt = Instant.now().plus(maxAge);
-            this.name_reduced = name_reduced;
+            this.value = value;
+            this.lockedBy = lockedBy;
         }
 
         private void checkExpiration(Instant now) {
             if( expiresAt.isBefore(now) ) {
-                records.remove(name_reduced);
+                records.remove(value);
             }
+        }
+
+        public HashId getLockedBy() {
+            return lockedBy;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 

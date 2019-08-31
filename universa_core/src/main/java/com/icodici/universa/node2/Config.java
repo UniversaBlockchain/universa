@@ -196,7 +196,7 @@ public class Config {
     private int negativeConsensus;
     private int positiveConsensus;
     private int resyncBreakConsensus;
-    private int limitRequestsForKeyPerMinute = 30;
+    private int limitRequestsForKeyPerMinute = 600;
     private int rateLimitDisablingPayment = 5;
     private Duration unlimitPeriod = Duration.ofMinutes(5);
     private Duration maxElectionsTime = Duration.ofMinutes(15);

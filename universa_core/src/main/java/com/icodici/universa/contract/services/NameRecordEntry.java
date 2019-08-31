@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
+import net.sergeych.tools.Binder;
 
 import java.time.ZonedDateTime;
 
@@ -13,5 +14,5 @@ public interface NameRecordEntry {
     String getLongAddress();
     String getShortAddress();
     HashId getOrigin();
-
+    Binder getData();
 }

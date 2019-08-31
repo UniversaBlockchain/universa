@@ -1980,7 +1980,7 @@ public class Node {
                             checkPassed = item.check();
 
                             // if item is smart contract we check it additionally
-                            if(item instanceof NSmartContract) {
+                            if(checkPassed && item instanceof NSmartContract) {
                                 // slot contract need ledger, node's config and nodeInfo to work
                                 ((NSmartContract) item).setNodeInfoProvider(nodeInfoProvider);
 
@@ -2898,6 +2898,8 @@ public class Node {
                     DatagramAdapter.VerboseLevel.BASE);
 
             synchronized (ledgerRollbackLock) {
+
+
                 ledger.transaction(() -> {
                     for (StateRecord r : lockedToRevoke) {
                         try {
@@ -2923,6 +2925,7 @@ public class Node {
                     for (StateRecord r : lockedToCreate) {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
+                                nameCache.unlockByLockerId(r.getId());
                                 r.unlock().save();
                                 synchronized (cache) {
                                     ItemResult cr = cache.getResult(r.getId());
@@ -2938,6 +2941,9 @@ public class Node {
                             e.printStackTrace();
                         }
                     }
+
+                    nameCache.unlockByLockerId(item.getId());
+
                     // todo: concurrent modification can happen here!
                     lockedToCreate.clear();
 

@@ -24,8 +24,6 @@ public class NNameRecord implements NameRecord,BiSerializable {
     private String name;
     private String nameReduced;
     private String description;
-    private String url;
-    private Set<NNameRecordEntry> entries = new HashSet<>();
 
     public NNameRecord() {
 
@@ -35,25 +33,11 @@ public class NNameRecord implements NameRecord,BiSerializable {
         name = unsName.getUnsName();
         nameReduced = unsName.getUnsReducedName();
         description = unsName.getUnsDescription();
-        url = unsName.getUnsURL();
         this.expiresAt = expiresAt;
-        unsName.getUnsRecords().forEach(unsRecord -> {
-            String longAddress = null;
-            String shortAddress = null;
-            for (KeyAddress keyAddress : unsRecord.getAddresses()) {
-                if (keyAddress.isLong())
-                    longAddress = keyAddress.toString();
-                else
-                    shortAddress = keyAddress.toString();
-            }
-            entries.add(new NNameRecordEntry(unsRecord.getOrigin(), shortAddress, longAddress));
-        });
     }
 
-    public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt, Set<NNameRecordEntry> entries, long id, long environmentId) {
+    public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt, long id, long environmentId) {
         this(unsName, expiresAt);
-        this.entries.clear();
-        this.entries.addAll(entries);
         this.id = id;
         this.environmentId = environmentId;
     }
@@ -83,16 +67,6 @@ public class NNameRecord implements NameRecord,BiSerializable {
         return description;
     }
 
-    @Override
-    public String getUrl() {
-        return url;
-    }
-
-    @Override
-    public Collection<NameRecordEntry> getEntries() {
-        return new HashSet<>(entries);
-    }
-
     public long getId() {
         return id;
     }
@@ -116,9 +90,7 @@ public class NNameRecord implements NameRecord,BiSerializable {
         data.set("name", serializer.serialize(name));
         data.set("nameReduced", serializer.serialize(nameReduced));
         data.set("description", serializer.serialize(description));
-        data.set("url", serializer.serialize(url));
         data.set("expiresAt", serializer.serialize(expiresAt));
-        data.set("entries", serializer.serialize(Do.list(entries)));
 
         return data;
     }
@@ -129,9 +101,7 @@ public class NNameRecord implements NameRecord,BiSerializable {
         name = data.getString("name");
         nameReduced = data.getString("nameReduced");
         description = data.getString("description",null);
-        url = data.getString("url",null);
         expiresAt = deserializer.deserialize(data.getZonedDateTimeOrThrow("expiresAt"));
-        entries.addAll(deserializer.deserialize(data.getListOrThrow("entries")));
     }
 }
 

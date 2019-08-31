@@ -68,6 +68,7 @@ public interface MutableEnvironment extends ImmutableEnvironment {
 
 
     @NonNull NameRecord createNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt);
+    @NonNull NameRecordEntry createNameRecordEntry(@NonNull UnsRecord unsRecord);
 
     /**
      * Set expiration time for subscription
@@ -113,4 +114,11 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      * @param nameRecord is UNS name record
      */
     void destroyNameRecord(NameRecord nameRecord);
+
+    /**
+     * Remove UNS name record entry from the ledger
+     *
+     * @param nameRecordEntry is UNS name record entry
+     */
+    void destroyNameRecordEntry(NameRecordEntry nameRecordEntry);
 }

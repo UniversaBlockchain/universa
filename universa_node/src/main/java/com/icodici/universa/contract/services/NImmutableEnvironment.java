@@ -40,6 +40,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     protected Set<ContractStorage> storagesSet = new HashSet<>();
 
     protected Set<NameRecord> nameRecordsSet = new HashSet<>();
+    protected Set<NameRecordEntry> nameRecordEntriesSet = new HashSet<>();
     protected Binder kvStore = new Binder();
 
     protected FollowerService followerService;
@@ -69,6 +70,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
                                  Collection<ContractSubscription> subscriptions,
                                  Collection<ContractStorage> storages,
                                  Collection<NameRecord> nameRecords,
+                                 Collection<NameRecordEntry> nameRecordEntries,
                                  FollowerService followerService, Ledger ledger) {
         this(contract, ledger);
 
@@ -86,6 +88,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         storagesSet.addAll(storages);
 
         nameRecordsSet.addAll(nameRecords);
+        nameRecordEntriesSet.addAll(nameRecordEntries);
 
         this.followerService = followerService;
     }
@@ -125,6 +128,11 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     @Override
+    public Iterable<NameRecordEntry> nameRecordEntries() {
+        return nameRecordEntriesSet;
+    }
+
+    @Override
     public List<ErrorRecord> tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate) {
         List<String> namesErrors = isNamesAvailable(reducedNamesToAllocate);
         List<String> originsErrors = isOriginsAvailable(originsToAllocate);
@@ -154,7 +162,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (reducedNames.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableNamesCache = nameCache.lockNameList(reducedNames);
+        List<String> unavailableNamesCache = nameCache.lockNameList(reducedNames, contract.getId());
         if (unavailableNamesCache.size() > 0) {
             return unavailableNamesCache;
         }
@@ -172,7 +180,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (origins.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableOriginsCache = nameCache.lockOriginList(origins);
+        List<String> unavailableOriginsCache = nameCache.lockOriginList(origins, contract.getId());
         if (unavailableOriginsCache.size() > 0) {
             return unavailableOriginsCache;
         }
@@ -190,7 +198,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         if (addresses.size() == 0)
             return new ArrayList<>();
 
-        List<String> unavailableAddressesCache = nameCache.lockAddressList(addresses);
+        List<String> unavailableAddressesCache = nameCache.lockAddressList(addresses, contract.getId());
         if (unavailableAddressesCache.size() > 0) {
             return unavailableAddressesCache;
         }
@@ -235,6 +243,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         data.set("subscriptions", serializer.serialize(Do.list(subscriptionsSet)));
         data.set("storages", serializer.serialize(Do.list(storagesSet)));
         data.set("nameRecords", serializer.serialize(Do.list(nameRecordsSet)));
+        data.set("nameRecordEntries", serializer.serialize(Do.list(nameRecordEntriesSet)));
         data.set("kvStore", serializer.serialize(kvStore));
 
         return data;
@@ -246,6 +255,7 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         subscriptionsSet.addAll(deserializer.deserialize(data.getListOrThrow("subscriptions")));
         storagesSet.addAll(deserializer.deserialize(data.getListOrThrow("storages")));
         nameRecordsSet.addAll(deserializer.deserialize(data.getListOrThrow("nameRecords")));
+        nameRecordEntriesSet.addAll(deserializer.deserialize(data.getListOrThrow("nameRecordEntries")));
         contract = (NSmartContract) Contract.fromPackedTransaction(data.getBinary("contract"));
         kvStore = deserializer.deserialize(data.getBinderOrThrow("kvStore"));
     }

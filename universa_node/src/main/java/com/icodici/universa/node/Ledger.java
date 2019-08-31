@@ -171,6 +171,8 @@ public interface Ledger {
     Set<HashId> findBadReferencesOf(Set<HashId> ids);
 
 
+
+
     public static class Rollback extends Db.RollbackException {
     }
 
@@ -245,10 +247,16 @@ public interface Ledger {
     void removeExpiredStoragesAndSubscriptionsCascade();
 
     void addNameRecord(final NNameRecord nameRecordModel);
-    void removeNameRecord(final String nameReduced);
+    void removeNameRecord(final NNameRecord nameRecordModel);
+
+    void addNameRecordEntry(final NNameRecordEntry nameRecordEntryModel);
+    void removeNameRecordEntry(NNameRecordEntry nameRecordEntry);
+
     NNameRecord getNameRecord(final String nameReduced);
-    NNameRecord getNameByAddress (String address);
-    NNameRecord getNameByOrigin (byte[] origin);
+    List<NNameRecordEntry> getNameEntries(final long environmentId);
+    List<NNameRecordEntry> getNameEntries(final String nameReduced);
+    List<NNameRecord> getNamesByAddress (String address);
+    List<NNameRecord> getNamesByOrigin (byte[] origin);
     List<String> isAllNameRecordsAvailable(final Collection<String> reducedNames);
     List<String> isAllOriginsAvailable(final Collection<HashId> origins);
     List<String> isAllAddressesAvailable(final Collection<String> addresses);

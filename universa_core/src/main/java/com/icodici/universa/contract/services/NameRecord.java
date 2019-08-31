@@ -8,12 +8,8 @@ import java.util.Collection;
  */
 
 public interface NameRecord {
-
     ZonedDateTime expiresAt();
     String getName();
     String getNameReduced();
     String getDescription();
-    String getUrl();
-    Collection<NameRecordEntry> getEntries();
-
 }

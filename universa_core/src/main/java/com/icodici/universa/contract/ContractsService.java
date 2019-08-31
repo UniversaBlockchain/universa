@@ -1386,58 +1386,54 @@ public class ContractsService {
             Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
             String name, String description, String URL, Contract namedContract) {
 
-        UnsContract UnsContract = new UnsContract();
-        UnsContract.setNodeInfoProvider(nodeInfoProvider);
-        UnsContract.setApiLevel(3);
+        UnsContract unsContract = new UnsContract();
+        unsContract.setNodeInfoProvider(nodeInfoProvider);
+        unsContract.setApiLevel(3);
 
-        Contract.Definition cd = UnsContract.getDefinition();
-        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+        Contract.Definition cd = unsContract.getDefinition();
+        cd.setExpiresAt(unsContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Default UNS contract");
         data.set("description", "Default UNS contract description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer",UnsContract);
+        SimpleRole issuerRole = new SimpleRole("issuer",unsContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner",UnsContract);
+        SimpleRole ownerRole = new SimpleRole("owner",unsContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        UnsContract.addRole(issuerRole);
-        UnsContract.addRole("issuer", issuerRole);
-        UnsContract.addRole("creator", issuerRole);
+        unsContract.addRole(issuerRole);
+        unsContract.addRole("issuer", issuerRole);
+        unsContract.addRole("creator", issuerRole);
 
-        UnsContract.addRole(ownerRole);
-        UnsContract.addRole("owner", ownerRole);
+        unsContract.addRole(ownerRole);
+        unsContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-        UnsContract.addPermission(changeOwnerPerm);
+        unsContract.addPermission(changeOwnerPerm);
 
         RevokePermission revokePerm1 = new RevokePermission(ownerRole);
-        UnsContract.addPermission(revokePerm1);
+        unsContract.addPermission(revokePerm1);
 
         RevokePermission revokePerm2 = new RevokePermission(issuerRole);
-        UnsContract.addPermission(revokePerm2);
+        unsContract.addPermission(revokePerm2);
 
-        UnsContract.addUnsSpecific();
+        unsContract.addUnsSpecific();
 
-        UnsName unsName = new UnsName(name, description, URL);
-        UnsRecord unsRecord = new UnsRecord(namedContract.getId());
-        unsName.addUnsRecord(unsRecord);
-        UnsContract.addUnsName(unsName);
-        UnsContract.addOriginContract(namedContract);
+        unsContract.addName(name,null,description);
+        unsContract.addOrigin(namedContract);
+        unsContract.seal();
+        unsContract.addSignatureToSeal(issuerKeys);
 
-        UnsContract.seal();
-        UnsContract.addSignatureToSeal(issuerKeys);
-
-        return UnsContract;
+        return unsContract;
     }
 
     /**
@@ -1464,57 +1460,56 @@ public class ContractsService {
             Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
             String name, String description, String URL, AbstractKey namedKey) {
 
-        UnsContract UnsContract = new UnsContract();
-        UnsContract.setNodeInfoProvider(nodeInfoProvider);
-        UnsContract.setApiLevel(3);
+        UnsContract unsContract = new UnsContract();
+        unsContract.setNodeInfoProvider(nodeInfoProvider);
+        unsContract.setApiLevel(3);
 
-        Contract.Definition cd = UnsContract.getDefinition();
-        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+        Contract.Definition cd = unsContract.getDefinition();
+        cd.setExpiresAt(unsContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Default UNS contract");
         data.set("description", "Default UNS contract description.");
         cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer",UnsContract);
+        SimpleRole issuerRole = new SimpleRole("issuer",unsContract);
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
         }
 
-        SimpleRole ownerRole = new SimpleRole("owner",UnsContract);
+        SimpleRole ownerRole = new SimpleRole("owner",unsContract);
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
         }
 
-        UnsContract.addRole(issuerRole);
-        UnsContract.addRole("issuer", issuerRole);
-        UnsContract.addRole("creator", issuerRole);
+        unsContract.addRole(issuerRole);
+        unsContract.addRole("issuer", issuerRole);
+        unsContract.addRole("creator", issuerRole);
 
-        UnsContract.addRole(ownerRole);
-        UnsContract.addRole("owner", ownerRole);
+        unsContract.addRole(ownerRole);
+        unsContract.addRole("owner", ownerRole);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
-        UnsContract.addPermission(changeOwnerPerm);
+        unsContract.addPermission(changeOwnerPerm);
 
         RevokePermission revokePerm1 = new RevokePermission(ownerRole);
-        UnsContract.addPermission(revokePerm1);
+        unsContract.addPermission(revokePerm1);
 
         RevokePermission revokePerm2 = new RevokePermission(issuerRole);
-        UnsContract.addPermission(revokePerm2);
+        unsContract.addPermission(revokePerm2);
 
-        UnsContract.addUnsSpecific();
+        unsContract.addUnsSpecific();
 
-        UnsName unsName = new UnsName(name, description, URL);
-        UnsRecord unsRecord = new UnsRecord(namedKey);
-        unsName.addUnsRecord(unsRecord);
-        UnsContract.addUnsName(unsName);
 
-        UnsContract.seal();
-        UnsContract.addSignatureToSeal(issuerKeys);
+        unsContract.addName(name, null,description);
+        unsContract.addKey((PublicKey) namedKey.getPublicKey());
 
-        return UnsContract;
+        unsContract.seal();
+        unsContract.addSignatureToSeal(issuerKeys);
+
+        return unsContract;
     }
 
     /**

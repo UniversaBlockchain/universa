@@ -212,7 +212,7 @@ public class StateRecord implements HashIdentifiable, IStateRecord {
     public StateRecord lockToRevoke(HashId idToRevoke) {
         checkLedgerExists();
         if (state != ItemState.PENDING)
-            throw new IllegalStateException("only pending records are allowed to lock others");
+            throw new IllegalStateException("only pending records are allowed to lock others. found:  " + state);
 
         StateRecord lockedRecord = ledger.getRecord(idToRevoke);
         if (lockedRecord == null)
