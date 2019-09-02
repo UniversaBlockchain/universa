@@ -423,6 +423,8 @@ public class UnsMainTest extends BaseMainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(name));
         //LAST NODE MISSED UNS2 REVOKE
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
+        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name);
+        List<NNameRecordEntry> nrmEntriesLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name);
 
         //REGISTER UNS3
         paymentContract = getApprovedUContract(testSpace);
@@ -441,10 +443,8 @@ public class UnsMainTest extends BaseMainTest {
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
         NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(name);
-        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name);
 
         List<NNameRecordEntry> nrmEntries = testSpace.node.node.getLedger().getNameEntries(name);
-        List<NNameRecordEntry> nrmEntriesLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name);
 
         assertEquals(nrmEntries.size(), 1);
         assertEquals(nrmEntriesLast.size(), 1);
@@ -605,6 +605,7 @@ public class UnsMainTest extends BaseMainTest {
         uns2 = (UnsContract) uns2.createRevision(keys);
         uns2.removeName(name);
         uns2.addName(name + "2",name + "2", "test description");
+        uns2.removeKey(randomPrivKey2.getPublicKey());
         uns2.addKey(randomPrivKey4.getPublicKey());
 
 
@@ -634,6 +635,7 @@ public class UnsMainTest extends BaseMainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(name));
         //LAST NODE MISSED UNS2 REVISION
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
+        List<NNameRecordEntry> nrmEntriesLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name);
 
         //REGISTER UNS3
         paymentContract = getApprovedUContract(testSpace);
@@ -655,7 +657,6 @@ public class UnsMainTest extends BaseMainTest {
         NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(name);
         NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name);
         List<NNameRecordEntry> nrmEntries = testSpace.node.node.getLedger().getNameEntries(name);
-        List<NNameRecordEntry> nrmEntriesLast = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name);
 
 
         assertEquals(nrmEntries.size(), 1);
@@ -780,7 +781,7 @@ public class UnsMainTest extends BaseMainTest {
         //LAST NODE MISSED UNS REVISION
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
         assertNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name2));
-
+        List<NNameRecordEntry> lastEntries = testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name);
         //REGISTER UNS
 
 
@@ -824,7 +825,7 @@ public class UnsMainTest extends BaseMainTest {
         //LAST NODE MISSED UNS REVISION
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
         assertNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name2));
-        assertEquals(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameEntries(name).iterator().next().getLongAddress(), long1.toString());
+        assertEquals(lastEntries.iterator().next().getLongAddress(), long1.toString());
 
         Thread.sleep(4000);
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size() - 1).node.getLedger().getNameRecord(name));
