@@ -26,6 +26,45 @@ import static org.junit.Assert.assertTrue;
 
 public class UnsMainTest extends BaseMainTest {
 
+    @Test
+    public void simpleUnsRegistration() throws Exception {
+        TestSpace ts = prepareTestSpace();
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        ts.nodes.forEach(n->n.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
+
+        PrivateKey keyToRegister = new PrivateKey(2048);
+        PrivateKey unsIssuer = TestKeys.privateKey(2);
+
+        //create initial contract
+        UnsContract uns = new UnsContract(unsIssuer);
+        uns.setNodeInfoProvider(nodeInfoProvider);
+
+        String name = "Universa"+ ZonedDateTime.now();
+        String desc = "Universa keys and origins";
+        uns.addName(name,name+"_reduced",desc);
+        uns.addKey(keyToRegister.getPublicKey());
+        uns.addData(Binder.of("host","192.168.1.1"));
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.addSignerKey(keyToRegister);
+        uns.seal();
+        ZonedDateTime plannedExpirationDate = ZonedDateTime.now().plusMonths(12);
+        Parcel parcel = uns.createRegistrationParcel(plannedExpirationDate, getApprovedUContract(ts),
+                Do.listOf(ts.myKey), Do.listOf(unsIssuer, authorizedNameServiceKey,keyToRegister));
+
+        assertEquals(ts.client.registerParcelWithState(parcel.pack(),8000).state,ItemState.APPROVED);
+
+
+        Binder res = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
+        List<Binder> names = res.getListOrThrow("names");
+        ZonedDateTime actualExpirationDate = ((ZonedDateTime) names.get(0).get("expiresAt"));
+        assertTrue(plannedExpirationDate.toEpochSecond() < actualExpirationDate.toEpochSecond());
+        long secondsDiff = actualExpirationDate.toEpochSecond() - plannedExpirationDate.toEpochSecond();
+
+        assertTrue(secondsDiff < 3600*24*nodeInfoProvider.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue());
+
+        ts.shutdown();
+    }
 
 
     @Test

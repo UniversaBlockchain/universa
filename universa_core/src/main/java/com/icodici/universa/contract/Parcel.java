@@ -6,7 +6,9 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -14,6 +16,9 @@ import net.sergeych.tools.Binder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.HashSet;
 
 
 @BiType(name = "Parcel")
@@ -30,6 +35,98 @@ public class Parcel implements BiSerializable {
 
     private int quantasLimit = 0;
     private boolean isTestPayment = false;
+
+
+    private static Contract createPayment(Contract uContract, Collection<PrivateKey> uKeys, int amount, boolean withTestPayment) {
+        Contract payment = uContract.createRevision(uKeys);
+        String fieldName = withTestPayment ? "test_transaction_units" : "transaction_units";
+        payment.getStateData().set(fieldName, uContract.getStateData().getIntOrThrow(fieldName) - amount);
+        payment.seal();
+        try {
+            payment.getQuantiser().resetNoLimit();
+            if(!payment.check()) {
+                String reason;
+                if(!payment.getOwner().isAllowedForKeys(new HashSet<>(uKeys))) {
+                    reason = "Check that provided keys are enough to resolve U-contract owner.";
+                } else if(payment.getStateData().getIntOrThrow(fieldName) < 0 ) {
+                    reason = "Check provided U-contract to have at least " + amount + (withTestPayment ? " test":"") + " units available.";
+                } else {
+                    reason = payment.getErrorsString();
+                }
+
+                throw new IllegalArgumentException("Unable to create payment. " + reason);
+            }
+        } catch (Quantiser.QuantiserException ignored) {
+
+        }
+
+        return payment;
+    }
+
+    /**
+     * Create parcel used for paid contract registration on the network.
+     *
+     * @param payload contract to be registered on the network
+     * @param uContract contract containing units used for payment
+     * @param uKeys keys to resolve owner of payment contract
+     * @return parcel to be registered
+     */
+
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys) {
+        return of(payload,uContract,uKeys,false);
+    }
+
+    /**
+     * Create parcel used for paid contract registration on the network.
+     *
+     * @param payload contract to be registered on the network
+     * @param uContract contract containing units used for payment
+     * @param uKeys keys to resolve owner of payment contract
+     * @param withTestPayment flag indicates if test units should be used and contract should be registered on the TestNet rather than MainNet
+     * @return parcel to be registered
+     */
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys, boolean withTestPayment) {
+        try {
+            payload.getQuantiser().resetNoLimit();
+            if(!payload.check()) {
+                throw new IllegalArgumentException("payload contains errors: " + payload.getErrorsString());
+            }
+        } catch (Quantiser.QuantiserException ignored) {
+
+        }
+        int costU = payload.getProcessedCostU();
+
+        Contract payment = createPayment(uContract,uKeys,costU,withTestPayment);
+
+        return new Parcel(payload.getTransactionPack(),payment.getTransactionPack());
+    }
+
+
+    /**
+     * Adds an additional paying amount to the parcel.
+     *
+     * Main payment contract of a parcel is used for an additional payment so it must contain required amount of units.
+     * An additional payment is used by various types of {@link com.icodici.universa.contract.services.NSmartContract}
+     *
+     * Note: adding an additional payment to a parcel drops payload contract signatures so these must be added again.
+     *
+     * @param payingAmount an amount paid additionally.
+     * @param uKeys keys to resolve owner of parcel main payment contract
+     * @param keyToSignPayloadWith keys sign payload contract with.
+     */
+
+    public void addPayingAmount(int payingAmount,Collection<PrivateKey> uKeys, Collection<PrivateKey> keyToSignPayloadWith) {
+        Contract transactionPayment = payment.getContract();
+
+        Contract payment = createPayment(transactionPayment,uKeys,payingAmount,false);
+
+        // we add new item to the contract, so we need to recreate transaction pack
+        Contract mainContract = payload.getContract();
+        mainContract.addNewItems(payment);
+        mainContract.seal();
+        mainContract.addSignatureToSeal(new HashSet<>(keyToSignPayloadWith));
+        this.payload = mainContract.getTransactionPack();
+    }
 
     /**
      * Terms.

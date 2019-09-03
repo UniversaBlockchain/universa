@@ -9,6 +9,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
@@ -26,6 +27,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -761,5 +763,31 @@ public class UnsContract extends NSmartContract {
         return k.isPresent() ? k.get() : null;
     }
 
+
+
+    public int getPayingAmount(ZonedDateTime unsExpirationDate ) {
+        double nameDaysShouldBeValidFor = getStoredUnitsCount()*(unsExpirationDate.toEpochSecond() - getCreatedAt().toEpochSecond())/(3600.0*24);
+
+        UnsContract parentContract = (UnsContract) getRevokingItem(getParent());
+        double prepaidNameDaysLeft = 0;
+        if(parentContract != null) {
+            prepaidNameDaysLeft = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
+            prepaidNameDaysLeft -= parentContract.getStoredUnitsCount()*((double)(getCreatedAt().toEpochSecond()-parentContract.getCreatedAt().toEpochSecond()))/(3600*24);
+        }
+
+        nameDaysShouldBeValidFor -= prepaidNameDaysLeft;
+        int amount = (int) Math.ceil(nameDaysShouldBeValidFor / getRate().doubleValue());
+        if(amount < getMinPayment()) {
+            amount = getMinPayment();
+        }
+        return amount;
+    }
+
+    public Parcel createRegistrationParcel(ZonedDateTime unsExpirationDate, Contract uContract, Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignUnsWith) {
+        int amount = getPayingAmount(unsExpirationDate);
+        Parcel parcel = Parcel.of(this, uContract, uKeys);
+        parcel.addPayingAmount(amount,uKeys,keysToSignUnsWith);
+        return parcel;
+    }
 }
 
