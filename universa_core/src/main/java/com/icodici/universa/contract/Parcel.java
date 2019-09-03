@@ -36,8 +36,31 @@ public class Parcel implements BiSerializable {
     private int quantasLimit = 0;
     private boolean isTestPayment = false;
 
+    public static class BadPayloadException extends IllegalArgumentException {
+        public BadPayloadException(String message) {
+            super(message);
+        }
+    }
 
-    private static Contract createPayment(Contract uContract, Collection<PrivateKey> uKeys, int amount, boolean withTestPayment) {
+    public static class BadPaymentException extends IllegalArgumentException {
+        public BadPaymentException(String message) {
+            super(message);
+        }
+    }
+
+    public static class OwnerNotResolvedException extends BadPaymentException {
+        public OwnerNotResolvedException(String message) {
+            super(message);
+        }
+    }
+
+    public static class InsufficientFundsException extends BadPaymentException {
+        public InsufficientFundsException(String message) {
+            super(message);
+        }
+    }
+
+    private static Contract createPayment(Contract uContract, Collection<PrivateKey> uKeys, int amount, boolean withTestPayment) throws InsufficientFundsException,OwnerNotResolvedException {
         Contract payment = uContract.createRevision(uKeys);
         String fieldName = withTestPayment ? "test_transaction_units" : "transaction_units";
         payment.getStateData().set(fieldName, uContract.getStateData().getIntOrThrow(fieldName) - amount);
@@ -45,16 +68,13 @@ public class Parcel implements BiSerializable {
         try {
             payment.getQuantiser().resetNoLimit();
             if(!payment.check()) {
-                String reason;
                 if(!payment.getOwner().isAllowedForKeys(new HashSet<>(uKeys))) {
-                    reason = "Check that provided keys are enough to resolve U-contract owner.";
+                    throw new OwnerNotResolvedException("Unable to create payment: Check that provided keys are enough to resolve U-contract owner.");
                 } else if(payment.getStateData().getIntOrThrow(fieldName) < 0 ) {
-                    reason = "Check provided U-contract to have at least " + amount + (withTestPayment ? " test":"") + " units available.";
+                    throw new InsufficientFundsException("Unable to create payment: Check provided U-contract to have at least " + amount + (withTestPayment ? " test":"") + " units available.");
                 } else {
-                    reason = payment.getErrorsString();
+                    throw new BadPaymentException("Unable to create payment: " + payment.getErrorsString());
                 }
-
-                throw new IllegalArgumentException("Unable to create payment. " + reason);
             }
         } catch (Quantiser.QuantiserException ignored) {
 
@@ -72,7 +92,7 @@ public class Parcel implements BiSerializable {
      * @return parcel to be registered
      */
 
-    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys) {
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
         return of(payload,uContract,uKeys,false);
     }
 
@@ -85,11 +105,11 @@ public class Parcel implements BiSerializable {
      * @param withTestPayment flag indicates if test units should be used and contract should be registered on the TestNet rather than MainNet
      * @return parcel to be registered
      */
-    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys, boolean withTestPayment) {
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys, boolean withTestPayment) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException  {
         try {
             payload.getQuantiser().resetNoLimit();
             if(!payload.check()) {
-                throw new IllegalArgumentException("payload contains errors: " + payload.getErrorsString());
+                throw new BadPayloadException("payload contains errors: " + payload.getErrorsString());
             }
         } catch (Quantiser.QuantiserException ignored) {
 
