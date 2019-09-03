@@ -7753,11 +7753,41 @@ public class MainTest {
     }
 
 
+    public void inspectNew(Client client, Contract contract) {
+        contract.getNewItems().forEach(c->{
+            try {
+                System.out.println("NEW:"+client.getState(c.getId()));
+            } catch (ClientError clientError) {
+                clientError.printStackTrace();
+            }
+
+            inspectNew(client, (Contract) c);
+            inspectRevokes(client, (Contract) c);
+        });
+    }
+
+    public void inspectRevokes(Client client, Contract contract) {
+        contract.getRevokingItems().forEach(c->{
+            try {
+                System.out.println("REV:"+client.getState(c.getId()));
+            } catch (ClientError clientError) {
+                clientError.printStackTrace();
+            }
+        });
+    }
+
     @Ignore
     @Test
     public void inspectContract() throws Exception {
         Contract contract = Contract.fromPackedTransaction(Do.read("."));
         contract.check();
+        Client client = new Client("mainnet",null,TestKeys.privateKey(0));
+
+        System.out.println("THIS:"+client.getState(contract.getId()));
+        inspectNew(client,contract);
+        inspectRevokes(client,contract);
+
+
         System.out.println(contract.getErrors());
         System.out.println(contract.getProcessedCostU());
     }
