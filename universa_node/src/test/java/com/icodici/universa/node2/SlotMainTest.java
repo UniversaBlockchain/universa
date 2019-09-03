@@ -48,8 +48,8 @@ public class SlotMainTest extends BaseMainTest {
         ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), nodeInfoProvider);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), client.getConfigProvider());
+        slotContract.attachToNetwork(client);
         slotContract.putTrackingContract(simpleContract);
 
         Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));

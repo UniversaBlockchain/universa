@@ -279,6 +279,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("followerGetRate", this::followerGetRate);
         addSecureEndpoint("queryFollowerInfo", this::queryFollowerInfo);
 
+
+        addSecureEndpoint("getConfigProvider", this::getConfigProvider);
+
         addSecureEndpoint("proxy", this::proxy);
     }
 
@@ -303,6 +306,13 @@ public class ClientHTTPServer extends BasicHttpServer {
         b.put("U", str);
 
         return b;
+    }
+
+    private Binder getConfigProvider(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        return Binder.of("provider",node.getConfigProvider());
     }
 
     private Binder queryNameRecord(Binder params, Session session) throws IOException {

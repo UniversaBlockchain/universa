@@ -75,7 +75,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
-                followerIssuerPublicKeys, nodeInfoProvider);
+                followerIssuerPublicKeys, testSpace.client.getConfigProvider());
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7783/follow.callback",
                 callbackKey.getPublicKey());
 
@@ -454,7 +454,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
-                followerIssuerPublicKeys, nodeInfoProvider);
+                followerIssuerPublicKeys, testSpace.client.getConfigProvider());
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7784/follow.callback",
                 callbackKey.getPublicKey());
 
@@ -741,7 +741,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // refilling follower contract to start synchronization of callbacks
         FollowerContract newRevFollowerContract = (FollowerContract) followerContract.createRevision(key);
-        newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+        newRevFollowerContract.attachToNetwork(testSpace.client);
         newRevFollowerContract.seal();
 
         payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
@@ -860,7 +860,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
-                followerIssuerPublicKeys, nodeInfoProvider);
+                followerIssuerPublicKeys, testSpace.client.getConfigProvider());
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7785/follow.callback",
                 callbackKey.getPublicKey());
 
@@ -1118,7 +1118,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // refilling follower contract to start synchronization of callbacks
         FollowerContract newRevFollowerContract = (FollowerContract) followerContract.createRevision(key);
-        newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+        newRevFollowerContract.attachToNetwork(testSpace.client);
         newRevFollowerContract.seal();
 
         payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
@@ -1206,7 +1206,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // follower contract
         FollowerContract followerContract = ContractsService.createFollowerContract(followerIssuerPrivateKeys,
-                followerIssuerPublicKeys, nodeInfoProvider);
+                followerIssuerPublicKeys, testSpace.client.getConfigProvider());
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7786/follow.callback",
                 callbackKey.getPublicKey());
 
@@ -1471,7 +1471,7 @@ public class FollowerMainTest extends BaseMainTest {
 
         // refilling follower contract to start synchronization of callbacks
         FollowerContract newRevFollowerContract = (FollowerContract) followerContract.createRevision(key);
-        newRevFollowerContract.setNodeInfoProvider(nodeInfoProvider);
+        newRevFollowerContract.attachToNetwork(testSpace.client);
         newRevFollowerContract.seal();
 
         payingParcel = ContractsService.createPayingParcel(newRevFollowerContract.getTransactionPack(), payment, 1, 200, new HashSet<>(asList(TestKeys.privateKey(1))), false);
@@ -1626,8 +1626,8 @@ public class FollowerMainTest extends BaseMainTest {
         ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), nodeInfoProvider);
-        followerContract.setNodeInfoProvider(nodeInfoProvider);
+        FollowerContract followerContract = ContractsService.createFollowerContract(new HashSet<>(asList(TestKeys.privateKey(1))), new HashSet<>(asList(TestKeys.publicKey(1))), client.getConfigProvider());
+        followerContract.attachToNetwork(client);
         followerContract.putTrackingOrigin(simpleContract.getOrigin(), "http://localhost:7777/follow.callback", callbackKey.getPublicKey());
 
         Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(asList(TestKeys.publicKey(1))));

@@ -10,6 +10,8 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -306,4 +308,8 @@ public class NSmartContract extends Contract implements NContract {
     }
 
     public boolean canFollowContract(Contract contract) { return false; }
+
+    public void attachToNetwork(Client client) throws ClientError {
+        setNodeInfoProvider(client.getConfigProvider());
+    }
 }

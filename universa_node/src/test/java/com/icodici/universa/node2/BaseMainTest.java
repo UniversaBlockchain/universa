@@ -301,6 +301,5 @@ public class BaseMainTest {
 
     protected Config configForProvider = new Config();
 
-    protected NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider(configForProvider);
 
 }

@@ -42,6 +42,7 @@ public class Client {
 
 
     static {
+        Config.forceInit(NodeConfigProvider.class);
         Config.forceInit(ItemResult.class);
         Config.forceInit(ErrorRecord.class);
         Config.forceInit(HashId.class);
@@ -1098,6 +1099,23 @@ public class Client {
             Binder result = httpClient.command("unsRate");
             String U = result.getStringOrThrow("U");
             return new Decimal(U);
+        });
+    }
+
+
+    /**
+     * Get the current network config provider.
+     *
+     * Config provider is used by {@link com.icodici.universa.contract.services.NSmartContract}
+     *
+     * @return name-days per U rate
+     * @throws ClientError
+     */
+    public NodeConfigProvider getConfigProvider() throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getConfigProvider");
+            NodeConfigProvider provider = (NodeConfigProvider) result.get("provider");
+            return provider;
         });
     }
 

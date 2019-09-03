@@ -1225,6 +1225,10 @@ public class Node {
         return network.pingNodeTCP(nodeNumber,timeoutMillis);
     }
 
+    public NodeConfigProvider getConfigProvider() {
+        return nodeInfoProvider;
+    }
+
 
     /// ParcelProcessor ///
 

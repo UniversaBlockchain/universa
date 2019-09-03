@@ -17,6 +17,8 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
