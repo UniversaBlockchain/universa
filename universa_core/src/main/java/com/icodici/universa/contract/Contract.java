@@ -753,7 +753,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean check(String prefix, Map<HashId,Contract> contractsTree) throws Quantiser.QuantiserException {
         //clear existing errors before check
-        errors.clear();
+        //errors.clear();
 
         quantiser.reset(quantiser.getQuantaLimit());
 
