@@ -651,6 +651,14 @@ public class UnsContract extends NSmartContract {
     }
 
 
+    /**
+     * Add name to be register by UNS1 contract
+     *
+     * @param name name to register
+     * @param reducedName reduced version of registered name (verified by name service)
+     * @param description description
+     */
+
     public void addName(String name,String reducedName,String description) {
         Optional<UnsName> exists = storedNames.stream().filter(unsName -> unsName.getUnsReducedName().equals(reducedName)).findAny();
         if(exists.isPresent()) {
@@ -661,13 +669,29 @@ public class UnsContract extends NSmartContract {
         storedNames.add(un);
     }
 
+    /**
+     * Remove name from the list of names registered by UNS1 contract
+     * @param name
+     * @return
+     */
+
     public boolean removeName(String name) {
         return storedNames.removeIf(unsName -> unsName.getUnsName().equals(name));
     }
 
+    /**
+     * Get all names registered by UNS1 contract
+     * @return
+     */
     public Set<String>  getNames() {
         return storedNames.stream().map(unsName -> unsName.getUnsName()).collect(Collectors.toSet());
     }
+
+    /**
+     * Add origin to be registered by UNS1 contract
+     *
+     * @param contract contract whose origin is registered. Contract is added to UNS1 referenced items.
+     */
 
     public void addOrigin(Contract contract) {
         HashId origin = contract.getOrigin();
@@ -675,6 +699,11 @@ public class UnsContract extends NSmartContract {
         originContracts.put(contract.getOrigin(),contract);
     }
 
+    /**
+     * Add origin to be registered by UNS1 contract
+     *
+     * @param origin to be registered. Corresponding contract must be added to referenced items of transaction manually
+     */
     public void addOrigin(HashId origin) {
         Optional<UnsRecord> exists = storedRecords.stream().filter(unsRecord -> unsRecord.getOrigin() != null && unsRecord.getOrigin().equals(origin)).findAny();
         if(exists.isPresent()) {
@@ -683,13 +712,28 @@ public class UnsContract extends NSmartContract {
         storedRecords.add(new UnsRecord(origin));
     }
 
+
+    /**
+     * Get all origins registered by UNS1 contract
+     * @return
+     */
+
     public Set<HashId> getOrigins() {
         return storedRecords.stream().map(unsRecord -> unsRecord.getOrigin()).filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
+
+    /**
+     * Remove origin from the list of origins registered by UNS1 contract
+     * @param origin to be removed
+     * @return
+     */
+
     public boolean removeOrigin(HashId origin) {
         return storedRecords.removeIf(unsRecord -> unsRecord.getOrigin() != null && unsRecord.getOrigin().equals(origin));
     }
+
+
 
     public void addKey(PublicKey publicKey) {
         Set<KeyAddress> addresses = getAddresses();
@@ -766,6 +810,12 @@ public class UnsContract extends NSmartContract {
     }
 
 
+    /**
+     * Get amount of U to be payed additionally to achieve desired expiration date
+     *
+     * @param unsExpirationDate desired expiration data
+     * @return amount of U to be payed. Can be zero if no additional payment is required
+     */
 
     public int getPayingAmount(ZonedDateTime unsExpirationDate ) {
         double nameDaysShouldBeValidFor = getStoredUnitsCount()*(unsExpirationDate.toEpochSecond() - getCreatedAt().toEpochSecond())/(3600.0*24);
@@ -779,16 +829,33 @@ public class UnsContract extends NSmartContract {
 
         nameDaysShouldBeValidFor -= prepaidNameDaysLeft;
         int amount = (int) Math.ceil(nameDaysShouldBeValidFor / getRate().doubleValue());
-        if(amount < getMinPayment()) {
-            amount = getMinPayment();
+
+        if(amount <= 0) {
+            return 0;
         }
+
+        if(amount < getMinPayment()) {
+            return getMinPayment();
+        }
+
         return amount;
     }
+
+    /**
+     * Create {@link Parcel} to be registered that ensures expiration date of current UNS1 is not less than desired one
+     * @param unsExpirationDate desired expiration date
+     * @param uContract contract to used as payment
+     * @param uKeys keys that resolve owner of payment contract
+     * @param keysToSignUnsWith keys to sign UNS1 contract with (existing signatures are dropped when adding payment)
+     * @return parcel to be registered
+     */
 
     public Parcel createRegistrationParcel(ZonedDateTime unsExpirationDate, Contract uContract, Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignUnsWith) {
         int amount = getPayingAmount(unsExpirationDate);
         Parcel parcel = Parcel.of(this, uContract, uKeys);
-        parcel.addPayingAmount(amount,uKeys,keysToSignUnsWith);
+        if(amount > 0) {
+            parcel.addPayingAmount(amount,uKeys,keysToSignUnsWith);
+        }
         return parcel;
     }
 }

@@ -309,6 +309,16 @@ public class NSmartContract extends Contract implements NContract {
 
     public boolean canFollowContract(Contract contract) { return false; }
 
+
+    /**
+     * Attach current contract to an instance of Universa network.
+     *
+     * This will ensure that all the parameters used by {@link NSmartContract} for local calculations
+     * match the ones connected network is using.
+     *
+     * @param client connection to an instance of Universa network.
+     * @throws ClientError
+     */
     public void attachToNetwork(Client client) throws ClientError {
         setNodeInfoProvider(client.getConfigProvider());
     }
