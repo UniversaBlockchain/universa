@@ -112,10 +112,10 @@ public class Parcel implements BiSerializable {
      *
      * @param payingAmount an amount paid additionally.
      * @param uKeys keys to resolve owner of parcel main payment contract
-     * @param keyToSignPayloadWith keys sign payload contract with.
+     * @param keysToSignPayloadWith keys sign payload contract with.
      */
 
-    public void addPayingAmount(int payingAmount,Collection<PrivateKey> uKeys, Collection<PrivateKey> keyToSignPayloadWith) {
+    public void addPayingAmount(int payingAmount,Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignPayloadWith) {
         Contract transactionPayment = payment.getContract();
 
         Contract payment = createPayment(transactionPayment,uKeys,payingAmount,false);
@@ -124,7 +124,7 @@ public class Parcel implements BiSerializable {
         Contract mainContract = payload.getContract();
         mainContract.addNewItems(payment);
         mainContract.seal();
-        mainContract.addSignatureToSeal(new HashSet<>(keyToSignPayloadWith));
+        mainContract.addSignatureToSeal(new HashSet<>(keysToSignPayloadWith));
         this.payload = mainContract.getTransactionPack();
     }
 
