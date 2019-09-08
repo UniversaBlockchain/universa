@@ -1414,9 +1414,49 @@ state:
          - ref.tag != "test_tag_contract1"
          - ref.tag != test_tag_contract3
          - ref.tag != not_tag
+         - this.state.data.tag == this.tag
+         - this.state.data.tag4 != this.tag
+         - this.state.data.tag4 != ref.tag
+         - this.tag != "test_not_tag"
+         - ref.tag != "test_not_tag"
+         - this.tag != "test_tag_contract2"
+         - this.tag != this.state.data.tag3
+         - ref.tag != this.state.data.tag3
+         - this.state.data.tag != ref.tag
+         - this.state.data.tag2 == ref.tag
+         - ref.state.data.tag == this.tag
+         - ref.state.data.tag2 == ref.tag
+         - ref.definition.data.tag2 == ref.tag
+         - ref.definition.data.tag2 != this.tag
+
+         # mirroring ===========================================================================================\\
+         - test_tag_contract1 == this.tag
+         - test_tag_contract3 != this.tag
+         - not_tag != this.tag
+         - test_tag_contract2 == ref.tag
+         - test_tag_contract3 != ref.tag
+         - not_tag != ref.tag
+         - this.tag == this.state.data.tag
+
+         - this.tag != this.state.data.tag4
+         - ref.tag != this.state.data.tag4
+
+         - this.state.data.tag3 != this.tag
+         - this.state.data.tag3 != ref.tag
+         - ref.tag != this.state.data.tag
+         - ref.tag == this.state.data.tag2
+         - this.tag == ref.state.data.tag
+         - ref.tag == ref.state.data.tag2
+         - ref.tag == ref.definition.data.tag2
+         - this.tag != ref.definition.data.tag2
+         # mirroring ===========================================================================================//
 
  # required section. any application data that could be changed.
  data:
+   tag: test_tag_contract1
+   tag2: test_tag_contract2
+   tag3: test_tag_contract3
+   tag4: test_not_tag
    amount: 1000
    int3: 777
    int4: 7777
