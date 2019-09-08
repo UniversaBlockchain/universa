@@ -2768,6 +2768,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getRole("owner");
             case "creator":
                 return (T) getRole("creator");
+            case "tag":
+                return (T) Binder.of("contractForSearchByTag", this);
         }
         throw new IllegalArgumentException("bad root: " + originalName);
     }

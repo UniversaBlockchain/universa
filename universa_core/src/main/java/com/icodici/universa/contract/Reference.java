@@ -742,7 +742,6 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD && right == null && (leftOperand == null || !leftOperand.equals("null")))
                             break;
 
-
                         if (isBigDecimalConversion) {
                             leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
                             rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
@@ -838,6 +837,46 @@ public class Reference implements BiSerializable {
                                 ((right != null) && right.getClass().getName().endsWith("Reference"))) {
 
                             boolean equals = ((Reference)left).equalsIgnoreType((Reference) right);
+
+                            ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
+
+                        }  else if (((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) ||
+                                ((right != null) && right.getClass().getName().endsWith("Binder") && ((Binder)right).get("contractForSearchByTag") != null)) {
+
+                            boolean b =false;
+                            if (rightOperand.equals("test_tag_contract2"))
+                                b = true;
+
+                            Contract taggedContract = null;
+                            String tag = null;
+                            if ((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) {
+                                if (((Binder)left).get("contractForSearchByTag").getClass().getName().endsWith("Contract") &&
+                                    (right == null || right.getClass().getName().endsWith("String"))) {
+                                    taggedContract = (Contract) ((Binder)left).get("contractForSearchByTag");
+
+                                    if (right != null && right.getClass().getName().endsWith("String"))
+                                        tag = (String) right;
+                                    else
+                                        tag = rightOperand;
+                                }
+                            } else {
+                                if (((Binder)right).get("contractForSearchByTag").getClass().getName().endsWith("Contract") &&
+                                    (left == null || left.getClass().getName().endsWith("String"))) {
+                                    taggedContract = (Contract) ((Binder)right).get("contractForSearchByTag");
+
+                                    if (left != null && left.getClass().getName().endsWith("String"))
+                                        tag = (String) left;
+                                    else
+                                        tag = leftOperand;
+                                }
+                            }
+
+                            if (taggedContract == null || tag == null)
+                                throw new IllegalArgumentException("Incorrect operands for search by tag");
+
+                            Contract foundedContract = taggedContract.getTransactionPack().getTags().get(tag);
+
+                            boolean equals = foundedContract != null && foundedContract.getId().equals(taggedContract.getId());
 
                             ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
 

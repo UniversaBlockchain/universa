@@ -181,6 +181,13 @@ public class ReferenceConditionsTest {
         tp.addReferencedItem(contract2);
         tp.addSubItem(contract3);
         tp.addReferencedItem(contract3);
+        contract2.setTransactionPack(tp);
+        contract3.setTransactionPack(tp);
+
+        // tags for check
+        tp.addTag("test_tag_contract1", contract1.getId());
+        tp.addTag("test_tag_contract2", contract2.getId());
+        tp.addTag("test_tag_contract3", contract3.getId());
 
         Contract refContract = new Contract(contract1.seal(), tp);
         refContract.check();
@@ -209,6 +216,8 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_can_play").matchingItems.contains(contract2));
         System.out.println("Check arithmetic conditions");
         assertTrue(refContract.getReferences().get("ref_arithmetic").matchingItems.contains(contract2));
+        System.out.println("Check tags conditions");
+        assertTrue(refContract.getReferences().get("ref_tags").matchingItems.contains(contract2));
     }
 
     @Test

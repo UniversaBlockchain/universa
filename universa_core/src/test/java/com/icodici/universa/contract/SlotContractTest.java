@@ -122,7 +122,7 @@ public class SlotContractTest extends ContractTestBase {
             }
         }
     }
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider();
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider(new Config());
 
     @Test
     public void serializeSmartContract() throws Exception {

@@ -148,7 +148,7 @@ public class FollowerContractTest extends ContractTestBase {
 
     }
 
-    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider();
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NodeConfigProvider(new Config());
 
     @Test
     public void serializeSmartContract() throws Exception {

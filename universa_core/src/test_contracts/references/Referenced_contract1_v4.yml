@@ -120,8 +120,6 @@ definition:
        any_of:
          - ref_null.state.data.amount defined
          - ref_null.state.data.amount == ref_null.state.data.amount
-         - ref_null.state.data.amount + 1 > 0
-         - 0 != ref_null.state.data.amount * ref_null.state.data.amount
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:

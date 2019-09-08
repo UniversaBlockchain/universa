@@ -1402,6 +1402,19 @@ state:
 
          # mirroring ===========================================================================================//
 
+ - reference:
+     name: ref_tags
+     where:
+       all_of:
+         - this.tag == test_tag_contract1
+         - this.tag != "test_tag_contract2"
+         - this.tag != test_tag_contract3
+         - this.tag != not_tag
+         - ref.tag == test_tag_contract2
+         - ref.tag != "test_tag_contract1"
+         - ref.tag != test_tag_contract3
+         - ref.tag != not_tag
+
  # required section. any application data that could be changed.
  data:
    amount: 1000
