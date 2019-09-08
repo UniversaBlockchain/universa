@@ -170,6 +170,13 @@ public class UnsMainTest extends BaseMainTest {
 
 
 
+        uns = (UnsContract) uns.createRevision(authorizedNameServiceKey);
+        uns.attachToNetwork(ts.client);
+        uns.getName(name2).setUnsReducedName(name2+"new_reduced");
+        uns.seal();
+
+        registerWithMinimumKeys(uns,Do.listOf(authorizedNameServiceKey),ts,0);
+
 
 
         //create initial contract
