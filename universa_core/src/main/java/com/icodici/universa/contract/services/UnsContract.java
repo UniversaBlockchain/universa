@@ -14,8 +14,11 @@ import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
@@ -36,7 +39,9 @@ import java.util.stream.Collectors;
 
 @BiType(name = "UnsContract")
 public class UnsContract extends NSmartContract {
-    public static final String NAMES_FIELD_NAME = "names";
+    public static final String NAMES_LIST_FIELD_NAME = "names_list";
+    public static final String REDUCED_NAMES_LIST_FIELD_NAME = "reduce_names_list";
+    public static final String DESCRIPTIONS_LIST_FIELD_NAME = "descriptions_list";
     public static final String ENTRIES_FIELD_NAME = "entries";
 
     public static final String PREPAID_ND_FIELD_NAME = "prepaid_ND";
@@ -44,6 +49,7 @@ public class UnsContract extends NSmartContract {
     private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
     private static final String REFERENCE_CONDITION_LEFT = "ref.state.origin";
     private static final int REFERENCE_CONDITION_OPERATOR = 7;       // EQUAL
+    private static final String NAMES_FIELD_NAME = "names";
 
     private List<UnsName> storedNames = new ArrayList<>();
     private List<UnsRecord> storedRecords = new ArrayList<>();
@@ -85,7 +91,7 @@ public class UnsContract extends NSmartContract {
      *
      * @param key is {@link PrivateKey} for creating roles "issuer", "owner", "creator" and sign contract
      */
-    public UnsContract(PrivateKey key) {
+    public UnsContract(PrivateKey key) throws ClientError {
         super(key);
 
         RevokePermission revokePerm1 = new RevokePermission(new RoleLink("@owner", this,"owner"));
@@ -109,13 +115,36 @@ public class UnsContract extends NSmartContract {
         fieldsMap.put("action", null);
         fieldsMap.put("/expires_at", null);
         fieldsMap.put("/references", null);
-        fieldsMap.put(NAMES_FIELD_NAME, null);
+        fieldsMap.put(NAMES_LIST_FIELD_NAME, null);
+        fieldsMap.put(REDUCED_NAMES_LIST_FIELD_NAME, null);
+        fieldsMap.put(DESCRIPTIONS_LIST_FIELD_NAME, null);
         fieldsMap.put(ENTRIES_FIELD_NAME, null);
         fieldsMap.put(PAID_U_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        modifyDataPermission.setId("modify_all");
         addPermission(modifyDataPermission);
+
+
+        Reference refNodeConfigNameService = new Reference(this);
+        refNodeConfigNameService.setName("ref_node_config_name_service");
+        refNodeConfigNameService.setConditions(Binder.of("any_of",Do.listOf(
+                "ref.tag==\"universa:node_config_contract\"",
+                "this can_play ref.state.roles.name_service"
+        )));
+
+
+        SimpleRole nameService = new SimpleRole("name_service", this);
+        nameService.addRequiredReference("ref_node_config_name_service", Role.RequiredMode.ALL_OF);
+        fieldsMap = new HashMap<>();
+        fieldsMap.put(REDUCED_NAMES_LIST_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
+        modifyDataParams = Binder.of("fields", fieldsMap);
+        modifyDataPermission = new ModifyDataPermission(nameService, modifyDataParams);
+        modifyDataPermission.setId("modify_reduced");
+        addPermission(modifyDataPermission);
+
 
         RevokePermission revokePermission = new RevokePermission(ownerLink);
         addPermission(revokePermission);
@@ -162,11 +191,15 @@ public class UnsContract extends NSmartContract {
         saveOriginReferencesToState();
         calculatePrepaidNameDays(true);
 
+
         byte[] res = super.seal();
 
         originContracts.values().forEach(oc->getTransactionPack().addReferencedItem(oc));
         return res;
     }
+
+    private static final String MODIFY_REDUCED_PERMISSION_ID = "modify_reduced";
+
 
     private boolean isOriginCondition(Object condition, HashId origin) {
 
@@ -237,7 +270,9 @@ public class UnsContract extends NSmartContract {
 
 
     private void saveNamesAndRecordsToState() {
-        getStateData().put(NAMES_FIELD_NAME,storedNames);
+        getStateData().put(NAMES_LIST_FIELD_NAME,storedNames.stream().map(n->n.getUnsName()).collect(Collectors.toList()));
+        getStateData().put(REDUCED_NAMES_LIST_FIELD_NAME,storedNames.stream().map(n->n.getUnsReducedName()).collect(Collectors.toList()));
+        getStateData().put(DESCRIPTIONS_LIST_FIELD_NAME,storedNames.stream().map(n->n.getUnsDescription()).collect(Collectors.toList()));
         getStateData().put(ENTRIES_FIELD_NAME,storedRecords);
     }
 
@@ -251,8 +286,16 @@ public class UnsContract extends NSmartContract {
 
     // this method should be only at the deserialize
     private void deserializeForUns(BiDeserializer deserializer) {
+        List<String> names = getStateData().getList(NAMES_LIST_FIELD_NAME, null);
+        List<String> reduced_names = getStateData().getList(REDUCED_NAMES_LIST_FIELD_NAME, null);
+        List<String> descriptions = getStateData().getList(DESCRIPTIONS_LIST_FIELD_NAME, null);
+        storedNames = new ArrayList<>();
+        for(int i = 0; i < names.size(); i++) {
+            UnsName unsName = new UnsName(names.get(i), descriptions.get(i));
+            unsName.setUnsReducedName(reduced_names.get(i));
+            storedNames.add(unsName);
+        }
 
-        storedNames = deserializer.deserialize(getStateData().getList(NAMES_FIELD_NAME, null));
         storedRecords = deserializer.deserialize(getStateData().getList(ENTRIES_FIELD_NAME, null));
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
