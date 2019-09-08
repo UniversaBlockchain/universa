@@ -130,7 +130,7 @@ public class UnsContract extends NSmartContract {
         Reference refNodeConfigNameService = new Reference(this);
         refNodeConfigNameService.setName("ref_node_config_name_service");
         refNodeConfigNameService.setConditions(Binder.of("any_of",Do.listOf(
-                "ref.tag==\"universa:node_config_contract\"",
+                "ref.tag==\""+TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract\"",
                 "this can_play ref.state.roles.name_service"
         )));
 
