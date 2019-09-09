@@ -77,7 +77,9 @@ public class BasicHttpServer {
     private Binder onConnect(Binder params) throws ClientError {
         try {
             PublicKey clientKey = new PublicKey(params.getBinaryOrThrow("client_key"));
-            return inSession(clientKey, session -> session.connect());
+            int version = Math.min(SERVER_VERSION, params.getInt("client_version", 1));
+
+            return inSession(clientKey, session -> session.connect(), version);
         } catch (Exception e) {
             throw new ClientError(Errors.BAD_CLIENT_KEY, "client_key", "bad client key");
         }
@@ -167,8 +169,8 @@ public class BasicHttpServer {
     }
 
 
-    private Binder inSession(PublicKey key, Implementor function) throws EncryptionError {
-        return inSession(getSession(key), function);
+    private Binder inSession(PublicKey key, Implementor function, int protocolVersion) throws EncryptionError {
+        return inSession(getSession(key, protocolVersion), function);
     }
 
     private Binder inSession(Session s, Implementor processor) {
@@ -241,19 +243,25 @@ public class BasicHttpServer {
 //    }
 //
 //
-    ConcurrentHashMap<PublicKey, Session> sessionsByKey = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Integer, ConcurrentHashMap<PublicKey, Session>> sessionsByKey = new ConcurrentHashMap<>();
     ConcurrentHashMap<Long, Session> sessionsById = new ConcurrentHashMap<>();
 
     @NonNull
-    private Session getSession(PublicKey key) throws EncryptionError {
+    private Session getSession(PublicKey key, int protocolVersion) throws EncryptionError {
 //        synchronized (sessionsByKey) {
-            Session r = sessionsByKey.get(key);
-            if (r == null) {
-                r = new Session(key);
-                sessionsByKey.put(key, r);
-                sessionsById.put(r.sessionId, r);
-            }
-            return r;
+        ConcurrentHashMap<PublicKey, Session> protocolSessions = sessionsByKey.get(protocolVersion);
+        if (protocolSessions == null) {
+            protocolSessions = new ConcurrentHashMap<>();
+            sessionsByKey.put(protocolVersion, protocolSessions);
+        }
+
+        Session r = protocolSessions.get(key);
+        if (r == null) {
+            r = new Session(key, protocolVersion);
+            protocolSessions.put(key, r);
+            sessionsById.put(r.sessionId, r);
+        }
+        return r;
 //        }
     }
 
@@ -270,8 +278,9 @@ public class BasicHttpServer {
         private long sessionId = sessionIds.incrementAndGet();
         private int version;
 
-        protected Session(PublicKey key) throws EncryptionError {
+        protected Session(PublicKey key, int protocolVersion) throws EncryptionError {
             publicKey = key;
+            version = protocolVersion;
         }
 
         public PublicKey getPublicKey() {
@@ -314,8 +323,6 @@ public class BasicHttpServer {
                                 "client_nonce", params.getBinaryOrThrow("client_nonce"),
                                 "encrypted_token", encryptedAnswer
                         );
-
-                        version = Math.min(SERVER_VERSION, params.getInt("client_version", 1));
 
                         byte[] packed = Boss.pack(result);
                         return Binder.fromKeysValues(

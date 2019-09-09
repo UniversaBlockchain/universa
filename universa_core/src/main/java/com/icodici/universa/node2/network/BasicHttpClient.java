@@ -150,7 +150,9 @@ public class BasicHttpClient {
 
                 this.session.setPrivateKey(privateKey);
 
-                Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+                Answer a = requestOrThrow("connect",
+                        "client_key", privateKey.getPublicKey().pack(),
+                        "client_version", CLIENT_VERSION);
 
                 this.session.setSessionId(a.data.getLongOrThrow("session_id"));
 
@@ -163,9 +165,7 @@ public class BasicHttpClient {
 
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce,
-                        "server_version", server_version,
-                        "client_version", CLIENT_VERSION
+                        "server_nonce", server_nonce
                 ));
 
                 a = requestOrThrow("get_token",
@@ -229,7 +229,9 @@ public class BasicHttpClient {
 
                 this.targetSession.setPrivateKey(privateKey);
 
-                Answer a = proxyRequestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+                Answer a = proxyRequestOrThrow("connect",
+                        "client_key", privateKey.getPublicKey().pack(),
+                        "client_version", CLIENT_VERSION);
 
                 this.targetSession.setSessionId(a.data.getLongOrThrow("session_id"));
 
@@ -242,9 +244,7 @@ public class BasicHttpClient {
 
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce,
-                        "server_version", server_version,
-                        "client_version", CLIENT_VERSION
+                        "server_nonce", server_nonce
                 ));
 
                 a = proxyRequestOrThrow("get_token",
