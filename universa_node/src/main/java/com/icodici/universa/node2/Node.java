@@ -2946,7 +2946,7 @@ public class Node {
                         }
                     }
 
-                    nameCache.unlockByLockerId(item.getId());
+                    nameCache.unlockByLockerId(itemId);
 
                     // todo: concurrent modification can happen here!
                     lockedToCreate.clear();
