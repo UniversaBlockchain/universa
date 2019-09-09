@@ -46,7 +46,7 @@ public class BasicHttpServer {
 //            session.sessionKey = null;
 //    }
 //
-    private final static int SERVER_VERSION = 2;
+    private final static int SERVER_VERSION = 3;
 
     private interface Implementor {
         Binder apply(Session session) throws Exception;
@@ -77,7 +77,7 @@ public class BasicHttpServer {
     private Binder onConnect(Binder params) throws ClientError {
         try {
             PublicKey clientKey = new PublicKey(params.getBinaryOrThrow("client_key"));
-            int version = Math.min(SERVER_VERSION, params.getInt("client_version", 1));
+            int version = Math.min(SERVER_VERSION, params.getInt("client_version", 0));
 
             return inSession(clientKey, session -> session.connect(), version);
         } catch (Exception e) {
@@ -249,6 +249,12 @@ public class BasicHttpServer {
     @NonNull
     private Session getSession(PublicKey key, int protocolVersion) throws EncryptionError {
 //        synchronized (sessionsByKey) {
+        if (protocolVersion == 0) {
+            Session r = new Session(key, protocolVersion);
+            sessionsById.put(r.sessionId, r);
+            return r;
+        }
+
         ConcurrentHashMap<PublicKey, Session> protocolSessions = sessionsByKey.get(protocolVersion);
         if (protocolSessions == null) {
             protocolSessions = new ConcurrentHashMap<>();
@@ -323,6 +329,8 @@ public class BasicHttpServer {
                                 "client_nonce", params.getBinaryOrThrow("client_nonce"),
                                 "encrypted_token", encryptedAnswer
                         );
+
+                        version = Math.min(SERVER_VERSION, params.getInt("client_version", 1));
 
                         byte[] packed = Boss.pack(result);
                         return Binder.fromKeysValues(

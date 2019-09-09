@@ -44,13 +44,14 @@ public class BasicHttpClient {
     private final static int DEFAULT_RECONNECT_TIMES = 3;
     private final static int CONNECTION_READ_TIMEOUT = 5000;
     private final static int CONNECTION_TIMEOUT = 2000;
-    private final static int CLIENT_VERSION = 2;
+    private static int CLIENT_VERSION = 3;
 
     static private LogPrinter log = new LogPrinter("HTCL");
     private String url;
     protected BasicHttpClientSession session;
     private Client.NodeRecord targetNode = null;
     private BasicHttpClientSession targetSession;
+    private int reconnectTry = 0;
 
     public BasicHttpClient(String rootUrlString) {
         this.url = rootUrlString;
@@ -165,7 +166,9 @@ public class BasicHttpClient {
 
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce
+                        "server_nonce", server_nonce,
+                        "server_version", server_version,
+                        "client_version", CLIENT_VERSION
                 ));
 
                 a = requestOrThrow("get_token",
@@ -244,7 +247,9 @@ public class BasicHttpClient {
 
                 byte[] data = Boss.pack(Binder.fromKeysValues(
                         "client_nonce", client_nonce,
-                        "server_nonce", server_nonce
+                        "server_nonce", server_nonce,
+                        "server_version", server_version,
+                        "client_version", CLIENT_VERSION
                 ));
 
                 a = proxyRequestOrThrow("get_token",
@@ -337,7 +342,7 @@ public class BasicHttpClient {
                     "command", name,
                     "params", params
             );
-            for (int i = 0; i < DEFAULT_RECONNECT_TIMES; i++) {
+            for (int i = reconnectTry; i < DEFAULT_RECONNECT_TIMES; i++) {
                 ErrorRecord er = null;
                 try {
                     Answer a = requestOrThrow("command",
@@ -353,8 +358,10 @@ public class BasicHttpClient {
                                     session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
                     );
                     Binder result = data.getBinder("result", null);
-                    if (result != null)
+                    if (result != null) {
+                        reconnectTry = 0;
                         return result;
+                    }
                     System.out.println("result: " + result);
                     er = (ErrorRecord) data.get("error");
                     if (er == null)
@@ -362,8 +369,10 @@ public class BasicHttpClient {
                 } catch (EndpointException e) {
                     // this is not good = we'd better pass it in the encoded block
                     ErrorRecord r = e.getFirstError();
-                    if (r.getError() == Errors.COMMAND_FAILED)
+                    if (r.getError() == Errors.COMMAND_FAILED) {
+                        reconnectTry = 0;
                         throw e;
+                    }
                     System.err.println(r);
                 } catch (SocketTimeoutException e) {
 //                    e.printStackTrace();
@@ -378,8 +387,10 @@ public class BasicHttpClient {
                     log.d("error executing command " + name + ": " + e);
                 }
                 // if we get here with error, we need to throw it.
-                if (er != null)
+                if (er != null) {
+                    reconnectTry = 0;
                     throw new CommandFailedException(er);
+                }
                 // otherwise it is an recoverable error and we must retry
                 log.d("repeating command " + name + ", attempt " + (i + 1));
                 try {
@@ -387,8 +398,11 @@ public class BasicHttpClient {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+                reconnectTry = i + 1;
                 restart();
+                reconnectTry = 0;
             }
+            reconnectTry = 0;
             throw new IOException("Failed to execute command " + name);
         }
     }
