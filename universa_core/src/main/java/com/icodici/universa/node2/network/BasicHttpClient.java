@@ -19,7 +19,6 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -51,7 +50,7 @@ public class BasicHttpClient {
     protected BasicHttpClientSession session;
     private Client.NodeRecord targetNode = null;
     private BasicHttpClientSession targetSession;
-    private int reconnectTry = 0;
+    private int reconnectionAttempt = 0;
 
     public BasicHttpClient(String rootUrlString) {
         this.url = rootUrlString;
@@ -342,68 +341,65 @@ public class BasicHttpClient {
                     "command", name,
                     "params", params
             );
-            for (int i = reconnectTry; i < DEFAULT_RECONNECT_TIMES; i++) {
-                ErrorRecord er = null;
-                try {
-                    Answer a = requestOrThrow("command",
-                            "command", "command",
-                            "params", (session.getVersion() >= 2) ?
-                                    session.getSessionKey().etaEncrypt(Boss.pack(call)) :
-                                    session.getSessionKey().encrypt(Boss.pack(call)),
-                            "session_id", session.getSessionId()
-                    );
-                    Binder data = Boss.unpack(
-                            (session.getVersion() >= 2) ?
-                                    session.getSessionKey().etaDecrypt(a.data.getBinaryOrThrow("result")) :
-                                    session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
-                    );
-                    Binder result = data.getBinder("result", null);
-                    if (result != null) {
-                        reconnectTry = 0;
-                        return result;
-                    }
-                    System.out.println("result: " + result);
-                    er = (ErrorRecord) data.get("error");
-                    if (er == null)
-                        er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
-                } catch (EndpointException e) {
-                    // this is not good = we'd better pass it in the encoded block
-                    ErrorRecord r = e.getFirstError();
-                    if (r.getError() == Errors.COMMAND_FAILED) {
-                        reconnectTry = 0;
-                        throw e;
-                    }
-                    System.err.println(r);
-                } catch (SocketTimeoutException e) {
-//                    e.printStackTrace();
-                    System.err.println("Socket timeout while executing command " + name);
-                    log.d("Socket timeout while executing command " + name + ": " + e);
-                } catch (ConnectException e) {
-//                    e.printStackTrace();
-                    System.err.println("Connection refused while executing command " + name);
-                    log.d("Connection refused while executing command " + name + ": " + e);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    log.d("error executing command " + name + ": " + e);
-                }
-                // if we get here with error, we need to throw it.
-                if (er != null) {
-                    reconnectTry = 0;
+
+            try {
+                Answer a = requestOrThrow("command",
+                        "command", "command",
+                        "params", (session.getVersion() >= 2) ?
+                                session.getSessionKey().etaEncrypt(Boss.pack(call)) :
+                                session.getSessionKey().encrypt(Boss.pack(call)),
+                        "session_id", session.getSessionId()
+                );
+                Binder data = Boss.unpack(
+                        (session.getVersion() >= 2) ?
+                                session.getSessionKey().etaDecrypt(a.data.getBinaryOrThrow("result")) :
+                                session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
+                );
+                Binder result = data.getBinder("result", null);
+                reconnectionAttempt = 0;
+
+                if (result != null) {
+                    return result;
+                } else {
+                    ErrorRecord er = (ErrorRecord) data.getOrDefault("error",
+                            new ErrorRecord(Errors.FAILURE, "", "unprocessablereply"));
                     throw new CommandFailedException(er);
                 }
+            } catch (CommandFailedException e) {
+                throw e;
+            } catch (EndpointException e) {
+                // this is not good = we'd better pass it in the encoded block
+                ErrorRecord r = e.getFirstError();
+                if (r.getError() == Errors.COMMAND_FAILED) {
+                    reconnectionAttempt = 0;
+                    throw e;
+                }
+                System.err.println(r);
+            } catch (SocketTimeoutException e) {
+                System.err.println("Socket timeout while executing command " + name);
+                log.d("Socket timeout while executing command " + name + ": " + e);
+            } catch (ConnectException e) {
+                System.err.println("Connection refused while executing command " + name);
+                log.d("Connection refused while executing command " + name + ": " + e);
+            } catch (IOException e) {
+                e.printStackTrace();
+                log.d("error executing command " + name + ": " + e);
+            }
+
+            if(++reconnectionAttempt < DEFAULT_RECONNECT_TIMES) {
                 // otherwise it is an recoverable error and we must retry
-                log.d("repeating command " + name + ", attempt " + (i + 1));
+                log.d("repeating command " + name + ", attempt " + reconnectionAttempt);
                 try {
-                    Thread.sleep(i * 3 * 100);
+                    Thread.sleep(reconnectionAttempt * 3 * 100);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                reconnectTry = i + 1;
                 restart();
-                reconnectTry = 0;
+                reconnectionAttempt = 0;
+                return execCommand(name,params);
+            } else {
+                throw new IOException("Failed to execute command " + name);
             }
-            reconnectTry = 0;
-            throw new IOException("Failed to execute command " + name);
         }
     }
 
