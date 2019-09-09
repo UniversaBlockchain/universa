@@ -11,6 +11,7 @@ import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -100,6 +101,7 @@ public class Node {
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     private final NCallbackService callbackService;
+    private Map<String,Contract> serviceTags = new HashMap<>();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -1910,6 +1912,14 @@ public class Node {
                 }
 
                 if(item instanceof Contract) {
+
+                    TransactionPack tp = ((Contract) item).getTransactionPack();
+                    getServiceTags().forEach((k, v) -> {
+                        tp.addReferencedItem(v);
+                        tp.addTag(k, v.getId());
+                    });
+
+
                     if(((Contract)item).isLimitedForTestnet()) {
                         markContractTest((Contract) item);
                     }
@@ -4076,6 +4086,10 @@ public class Node {
         }
     }
 
+
+    public Map<String, Contract> getServiceTags() {
+        return serviceTags;
+    }
 
     public enum ResyncingItemProcessingState {
         WAIT_FOR_VOTES,
