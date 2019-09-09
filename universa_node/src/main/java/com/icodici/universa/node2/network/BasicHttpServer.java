@@ -67,7 +67,7 @@ public class BasicHttpServer {
         service.start(port, maxTrheads);
 
         for(int i = 0; i <= SERVER_VERSION;i++) {
-            sessionsByKeyAndVersion.set(i,new ConcurrentHashMap<>());
+            sessionsByKeyAndVersion.add(new ConcurrentHashMap<>());
         }
 
     }
