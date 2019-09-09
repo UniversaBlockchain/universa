@@ -1,14 +1,14 @@
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.TestCase;
 import com.icodici.universa.TestKeys;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -79,6 +79,14 @@ public class UnsMainTest extends BaseMainTest {
 
 
         ts.nodes.forEach(n->n.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
+
+        Contract nodeConfigPrototype = new Contract(TestKeys.privateKey(11));
+        nodeConfigPrototype.addRole(new SimpleRole("name_service",nodeConfigPrototype,Do.listOf(authorizedNameServiceKey.getPublicKey().getLongAddress())));
+        nodeConfigPrototype.seal();
+        registerWithMinimumKeys(nodeConfigPrototype,Do.listOf(TestKeys.privateKey(11)),ts,0);
+
+        ts.nodes.forEach(n->n.node.getServiceTags().put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",nodeConfigPrototype));
+
 
         Contract referencesContract = new Contract(contractToRegisterIssuer);
         referencesContract.seal();
@@ -951,6 +959,32 @@ public class UnsMainTest extends BaseMainTest {
 
         environment = Boss.load(Boss.pack(environment));
         assertEquals(environment.get("test", null), "test1");
+    }
+
+    @Test
+    public void tagsTest() throws EncryptionError, Quantiser.QuantiserException {
+        Contract contractWithRole = new Contract(TestKeys.privateKey(2));
+//        contractWithRole.addRole(new SimpleRole("name_service",contractWithRole,Do.listOf(TestKeys.publicKey(3).getLongAddress())));
+        contractWithRole.seal();
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        Reference reference = new Reference(contract);
+        reference.setName("asd");
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.tag==\"contractWithRole\"",
+                "this can_play ref.owner"
+//                "this can_play ref.state.roles.name_service"
+        )));
+
+        contract.addReference(reference);
+        contract.addSignerKey(TestKeys.privateKey(2));
+        //contract.addSignerKey(TestKeys.privateKey(3));
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(contractWithRole);
+        contract.getTransactionPack().addTag("contractWithRole",contractWithRole.getId());
+
+        assertTrue(contract.check());
+        contract.traceErrors();
     }
     
 }
