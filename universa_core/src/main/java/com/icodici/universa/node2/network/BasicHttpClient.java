@@ -398,6 +398,7 @@ public class BasicHttpClient {
                 reconnectionAttempt = 0;
                 return execCommand(name,params);
             } else {
+                reconnectionAttempt = 0;
                 throw new IOException("Failed to execute command " + name);
             }
         }
