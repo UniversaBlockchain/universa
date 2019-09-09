@@ -982,6 +982,7 @@ public class UnsMainTest extends BaseMainTest {
         contract.seal();
         contract.getTransactionPack().addReferencedItem(contractWithRole);
         contract.getTransactionPack().addTag("contractWithRole",contractWithRole.getId());
+        contractWithRole.setTransactionPack(contract.getTransactionPack());
 
         assertTrue(contract.check());
         contract.traceErrors();
