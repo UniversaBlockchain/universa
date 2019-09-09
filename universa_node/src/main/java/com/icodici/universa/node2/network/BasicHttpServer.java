@@ -21,10 +21,7 @@ import org.bouncycastle.util.encoders.Base64;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -68,6 +65,11 @@ public class BasicHttpServer {
         addEndpoint("/proxyCommand", params -> inSession(params.getLongOrThrow("session_id"), s -> s.proxyCommand(params)));
 
         service.start(port, maxTrheads);
+
+        for(int i = 0; i <= SERVER_VERSION;i++) {
+            sessionsByKeyAndVersion.set(i,new ConcurrentHashMap<>());
+        }
+
     }
 
     public void on(String path, BasicHTTPService.Handler handler) {
@@ -243,32 +245,34 @@ public class BasicHttpServer {
 //    }
 //
 //
-    ConcurrentHashMap<Integer, ConcurrentHashMap<PublicKey, Session>> sessionsByKey = new ConcurrentHashMap<>();
+    List<Map<PublicKey,Session>> sessionsByKeyAndVersion = new ArrayList<>(SERVER_VERSION+1);
     ConcurrentHashMap<Long, Session> sessionsById = new ConcurrentHashMap<>();
 
     @NonNull
     private Session getSession(PublicKey key, int protocolVersion) throws EncryptionError {
-//        synchronized (sessionsByKey) {
         if (protocolVersion == 0) {
             Session r = new Session(key, protocolVersion);
             sessionsById.put(r.sessionId, r);
             return r;
         }
+        final EncryptionError[] e = new EncryptionError[1];
 
-        ConcurrentHashMap<PublicKey, Session> protocolSessions = sessionsByKey.get(protocolVersion);
-        if (protocolSessions == null) {
-            protocolSessions = new ConcurrentHashMap<>();
-            sessionsByKey.put(protocolVersion, protocolSessions);
+        Session r = sessionsByKeyAndVersion.get(protocolVersion).computeIfAbsent(key, k -> {
+            try {
+                return new Session(k, protocolVersion);
+            } catch (EncryptionError encryptionError) {
+                e[0] = encryptionError;
+                return null;
+            }
+        });
+
+        if(r == null) {
+            throw e[0];
         }
 
-        Session r = protocolSessions.get(key);
-        if (r == null) {
-            r = new Session(key, protocolVersion);
-            protocolSessions.put(key, r);
-            sessionsById.put(r.sessionId, r);
-        }
+        sessionsById.put(r.sessionId, r);
+
         return r;
-//        }
     }
 
     private AtomicLong sessionIds = new AtomicLong(
