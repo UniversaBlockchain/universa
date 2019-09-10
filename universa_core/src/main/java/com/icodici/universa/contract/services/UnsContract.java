@@ -12,15 +12,12 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
-import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
@@ -32,7 +29,6 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,6 +39,7 @@ public class UnsContract extends NSmartContract {
     public static final String REDUCED_NAMES_LIST_FIELD_NAME = "reduce_names_list";
     public static final String DESCRIPTIONS_LIST_FIELD_NAME = "descriptions_list";
     public static final String ENTRIES_FIELD_NAME = "entries";
+    public static final String SUSPENDED_FIELD_NAME = "suspended";
 
     public static final String PREPAID_ND_FIELD_NAME = "prepaid_ND";
 
@@ -137,17 +134,25 @@ public class UnsContract extends NSmartContract {
 
         SimpleRole nameService = new SimpleRole("name_service", this);
         nameService.addRequiredReference("ref_node_config_name_service", Role.RequiredMode.ALL_OF);
+        addRole(nameService);
+
+
         fieldsMap = new HashMap<>();
         fieldsMap.put(REDUCED_NAMES_LIST_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
+        fieldsMap.put(SUSPENDED_FIELD_NAME, null);
         modifyDataParams = Binder.of("fields", fieldsMap);
-        modifyDataPermission = new ModifyDataPermission(nameService, modifyDataParams);
+        modifyDataPermission = new ModifyDataPermission(new RoleLink("@ns",this,"name_service"), modifyDataParams);
         modifyDataPermission.setId("modify_reduced");
         addPermission(modifyDataPermission);
 
 
         RevokePermission revokePermission = new RevokePermission(ownerLink);
         addPermission(revokePermission);
+
+
+        RevokePermission revokePermissionNS = new RevokePermission(new RoleLink("@ns",this,"name_service"));
+        addPermission(revokePermissionNS);
     }
 
     @Deprecated
@@ -191,6 +196,12 @@ public class UnsContract extends NSmartContract {
         saveOriginReferencesToState();
         calculatePrepaidNameDays(true);
 
+        ZonedDateTime expiresAt = getExpiresAt();
+        //TODO: add hold duration to info provider and get it from there
+        ZonedDateTime nameExpires = getNamesExpiration().plusDays(30);
+        if(expiresAt.isBefore(nameExpires)) {
+            setExpiresAt(nameExpires.plusDays(10));
+        }
 
         byte[] res = super.seal();
 
@@ -619,13 +630,13 @@ public class UnsContract extends NSmartContract {
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
         calculatePrepaidNameDays(false);
-        ZonedDateTime expiresAt = calcExpiresAt();
+        ZonedDateTime expiresAt = getNamesExpiration();
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
         storedRecords.forEach(sr ->me.createNameRecordEntry(sr));
         return Binder.fromKeysValues("status", "ok");
     }
 
-    private ZonedDateTime calcExpiresAt() {
+    private ZonedDateTime getNamesExpiration() {
         // get number of entries
         int entries = getStoredUnitsCount();
 
@@ -639,7 +650,7 @@ public class UnsContract extends NSmartContract {
     public Binder onUpdated(MutableEnvironment me) {
         calculatePrepaidNameDays(false);
 
-        ZonedDateTime expiresAt = calcExpiresAt();
+        ZonedDateTime expiresAt = getNamesExpiration();
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
 
@@ -676,7 +687,7 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public Binder getExtraResultForApprove() {
-        return Binder.of("expires_at", calcExpiresAt().toEpochSecond());
+        return Binder.of("expires_at", getNamesExpiration().toEpochSecond());
     }
 
     private void addOriginReference(HashId origin) {
