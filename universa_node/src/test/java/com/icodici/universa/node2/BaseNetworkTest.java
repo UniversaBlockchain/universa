@@ -76,6 +76,7 @@ public class BaseNetworkTest extends TestCase {
     public void init(Node node, List<Node> nodes, Map<NodeInfo,Node> nodesMap, Network network, Ledger ledger, Config config) throws Exception {
         this.node = node;
         this.nodes = nodes;
+        nodes.forEach(n->n.getServiceTags().clear());
         this.nodesMap = nodesMap;
         this.network = network;
         this.ledger = ledger;
