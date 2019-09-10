@@ -2125,10 +2125,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         } else {
             result.remove("salt");
         }
+        HashId previousId = sealedBinary != null ? HashId.of(sealedBinary) : null;
+
         sealedBinary = Boss.pack(result);
         Collection<Contract> referencedItems = null;
+        Map<String,HashId> tags = null;
+
         if(transactionPack != null) {
             referencedItems = new ArrayList<>(transactionPack.getReferencedItems().values());
+            tags = new HashMap<>();
+            for(String tag : transactionPack.getTags().keySet()) {
+                tags.put(tag,transactionPack.getTags().get(tag).getId());
+            }
             transactionPack = null;
         }
         this.id = HashId.of(sealedBinary);
@@ -2136,6 +2144,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if(referencedItems != null) {
             TransactionPack tp = getTransactionPack();
             referencedItems.forEach(ri -> tp.addReferencedItem(ri));
+        }
+
+        if(tags != null) {
+            TransactionPack tp = getTransactionPack();
+            tags.forEach((k,v) -> {
+                //if main contract was tagged use its new it instead
+                if(previousId != null && v.equals(previousId)) {
+                    v = id;
+                }
+
+                tp.addTag(k,v);
+            });
         }
     }
 
@@ -2748,6 +2768,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getRole("owner");
             case "creator":
                 return (T) getRole("creator");
+            case "tag":
+                return (T) Binder.of("contractForSearchByTag", this);
         }
         throw new IllegalArgumentException("bad root: " + originalName);
     }

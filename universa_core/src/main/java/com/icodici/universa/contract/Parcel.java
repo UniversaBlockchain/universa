@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 @BiType(name = "Parcel")
@@ -84,7 +86,8 @@ public class Parcel implements BiSerializable {
     }
 
     /**
-     * Create parcel used for paid contract registration on the network.
+     * Create parcel used for paid contract registration on the network and
+     * adds an additional paying amount to the main contract of the parcel.
      *
      * @param payload contract to be registered on the network
      * @param uContract contract containing units used for payment
@@ -94,6 +97,22 @@ public class Parcel implements BiSerializable {
 
     public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
         return of(payload,uContract,uKeys,false);
+    }
+
+
+    /**
+     * Create parcel used for paid contract registration on the network.
+     *
+     * @param payload contract to be registered on the network
+     * @param uContract contract containing units used for payment
+     * @param uKeys keys to resolve owner of payment contract
+     * @return parcel to be registered
+     */
+
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys,int payingAmount, Collection<PrivateKey> keysToSignPayloadWith) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
+        Parcel p = of(payload,uContract,uKeys,false);
+        p.addPayingAmount(payingAmount,uKeys,keysToSignPayloadWith);
+        return p;
     }
 
     /**
@@ -123,7 +142,7 @@ public class Parcel implements BiSerializable {
 
 
     /**
-     * Adds an additional paying amount to the parcel.
+     * Adds an additional paying amount to the main contract of the parcel.
      *
      * Main payment contract of a parcel is used for an additional payment so it must contain required amount of units.
      * An additional payment is used by various types of {@link com.icodici.universa.contract.services.NSmartContract}
@@ -137,6 +156,9 @@ public class Parcel implements BiSerializable {
 
     public void addPayingAmount(int payingAmount,Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignPayloadWith) {
         Contract transactionPayment = payment.getContract();
+        if(getRemainingU() != transactionPayment) {
+            throw new IllegalArgumentException("The paying amount has been added already");
+        }
 
         Contract payment = createPayment(transactionPayment,uKeys,payingAmount,false);
 
@@ -146,6 +168,38 @@ public class Parcel implements BiSerializable {
         mainContract.seal();
         mainContract.addSignatureToSeal(new HashSet<>(keysToSignPayloadWith));
         this.payload = mainContract.getTransactionPack();
+    }
+
+
+    /**
+     * Gets the latest revision of payment contract used by this Parcel.
+     * @return contract containing remaining U
+     */
+
+    public Contract getRemainingU() {
+        return getRemainingU(true);
+    }
+
+
+    /**
+     * Gets the latest revision of payment contract used by this Parcel.
+     * This revision will have {@code APPROVED} status
+     * and must be kept and used for future transactions
+     *
+     * @return contract containing remaining U
+     */
+    public Contract getRemainingU(boolean payloadApproved) {
+        AtomicReference<Contract> u = new AtomicReference<>(getPaymentContract());
+        while(payloadApproved) {
+            Optional<Contract> result = getPayload().getSubItems().values().stream().filter(si -> si.getParent() != null && si.getParent().equals(u.get().getId())).findAny();
+            if(result.isPresent()) {
+                u.set(result.get());
+            } else {
+                break;
+            }
+        }
+
+        return u.get();
     }
 
     /**

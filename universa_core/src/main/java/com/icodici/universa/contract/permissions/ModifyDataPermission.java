@@ -94,8 +94,8 @@ public class ModifyDataPermission extends Permission {
                 List<String> foundField = this.fields.get(key);
 
 
-                return (containsField && foundField == null) ||
-                        (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
+                return containsField && (foundField == null ||
+                        (foundField != null && (foundField.contains(value) || isEmptyOrNull(foundField, value))));
             });
         }
 
@@ -132,8 +132,8 @@ public class ModifyDataPermission extends Permission {
                         }
 
 
-                        return (containsField && foundField == null) ||
-                                (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
+                        return containsField && (foundField == null ||
+                                (foundField != null && (foundField.contains(value) || isEmptyOrNull(foundField, value))));
                     });
                 }
             }

@@ -11,6 +11,7 @@ import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -100,6 +101,7 @@ public class Node {
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     private final NCallbackService callbackService;
+    private Map<String,byte[]> serviceTags = new HashMap<>();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -144,6 +146,13 @@ public class Node {
     });
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey) {
+
+        try {
+            ClassLoader classLoader = getClass().getClassLoader();
+            serviceTags.put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         this.config = config;
         this.nodeInfoProvider = new NodeConfigProvider(config);
@@ -1910,6 +1919,19 @@ public class Node {
                 }
 
                 if(item instanceof Contract) {
+
+                    TransactionPack tp = ((Contract) item).getTransactionPack();
+                    getServiceTags().forEach((k, v) -> {
+                        try {
+                            Contract c = new Contract(v,tp);
+                            tp.addReferencedItem(c);
+                            tp.addTag(k, c.getId());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+
+
                     if(((Contract)item).isLimitedForTestnet()) {
                         markContractTest((Contract) item);
                     }
@@ -4076,6 +4098,10 @@ public class Node {
         }
     }
 
+
+    public Map<String, byte[]> getServiceTags() {
+        return serviceTags;
+    }
 
     public enum ResyncingItemProcessingState {
         WAIT_FOR_VOTES,

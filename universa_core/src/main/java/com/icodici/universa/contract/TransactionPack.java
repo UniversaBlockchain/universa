@@ -65,10 +65,12 @@ import java.util.stream.Collectors;
 @BiType(name = "TransactionPack")
 public class TransactionPack implements BiSerializable {
 
+    public static final String TAG_PREFIX_RESERVED = "universa:";
     private byte[] packedBinary;
     private boolean reconstructed = false;
     private Map<HashId, Contract> subItems = new HashMap<>();
     private Map<HashId, Contract> referencedItems = new HashMap<>();
+    private Map<String, Contract> taggedItems = new HashMap<>();
     private Set<PublicKey> keysForPack = new HashSet<>();
     private Contract contract;
 
@@ -180,6 +182,34 @@ public class TransactionPack implements BiSerializable {
             referencedItems.put(referencedItem.getId(), referencedItem);
         }
     }
+
+
+    /**
+     * Add tag to an item of transaction pack by its id
+     *
+     * Note: item with given id should exist in transaction pack as either main contract or subitem or referenced item
+     *
+     * @param tag tag to add
+     * @param itemId id of an item to set tag for
+     */
+    public void addTag(String tag, HashId itemId) {
+        Contract target = null;
+        if(referencedItems.containsKey(itemId)) {
+            target = referencedItems.get(itemId);
+        } else if(subItems.containsKey(itemId)) {
+            target = subItems.get(itemId);
+        } else if(contract.getId().equals(itemId)) {
+            target = contract;
+        }
+
+        if(target != null) {
+            packedBinary = null;
+            taggedItems.put(tag,target);
+        } else {
+            throw new IllegalArgumentException("Item with id " + itemId + " is not found in transaction pack");
+        }
+    }
+
 
     /**
      * Add public key to {@link TransactionPack} that will match with anonymous ids or addresses in the {@link Contract} roles.
@@ -350,6 +380,19 @@ public class TransactionPack implements BiSerializable {
             } else {
                 contract = new Contract(bb, this);
             }
+
+            Binder tagsBinder = data.getBinder("tags", new Binder());
+            for(String tag : tagsBinder.keySet()) {
+
+                // tags with reserved prefix can only be added at runtime
+                // and can't be stored in packed transaction
+                if(tag.startsWith(TAG_PREFIX_RESERVED))
+                    continue;
+
+                HashId id = deserializer.deserialize(tagsBinder.get(tag));
+                addTag(tag,id);
+            }
+
             quantiser.addWorkCostFrom(contract.getQuantiser());
         }
     }
@@ -417,6 +460,13 @@ public class TransactionPack implements BiSerializable {
                                         .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
                         ));
             }
+
+            if(taggedItems.size() > 0) {
+                Binder tagsBinder = new Binder();
+                taggedItems.forEach((k,v) -> tagsBinder.put(k,serializer.serialize(v.getId())));
+                of.set("tags",tagsBinder);
+            }
+
             if(keysForPack.size() > 0) {
                 of.set("keys", serializer.serialize(
                         keysForPack.stream()
@@ -502,6 +552,16 @@ public class TransactionPack implements BiSerializable {
     public Map<HashId, Contract> getReferencedItems() {
         return referencedItems;
     }
+
+
+    /**
+     * @return map of tags
+     */
+
+    public Map<String, Contract> getTags() {
+        return taggedItems;
+    }
+
 
     static {
         DefaultBiMapper.registerClass(TransactionPack.class);

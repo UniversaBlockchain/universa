@@ -1,14 +1,14 @@
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.TestCase;
 import com.icodici.universa.TestKeys;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -79,6 +79,14 @@ public class UnsMainTest extends BaseMainTest {
 
 
         ts.nodes.forEach(n->n.config.setAuthorizedNameServiceCenterAddress(authorizedNameServiceKey.getPublicKey().getLongAddress()));
+
+        Contract nodeConfigPrototype = new Contract(TestKeys.privateKey(11));
+        nodeConfigPrototype.addRole(new SimpleRole("name_service",nodeConfigPrototype,Do.listOf(authorizedNameServiceKey.getPublicKey().getLongAddress())));
+        nodeConfigPrototype.seal();
+        registerWithMinimumKeys(nodeConfigPrototype,Do.listOf(TestKeys.privateKey(11)),ts,0);
+
+        ts.nodes.forEach(n->n.node.getServiceTags().put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",nodeConfigPrototype.getLastSealedBinary()));
+
 
         Contract referencesContract = new Contract(contractToRegisterIssuer);
         referencesContract.seal();
@@ -169,6 +177,13 @@ public class UnsMainTest extends BaseMainTest {
         TestCase.assertAlmostSame(((ZonedDateTime)names.get(0).get("expiresAt")),expires,4);
 
 
+
+        uns = (UnsContract) uns.createRevision(authorizedNameServiceKey);
+        uns.attachToNetwork(ts.client);
+        uns.getName(name2).setUnsReducedName(name2+"new_reduced");
+        uns.seal();
+
+        registerWithMinimumKeys(uns,Do.listOf(authorizedNameServiceKey),ts,0);
 
 
 
