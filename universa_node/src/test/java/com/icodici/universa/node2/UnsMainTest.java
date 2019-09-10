@@ -180,6 +180,7 @@ public class UnsMainTest extends BaseMainTest {
 
         uns = (UnsContract) uns.createRevision(authorizedNameServiceKey);
         uns.attachToNetwork(ts.client);
+        uns.getStateData().set(UnsContract.SUSPENDED_FIELD_NAME,true);
         uns.getName(name2).setUnsReducedName(name2+"new_reduced");
         uns.seal();
 
