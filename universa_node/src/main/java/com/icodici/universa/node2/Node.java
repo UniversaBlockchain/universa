@@ -147,6 +147,13 @@ public class Node {
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey) {
 
+        try {
+            ClassLoader classLoader = getClass().getClassLoader();
+            serviceTags.put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         this.config = config;
         this.nodeInfoProvider = new NodeConfigProvider(config);
         this.myInfo = myInfo;
