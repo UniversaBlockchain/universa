@@ -101,7 +101,7 @@ public class Node {
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     private final NCallbackService callbackService;
-    private Map<String,Contract> serviceTags = new HashMap<>();
+    private Map<String,byte[]> serviceTags = new HashMap<>();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -1915,8 +1915,13 @@ public class Node {
 
                     TransactionPack tp = ((Contract) item).getTransactionPack();
                     getServiceTags().forEach((k, v) -> {
-                        tp.addReferencedItem(v);
-                        tp.addTag(k, v.getId());
+                        try {
+                            Contract c = new Contract(v,tp);
+                            tp.addReferencedItem(c);
+                            tp.addTag(k, c.getId());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     });
 
 
@@ -4087,7 +4092,7 @@ public class Node {
     }
 
 
-    public Map<String, Contract> getServiceTags() {
+    public Map<String, byte[]> getServiceTags() {
         return serviceTags;
     }
 

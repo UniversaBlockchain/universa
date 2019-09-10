@@ -133,7 +133,7 @@ public class UnsContract extends NSmartContract {
                 "ref.tag==\""+TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract\"",
                 "this can_play ref.state.roles.name_service"
         )));
-
+        addReference(refNodeConfigNameService);
 
         SimpleRole nameService = new SimpleRole("name_service", this);
         nameService.addRequiredReference("ref_node_config_name_service", Role.RequiredMode.ALL_OF);
