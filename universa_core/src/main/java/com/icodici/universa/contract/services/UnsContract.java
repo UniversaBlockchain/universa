@@ -54,7 +54,7 @@ public class UnsContract extends NSmartContract {
     private double prepaidNameDays = 0;
 
     private Map<HashId,Contract> originContracts = new HashMap<>();
-    private int paidU;
+    private Integer paidU;
 
 
     /**
@@ -190,6 +190,10 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public byte[] seal() {
+        if(paidU == null) {
+            throw new PayingAmountMissingException("Use setPayingAmount to manually provide the amount to be payed for this NSmartContract");
+        }
+
         saveNamesAndRecordsToState();
         saveOriginReferencesToState();
         calculatePrepaidNameDays(true);
@@ -839,7 +843,13 @@ public class UnsContract extends NSmartContract {
     }
 
 
-
+    @Override
+    public synchronized Contract copy() {
+        //create revision should drop paidU value
+        Contract c = super.copy();
+        ((UnsContract)c).paidU = null;
+        return c;
+    }
 
     public void addData(Binder data) {
         storedRecords.add(new UnsRecord(data));
@@ -992,5 +1002,12 @@ public class UnsContract extends NSmartContract {
         calculatePrepaidNameDays(false);
         return getCurrentUnsExpiration();
     }
+
+    public static class PayingAmountMissingException extends IllegalArgumentException {
+        public PayingAmountMissingException(String message) {
+            super(message);
+        }
+    }
+
 }
 
