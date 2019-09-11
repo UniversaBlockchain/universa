@@ -229,7 +229,13 @@ public class NSmartContract extends Contract implements NContract {
         UNS1,
         FOLLOWER1
     }
-    protected int getMinPayment() {
+
+    /**
+     * Get minimum possible payment for this type of  {@link NSmartContract}
+     * @return payment amount
+     */
+
+    public int getMinPayment() {
         return nodeInfoProvider.getMinPayment(getExtendedType());
     }
     protected int getPaidU() {

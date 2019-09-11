@@ -104,7 +104,8 @@ public class UnsMainTest extends BaseMainTest {
         uns.addName(name,name+"_reduced",desc);
         uns.addKey(keyToRegister.getPublicKey());
         uns.addData(Binder.of("host","192.168.1.1"));
-
+        int paidU = 1470;
+        uns.setPayingAmount(paidU);
         uns.seal();
 
         ZonedDateTime created = uns.getCreatedAt();
@@ -112,7 +113,6 @@ public class UnsMainTest extends BaseMainTest {
         registerWithMinimumKeys(referencesContract,Do.listOf(contractToRegisterIssuer),ts,0);
 
         //register and ensure every key is required and can't be skipped
-        int paidU = 1470;
         registerWithMinimumKeys(uns,Do.listOf(unsIssuer,keyToRegister,authorizedNameServiceKey),ts,paidU);
 
 
@@ -131,6 +131,7 @@ public class UnsMainTest extends BaseMainTest {
         uns = (UnsContract) uns.createRevision();
         uns.attachToNetwork(ts.client);
         uns.getAllData().get(0).put("host","192.168.1.2");
+        uns.setPayingAmount(0);
         uns.seal();
 
         //make sure no payment is required and no additional keys rather than
@@ -142,9 +143,10 @@ public class UnsMainTest extends BaseMainTest {
 
         uns = (UnsContract) uns.createRevision();
         uns.attachToNetwork(ts.client);
+        int paidU2 = 1460;
+        uns.setPayingAmount(paidU2);
         uns.seal();
 
-        int paidU2 = 1460;
         //top up balance
         registerWithMinimumKeys(uns,Do.listOf(unsIssuer),ts,paidU2);
 
@@ -161,6 +163,7 @@ public class UnsMainTest extends BaseMainTest {
         uns.attachToNetwork(ts.client);
         String name2 = "Universa_"+ ZonedDateTime.now();
         uns.addName(name2,name2,"test description");
+        uns.setPayingAmount(0);
         uns.seal();
 
         registerWithMinimumKeys(uns,Do.listOf(unsIssuer,authorizedNameServiceKey),ts,0);
@@ -182,6 +185,7 @@ public class UnsMainTest extends BaseMainTest {
         uns.attachToNetwork(ts.client);
         uns.getStateData().set(UnsContract.SUSPENDED_FIELD_NAME,true);
         uns.getName(name2).setUnsReducedName(name2+"new_reduced");
+        uns.setPayingAmount(0);
         uns.seal();
 
         registerWithMinimumKeys(uns,Do.listOf(authorizedNameServiceKey),ts,0);
@@ -195,6 +199,7 @@ public class UnsMainTest extends BaseMainTest {
 
         uns2.addName(name+"_unused",name+"_reduced",desc);
         uns2.addData(Binder.of("foo","bar"));
+        uns2.setPayingAmount(1760);
         uns2.seal();
         uns2.addSignerKeys(Do.listOf(unsIssuer,authorizedNameServiceKey));
 

@@ -171,8 +171,6 @@ public class UnsContract extends NSmartContract {
 
     private double calculatePrepaidNameDays(boolean withSaveToState) {
 
-        paidU = getPaidU();
-
         UnsContract parentContract = (UnsContract) getRevokingItem(getParent());
         double prepaidNameDaysLeft = 0;
         if(parentContract != null) {
@@ -198,7 +196,7 @@ public class UnsContract extends NSmartContract {
 
         ZonedDateTime expiresAt = getExpiresAt();
         //TODO: add hold duration to info provider and get it from there
-        ZonedDateTime nameExpires = getNamesExpiration().plusDays(30);
+        ZonedDateTime nameExpires = getCurrentUnsExpiration().plusDays(30);
         if(expiresAt.isBefore(nameExpires)) {
             setExpiresAt(nameExpires.plusDays(10));
         }
@@ -357,6 +355,7 @@ public class UnsContract extends NSmartContract {
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
 
+
         if(!checkPaymentAndRelatedFields(false)) {
             return false;
         }
@@ -385,7 +384,8 @@ public class UnsContract extends NSmartContract {
     private boolean checkPaymentAndRelatedFields(boolean allowNoPayment) {
         boolean paymentCheck = true;
 
-        calculatePrepaidNameDays(false);
+        paidU = getPaidU();
+
 
         if(paidU == 0) {
             if(!allowNoPayment) {
@@ -409,6 +409,8 @@ public class UnsContract extends NSmartContract {
                     "Should be amount of U paid by current paying parcel.");
             return false;
         }
+
+        calculatePrepaidNameDays(false);
 
 
         if (prepaidNameDays != getStateData().getDouble(PREPAID_ND_FIELD_NAME)) {
@@ -630,13 +632,19 @@ public class UnsContract extends NSmartContract {
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
         calculatePrepaidNameDays(false);
-        ZonedDateTime expiresAt = getNamesExpiration();
+        ZonedDateTime expiresAt = getCurrentUnsExpiration();
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
         storedRecords.forEach(sr ->me.createNameRecordEntry(sr));
         return Binder.fromKeysValues("status", "ok");
     }
 
-    private ZonedDateTime getNamesExpiration() {
+    /**
+     * Get expiration date of names associated with UNS1 contract.
+     *
+     * @return expiration date
+     */
+
+    public ZonedDateTime getCurrentUnsExpiration() {
         // get number of entries
         int entries = getStoredUnitsCount();
 
@@ -650,7 +658,7 @@ public class UnsContract extends NSmartContract {
     public Binder onUpdated(MutableEnvironment me) {
         calculatePrepaidNameDays(false);
 
-        ZonedDateTime expiresAt = getNamesExpiration();
+        ZonedDateTime expiresAt = getCurrentUnsExpiration();
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
 
@@ -687,7 +695,7 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public Binder getExtraResultForApprove() {
-        return Binder.of("expires_at", getNamesExpiration().toEpochSecond());
+        return Binder.of("expires_at", getCurrentUnsExpiration().toEpochSecond());
     }
 
     private void addOriginReference(HashId origin) {
@@ -865,7 +873,12 @@ public class UnsContract extends NSmartContract {
 
 
     /**
-     * Get amount of U to be payed additionally to achieve desired expiration date
+     * Get amount of U to be payed additionally to achieve desired UNS1 expiration date
+     *
+     * Note: UNS1 expiration date is related to names services expiration
+     * only and has nothing with {@link Contract} expiration. {@link Contract} expiration
+     * can be set by its owner freely. It is only automatically adjusted if it's less
+     * than: names services expiration date + HOLD period (one month) + 10 days
      *
      * @param unsExpirationDate desired expiration data
      * @return amount of U to be payed. Can be zero if no additional payment is required
@@ -896,6 +909,55 @@ public class UnsContract extends NSmartContract {
     }
 
     /**
+     * Get expiration date of current UNS1 if being payed additionally by specified amount.
+     * If parent contract exists its paid time remaining will be taken into account
+     *
+     * Note: UNS1 expiration date is related to names services expiration
+     * only and has nothing with {@link Contract} expiration. {@link Contract} expiration
+     * can be set by its owner freely. It is only automatically adjusted if it's less
+     * than: names services expiration date + HOLD period (one month) + 10 days
+     *
+     * @param payingAmount
+     * @return calculated UNS1 expiration date or {@code null} if amount passed is less than {@link #getMinPayment()}
+     */
+
+
+    public ZonedDateTime getUnsExpiration(int payingAmount) {
+        if(payingAmount == 0 && getRevision() == 1 || payingAmount > 0 && payingAmount < getMinPayment()) {
+            return null;
+        }
+
+        UnsContract parentContract = (UnsContract) getRevokingItem(getParent());
+        double prepaidNameDaysLeft = 0;
+        if(parentContract != null) {
+            prepaidNameDaysLeft = parentContract.getStateData().getDouble(PREPAID_ND_FIELD_NAME);
+            prepaidNameDaysLeft -= parentContract.getStoredUnitsCount()*((double)(getCreatedAt().toEpochSecond()-parentContract.getCreatedAt().toEpochSecond()))/(3600*24);
+        }
+
+
+        double days = (payingAmount*getRate().doubleValue() + prepaidNameDaysLeft)/getStoredUnitsCount();
+        long seconds = (long) (days * 24 * 3600);
+        return getCreatedAt().plusSeconds(seconds);
+    }
+
+    /**
+     * Get expiration date of current UNS1 if being payed additionally by minimum amount possible.
+     * If parent contract exists its paid time remaining will be taken into account
+     *
+     * Note: UNS1 expiration date is related to names services expiration
+     * only and has nothing with {@link Contract} expiration. {@link Contract} expiration
+     * can be set by its owner freely. It is only automatically adjusted if it's less
+     * than: names services expiration date + HOLD period (one month) + 10 days
+     *
+     * @return calculated UNS1 expiration date
+     */
+
+    public ZonedDateTime getMinUnsExpiration() {
+        return getUnsExpiration(getMinPayment());
+    }
+
+
+    /**
      * Create {@link Parcel} to be registered that ensures expiration date of current UNS1 is not less than desired one
      * @param unsExpirationDate desired expiration date
      * @param uContract contract to used as payment
@@ -911,6 +973,24 @@ public class UnsContract extends NSmartContract {
             parcel.addPayingAmount(amount,uKeys,keysToSignUnsWith);
         }
         return parcel;
+    }
+
+    /**
+     * Sets an amount that is going to be paid for this UNS1
+     *
+     * Note: UNS1 expiration date is related to names services expiration
+     * only and has nothing with {@link Contract} expiration. {@link Contract} expiration
+     * can be set by its owner freely. It is only automatically adjusted if it's less
+     * than: names services expiration date + HOLD period (one month) + 10 days
+     *
+     * @param payingAmount amount that is going to be paid
+     * @return calculated UNS1 expiration date
+     */
+
+    public ZonedDateTime setPayingAmount(int payingAmount) {
+        paidU = payingAmount;
+        calculatePrepaidNameDays(false);
+        return getCurrentUnsExpiration();
     }
 }
 
