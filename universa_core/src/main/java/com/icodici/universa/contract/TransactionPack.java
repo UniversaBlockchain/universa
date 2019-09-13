@@ -335,7 +335,7 @@ public class TransactionPack implements BiSerializable {
                     // add found binaries on the hierarchy level to subItems
                     for (ContractDependencies ct : sortedSubItemsBytesList.keySet()) {
                         Bytes b = sortedSubItemsBytesList.get(ct);
-                        createNeededContractAndAddToSubItems(ct, b, quantiser);
+                        createNeededContractAndAddToSubItems(b, quantiser);
                     }
 
                     // then repeat until we can find hierarchy
@@ -344,43 +344,12 @@ public class TransactionPack implements BiSerializable {
                 // finally add not found binaries on the hierarchy levels to subItems
                 for (ContractDependencies ct : allContractsTrees.keySet()) {
                     Bytes b = allContractsTrees.get(ct);
-                    createNeededContractAndAddToSubItems(ct, b, quantiser);
+                    createNeededContractAndAddToSubItems(b, quantiser);
                 }
             }
 
             byte[] bb = data.getBinaryOrThrow("contract");
-
-            // contract can be extended, so check it
-            String extendedType = data.getString("extended_type", null);
-            NSmartContract.SmartContractType scType = null;
-            if(extendedType != null) {
-                try {
-                    scType = NSmartContract.SmartContractType.valueOf(extendedType);
-                } catch (IllegalArgumentException e) {
-                }
-            }
-            // and if extended type of contract is allowed - create extended contrac, otherwise create simple contract
-            if(scType != null) {
-                switch(scType) {
-                    case N_SMART_CONTRACT:
-                        contract = new NSmartContract(bb, this);
-                        break;
-
-                    case SLOT1:
-                        contract = new SlotContract(bb, this);
-                        break;
-
-                    case UNS1:
-                        contract = new UnsContract(bb, this);
-                        break;
-
-                    case FOLLOWER1:
-                        contract = new FollowerContract(bb, this);
-                        break;
-                }
-            } else {
-                contract = new Contract(bb, this);
-            }
+            contract = Contract.fromSealedBinary(bb,this);
 
             Binder tagsBinder = data.getBinder("tags", new Binder());
             for(String tag : tagsBinder.keySet()) {
@@ -400,41 +369,12 @@ public class TransactionPack implements BiSerializable {
 
     /**
      * Work method to check if subItem is extended contract and create one, otherwise create simple contract.
-     * @param ct is contract's tree for checking contract
      * @param b is bytes array for contract creation
      * @param quantiser is quantizer to control quantas spending
      * @throws IOException if something went wrong
      */
-    private void createNeededContractAndAddToSubItems(ContractDependencies ct, Bytes b, Quantiser quantiser) throws IOException {
-        Contract c = null;
-        NSmartContract.SmartContractType scType = null;
-        if(ct.extendedType != null) {
-            try {
-                scType = NSmartContract.SmartContractType.valueOf(ct.extendedType);
-            } catch (IllegalArgumentException e) {
-            }
-        }
-        if(scType != null) {
-            switch (scType) {
-                case N_SMART_CONTRACT:
-                    c = new NSmartContract(b.toArray(), this);
-                    break;
-
-                case SLOT1:
-                    c = new SlotContract(b.toArray(), this);
-                    break;
-
-                case UNS1:
-                    c = new UnsContract(b.toArray(), this);
-                    break;
-
-                case FOLLOWER1:
-                    c = new FollowerContract(b.toArray(), this);
-                    break;
-            }
-        } else {
-            c = new Contract(b.toArray(), this);
-        }
+    private void createNeededContractAndAddToSubItems(Bytes b, Quantiser quantiser) throws IOException {
+        Contract c = Contract.fromSealedBinary(b.getData(),this);
         if(c != null) {
             quantiser.addWorkCostFrom(c.getQuantiser());
             subItems.put(c.getId(), c);
@@ -587,7 +527,6 @@ public class TransactionPack implements BiSerializable {
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
         private final HashId id;
-        private final String extendedType;
 
         public ContractDependencies(byte[] sealed) throws IOException {
             this.id = HashId.of(sealed);
@@ -598,9 +537,6 @@ public class TransactionPack implements BiSerializable {
             // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
             // data without BiSerializer and then do it by hand calling deserialize:
             Binder payload = Boss.load(contractBytes, null);
-
-            // contract can be extended type - we need know about it before
-            extendedType = payload.getBinder("contract").getBinder("definition").getString("extended_type", null);
 
             int apiLevel = data.getIntOrThrow("version");
 

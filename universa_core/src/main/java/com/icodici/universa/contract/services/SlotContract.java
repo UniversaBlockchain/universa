@@ -124,6 +124,12 @@ public class SlotContract extends NSmartContract {
         deserializeForSlot();
     }
 
+    public SlotContract(Binder unpacked, @NonNull TransactionPack pack) throws IOException {
+        super(unpacked, pack);
+
+        deserializeForSlot();
+    }
+
     /**
      * Method adds slot's specific to contract:
      * <ul>

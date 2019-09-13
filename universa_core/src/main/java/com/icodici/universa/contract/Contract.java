@@ -12,6 +12,10 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.*;
+import com.icodici.universa.contract.services.FollowerContract;
+import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.UnsContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
@@ -48,6 +52,13 @@ import static java.util.Arrays.asList;
 @BiType(name = "UniversaContract")
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
+
+    public static class UnicapsuleExpectedException extends IllegalArgumentException {
+
+        public UnicapsuleExpectedException(String message) {
+            super(message);
+        }
+    }
     private static final int MAX_API_LEVEL = 4;
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
@@ -110,14 +121,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IOException on the various format errors
      */
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
+        this(Boss.unpack(sealed),pack);
+        sealedBinary = sealed;
+    }
+
+    public Contract(Binder data, @NonNull TransactionPack pack) throws IOException {
         this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
-        this.sealedBinary = sealed;
         this.transactionPack = pack;
         isNeedVerifySealedKeys = true;
-        Binder data = Boss.unpack(sealed);
         if (!data.getStringOrThrow("type").equals("unicapsule"))
-            throw new IllegalArgumentException("wrong object type, unicapsule required");
+            throw new UnicapsuleExpectedException("wrong object type, unicapsule required");
 
         apiLevel = data.getIntOrThrow("version");
 
@@ -2979,7 +2993,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IOException
      */
     public static Contract fromSealedFile(String contractFileName) throws IOException {
-        return new Contract(Do.read(contractFileName), new TransactionPack());
+        return  fromSealedBinary(Do.read(contractFileName));
     }
 
     /**
@@ -4031,6 +4045,62 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(Reference.class);
 
         DefaultBiMapper.registerClass(Permission.class);
+    }
+
+    public static Contract fromSealedBinary(byte[] sealedBinary) throws IOException {
+        return fromSealedBinary(sealedBinary,new TransactionPack());
+    }
+
+    public static Contract fromSealedBinary(byte[] sealedBinary, TransactionPack tp) throws IOException {
+        Binder data = Boss.unpack(sealedBinary);
+
+        if (!data.getStringOrThrow("type").equals("unicapsule"))
+            throw new UnicapsuleExpectedException("wrong object type, unicapsule required");
+
+
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+
+        // This must be explained. By default, Boss.load will apply contract transformation in place
+        // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
+        // data without BiSerializer and then do it by hand calling deserialize:
+        Binder payload = Boss.load(contractBytes, null);
+
+        // contract can be extended type - we need know about it before
+        String extendedType = payload.getBinder("contract").getBinder("definition").getString("extended_type", null);
+
+        NSmartContract.SmartContractType scType = null;
+        if(extendedType != null) {
+            try {
+                scType = NSmartContract.SmartContractType.valueOf(extendedType);
+            } catch (IllegalArgumentException e) {
+            }
+        }
+        Contract result;
+        // and if extended type of contract is allowed - create extended contrac, otherwise create simple contract
+        if(scType != null) {
+            switch(scType) {
+                case N_SMART_CONTRACT:
+                    result = new NSmartContract(data, tp);
+
+                case SLOT1:
+                    result = new SlotContract(data, tp);
+
+                case UNS1:
+                    result = new UnsContract(data, tp);
+
+                case FOLLOWER1:
+                    result = new FollowerContract(data, tp);
+
+                default:
+                    //unknwon extended type. create simple contract
+                    //TODO: should we throw?
+                    result =  new Contract(data, tp);
+            }
+        } else {
+            result =  new Contract(data, tp);
+        }
+        result.sealedBinary = sealedBinary;
+        return result;
     }
 
 }

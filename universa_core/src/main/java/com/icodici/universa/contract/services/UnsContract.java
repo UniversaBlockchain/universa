@@ -75,6 +75,12 @@ public class UnsContract extends NSmartContract {
         deserializeForUns(BossBiMapper.newDeserializer());
     }
 
+    public UnsContract(Binder unpacked, @NonNull TransactionPack pack) throws IOException {
+        super(unpacked, pack);
+
+        deserializeForUns(BossBiMapper.newDeserializer());
+    }
+
     public UnsContract() {
         super();
     }

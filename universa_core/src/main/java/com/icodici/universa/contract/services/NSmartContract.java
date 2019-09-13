@@ -82,6 +82,10 @@ public class NSmartContract extends Contract implements NContract {
         super(sealed, pack);
     }
 
+    public NSmartContract(Binder unpacked, @NonNull TransactionPack pack) throws IOException {
+        super(unpacked, pack);
+    }
+
     public NSmartContract() {
         super();
     }

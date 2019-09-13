@@ -114,6 +114,12 @@ public class FollowerContract extends NSmartContract {
         deserializeForFollower();
     }
 
+    public FollowerContract(Binder unpacked, @NonNull TransactionPack pack) throws IOException {
+        super(unpacked, pack);
+
+        deserializeForFollower();
+    }
+
     /**
      * Method adds follower's specific to contract:
      * <ul>
