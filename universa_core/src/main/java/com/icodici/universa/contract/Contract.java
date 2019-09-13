@@ -4081,16 +4081,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             switch(scType) {
                 case N_SMART_CONTRACT:
                     result = new NSmartContract(data, tp);
+                    break;
 
                 case SLOT1:
                     result = new SlotContract(data, tp);
-
+                    break;
                 case UNS1:
                     result = new UnsContract(data, tp);
-
+                    break;
                 case FOLLOWER1:
                     result = new FollowerContract(data, tp);
-
+                    break;
                 default:
                     //unknwon extended type. create simple contract
                     //TODO: should we throw?
