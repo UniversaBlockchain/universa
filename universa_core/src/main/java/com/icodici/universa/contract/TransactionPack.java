@@ -24,6 +24,7 @@ import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -617,5 +618,32 @@ public class TransactionPack implements BiSerializable {
                 }
             }
         }
+    }
+
+    /**
+     * Find contract in transaction pack by given predicate
+     *
+     * Note: if there is more than one contract that matches predicate a random one will be returned
+     *
+     * @param function predicate to match contract by
+     * @return contract that matches predicate or {@code null} if no contract found
+     */
+
+    public Contract findContract(Predicate<Contract> function) {
+        if(function.test(contract)) {
+            return contract;
+        }
+
+        Optional<Contract> result = subItems.values().stream().filter(function).findAny();
+        if(result.isPresent()) {
+            return result.get();
+        }
+
+        result = referencedItems.values().stream().filter(function).findAny();
+        if(result.isPresent()) {
+            return result.get();
+        }
+
+        return null;
     }
 }
