@@ -354,6 +354,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             if (env != null) {
                 byte[] packedContract = env.getContract().getPackedTransaction();
                 b.put("packedContract", packedContract);
+                b.put("contractId",env.getContract().getId());
             }
         }
         return b;
