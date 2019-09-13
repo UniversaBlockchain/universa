@@ -84,6 +84,22 @@ public class Compound {
     }
 
     /**
+     * Returns compound that holds a contract with given ID (if exists)
+     * @param contractInPack id of a contract held by compound
+     * @param transactionPack transaction pack to look into
+     * @return compound if exists of {@code null} otherwise
+     */
+
+    public static Compound getHoldingCompound(HashId contractInPack, TransactionPack transactionPack) {
+        Contract compoundContract = transactionPack.findContract(c -> c.getNewItems().stream().filter(ni->ni.getId().equals(contractInPack)).findAny().isPresent());
+        if(compoundContract != null && compoundContract.getDefinition().getData().getString("type","").equals(TYPE)) {
+            return  new Compound(compoundContract);
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Add contract to Compound. Contract and its data will later be accessible by its tag.
      *
      * Note: contract returned by {@link #getContract(String)} has reconstructed transaction pack
@@ -101,11 +117,14 @@ public class Compound {
         Binder tagBinder = new Binder();
 
         Collection<Contract> referencedItems = contractToPutInto.getTransactionPack().getReferencedItems().values();
+        Map<String, Contract> tpTags = contractToPutInto.getTransactionPack().getTags();
 
         tagBinder.put("id",contractToPutInto.getId().toBase64String());
         tagBinder.put("data",dataToAssociateWith);
         tagBinder.put("refs", referencedItems.stream().map(ri->ri.getId().toBase64String()).collect(Collectors.toList()));
-
+        Binder tpTagsBinder = new Binder();
+        tpTags.forEach((k, v) -> tpTagsBinder.put(k, v.getId().toBase64String()));
+        tagBinder.put("tags", tpTagsBinder);
 
         compoundContract.getDefinition().getData().getBinder("contracts").put(tag,tagBinder);
 
@@ -113,6 +132,26 @@ public class Compound {
 
         referencedItems.forEach(ri->compoundContract.getTransactionPack().addReferencedItem(ri));
 
+    }
+
+
+    /**
+     * Get contract from Compound by id
+     *
+     * @param contractId id of a contract in compound
+     * @return contract found
+     */
+
+    public Contract getContract(HashId contractId) {
+        Binder tagsBinder = compoundContract.getDefinition().getData().getBinder("contracts");
+        Set<String> tags = tagsBinder.keySet();
+        for(String tag : tags) {
+            HashId id = HashId.withDigest(tagsBinder.getBinder(tag).getString("id"));
+            if(id.equals(contractId)) {
+                return getContract(tag);
+            }
+        }
+        return null;
     }
 
     /**
@@ -125,17 +164,27 @@ public class Compound {
     public Contract getContract(String tag) {
 
         try {
-            Binder tagBinder = compoundContract.getDefinition().getData().getBinder("contracts").getBinder(tag);
-            HashId id = HashId.withDigest(tagBinder.getString("id"));
+            //get binder for tag specified
+            Binder tagBinder = compoundContract.getDefinition().getData().getBinder("contracts").getBinder(tag,null);
+            if(tagBinder == null)
+                return null;
 
+
+            //get contract by id and create transaction pack for it
+            HashId id = HashId.withDigest(tagBinder.getString("id"));
             Contract contract = compoundContract.getTransactionPack().getSubItem(id);
             TransactionPack transactionPack = new TransactionPack(contract);
             contract.setTransactionPack(transactionPack);
 
+            //fill tp referenced items from refs
             List<String> referencedItemsIds = tagBinder.getList("refs", new ArrayList<>());
-
             referencedItemsIds.forEach(riId ->transactionPack.addReferencedItem(
                     compoundContract.getTransactionPack().getReferencedItems().get(HashId.withDigest(riId))));
+
+            //fill tp tags from "tags"
+            Binder tpTagsBinder = tagBinder.getBinder("tags",new Binder());
+            tpTagsBinder.forEach((k,v)->transactionPack.addTag(k,HashId.withDigest((String) v)));
+
             return contract;
 
         } catch (IllegalArgumentException ignored) {
