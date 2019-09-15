@@ -6,9 +6,10 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
-import com.icodici.universa.node2.Config;
+import com.icodici.universa.contract.helpers.Compound;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -16,20 +17,45 @@ import net.sergeych.tools.Binder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 
 @BiType(name = "Parcel")
 public class Parcel implements BiSerializable {
 
+    public static final String TP_PAYING_FOR_TAG_PREFIX = "paying_for_";
+    public static final String COMPOUND_MAIN_TAG = "paying_parcel_main";
+    public static final String COMPOUND_PAYMENT_TAG = "paying_parcel_payment";
     private byte[] packedBinary;
     private TransactionPack payload = null;
     private TransactionPack payment = null;
     private HashId hashId;
+
+    public static Contract findPaymentContract(Contract contract, TransactionPack transactionPack, Set<KeyAddress> uIssuerKeys, String uIssuerName) {
+        for (Contract nc : contract.getNew()) {
+            String currentTag = null;
+            for(String tag : transactionPack.getTags().keySet()) {
+                if(transactionPack.getTags().get(tag) == contract) {
+                    currentTag = tag;
+                    break;
+                }
+            }
+
+            if (nc.isU(uIssuerKeys, uIssuerName) && !currentTag.startsWith(Parcel.TP_PAYING_FOR_TAG_PREFIX)) {
+                return nc;
+            }
+        }
+
+        Contract payment = transactionPack.getTags().getOrDefault(Parcel.TP_PAYING_FOR_TAG_PREFIX + contract.getId().toBase64String(), null);
+        if(payment.isU(uIssuerKeys, uIssuerName))
+            return payment;
+
+        return null;
+    }
 
     public int getQuantasLimit() {
         return quantasLimit;
@@ -102,6 +128,8 @@ public class Parcel implements BiSerializable {
 
     /**
      * Create parcel used for paid contract registration on the network.
+     * An additional payment of specified amount is added to the payload contract.
+     * This payment is used by various types of {@link com.icodici.universa.contract.services.NSmartContract}
      *
      * @param payload contract to be registered on the network
      * @param uContract contract containing units used for payment
@@ -112,6 +140,26 @@ public class Parcel implements BiSerializable {
     public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys,int payingAmount, Collection<PrivateKey> keysToSignPayloadWith) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
         Parcel p = of(payload,uContract,uKeys,false);
         p.addPayingAmount(payingAmount,uKeys,keysToSignPayloadWith);
+        return p;
+    }
+
+    /**
+     * Create parcel used for paid contract registration on the network.
+     * An additional payment of specified amount is added to the payload contract.
+     * This payment is used by various types of {@link com.icodici.universa.contract.services.NSmartContract}
+     *
+     * Note: this method uses new way of providing additional payments to {@link com.icodici.universa.contract.services.NSmartContract}
+     * currently it is only supported by {@link com.icodici.universa.contract.services.UnsContract}
+     *
+     * @param payload contract to be registered on the network
+     * @param uContract contract containing units used for payment
+     * @param uKeys keys to resolve owner of payment contract
+     * @return parcel to be registered
+     */
+
+    public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys,int payingAmount) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
+        Parcel p = of(payload,uContract,uKeys,false);
+        p.addPayingAmountV2(payingAmount,uKeys);
         return p;
     }
 
@@ -168,6 +216,39 @@ public class Parcel implements BiSerializable {
         mainContract.seal();
         mainContract.addSignatureToSeal(new HashSet<>(keysToSignPayloadWith));
         this.payload = mainContract.getTransactionPack();
+    }
+
+
+    /**
+     * Adds an additional paying amount to the main contract of the parcel.
+     *
+     * Main payment contract of a parcel is used for an additional payment so it must contain required amount of units.
+     * An additional payment is used by various types of {@link com.icodici.universa.contract.services.NSmartContract}
+     *
+     * Note: this method uses new way of providing additional payments to {@link com.icodici.universa.contract.services.NSmartContract}
+     * currently it is only supported by {@link com.icodici.universa.contract.services.UnsContract}
+     *
+     * @param payingAmount an amount paid additionally.
+     * @param uKeys keys to resolve owner of parcel main payment contract
+     */
+
+    public void addPayingAmountV2(int payingAmount,Collection<PrivateKey> uKeys) {
+        Contract transactionPayment = payment.getContract();
+        if(getRemainingU() != transactionPayment) {
+            throw new IllegalArgumentException("The paying amount has been added already");
+        }
+
+        Contract payment = createPayment(transactionPayment,uKeys,payingAmount,false);
+        // we add new item to the contract, so we need to recreate transaction pack
+        Contract mainContract = payload.getContract();
+        Compound compound = new Compound();
+        compound.addContract(COMPOUND_MAIN_TAG,mainContract,null);
+        compound.addContract(COMPOUND_PAYMENT_TAG,payment,null);
+        TransactionPack tp = compound.getCompoundContract().getTransactionPack();
+        tp.addTag(TP_PAYING_FOR_TAG_PREFIX + mainContract.getId().toBase64String(),payment.getId());
+
+
+        this.payload = tp;
     }
 
 

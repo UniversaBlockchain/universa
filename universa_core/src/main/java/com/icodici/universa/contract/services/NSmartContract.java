@@ -7,6 +7,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
@@ -250,41 +251,46 @@ public class NSmartContract extends Contract implements NContract {
         if(nodeInfoProvider == null)
             throw new IllegalStateException("NodeInfoProvider is not set for NSmartContract");
 
-        // first of all looking for U contract and calculate paid U amount.
-        for (Contract nc : getNew()) {
-            if (nc.isU(nodeInfoProvider.getUIssuerKeys(), nodeInfoProvider.getUIssuerName())) {
-                int calculatedPayment = 0;
-                boolean isTestPayment = false;
-                Contract parent = null;
-                for (Contract nrc : nc.getRevoking()) {
-                    if (nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-                if (parent != null) {
-                    boolean hasTestU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestU) {
-                        isTestPayment = true;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - nc.getStateData().getIntOrThrow("test_transaction_units");
+        Contract payment = Parcel.findPaymentContract(this,getTransactionPack(),nodeInfoProvider.getUIssuerKeys(),nodeInfoProvider.getUIssuerName());
 
-                        if (calculatedPayment <= 0) {
-                            isTestPayment = false;
-                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                    - nc.getStateData().getIntOrThrow("transaction_units");
-                        }
-                    } else {
-                        isTestPayment = false;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                - nc.getStateData().getIntOrThrow("transaction_units");
-                    }
-                }
+        if(payment != null) {
+            return getUPaidByContract(payment,allowTestPayments);
+        }
 
-                if(!isTestPayment || allowTestPayments) {
-                    return calculatedPayment;
-                }
+        return 0;
+    }
+
+    private int getUPaidByContract(Contract contract, boolean allowTestPayments) {
+        int calculatedPayment = 0;
+        boolean isTestPayment = false;
+        Contract parent = null;
+        for (Contract nrc : contract.getRevoking()) {
+            if (nrc.getId().equals(contract.getParent())) {
+                parent = nrc;
+                break;
             }
+        }
+        if (parent != null) {
+            boolean hasTestU = contract.getStateData().get("test_transaction_units") != null;
+            if (hasTestU) {
+                isTestPayment = true;
+                calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
+                        - contract.getStateData().getIntOrThrow("test_transaction_units");
+
+                if (calculatedPayment <= 0) {
+                    isTestPayment = false;
+                    calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                            - contract.getStateData().getIntOrThrow("transaction_units");
+                }
+            } else {
+                isTestPayment = false;
+                calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                        - contract.getStateData().getIntOrThrow("transaction_units");
+            }
+        }
+
+        if(!isTestPayment || allowTestPayments) {
+            return calculatedPayment;
         }
         return 0;
     }

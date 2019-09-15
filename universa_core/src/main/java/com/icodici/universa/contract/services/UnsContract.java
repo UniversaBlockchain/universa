@@ -217,8 +217,6 @@ public class UnsContract extends NSmartContract {
         return res;
     }
 
-    private static final String MODIFY_REDUCED_PERMISSION_ID = "modify_reduced";
-
 
     private boolean isOriginCondition(Object condition, HashId origin) {
 
@@ -414,7 +412,7 @@ public class UnsContract extends NSmartContract {
             return false;
         }
 
-        if (paidU != getStateData().getInt(PAID_U_FIELD_NAME, 0)) {
+        if (paidU != getStateData().getInt(PAID_U_FIELD_NAME, 0).intValue()) {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PAID_U_FIELD_NAME + "] value. " +
                     "Should be amount of U paid by current paying parcel.");
             return false;
@@ -984,11 +982,45 @@ public class UnsContract extends NSmartContract {
 
     public Parcel createRegistrationParcel(ZonedDateTime unsExpirationDate, Contract uContract, Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignUnsWith) {
         int amount = getPayingAmount(unsExpirationDate);
-        Parcel parcel = Parcel.of(this, uContract, uKeys);
-        if(amount > 0) {
-            parcel.addPayingAmount(amount,uKeys,keysToSignUnsWith);
+        return createRegistrationParcel(amount,uContract,uKeys,keysToSignUnsWith);
+    }
+
+    /**
+     * Create {@link Parcel} to be registered that includes given amount paid
+     * @param payingAmount amount to pay
+     * @param uContract contract to used as payment
+     * @param uKeys keys that resolve owner of payment contract
+     * @param keysToSignUnsWith keys to sign UNS1 contract with (existing signatures are dropped when adding payment)
+     * @return parcel to be registered
+     */
+
+    public Parcel createRegistrationParcel(int payingAmount, Contract uContract, Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignUnsWith) {
+
+        if(payingAmount != paidU) {
+
+            if(setPayingAmount(payingAmount) == null) {
+                return null;
+            }
+
+            seal();
+            addSignatureToSeal(new HashSet<>(keysToSignUnsWith));
         }
-        return parcel;
+
+        return Parcel.of(this, uContract, uKeys,payingAmount);
+    }
+
+    /**
+     * Create {@link Parcel} to be registered that includes additional payment of size expected by UNS1 contract: {@link #getPayingAmount()}
+     *
+     * Using this method allows to create paying parcel for UNS1 contract without dropping its signatures.
+     *
+     * @param uContract contract to used as payment
+     * @param uKeys keys that resolve owner of payment contract
+     * @return parcel to be registered
+     */
+
+    public Parcel createRegistrationParcel(Contract uContract, Collection<PrivateKey> uKeys) {
+        return Parcel.of(this, uContract, uKeys,paidU);
     }
 
     /**
@@ -1004,9 +1036,24 @@ public class UnsContract extends NSmartContract {
      */
 
     public ZonedDateTime setPayingAmount(int payingAmount) {
+        if(payingAmount == 0 && getRevision() == 1 || payingAmount > 0 && payingAmount < getMinPayment()) {
+            return null;
+        }
         paidU = payingAmount;
         calculatePrepaidNameDays(false);
         return getCurrentUnsExpiration();
+    }
+
+    /**
+     * Get paying amount expected by this UNS1 contract. It can be changed by {@link #setPayingAmount(int)}
+     *
+     * Providing exactly this amount as payment won't require any signatures to be reapplied to UNS1 {@link #createRegistrationParcel(Contract, Collection)}
+     *
+     * @return paying amount expected by this UNS1 contract
+     */
+
+    public int getPayingAmount() {
+        return paidU;
     }
 
     public static class PayingAmountMissingException extends IllegalArgumentException {
