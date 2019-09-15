@@ -114,6 +114,13 @@ public class Compound {
         compoundContract.addNewItems(contractToPutInto);
 
 
+        try {
+            //make a copy of contract transaction
+            contractToPutInto = Contract.fromPackedTransaction(contractToPutInto.getPackedTransaction());
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+
         Binder tagBinder = new Binder();
 
         Collection<Contract> referencedItems = contractToPutInto.getTransactionPack().getReferencedItems().values();
@@ -123,7 +130,7 @@ public class Compound {
         tagBinder.put("data",dataToAssociateWith);
         tagBinder.put("refs", referencedItems.stream().map(ri->ri.getId().toBase64String()).collect(Collectors.toList()));
         Binder tpTagsBinder = new Binder();
-        tpTags.forEach((k, v) -> tpTagsBinder.put(k, v.getId().toBase64String()));
+        tpTags.forEach((k, v) ->  tpTagsBinder.put(k, v.getId().toBase64String()));
         tagBinder.put("tags", tpTagsBinder);
 
         compoundContract.getDefinition().getData().getBinder("contracts").put(tag,tagBinder);
@@ -169,17 +176,20 @@ public class Compound {
             if(tagBinder == null)
                 return null;
 
+            //We make a copy of transaction and extract everything from the copy (possibly breaking its internal structure)
+            //to keep the actual one untouched
+            TransactionPack tpCopy = TransactionPack.unpack(compoundContract.getPackedTransaction());
 
             //get contract by id and create transaction pack for it
             HashId id = HashId.withDigest(tagBinder.getString("id"));
-            Contract contract = compoundContract.getTransactionPack().getSubItem(id);
+            Contract contract = tpCopy.getSubItem(id);
             TransactionPack transactionPack = new TransactionPack(contract);
             contract.setTransactionPack(transactionPack);
 
             //fill tp referenced items from refs
             List<String> referencedItemsIds = tagBinder.getList("refs", new ArrayList<>());
             referencedItemsIds.forEach(riId ->transactionPack.addReferencedItem(
-                    compoundContract.getTransactionPack().getReferencedItems().get(HashId.withDigest(riId))));
+                    tpCopy.getReferencedItems().get(HashId.withDigest(riId))));
 
             //fill tp tags from "tags"
             Binder tpTagsBinder = tagBinder.getBinder("tags",new Binder());
@@ -188,6 +198,11 @@ public class Compound {
             return contract;
 
         } catch (IllegalArgumentException ignored) {
+            return null;
+        } catch (IOException e) {
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
