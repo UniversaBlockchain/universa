@@ -17,38 +17,23 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.contract.services.NContractSubscription;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NMutableEnvironment;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.ContractSubscription;
-import com.icodici.universa.contract.services.NContractStorage;
 import com.icodici.universa.contract.services.MutableEnvironment;
-import com.icodici.universa.contract.services.ImmutableEnvironment;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.NetworkV2;
-import net.sergeych.biserializer.BiAdapter;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
-import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import com.icodici.universa.contract.services.*;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.math.BigDecimal;
-import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -101,7 +86,7 @@ public class Node {
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     private final NCallbackService callbackService;
-    private Map<String,byte[]> serviceTags = new HashMap<>();
+    private Map<String,byte[]> serviceContracts = new HashMap<>();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -149,7 +134,7 @@ public class Node {
 
         try {
             ClassLoader classLoader = getClass().getClassLoader();
-            serviceTags.put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
+            serviceContracts.put("node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1921,11 +1906,11 @@ public class Node {
                 if(item instanceof Contract) {
 
                     TransactionPack tp = ((Contract) item).getTransactionPack();
-                    getServiceTags().forEach((k, v) -> {
+                    getServiceContracts().forEach((k, v) -> {
                         try {
                             Contract c = new Contract(v,tp);
                             tp.addReferencedItem(c);
-                            tp.addTag(k, c.getId());
+                            tp.addTag(TransactionPack.TAG_PREFIX_RESERVED+k, c.getId());
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -4099,8 +4084,8 @@ public class Node {
     }
 
 
-    public Map<String, byte[]> getServiceTags() {
-        return serviceTags;
+    public Map<String, byte[]> getServiceContracts() {
+        return serviceContracts;
     }
 
     public enum ResyncingItemProcessingState {
