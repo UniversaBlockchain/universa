@@ -451,7 +451,7 @@ public class TransactionPack implements BiSerializable {
         TransactionPack tp = new TransactionPack();
         tp.reconstructed = true;
         tp.packedBinary = packOrContractBytes;
-        tp.contract = new Contract(packOrContractBytes, tp);
+        tp.contract = Contract.fromSealedBinary(packOrContractBytes, tp);
         return tp;
     }
 
