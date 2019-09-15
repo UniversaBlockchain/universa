@@ -45,13 +45,13 @@ public class Parcel implements BiSerializable {
                 }
             }
 
-            if (nc.isU(uIssuerKeys, uIssuerName) && !currentTag.startsWith(Parcel.TP_PAYING_FOR_TAG_PREFIX)) {
+            if (nc.isU(uIssuerKeys, uIssuerName) && (currentTag == null || !currentTag.startsWith(Parcel.TP_PAYING_FOR_TAG_PREFIX))) {
                 return nc;
             }
         }
 
         Contract payment = transactionPack.getTags().getOrDefault(Parcel.TP_PAYING_FOR_TAG_PREFIX + contract.getId().toBase64String(), null);
-        if(payment.isU(uIssuerKeys, uIssuerName))
+        if(payment != null && payment.isU(uIssuerKeys, uIssuerName))
             return payment;
 
         return null;
