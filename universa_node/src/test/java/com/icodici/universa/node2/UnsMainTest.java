@@ -46,7 +46,6 @@ public class UnsMainTest extends BaseMainTest {
         uns.addData(Binder.of("host","192.168.1.1"));
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(keyToRegister);
-        uns.seal();
         ZonedDateTime plannedExpirationDate = ZonedDateTime.now().plusMonths(12);
         Parcel parcel = uns.createRegistrationParcel(plannedExpirationDate, getApprovedUContract(ts),
                 Do.listOf(ts.myKey), Do.listOf(unsIssuer, authorizedNameServiceKey,keyToRegister));
@@ -250,6 +249,7 @@ public class UnsMainTest extends BaseMainTest {
                 manufacturePublicKeys, testSpace.client.getConfigProvider(), unsTestName, "test contract name", "http://test.com", simpleContract);
         unsContract.getName(unsTestName).setUnsReducedName(unsTestName);
         unsContract.addSignerKey(authorizedNameServiceKey);
+        unsContract.setPayingAmount(2000);
         unsContract.seal();
         unsContract.check();
         unsContract.traceErrors();
@@ -282,7 +282,7 @@ public class UnsMainTest extends BaseMainTest {
 
         unsContractBytes = testSpace.client.queryNameContract(unsTestName);
         System.out.println("unsContractBytes: " + unsContractBytes);
-        assertEquals(true, Arrays.equals(unsContract.getPackedTransaction(), unsContractBytes));
+        assertEquals(true, Arrays.equals(unsContract.getLastSealedBinary(), unsContractBytes));
 
         // check uns contract with address record
         unsTestName = "testAddressContractName" + Instant.now().getEpochSecond();
@@ -293,6 +293,7 @@ public class UnsMainTest extends BaseMainTest {
         unsContract2.getName(unsTestName).setUnsReducedName(unsTestName);
         unsContract2.addSignerKey(authorizedNameServiceKey);
         unsContract2.addSignerKey(randomPrivKey);
+        unsContract2.setPayingAmount(2000);
         unsContract2.seal();
         unsContract2.check();
         unsContract2.traceErrors();
@@ -326,7 +327,7 @@ public class UnsMainTest extends BaseMainTest {
 
         unsContractBytes = testSpace.client.queryNameContract(unsTestName);
         System.out.println("unsContractBytes: " + unsContractBytes);
-        assertEquals(true, Arrays.equals(unsContract2.getPackedTransaction(), unsContractBytes));
+        assertEquals(true, Arrays.equals(unsContract2.getLastSealedBinary(), unsContractBytes));
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
@@ -359,7 +360,9 @@ public class UnsMainTest extends BaseMainTest {
         uns.addName(name, name, "test description");
         uns.addKey(randomPrivKey1.getPublicKey());
 
+        int payingAmount = testSpace.client.getConfigProvider().getMinPayment("UNS1");
         uns.attachToNetwork(testSpace.client);
+        uns.setPayingAmount(payingAmount);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey1);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -374,6 +377,7 @@ public class UnsMainTest extends BaseMainTest {
         uns2.addKey(randomPrivKey2.getPublicKey());
 
         uns2.attachToNetwork(testSpace.client);
+        uns2.setPayingAmount(payingAmount);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivKey2);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -387,6 +391,7 @@ public class UnsMainTest extends BaseMainTest {
         uns3.addKey(randomPrivKey3.getPublicKey());
 
         uns3.attachToNetwork(testSpace.client);
+        uns3.setPayingAmount(payingAmount);
         uns3.seal();
         uns3.addSignatureToSeal(randomPrivKey3);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -397,7 +402,7 @@ public class UnsMainTest extends BaseMainTest {
         Contract paymentContract = getApprovedUContract(testSpace);
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -437,7 +442,7 @@ public class UnsMainTest extends BaseMainTest {
 
         //REGISTER UNS2
         paymentContract = getApprovedUContract(testSpace);
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -493,7 +498,7 @@ public class UnsMainTest extends BaseMainTest {
         //REGISTER UNS3
         paymentContract = getApprovedUContract(testSpace);
 
-        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -555,11 +560,13 @@ public class UnsMainTest extends BaseMainTest {
         uns.addSignerKey(authorizedNameServiceKey);
 
 
+        int payingAmount = testSpace.client.getConfigProvider().getMinPayment("UNS1");
 
         uns.addName(name,name,"test description");
         uns.addKey(randomPrivKey1.getPublicKey());
 
         uns.attachToNetwork(testSpace.client);
+        uns.setPayingAmount(payingAmount);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey1);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -575,6 +582,7 @@ public class UnsMainTest extends BaseMainTest {
 
 
         uns2.attachToNetwork(testSpace.client);
+        uns2.setPayingAmount(payingAmount);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivKey2);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -589,6 +597,7 @@ public class UnsMainTest extends BaseMainTest {
 
 
         uns3.attachToNetwork(testSpace.client);
+        uns3.setPayingAmount(payingAmount);
         uns3.seal();
         uns3.addSignatureToSeal(randomPrivKey3);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -599,7 +608,7 @@ public class UnsMainTest extends BaseMainTest {
         Contract paymentContract = getApprovedUContract(testSpace);
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -639,7 +648,7 @@ public class UnsMainTest extends BaseMainTest {
 
         //REGISTER UNS2
         paymentContract = getApprovedUContract(testSpace);
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -672,8 +681,8 @@ public class UnsMainTest extends BaseMainTest {
         uns2.removeKey(randomPrivKey2.getPublicKey());
         uns2.addKey(randomPrivKey4.getPublicKey());
 
-
         uns2.attachToNetwork(testSpace.client);
+        uns2.setPayingAmount(0);
         uns2.seal();
 
         parcel = ContractsService.createParcel(uns2, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);
@@ -704,7 +713,7 @@ public class UnsMainTest extends BaseMainTest {
         //REGISTER UNS3
         paymentContract = getApprovedUContract(testSpace);
 
-        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -763,6 +772,7 @@ public class UnsMainTest extends BaseMainTest {
         String name = "test" + Instant.now().getEpochSecond();
         String name2 = "test2" + Instant.now().getEpochSecond();
 
+        int payingAmount = testSpace.client.getConfigProvider().getMinPayment("UNS1");
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
@@ -771,6 +781,7 @@ public class UnsMainTest extends BaseMainTest {
         uns.addKey(randomPrivKey1.getPublicKey());
 
         uns.attachToNetwork(testSpace.client);
+        uns.setPayingAmount(payingAmount);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey1);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -782,7 +793,7 @@ public class UnsMainTest extends BaseMainTest {
         Contract paymentContract = getApprovedUContract(testSpace);
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, testSpace.client.getConfigProvider().getMinPayment("UNS1"), manufacturePrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, payingAmount, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.uContractLock) {
@@ -818,6 +829,7 @@ public class UnsMainTest extends BaseMainTest {
 
 
         uns.attachToNetwork(testSpace.client);
+        uns.setPayingAmount(0);
         uns.seal();
 
         Parcel parcel = ContractsService.createParcel(uns, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);
@@ -863,6 +875,7 @@ public class UnsMainTest extends BaseMainTest {
 
 
         uns.attachToNetwork(testSpace.client);
+        uns.setPayingAmount(0);
         uns.seal();
 
         parcel = ContractsService.createParcel(uns, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);

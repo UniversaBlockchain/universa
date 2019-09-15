@@ -655,6 +655,8 @@ public class UnsContract extends NSmartContract {
     public ZonedDateTime getCurrentUnsExpiration() {
         // get number of entries
         int entries = getStoredUnitsCount();
+        if(entries == 0)
+            return getCreatedAt();
 
         double days = prepaidNameDays / entries;
         long seconds = (long) (days * 24 * 3600);
@@ -996,7 +998,7 @@ public class UnsContract extends NSmartContract {
 
     public Parcel createRegistrationParcel(int payingAmount, Contract uContract, Collection<PrivateKey> uKeys, Collection<PrivateKey> keysToSignUnsWith) {
 
-        if(payingAmount != paidU) {
+        if(paidU == null || payingAmount != paidU) {
 
             if(setPayingAmount(payingAmount) == null) {
                 return null;
@@ -1052,7 +1054,7 @@ public class UnsContract extends NSmartContract {
      * @return paying amount expected by this UNS1 contract
      */
 
-    public int getPayingAmount() {
+    public Integer getPayingAmount() {
         return paidU;
     }
 

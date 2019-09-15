@@ -50,9 +50,12 @@ public class Parcel implements BiSerializable {
             }
         }
 
-        Contract payment = transactionPack.getTags().getOrDefault(Parcel.TP_PAYING_FOR_TAG_PREFIX + contract.getId().toBase64String(), null);
-        if(payment != null && payment.isU(uIssuerKeys, uIssuerName))
-            return payment;
+        //backward compatibility. SLOT1 and FOLLOWER may not have an ID at this point
+        if(contract.getLastSealedBinary() != null) {
+            Contract payment = transactionPack.getTags().getOrDefault(Parcel.TP_PAYING_FOR_TAG_PREFIX + contract.getId().toBase64String(), null);
+            if (payment != null && payment.isU(uIssuerKeys, uIssuerName))
+                return payment;
+        }
 
         return null;
     }

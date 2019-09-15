@@ -1356,8 +1356,7 @@ public class ContractsService {
 
         UnsContract.addUnsSpecific();
 
-        UnsContract.seal();
-        UnsContract.addSignatureToSeal(issuerKeys);
+        UnsContract.addSignerKeys(issuerKeys);
 
         return UnsContract;
     }
@@ -1430,9 +1429,7 @@ public class ContractsService {
 
         unsContract.addName(name,null,description);
         unsContract.addOrigin(namedContract);
-        unsContract.seal();
-        unsContract.addSignatureToSeal(issuerKeys);
-
+        unsContract.addSignerKeys(issuerKeys);
         return unsContract;
     }
 
@@ -1506,8 +1503,7 @@ public class ContractsService {
         unsContract.addName(name, null,description);
         unsContract.addKey((PublicKey) namedKey.getPublicKey());
 
-        unsContract.seal();
-        unsContract.addSignatureToSeal(issuerKeys);
+        unsContract.addSignerKeys(issuerKeys);
 
         return unsContract;
     }
