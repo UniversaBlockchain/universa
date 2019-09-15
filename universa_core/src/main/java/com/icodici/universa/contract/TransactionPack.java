@@ -404,7 +404,12 @@ public class TransactionPack implements BiSerializable {
 
             if(taggedItems.size() > 0) {
                 Binder tagsBinder = new Binder();
-                taggedItems.forEach((k,v) -> tagsBinder.put(k,serializer.serialize(v.getId())));
+                //do not serialize tags with reserved prefix. these are only added by runtime at node side
+                taggedItems.forEach((k,v) -> {
+                    if(!k.startsWith(TAG_PREFIX_RESERVED))
+                        tagsBinder.put(k,serializer.serialize(v.getId()));
+                });
+
                 of.set("tags",tagsBinder);
             }
 
