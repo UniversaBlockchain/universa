@@ -165,6 +165,13 @@ public class Client {
         clients.addAll(Collections.nCopies(nodes.size(),null));
     }
 
+    public Binder getServiceContracts() throws ClientError {
+        return protect(() -> {
+            Binder answer = httpClient.command("getServiceContracts");
+            return answer.getBinderOrThrow("contracts");
+        });
+    }
+
     protected interface Executor<T> {
         T execute() throws Exception;
     }

@@ -20,8 +20,6 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.TestKeys;
-import com.icodici.universa.node2.network.ClientError;
-import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.FollowerCallback;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
@@ -32,7 +30,6 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
@@ -76,7 +73,7 @@ public class BaseNetworkTest extends TestCase {
     public void init(Node node, List<Node> nodes, Map<NodeInfo,Node> nodesMap, Network network, Ledger ledger, Config config) throws Exception {
         this.node = node;
         this.nodes = nodes;
-        nodes.forEach(n->n.getServiceTags().clear());
+        nodes.forEach(n->n.getServiceContracts().clear());
         this.nodesMap = nodesMap;
         this.network = network;
         this.ledger = ledger;

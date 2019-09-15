@@ -233,15 +233,17 @@ public class BaseMainTest {
         contract.getKeysToSignWith().clear();
         contract.getKeysToSignWith().addAll(currentKeys);
         contract.seal();
+        contract.getKeysToSignWith().clear();
+
         Contract u = getApprovedUContract(ts);
 
         Parcel parcel;
         if(payingParcelAmount > 0) {
-            parcel = ContractsService.createPayingParcel(contract.getTransactionPack(),u,10,payingParcelAmount,new HashSet<PrivateKey>(Do.listOf(ts.myKey)),false);
+            parcel = Parcel.of(contract,u,new HashSet<>(Do.listOf(ts.myKey)),payingParcelAmount);
         } else {
-            parcel = ContractsService.createParcel(contract,u,10, new HashSet<>(Do.listOf(ts.myKey)));
+            parcel = Parcel.of(contract,u,new HashSet<>(Do.listOf(ts.myKey)));
         }
-        ItemResult ir = ts.client.registerParcelWithState(parcel.pack(), 8000);
+        ItemResult ir = ts.client.registerParcelWithState(parcel.pack(), 80000);
         if(ir.state != ItemState.APPROVED)
             System.out.println(ir);
         assertEquals(ir.state,ItemState.APPROVED);

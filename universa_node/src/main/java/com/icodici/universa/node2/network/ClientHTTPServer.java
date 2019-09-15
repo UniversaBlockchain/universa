@@ -281,6 +281,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
         addSecureEndpoint("getConfigProvider", this::getConfigProvider);
+        addSecureEndpoint("getServiceContracts", this::getServiceContracts);
 
         addSecureEndpoint("proxy", this::proxy);
     }
@@ -313,6 +314,15 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         return Binder.of("provider",node.getConfigProvider());
+    }
+
+    private Binder getServiceContracts(Binder params, Session session) throws CommandFailedException {
+
+        checkNode(session, true);
+
+        return Binder.of("contracts", node.getServiceContracts());
+
+
     }
 
     private Binder queryNameRecord(Binder params, Session session) throws IOException {

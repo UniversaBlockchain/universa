@@ -1,6 +1,5 @@
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -85,7 +84,7 @@ public class UnsMainTest extends BaseMainTest {
         nodeConfigPrototype.seal();
         registerWithMinimumKeys(nodeConfigPrototype,Do.listOf(TestKeys.privateKey(11)),ts,0);
 
-        ts.nodes.forEach(n->n.node.getServiceTags().put(TransactionPack.TAG_PREFIX_RESERVED+"node_config_contract",nodeConfigPrototype.getLastSealedBinary()));
+        ts.nodes.forEach(n->n.node.getServiceContracts().put("node_config_contract",nodeConfigPrototype.getLastSealedBinary()));
 
 
         Contract referencesContract = new Contract(contractToRegisterIssuer);
@@ -103,10 +102,13 @@ public class UnsMainTest extends BaseMainTest {
         String desc = "Universa keys and origins";
         uns.addName(name,name+"_reduced",desc);
         uns.addKey(keyToRegister.getPublicKey());
+//        uns.addOrigin(referencesContract);
         uns.addData(Binder.of("host","192.168.1.1"));
         int paidU = 1470;
         uns.setPayingAmount(paidU);
         uns.seal();
+
+
 
         ZonedDateTime created = uns.getCreatedAt();
 
@@ -116,8 +118,9 @@ public class UnsMainTest extends BaseMainTest {
         registerWithMinimumKeys(uns,Do.listOf(unsIssuer,keyToRegister,authorizedNameServiceKey),ts,paidU);
 
 
+        Contract c = Contract.fromPackedTransaction(ts.client.queryNameContract(name));
         //query contract from the network
-        uns = (UnsContract) Contract.fromPackedTransaction(ts.client.queryNameContract(name));
+        uns = (UnsContract) c;
         assertEquals(uns.getAllData().get(0).getString("host"),"192.168.1.1");
 
         Binder res = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
@@ -966,5 +969,5 @@ public class UnsMainTest extends BaseMainTest {
         environment = Boss.load(Boss.pack(environment));
         assertEquals(environment.get("test", null), "test1");
     }
-    
+
 }
