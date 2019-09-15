@@ -329,7 +329,9 @@ public class NSmartContract extends Contract implements NContract {
      * @param client connection to an instance of Universa network.
      * @throws ClientError
      */
+    @Override
     public void attachToNetwork(Client client) throws ClientError {
+        super.attachToNetwork(client);
         setNodeInfoProvider(client.getConfigProvider());
     }
 }

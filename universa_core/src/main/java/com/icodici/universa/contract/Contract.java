@@ -19,6 +19,8 @@ import com.icodici.universa.contract.services.UnsContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -52,6 +54,8 @@ import static java.util.Arrays.asList;
 @BiType(name = "UniversaContract")
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
+
+    private Binder serviceContracts;
 
     public static class UnicapsuleExpectedException extends IllegalArgumentException {
 
@@ -1982,6 +1986,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(result);
 
         addSignatureToSeal(keysToSignWith);
+
+        //add service contracts of the network attached to as service tags
+        if(serviceContracts != null) {
+            serviceContracts.keySet().forEach(k-> {
+                try {
+                    Contract c = Contract.fromSealedBinary(serviceContracts.getBinary(k));
+                    getTransactionPack().addReferencedItem(c);
+                    getTransactionPack().addTag(TransactionPack.TAG_PREFIX_RESERVED+k,c.getId());
+                } catch (IOException ignored) {
+
+                }
+            });
+
+        }
 
         return sealedBinary;
     }
@@ -4102,6 +4120,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         result.sealedBinary = sealedBinary;
         return result;
+    }
+
+    /**
+     * Attach current contract to an instance of Universa network.
+     *
+     * This will ensure that all the parameters used by {@link NSmartContract} for local calculations
+     * match the ones connected network is using.
+     *
+     * @param client connection to an instance of Universa network.
+     * @throws ClientError
+     */
+    public void attachToNetwork(Client client) throws ClientError {
+        serviceContracts = client.getServiceContracts();
     }
 
 }
