@@ -4359,7 +4359,11 @@ public class Node {
                     sessionId = sessionIds.get(myInfo);
 
 
-                    sessionPool = computeSessionPool(sessionId,poolSize,uBotRegistry);;
+                    sessionPool = computeSessionPool(sessionId,poolSize,uBotRegistry);
+                    if(sessionPool == null) {
+                        abortSession();
+                        return;
+                    }
 
                     state = UBotSessionState.OPERATIONAL;
                     executorService.schedule(()->broadcaster.cancel(true),5,TimeUnit.SECONDS);
@@ -4369,6 +4373,10 @@ public class Node {
 
         private Set<Integer> computeSessionPool(HashId sessionId, int poolSize, Contract uBotRegistry) {
             List<Binder> list = new ArrayList<>(uBotRegistry.getStateData().getListOrThrow("topology"));
+
+            if(list.size() < poolSize)
+                return null;
+
             BigInteger bigInteger = new BigInteger(sessionId.getDigest());
             if(bigInteger.compareTo(BigInteger.ZERO) < 0) {
                 bigInteger = bigInteger.negate();
