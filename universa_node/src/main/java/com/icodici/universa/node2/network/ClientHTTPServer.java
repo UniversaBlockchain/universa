@@ -284,6 +284,13 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getServiceContracts", this::getServiceContracts);
 
         addSecureEndpoint("proxy", this::proxy);
+
+
+        addSecureEndpoint("ubotCreateSession", this::ubotCreateSession);
+        addSecureEndpoint("ubotGetSession", this::ubotGetSession);
+        addSecureEndpoint("ubotUpdateStorage", this::ubotUpdateStorage);
+        addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
+        addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
     }
 
     @Override
@@ -593,6 +600,35 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"getState", e.getMessage()));
         }
+    }
+
+
+    private Binder ubotCreateSession(Binder params, Session session) throws CommandFailedException {
+        try {
+            Contract request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
+            Binder res = node.createUBotSession(request);
+            return res;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
+        }
+    }
+
+    private Binder ubotGetSession(Binder params, Session session) throws CommandFailedException {
+        HashId executableContractId = params.getOrThrow("executableContractId");
+        return Binder.of("session",node.getUBotSession(executableContractId));
+    }
+
+    private Binder ubotCloseSession(Binder params, Session session) throws CommandFailedException {
+        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotCloseSession","not implemented"));
+    }
+
+    private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
+        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotUpdateStorage","not implemented"));
+    }
+
+    private Binder ubotGetStorage(Binder params, Session session) throws CommandFailedException {
+        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotGetStorage","not implemented"));
     }
 
     private Binder resyncItem(Binder params, Session session) throws CommandFailedException {

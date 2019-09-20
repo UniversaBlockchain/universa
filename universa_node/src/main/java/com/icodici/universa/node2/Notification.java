@@ -156,6 +156,7 @@ abstract public class Notification {
         ParcelNotification.init();
         ResyncNotification.init();
         CallbackNotification.init();
+        UBotSessionNotification.init();
     }
 
 }

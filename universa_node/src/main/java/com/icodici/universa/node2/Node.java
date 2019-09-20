@@ -27,6 +27,7 @@ import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.NetworkV2;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -34,6 +35,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import com.icodici.universa.contract.services.*;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -96,6 +98,8 @@ public class Node {
     private final ParcelLock parcelLock = new ParcelLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
+    private ConcurrentHashMap<HashId, UBotSessionProcessor> ubotSessionProcessors = new ConcurrentHashMap();
+
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
 
@@ -135,6 +139,7 @@ public class Node {
         try {
             ClassLoader classLoader = getClass().getClassLoader();
             serviceContracts.put("node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
+            serviceContracts.put("ubot_registry_contract",Do.read(classLoader.getResourceAsStream("contracts/ubot_registry_contract.unicon")));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -513,6 +518,44 @@ public class Node {
                 obtainCommonNotification((ItemNotification) notification);
         } else if (notification instanceof CallbackNotification) {
             callbackService.obtainCallbackNotification((CallbackNotification) notification);
+        } else if (notification instanceof  UBotSessionNotification) {
+            obtainUBotSessionNotification((UBotSessionNotification) notification);
+        }
+    }
+
+    private void obtainUBotSessionNotification(UBotSessionNotification notification) {
+        try {
+            itemLock.synchronize(notification.getExecutableContractId(),lock -> {
+
+                HashId executableContractId = notification.getExecutableContractId();
+
+                int state = (int) notification.getPayload().get(0);
+
+                UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+                if(notification.isHaveRequestContract()) {
+                    usp.addRequestContractSource(notification.getFrom());
+                }
+
+                if(usp == null) {
+                    if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
+                        usp = new UBotSessionProcessor(executableContractId, (HashId) notification.getPayload().get(1), null);
+                        ubotSessionProcessors.put(executableContractId, usp);
+                    } else {
+                        return null;
+                    }
+                }
+                if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
+                    usp.voteRequestId(notification.getFrom(),(HashId)notification.getPayload().get(1),(HashId)notification.getPayload().get(2));
+                } else if(state == UBotSessionState.COLLECTING_RANDOMS.ordinal()) {
+                    usp.voteRandom(notification.getFrom(),(Integer) notification.getPayload().get(1));
+                } else if(state == UBotSessionState.VOTING_SESSION_ID.ordinal()) {
+                    usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
+                }
+                return null;
+
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -1221,6 +1264,35 @@ public class Node {
 
     public NodeConfigProvider getConfigProvider() {
         return nodeInfoProvider;
+    }
+
+    public Binder createUBotSession(Contract requestContract) {
+        cache.put(requestContract,checkItem(requestContract.getId()));
+        HashId executableContractId = HashId.withDigest(requestContract.getStateData().getStringOrThrow("executable_contract_id"));
+        HashId requestId = requestContract.getId();
+        try {
+            return itemLock.synchronize(executableContractId,lock -> {
+                UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+                if(usp != null) {
+                    return null;
+                } else {
+                    usp = new UBotSessionProcessor(executableContractId,requestId,requestContract);
+                    ubotSessionProcessors.put(executableContractId,usp);
+                }
+                return new Binder();
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
+    public Binder getUBotSession(HashId executableContractId) {
+        UBotSessionProcessor sp = ubotSessionProcessors.get(executableContractId);
+        if(sp != null)
+            return sp.getSession();
+        else return null;
     }
 
 
@@ -4104,5 +4176,213 @@ public class Node {
      */
     public boolean hasDeferredNotifications() {
         return callbackService.hasDeferredNotifications();
+    }
+
+
+
+
+    public enum UBotSessionState {
+        VOTING_REQUEST_ID,
+        COLLECTING_RANDOMS,
+        VOTING_SESSION_ID,
+        OPERATIONAL,
+        ABORTED
+    }
+
+    private class UBotSessionProcessor {
+
+        private final HashId executableContractId;
+        private HashId requestId;
+        private Contract requestContract;
+
+        private Set<NodeInfo> requestContractSources = new HashSet<>();
+        private Map<NodeInfo,HashId> requestIds = new ConcurrentHashMap<>();
+        private Map<NodeInfo,HashId> randomHashes = new ConcurrentHashMap<>();
+        private Map<NodeInfo,Integer> randomNumbers = new ConcurrentHashMap<>();
+        private Map<NodeInfo,HashId> sessionIds = new ConcurrentHashMap<>();
+        UBotSessionState state;
+        private ScheduledFuture<?> broadcaster;
+        private HashId sessionId;
+        private Set<Integer> sessionPool;
+
+        private void abortSession() {
+            state = UBotSessionState.ABORTED;
+            removeSelf();
+        }
+
+        private void removeSelf() {
+            ubotSessionProcessors.remove(executableContractId);
+            broadcaster.cancel(true);
+        }
+
+        public UBotSessionProcessor(HashId executableContractId, HashId requestId, Contract requestContract) {
+            this.executableContractId = executableContractId;
+            this.requestContract = requestContract;
+            state = UBotSessionState.VOTING_REQUEST_ID;
+            Integer random = Do.randomInt(Integer.MAX_VALUE);
+            voteRequestId(myInfo,requestId,HashId.of(Boss.pack(random)));
+            voteRandom(myInfo,random);
+            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,1,TimeUnit.SECONDS);
+        }
+
+
+        private void voteRequestId(NodeInfo nodeInfo, HashId requestId, HashId hashOfRandom) {
+            randomHashes.put(nodeInfo,hashOfRandom);
+            requestIds.put(nodeInfo,requestId);
+            checkVote();
+        }
+
+        private void voteRandom(NodeInfo nodeInfo, Integer random) {
+            if(randomHashes.get(nodeInfo).equals(HashId.of(Boss.pack(random)))) {
+                randomNumbers.put(nodeInfo, random);
+                checkVote();
+            } else {
+                abortSession();
+            }
+        }
+
+        private void voteSessionId(NodeInfo nodeInfo, HashId sessionId) {
+            sessionIds.put(nodeInfo,sessionId);
+            checkVote();
+        }
+
+
+        private void checkVote() {
+            if(state == UBotSessionState.VOTING_REQUEST_ID) {
+                if (requestIds.size() == network.allNodes().size()) {
+                    Set<HashId> variants = requestIds.values().stream().collect(Collectors.toSet());
+                    if(variants.size() == 1) {
+                        requestId = variants.iterator().next();
+                    } else {
+                        long max = 0;
+                        Set<HashId> maxAt = new HashSet<>();
+                        for(HashId variant : variants) {
+                            long count = requestIds.values().stream().filter(x -> x.equals(variant)).count();
+                            if(count > max) {
+                                max = count;
+                                maxAt.clear();
+                            }
+
+                            if(count == max) {
+                                maxAt.add(variant);
+                            }
+                        }
+
+                        if(maxAt.size() == 1) {
+                            requestId = maxAt.iterator().next();
+                        } else {
+                            requestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                        }
+                    }
+                    state = UBotSessionState.COLLECTING_RANDOMS;
+                    broadcastMyState();
+                }
+            } else if(state == UBotSessionState.COLLECTING_RANDOMS) {
+                if(randomNumbers.size() == network.allNodes().size()) {
+                    state = UBotSessionState.VOTING_SESSION_ID;
+                    List<Integer> sortedRandoms = randomNumbers.keySet().stream().sorted(Comparator.comparingInt(NodeInfo::getNumber)).map(ni->randomNumbers.get(ni)).collect(Collectors.toList());
+                    voteSessionId(myInfo,HashId.of(Boss.pack(Do.listOf(requestId,sortedRandoms))));
+                    broadcastMyState();
+                }
+            } else if(state == UBotSessionState.VOTING_SESSION_ID) {
+                if(sessionIds.size() == network.allNodes().size()) {
+                    //all session ids should be equals. So put into set it should have size == 1
+                    if(sessionIds.values().stream().collect(Collectors.toSet()).size() > 1) {
+                        abortSession();
+                        return;
+                    }
+
+                    if(requestContract == null || !requestContract.getId().equals(requestId)) {
+                        if(!requestContractSources.isEmpty()) {
+                            try {
+                                requestContract = (Contract) network.getItem(requestId,Do.sample(requestContractSources),Duration.ofSeconds(15));
+                            } catch (InterruptedException e) {
+                                executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
+                                return;
+                            }
+                        } else {
+                            executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
+                            return;
+                        }
+                    }
+
+                    if(requestContract == null || !requestContract.getId().equals(requestId)) {
+                        abortSession();
+                        return;
+                    }
+                    String methodName = requestContract.getStateData().getString("method_name");
+                    Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+                    Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
+                    int poolSize = methodBinder.getBinderOrThrow("pool").getIntOrThrow("size");
+                    Contract uBotRegistry;
+                    try {
+                        uBotRegistry = Contract.fromSealedBinary(serviceContracts.get("ubot_registry_contract"));
+                    } catch (IOException e) {
+                        throw new IllegalStateException(e);
+                    }
+
+                    sessionId = sessionIds.get(myInfo);
+
+
+                    sessionPool = computeSessionPool(sessionId,poolSize,uBotRegistry);;
+
+                    state = UBotSessionState.OPERATIONAL;
+                    executorService.schedule(()->broadcaster.cancel(true),5,TimeUnit.SECONDS);
+                }
+            }
+        }
+
+        private Set<Integer> computeSessionPool(HashId sessionId, int poolSize, Contract uBotRegistry) {
+            List<Binder> list = new ArrayList<>(uBotRegistry.getStateData().getListOrThrow("topology"));
+            BigInteger bigInteger = new BigInteger(sessionId.getDigest());
+            if(bigInteger.compareTo(BigInteger.ZERO) < 0) {
+                bigInteger = bigInteger.negate();
+            }
+            Set<Integer> pool = new HashSet<>();
+            while(pool.size() < poolSize) {
+                BigInteger size = BigInteger.valueOf(list.size());
+                BigInteger[] res = bigInteger.divideAndRemainder(size);
+                int idx = res[1].intValue();
+                bigInteger = res[0];
+                pool.add(list.remove(idx).getIntOrThrow("number"));
+
+            }
+            return pool;
+        }
+
+        private void broadcastMyState() {
+            Notification notification;
+            switch (state) {
+                case VOTING_REQUEST_ID:
+                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo)));
+                    break;
+                case COLLECTING_RANDOMS:
+                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),randomNumbers.get(myInfo)));
+                    break;
+                case VOTING_SESSION_ID:
+                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),sessionIds.get(myInfo)));
+                    break;
+                case OPERATIONAL:
+                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),sessionId));
+                    break;
+                default:
+                    notification = null;
+                    break;
+            }
+
+            if(notification != null) {
+                network.broadcast(myInfo,notification);
+            }
+        }
+
+        public Binder getSession() {
+            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool);
+        }
+
+        public void addRequestContractSource(NodeInfo from) {
+            synchronized (requestContractSources) {
+                requestContractSources.add(from);
+            }
+        }
     }
 }
