@@ -1276,7 +1276,7 @@ public class Node {
 
     public Binder createUBotSession(Contract requestContract) {
         cache.put(requestContract,checkItem(requestContract.getId()));
-        HashId executableContractId = HashId.withDigest(requestContract.getStateData().getStringOrThrow("executable_contract_id"));
+        HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         HashId requestId = requestContract.getId();
         try {
             return itemLock.synchronize(executableContractId,lock -> {

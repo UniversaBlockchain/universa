@@ -3389,7 +3389,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             r = addRole(d.deserialize(data.getBinderOrThrow("created_by")));
             if (!r.getName().equals("creator"))
                 throw new IllegalArgumentException("bad creator role name");
-            this.data = data.getBinder("data", Binder.EMPTY);
+            this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
             branchId = data.getString("branch_id", null);
             parent = d.deserialize(data.get("parent"));
             origin = d.deserialize(data.get("origin"));
@@ -3752,7 +3752,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } catch (IllegalArgumentException e) {
                     validUntil = null;
                 }
-                this.data = data.getBinder("data", null);
+                this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
             }
         }
 

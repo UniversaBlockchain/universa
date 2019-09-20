@@ -15,6 +15,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,12 +32,12 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",4))));
         executableContract.seal();
         Contract requestContract = new Contract(TestKeys.privateKey(2));
-        requestContract.getStateData().put("executable_contract_id",executableContract.getId().toBase64String());
+        requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
         requestContract.seal();
         requestContract.getTransactionPack().addReferencedItem(executableContract);
-        int attempts = 200;
+        int attempts = 5;
         System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
         while (attempts-- > 0) {
             System.out.println(ts.client.command("ubotGetSession","executableContractId",executableContract.getId()));
@@ -61,7 +62,7 @@ public class UBotSessionsTest extends BaseMainTest {
         List<Contract> requestContracts = new ArrayList<>();
         for(int i = 0; i < client.size();i++) {
             Contract requestContract = new Contract(TestKeys.privateKey(2));
-            requestContract.getStateData().put("executable_contract_id",executableContract.getId().toBase64String());
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
             requestContract.getStateData().put("method_name","getRandom");
             requestContract.getStateData().put("method_args", Do.listOf(1000));
             requestContract.seal();

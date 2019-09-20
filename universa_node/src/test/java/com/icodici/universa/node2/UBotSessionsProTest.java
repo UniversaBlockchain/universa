@@ -27,7 +27,7 @@ public class UBotSessionsProTest {
                                 "quorum",Binder.of("size",4))));
         executableContract.seal();
         Contract requestContract = new Contract(TestKeys.privateKey(2));
-        requestContract.getStateData().put("executable_contract_id",executableContract.getId().toBase64String());
+        requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
         requestContract.seal();
@@ -75,7 +75,7 @@ public class UBotSessionsProTest {
         List<Contract> requestContracts = new ArrayList<>();
         for(int i = 0; i < client.size();i++) {
             Contract requestContract = new Contract(TestKeys.privateKey(2));
-            requestContract.getStateData().put("executable_contract_id",executableContract.getId().toBase64String());
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
             requestContract.getStateData().put("method_name","getRandom");
             requestContract.getStateData().put("method_args", Do.listOf(1000));
             requestContract.seal();
