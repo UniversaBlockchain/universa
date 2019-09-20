@@ -532,10 +532,6 @@ public class Node {
                 int state = (int) notification.getPayload().get(0);
 
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
-                if(notification.isHaveRequestContract()) {
-                    usp.addRequestContractSource(notification.getFrom());
-                }
-
                 if(usp == null) {
                     if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
                         usp = new UBotSessionProcessor(executableContractId, (HashId) notification.getPayload().get(1), null);
@@ -544,6 +540,12 @@ public class Node {
                         return null;
                     }
                 }
+
+                if(notification.isHaveRequestContract()) {
+                    usp.addRequestContractSource(notification.getFrom());
+                }
+
+
                 if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
                     usp.voteRequestId(notification.getFrom(),(HashId)notification.getPayload().get(1),(HashId)notification.getPayload().get(2));
                 } else if(state == UBotSessionState.COLLECTING_RANDOMS.ordinal()) {
@@ -551,11 +553,17 @@ public class Node {
                 } else if(state == UBotSessionState.VOTING_SESSION_ID.ordinal()) {
                     usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
                 }
+
+                if(usp.state.ordinal() > state && notification.isDoAnswer()) {
+                    usp.sendMyState(UBotSessionState.byOrdinal(state),notification.getFrom());
+                }
+
                 return null;
 
             });
         } catch (Exception e) {
             e.printStackTrace();
+            //SystemdJournalWriter.writeException(e);
         }
     }
 
@@ -1274,12 +1282,12 @@ public class Node {
             return itemLock.synchronize(executableContractId,lock -> {
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
                 if(usp != null) {
-                    return null;
+
                 } else {
                     usp = new UBotSessionProcessor(executableContractId,requestId,requestContract);
                     ubotSessionProcessors.put(executableContractId,usp);
                 }
-                return new Binder();
+                return usp.getSession();
             });
         } catch (Exception e) {
             e.printStackTrace();
@@ -4186,12 +4194,21 @@ public class Node {
         COLLECTING_RANDOMS,
         VOTING_SESSION_ID,
         OPERATIONAL,
-        ABORTED
+        ABORTED;
+
+        public static UBotSessionState byOrdinal(int ordinal) {
+            for( UBotSessionState st : values()) {
+                if(st.ordinal() == ordinal)
+                    return st;
+            }
+            throw new IllegalArgumentException("bad ordinal");
+        }
     }
 
     private class UBotSessionProcessor {
 
         private final HashId executableContractId;
+        private final Integer myRandom;
         private HashId requestId;
         private Contract requestContract;
 
@@ -4219,20 +4236,28 @@ public class Node {
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
             state = UBotSessionState.VOTING_REQUEST_ID;
-            Integer random = Do.randomInt(Integer.MAX_VALUE);
-            voteRequestId(myInfo,requestId,HashId.of(Boss.pack(random)));
-            voteRandom(myInfo,random);
-            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,1,TimeUnit.SECONDS);
+            myRandom = Do.randomInt(Integer.MAX_VALUE);
+            voteRequestId(myInfo,requestId,HashId.of(Boss.pack(myRandom)));
+
+            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,2000,TimeUnit.MILLISECONDS);
         }
 
 
         private void voteRequestId(NodeInfo nodeInfo, HashId requestId, HashId hashOfRandom) {
+            System.out.println(myInfo + " voteRequestId from" + nodeInfo + " state " + state);
+
+            if(state != UBotSessionState.VOTING_REQUEST_ID)
+                return;
             randomHashes.put(nodeInfo,hashOfRandom);
             requestIds.put(nodeInfo,requestId);
             checkVote();
         }
 
         private void voteRandom(NodeInfo nodeInfo, Integer random) {
+            System.out.println(myInfo + " voteRandom from" + nodeInfo + " state " + state);
+
+            if(state != UBotSessionState.COLLECTING_RANDOMS)
+                return;
             if(randomHashes.get(nodeInfo).equals(HashId.of(Boss.pack(random)))) {
                 randomNumbers.put(nodeInfo, random);
                 checkVote();
@@ -4242,6 +4267,11 @@ public class Node {
         }
 
         private void voteSessionId(NodeInfo nodeInfo, HashId sessionId) {
+            System.out.println(myInfo + " voteSessionId from" + nodeInfo + " state " + state);
+
+            if(state != UBotSessionState.VOTING_SESSION_ID)
+                return;
+
             sessionIds.put(nodeInfo,sessionId);
             checkVote();
         }
@@ -4275,6 +4305,7 @@ public class Node {
                         }
                     }
                     state = UBotSessionState.COLLECTING_RANDOMS;
+                    voteRandom(myInfo,myRandom);
                     broadcastMyState();
                 }
             } else if(state == UBotSessionState.COLLECTING_RANDOMS) {
@@ -4350,28 +4381,43 @@ public class Node {
             return pool;
         }
 
+
         private void broadcastMyState() {
-            Notification notification;
+            sendMyState(state,null);
+        }
+
+        private void sendMyState(UBotSessionState state, NodeInfo to) {
+            List<Object> payload;
+
             switch (state) {
                 case VOTING_REQUEST_ID:
-                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo)));
+                    payload = Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo));
                     break;
                 case COLLECTING_RANDOMS:
-                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),randomNumbers.get(myInfo)));
+                    Integer random = randomNumbers.get(myInfo);
+                    if(random == null) {
+                        abortSession();
+                    }
+                    payload = Do.listOf(state.ordinal(),random);
                     break;
                 case VOTING_SESSION_ID:
-                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),sessionIds.get(myInfo)));
+                    payload = Do.listOf(state.ordinal(),sessionIds.get(myInfo));
                     break;
                 case OPERATIONAL:
-                    notification = new UBotSessionNotification(myInfo,executableContractId,requestId != null && requestContract != null && requestContract.getId().equals(requestId), Do.listOf(state.ordinal(),sessionId));
+                    payload = Do.listOf(state.ordinal(),sessionId);
                     break;
                 default:
-                    notification = null;
+                    payload = null;
                     break;
             }
 
-            if(notification != null) {
-                network.broadcast(myInfo,notification);
+            if(payload != null) {
+                Notification notification = new UBotSessionNotification(myInfo, executableContractId,  to == null,requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload);
+                if(to != null) {
+                    network.deliver(to,notification);
+                } else {
+                    network.broadcast(myInfo, notification);
+                }
             }
         }
 

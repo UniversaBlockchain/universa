@@ -30,6 +30,7 @@ public class UBotSessionNotification extends Notification {
      */
 
     private static final int CODE_UBOT_SESSION_NOTIFICATION = 4;
+    private boolean doAnswer;
     private boolean haveRequestContract;
 
     private HashId executableContractId;
@@ -47,24 +48,38 @@ public class UBotSessionNotification extends Notification {
         return haveRequestContract;
     }
 
-    public UBotSessionNotification(NodeInfo from, HashId executableContractId, boolean haveRequestContract, List<Object> payload) {
+    public boolean isDoAnswer() {
+        return doAnswer;
+    }
+
+    public UBotSessionNotification(NodeInfo from, HashId executableContractId, boolean doAnswer, boolean haveRequestContract, List<Object> payload) {
         super(from);
         this.executableContractId = executableContractId;
         this.payload = payload;
         this.haveRequestContract = haveRequestContract;
+        this.doAnswer = doAnswer;
     }
 
     @Override
     protected void writeTo(Boss.Writer bw) throws IOException {
         bw.writeObject(executableContractId.getDigest());
-        bw.write(haveRequestContract? 1 : 0);
+        int flags = 0;
+        if(haveRequestContract) {
+            flags = flags | 1;
+        }
+        if(doAnswer) {
+            flags = flags | 2;
+        }
+        bw.write(flags);
         bw.writeObject(payload);
     }
 
     @Override
     protected void readFrom(Boss.Reader br) throws IOException {
         executableContractId = HashId.withDigest(br.readBinary());
-        haveRequestContract = br.readInt() > 0;
+        int flags = br.readInt();
+        haveRequestContract = (flags & 1) > 0;
+        doAnswer = (flags & 2) > 0;
         payload = br.read();
     }
 

@@ -1,8 +1,6 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
-import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node2.network.Client;
@@ -10,18 +8,16 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-public class UBotSessionsTest extends BaseMainTest {
+public class UBotSessionsProTest {
 
     @Test
     public void createSession() throws Exception {
-        TestSpace ts = prepareTestSpace();
+
+        Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
+
         Contract executableContract = new Contract(TestKeys.privateKey(1));
         executableContract.getStateData().put("cloud_methods",
                 Binder.of("getRandom",
@@ -34,18 +30,23 @@ public class UBotSessionsTest extends BaseMainTest {
         requestContract.getStateData().put("method_args", Do.listOf(1000));
         requestContract.seal();
         requestContract.getTransactionPack().addReferencedItem(executableContract);
-        int attempts = 200;
-        System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
-        while (attempts-- > 0) {
-            System.out.println(ts.client.command("ubotGetSession","executableContractId",executableContract.getId()));
-            Thread.sleep(1000);
+
+        System.out.println(client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
+        Thread.sleep(1000);
+        while (true) {
+            Binder res = client.command("ubotGetSession", "executableContractId", executableContract.getId());
+            System.out.println(res);
+            Thread.sleep(200);
+            if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                break;
+            }
         }
 
     }
 
     @Test
     public void createSessionConcurrentRequests() throws Exception {
-        TestSpace ts = prepareTestSpace();
+        Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
         Contract executableContract = new Contract(TestKeys.privateKey(1));
         executableContract.getStateData().put("cloud_methods",
                 Binder.of("getRandom",
@@ -53,7 +54,7 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",4))));
         executableContract.seal();
         List<Contract> requestContracts = new ArrayList<>();
-        for(int i = 0; i < ts.clients.size();i++) {
+        for(int i = 0; i < client.size();i++) {
             Contract requestContract = new Contract(TestKeys.privateKey(2));
             requestContract.getStateData().put("executable_contract_id",executableContract.getId().toBase64String());
             requestContract.getStateData().put("method_name","getRandom");
@@ -63,15 +64,28 @@ public class UBotSessionsTest extends BaseMainTest {
             requestContract.getTransactionPack().addReferencedItem(executableContract);
             requestContracts.add(requestContract);
         }
-        int attempts = 200;
-        for(int i = 0; i < ts.clients.size();i++) {
-            ts.clients.get(i).command("ubotCreateSession","packedRequest",requestContracts.get(i).getPackedTransaction());
+        for(int i = 0; i < client.size();i++) {
+            System.out.println(client.getClient(i).command("ubotCreateSession","packedRequest",requestContracts.get(i).getPackedTransaction()));
         }
 
-        while (attempts-- > 0) {
-            System.out.println(ts.client.command("ubotGetSession","executableContractId",executableContract.getId()));
-            Thread.sleep(10);
+
+        for(int i = 0; i < client.size();i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                while (true) {
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
+                    Thread.sleep(200);
+                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                        break;
+                    }
+                }
+            });
         }
+
+        Thread.sleep(10000);
+
+
 
     }
 
