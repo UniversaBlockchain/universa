@@ -4223,6 +4223,7 @@ public class Node {
         private Set<Integer> sessionPool;
 
         private void abortSession() {
+            System.out.println(myInfo + "("+executableContractId+") abortSession ");
             state = UBotSessionState.ABORTED;
             removeSelf();
         }
@@ -4244,7 +4245,7 @@ public class Node {
 
 
         private void voteRequestId(NodeInfo nodeInfo, HashId requestId, HashId hashOfRandom) {
-            System.out.println(myInfo + " voteRequestId from" + nodeInfo + " state " + state);
+            System.out.println(myInfo + "("+executableContractId+") voteRequestId from" + nodeInfo + " state " + state);
 
             if(state != UBotSessionState.VOTING_REQUEST_ID)
                 return;
@@ -4254,7 +4255,7 @@ public class Node {
         }
 
         private void voteRandom(NodeInfo nodeInfo, Integer random) {
-            System.out.println(myInfo + " voteRandom from" + nodeInfo + " state " + state);
+            System.out.println(myInfo + "("+executableContractId+") voteRandom from" + nodeInfo + " state " + state);
 
             if(state != UBotSessionState.COLLECTING_RANDOMS)
                 return;
@@ -4267,7 +4268,7 @@ public class Node {
         }
 
         private void voteSessionId(NodeInfo nodeInfo, HashId sessionId) {
-            System.out.println(myInfo + " voteSessionId from" + nodeInfo + " state " + state);
+            System.out.println(myInfo + "("+executableContractId+") voteSessionId from" + nodeInfo + " state " + state);
 
             if(state != UBotSessionState.VOTING_SESSION_ID)
                 return;
@@ -4327,6 +4328,9 @@ public class Node {
                         if(!requestContractSources.isEmpty()) {
                             try {
                                 requestContract = (Contract) network.getItem(requestId,Do.sample(requestContractSources),Duration.ofSeconds(15));
+                                if(requestContract != null) {
+                                    cache.put(requestContract,checkItem(requestContract.getId()));
+                                }
                             } catch (InterruptedException e) {
                                 executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
                                 return;
