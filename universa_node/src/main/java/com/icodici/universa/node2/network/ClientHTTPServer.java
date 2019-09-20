@@ -607,7 +607,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             Contract request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
             Binder res = node.createUBotSession(request);
-            return res;
+            return Binder.of("session",res);
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());

@@ -74,26 +74,4 @@ public class UBotSessionsTest extends BaseMainTest {
         }
 
     }
-
-
-    @Test
-    public void createUBotRegistryContract() throws Exception {
-        /*Contract contract = new Contract(TestKeys.privateKey(1));
-        List<Binder> list = new ArrayList<>();
-
-        for(int i = 0; i < 30; i++) {
-            list.add(Binder.of(
-                    "number",i,
-                    "domain_urls",Do.listOf("https://localhost:"+(17000+i)),
-                    "direct_urls",Do.listOf("https://127.0.0.1:"+(17000+i)),
-                    "key", new PublicKey(Do.read("/Users/romanu/Downloads/ubot_config/ubot0/config/keys/ubot_"+i+".public.unikey")).packToBase64String()
-            ));
-        }
-        contract.getStateData().put("topology",list);
-        contract.seal();
-        new FileOutputStream("ubot_registry_contract.unicon").write(contract.getLastSealedBinary());*/
-        Client client = new Client("universa.pro",null,new PrivateKey(Do.read("/Users/romanu/Downloads/ru/uebank.private.unikey")));
-        System.out.println(client.register(Contract.fromPackedTransaction(Do.read("ubot_registry_contract.unicon")).getPackedTransaction(),80000));
-
-    }
 }
