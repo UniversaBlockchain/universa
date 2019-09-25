@@ -4393,7 +4393,11 @@ public class Node {
                 Set<HashId> variants = map.values().stream().map(l -> (HashId) l.get(0)).collect(Collectors.toSet());
                 long max = 0;
                 HashId maxAt = null;
+                HashId existing = getStorage(storageName);
                 for (HashId variant : variants) {
+                    if(existing != null && existing.equals(variant)) {
+                        continue;
+                    }
                     long count = map.values().stream().map(l -> (HashId) l.get(0)).filter(x -> x.equals(variant)).count();
                     if (count > max) {
                         max = count;

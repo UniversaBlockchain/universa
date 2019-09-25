@@ -117,8 +117,6 @@ public class UBotSessionsProTest {
             Thread.sleep(10);
         }
 
-        Thread.sleep(6000);
-
         HashId oldStorageValue = storageValue;
         HashId newStorageValue = HashId.createRandom();
 
@@ -141,7 +139,7 @@ public class UBotSessionsProTest {
             if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(newStorageValue) && res.getBinderOrThrow("pending").get("default") != null && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
                 break;
             }
-            Thread.sleep(1000);
+            Thread.sleep(10);
         }
     }
 
