@@ -63,6 +63,7 @@ public class Node {
     private ScheduledFuture<?> sanitator;
     private ScheduledFuture<?> statsCollector;
     private Map<PublicKey, Integer> ubotsByKey = new HashMap();
+    private Map<HashId,Map<String,HashId>> ubotStorage = new ConcurrentHashMap<>();
 
     public boolean isSanitating() {
         return !recordsToSanitate.isEmpty();
@@ -553,9 +554,12 @@ public class Node {
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
                 if(usp == null) {
                     if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
-                        usp = new UBotSessionProcessor(executableContractId, (HashId) notification.getPayload().get(1), null);
+                        usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null);
                         ubotSessionProcessors.put(executableContractId, usp);
                     } else {
+                        if(state == UBotSessionState.CLOSING.ordinal() && notification.isDoAnswer()) {
+                            network.deliver(notification.getFrom(),new UBotSessionNotification(myInfo, notification.getExecutableContractId(), false, false, Do.listOf(UBotSessionState.CLOSING.ordinal())));
+                        }
                         return null;
                     }
                 }
@@ -571,6 +575,14 @@ public class Node {
                     usp.voteRandom(notification.getFrom(),(Integer) notification.getPayload().get(1));
                 } else if(state == UBotSessionState.VOTING_SESSION_ID.ordinal()) {
                     usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
+                } else if(state == UBotSessionState.OPERATIONAL.ordinal()) {
+                    if((Boolean)notification.getPayload().get(2)) {
+                        usp.voteClose(notification.getFrom(), (Boolean) notification.getPayload().get(3));
+                    } else {
+                        usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
+                    }
+                } else if(state == UBotSessionState.CLOSING.ordinal()) {
+                    usp.voteClose(notification.getFrom(), true);
                 }
 
                 if(usp.state.ordinal() > state && notification.isDoAnswer()) {
@@ -595,6 +607,7 @@ public class Node {
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
                 if(usp == null) {
                     //TODO: ?
+                    return null;
                 }
                 usp.voteStorageUpdate(notification.getStorageName(),notification.getValue(),notification.getFrom(),notification.hasConsensus());
                 return null;
@@ -1323,7 +1336,7 @@ public class Node {
                 if(usp != null) {
 
                 } else {
-                    usp = new UBotSessionProcessor(executableContractId,requestId,requestContract);
+                    usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract);
                     ubotSessionProcessors.put(executableContractId,usp);
                 }
                 return usp.getSession();
@@ -1359,6 +1372,21 @@ public class Node {
         });
     }
 
+    public Binder closeUBotSession(HashId executableContractId, PublicKey publicKey) throws Exception {
+        return itemLock.synchronize(executableContractId, lock ->{
+            UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+            if(usp != null) {
+                usp.addSessionCloseVote(publicKey);
+                return usp.getSession();
+            } else {
+                //todo: query from db
+                throw new IllegalArgumentException("session processor not found for " + executableContractId);
+            }
+
+        });
+    }
+
+
     public Binder getUBotStorage(HashId executableContractId, List<String> storageNames) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
@@ -1384,6 +1412,7 @@ public class Node {
     public ScheduledExecutorService getExecutorService() {
         return executorService;
     }
+
 
 
     /// ParcelProcessor ///
@@ -4276,7 +4305,9 @@ public class Node {
         COLLECTING_RANDOMS,
         VOTING_SESSION_ID,
         OPERATIONAL,
-        ABORTED;
+        CLOSING,
+        CLOSED;
+
 
         public static UBotSessionState byOrdinal(int ordinal) {
             for( UBotSessionState st : values()) {
@@ -4313,29 +4344,41 @@ public class Node {
         private Map<String, Map<NodeInfo,List>> storageUpdateVotes = new ConcurrentHashMap<>();
         private Map<String, ScheduledFuture<?>> storageUpdateBroadcasters = new ConcurrentHashMap<>();
         private Map<String, ScheduledFuture<?>> storageUpdateVoteExpirators = new ConcurrentHashMap<>();
+        private Set<Integer> closeVotes = ConcurrentHashMap.newKeySet();
+        private Map<NodeInfo,Boolean> closeVotesNodes = new ConcurrentHashMap<>();
 
 
         private void abortSession() {
+            Node.this.saveUBotStorage(executableContractId,storages);
             System.out.println(myInfo + "("+executableContractId+") abortSession ");
-            state = Node.UBotSessionState.ABORTED;
+            state = Node.UBotSessionState.CLOSED;
             removeSelf();
         }
 
         private void removeSelf() {
             ubotSessionProcessors.remove(executableContractId);
             storageUpdateVotes.keySet().forEach(name->stopStorageUpdateVote(name));
-
-            broadcaster.cancel(true);
+            stopBoardcastMyState();
         }
 
-        public UBotSessionProcessor( HashId executableContractId, HashId requestId, Contract requestContract) {
+        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract) {
+            if(storages != null)
+                this.storages.putAll(storages);
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
             state = Node.UBotSessionState.VOTING_REQUEST_ID;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
             voteRequestId(myInfo,requestId,HashId.of(Boss.pack(myRandom)));
+            startBroadcastMyState();
+        }
 
+        private void startBroadcastMyState() {
             broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,2000, TimeUnit.MILLISECONDS);
+        }
+
+        private void stopBoardcastMyState() {
+            broadcaster.cancel(true);
+            broadcaster  = null;
         }
 
 
@@ -4427,6 +4470,25 @@ public class Node {
             return prev == null || !value.equals(prev.get(0));
         }
 
+        private void voteClose(NodeInfo nodeInfo, boolean hasConsensus) {
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteClose from " , nodeInfo , " state " , state ," ", hasConsensus),
+                    DatagramAdapter.VerboseLevel.BASE);
+
+            if(state != Node.UBotSessionState.OPERATIONAL && state != Node.UBotSessionState.CLOSING)
+                throw new IllegalStateException("UBot session for " +executableContractId +" is not established" );
+
+            closeVotesNodes.put(nodeInfo,hasConsensus);
+            if(closeVotesNodes.size() >= Math.floor(0.9*network.allNodes().size()) && state == Node.UBotSessionState.OPERATIONAL) {
+                state = UBotSessionState.CLOSING;
+                voteClose(myInfo,true);
+            }
+
+
+            if(state == UBotSessionState.CLOSING && new HashSet(closeVotesNodes.values()).size() == 1) {
+                abortSession();
+            }
+
+        }
 
 
         private void checkVote() {
@@ -4538,7 +4600,8 @@ public class Node {
                 BigInteger[] res = bigInteger.divideAndRemainder(size);
                 int idx = res[1].intValue();
                 bigInteger = res[0];
-                pool.add(list.remove(idx).getIntOrThrow("number"));
+                int number = list.remove(idx).getIntOrThrow("number");
+                pool.add(number);
 
             }
             return pool;
@@ -4567,7 +4630,10 @@ public class Node {
                     payload = Do.listOf(state.ordinal(),sessionIds.get(myInfo));
                     break;
                 case OPERATIONAL:
-                    payload = Do.listOf(state.ordinal(),sessionId);
+                    payload = Do.listOf(state.ordinal(),sessionId,closeVotesNodes.containsKey(myInfo),closeVotesNodes.getOrDefault(myInfo,false));
+                    break;
+                case CLOSING:
+                    payload = Do.listOf(state.ordinal(),sessionId,true,true);
                     break;
                 default:
                     payload = null;
@@ -4585,7 +4651,7 @@ public class Node {
         }
 
         public Binder getSession() {
-            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool);
+            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool,"closeVotes", closeVotes);
         }
 
         public void addRequestContractSource(NodeInfo from) {
@@ -4612,7 +4678,7 @@ public class Node {
         }
 
         public void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey) {
-            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addStorageUpdateVote from" , ubotsByKey.get(publicKey) , " state " , state , " " , storageName, ": ", fromValue ," -> " , toValue, " "),
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addStorageUpdateVote from " , ubotsByKey.get(publicKey) , " state " , state , " " , storageName, ": ", fromValue ," -> " , toValue, " "),
                     DatagramAdapter.VerboseLevel.BASE);
 
             if(state != Node.UBotSessionState.OPERATIONAL)
@@ -4669,6 +4735,44 @@ public class Node {
 
         }
 
+        public void addSessionCloseVote(PublicKey publicKey) {
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addSessionCloseVote from " , ubotsByKey.get(publicKey)),
+                    DatagramAdapter.VerboseLevel.BASE);
+
+            if(state != Node.UBotSessionState.OPERATIONAL) {
+                if(state == UBotSessionState.CLOSING)
+                    return;
+
+                throw new IllegalStateException("UBot session for " + executableContractId + " is not established");
+            }
+
+                Integer ubotNumber = ubotsByKey.get(publicKey);
+
+
+                if(ubotNumber == null) {
+                    throw new IllegalArgumentException("Unknown UBot with key " + publicKey);
+                }
+
+                if(sessionPool.contains(ubotNumber)) {
+                    closeVotes.add(ubotNumber);
+
+                    String methodName = requestContract.getStateData().getString("method_name");
+                    Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+                    Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
+                    int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
+                    if(closeVotes.size() >= quorumSize) {
+                        voteClose(myInfo,false);
+                        startBroadcastMyState();
+                    }
+                } else {
+                    throw new IllegalArgumentException("UBot#"+ubotNumber+" isn't part of the pool for " + executableContractId);
+                }
+
+
+        }
+
+
+
         private void stopStorageUpdateVote(String name) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") stopStorageUpdateVote state " , state , " " , name),
                     DatagramAdapter.VerboseLevel.BASE);
@@ -4689,6 +4793,14 @@ public class Node {
             network.broadcast(myInfo,new UBotStorageNotification(myInfo,executableContractId, storageName, (HashId)storageUpdateVotes.get(storageName).get(myInfo).get(0),(Boolean)storageUpdateVotes.get(storageName).get(myInfo).get(1)));
         }
 
+        public Set<Integer> getCloseVotes() {
+            return closeVotes;
+        }
+    }
+
+    private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {
+        ubotStorage.putIfAbsent(executableContractId,new ConcurrentHashMap<>());
+        ubotStorage.get(executableContractId).putAll(storages);
     }
 
 }

@@ -620,7 +620,15 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder ubotCloseSession(Binder params, Session session) throws CommandFailedException {
-        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotCloseSession","not implemented"));
+
+        try {
+            HashId executableContractId = params.getOrThrow("executableContractId");
+            return Binder.of("session", node.closeUBotSession(executableContractId,session.getPublicKey()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
+        }
+
     }
 
     private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
