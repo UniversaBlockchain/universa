@@ -164,6 +164,7 @@ public class UBotSessionsProTest {
             Do.inParallel(()->{
                 while (true) {
                     Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    System.out.println(res);
                     Thread.sleep(500);
                     if(res.getBinder("session").isEmpty()) {
                         if (readyCounter2.incrementAndGet() == client.size()) {

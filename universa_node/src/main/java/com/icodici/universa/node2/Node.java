@@ -4668,10 +4668,12 @@ public class Node {
             return storages.get(name);
         }
 
-        public Map<Integer, HashId> getPendingChanges(String name) {
+        public Map<String, HashId> getPendingChanges(String name) {
             Map<Integer, HashId> res = storageUpdates.get(name);
             if(res != null) {
-                return new HashMap(res);
+                Map<String,HashId> ret = new HashMap();
+                res.forEach((k,v)->ret.put(k.toString(),v));
+                return ret;
             } else {
                 return null;
             }
