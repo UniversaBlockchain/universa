@@ -7,6 +7,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
@@ -141,6 +142,45 @@ public class UBotSessionsProTest {
             }
             Thread.sleep(10);
         }
+
+        quorumClients.forEach(c->{
+            for(int i = 0; i < c.size();i++) {
+                int finalI = i;
+                Do.inParallel(()->{
+                    try {
+                        c.getClient(finalI).command("ubotCloseSession","executableContractId", executableContract.getId());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        });
+
+        AsyncEvent readyEvent2 = new AsyncEvent();
+        AtomicInteger readyCounter2 = new AtomicInteger();
+
+        for(int i = 0; i < client.size();i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                while (true) {
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    Thread.sleep(500);
+                    if(res.getBinder("session").isEmpty()) {
+                        if (readyCounter2.incrementAndGet() == client.size()) {
+                            readyEvent2.fire();
+                        }
+                        break;
+                    }
+                }
+            }).failure(new DeferredResult.Handler() {
+                @Override
+                public void handle(Object data) {
+                    System.out.println("ERR: "+data);
+                }
+            });
+        }
+
+        readyEvent2.await();
     }
 
     @Test
