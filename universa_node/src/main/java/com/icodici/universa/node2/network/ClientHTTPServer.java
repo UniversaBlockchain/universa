@@ -624,11 +624,30 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
-        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotUpdateStorage","not implemented"));
+        HashId executableContractId = params.getOrThrow("executableContractId");
+        String storageName = params.getStringOrThrow("storageName");
+        HashId fromValue = (HashId) params.get("fromValue");
+        HashId toValue = params.getOrThrow("toValue");
+
+        try {
+            return node.updateUBotStorage(executableContractId,storageName,fromValue,toValue,session.getPublicKey());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE,"ubotUpdateStorage",e.getMessage());
+        }
+
     }
 
     private Binder ubotGetStorage(Binder params, Session session) throws CommandFailedException {
-        throw new CommandFailedException(new ErrorRecord(Errors.FAILURE,"ubotGetStorage","not implemented"));
+        HashId executableContractId = params.getOrThrow("executableContractId");
+        List<String> storageNames = params.getListOrThrow("storageNames");
+
+        try {
+            return node.getUBotStorage(executableContractId,storageNames);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE,"ubotGetStorage",e.getMessage());
+        }
     }
 
     private Binder resyncItem(Binder params, Session session) throws CommandFailedException {

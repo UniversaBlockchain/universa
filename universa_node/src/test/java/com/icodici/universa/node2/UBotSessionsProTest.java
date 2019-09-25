@@ -1,6 +1,7 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node2.network.Client;
@@ -9,22 +10,39 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static junit.framework.TestCase.assertEquals;
 
 public class UBotSessionsProTest {
+
+    public static final Map<Integer,PrivateKey> ubotKeys = new HashMap<>();
+    public static final int N = 30;
+    static {
+        try {
+            for(int i = 0; i< N; i++) {
+                ubotKeys.put(i,new PrivateKey(Do.read("./src/ubot_config/ubot"+i+"/tmp/ubot_"+i+".private.unikey")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Test
     public void createSession() throws Exception {
 
         Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
-
+        int quorumSize = 4;
+        int poolSize = 5;
         Contract executableContract = new Contract(TestKeys.privateKey(1));
         executableContract.getStateData().put("cloud_methods",
                 Binder.of("getRandom",
-                        Binder.of("pool",Binder.of("size",5),
-                                "quorum",Binder.of("size",4))));
+                        Binder.of("pool",Binder.of("size",poolSize),
+                                "quorum",Binder.of("size",quorumSize))));
         executableContract.seal();
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
@@ -37,7 +55,7 @@ public class UBotSessionsProTest {
 
         AtomicInteger readyCounter = new AtomicInteger();
         AsyncEvent readyEvent = new AsyncEvent();
-
+        AtomicReference<List<Integer>> pool = new AtomicReference<>();
 
         for(int i = 0; i < client.size();i++) {
             int finalI = i;
@@ -47,6 +65,7 @@ public class UBotSessionsProTest {
                     System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                     Thread.sleep(500);
                     if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                        pool.set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
                         if(readyCounter.incrementAndGet() == client.size()) {
                             readyEvent.fire();
                         }
@@ -58,6 +77,72 @@ public class UBotSessionsProTest {
 
         readyEvent.await();
 
+
+        Set<Integer> poolQuorum = new HashSet<>();
+        while(poolQuorum.size() < quorumSize) {
+            poolQuorum.add(Do.sample(pool.get()));
+        }
+
+        Set<Client> quorumClients = new HashSet<>();
+        poolQuorum.forEach(n-> {
+            try {
+                quorumClients.add(new Client("universa.pro",null,ubotKeys.get(n)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        assertEquals(quorumClients.size(),poolQuorum.size());
+
+        HashId storageValue = HashId.createRandom();
+        quorumClients.forEach(c->{
+            for(int i = 0; i < c.size();i++) {
+                int finalI = i;
+                Do.inParallel(()->{
+                    try {
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",null,"toValue", storageValue);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        });
+
+        while(true) {
+            Binder res = client.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+            System.out.println(res);
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").get("default") != null && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+                break;
+            }
+            Thread.sleep(10);
+        }
+
+        Thread.sleep(6000);
+
+        HashId oldStorageValue = storageValue;
+        HashId newStorageValue = HashId.createRandom();
+
+        quorumClients.forEach(c->{
+            for(int i = 0; i < c.size();i++) {
+                int finalI = i;
+                Do.inParallel(()->{
+                    try {
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue,"toValue", newStorageValue);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        });
+
+        while(true) {
+            Binder res = client.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+            System.out.println(res);
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(newStorageValue) && res.getBinderOrThrow("pending").get("default") != null && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
     }
 
     @Test

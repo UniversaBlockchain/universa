@@ -114,7 +114,7 @@ public class UBotSessionNotification extends Notification {
     }
 
     public String toString() {
-        return "[ItemNotification from " + getFrom()
+        return "[UBotSessionNotification from " + getFrom()
                 + " for item: " + executableContractId
                 + ", item payload: " + payload
                 + "]";

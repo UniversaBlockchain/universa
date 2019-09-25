@@ -1,0 +1,10 @@
+---
+http_client_port: 18026
+http_public_port: 17026
+udp_server_port: 16026
+database: host=localhost port=5432 dbname=ubot_t26
+node_number: 26
+public_host: localhost
+node_name: ubot_26
+ip:
+- 127.0.0.1

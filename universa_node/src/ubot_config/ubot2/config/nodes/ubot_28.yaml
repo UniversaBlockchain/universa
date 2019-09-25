@@ -1,0 +1,10 @@
+---
+http_client_port: 18028
+http_public_port: 17028
+udp_server_port: 16028
+database: host=localhost port=5432 dbname=ubot_t28
+node_number: 28
+public_host: localhost
+node_name: ubot_28
+ip:
+- 127.0.0.1

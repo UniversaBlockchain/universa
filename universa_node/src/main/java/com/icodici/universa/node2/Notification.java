@@ -157,6 +157,7 @@ abstract public class Notification {
         ResyncNotification.init();
         CallbackNotification.init();
         UBotSessionNotification.init();
+        UBotStorageNotification.init();
     }
 
 }
