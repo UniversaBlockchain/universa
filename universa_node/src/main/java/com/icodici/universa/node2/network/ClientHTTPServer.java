@@ -638,7 +638,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         HashId toValue = params.getOrThrow("toValue");
 
         try {
-            return node.updateUBotStorage(executableContractId,storageName,fromValue,toValue,session.getPublicKey());
+            return node.updateUBotStorage(executableContractId,storageName,fromValue,toValue,session.getPublicKey(),params.containsKey("fromValue"));
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE,"ubotUpdateStorage",e.getMessage());

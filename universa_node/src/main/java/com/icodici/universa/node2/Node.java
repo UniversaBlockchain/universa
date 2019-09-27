@@ -549,15 +549,21 @@ public class Node {
 
                 HashId executableContractId = notification.getExecutableContractId();
 
-                int state = (int) notification.getPayload().get(0);
+                UBotSessionState state = UBotSessionState.byOrdinal((int) notification.getPayload().get(0));
 
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+
+                if(state.ordinal() < UBotSessionState.OPERATIONAL.ordinal() && usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                    usp.abortSession();
+                    usp = null;
+                }
+
                 if(usp == null) {
-                    if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
+                    if(state == UBotSessionState.VOTING_REQUEST_ID) {
                         usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null);
                         ubotSessionProcessors.put(executableContractId, usp);
                     } else {
-                        if(state == UBotSessionState.CLOSING.ordinal() && notification.isDoAnswer()) {
+                        if(state == UBotSessionState.CLOSING && notification.isDoAnswer()) {
                             network.deliver(notification.getFrom(),new UBotSessionNotification(myInfo, notification.getExecutableContractId(), false, false, Do.listOf(UBotSessionState.CLOSING.ordinal())));
                         }
                         return null;
@@ -569,24 +575,24 @@ public class Node {
                 }
 
 
-                if(state == UBotSessionState.VOTING_REQUEST_ID.ordinal()) {
+                if(state == UBotSessionState.VOTING_REQUEST_ID) {
                     usp.voteRequestId(notification.getFrom(),(HashId)notification.getPayload().get(1),(HashId)notification.getPayload().get(2));
-                } else if(state == UBotSessionState.COLLECTING_RANDOMS.ordinal()) {
+                } else if(state == UBotSessionState.COLLECTING_RANDOMS) {
                     usp.voteRandom(notification.getFrom(),(Integer) notification.getPayload().get(1));
-                } else if(state == UBotSessionState.VOTING_SESSION_ID.ordinal()) {
+                } else if(state == UBotSessionState.VOTING_SESSION_ID) {
                     usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
-                } else if(state == UBotSessionState.OPERATIONAL.ordinal()) {
+                } else if(state == UBotSessionState.OPERATIONAL) {
                     if((Boolean)notification.getPayload().get(2)) {
                         usp.voteClose(notification.getFrom(), (Boolean) notification.getPayload().get(3));
                     } else {
                         usp.voteSessionId(notification.getFrom(), (HashId) notification.getPayload().get(1));
                     }
-                } else if(state == UBotSessionState.CLOSING.ordinal()) {
+                } else if(state == UBotSessionState.CLOSING) {
                     usp.voteClose(notification.getFrom(), true);
                 }
 
-                if(usp.state.ordinal() > state && notification.isDoAnswer()) {
-                    usp.sendMyState(UBotSessionState.byOrdinal(state),notification.getFrom());
+                if(usp.state.ordinal() > state.ordinal() && notification.isDoAnswer()) {
+                    usp.sendMyState(state,notification.getFrom());
                 }
 
                 return null;
@@ -1333,6 +1339,12 @@ public class Node {
         try {
             return itemLock.synchronize(executableContractId,lock -> {
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+                if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                    usp.abortSession();
+                    usp = null;
+                }
+
+
                 if(usp != null) {
 
                 } else {
@@ -1358,11 +1370,11 @@ public class Node {
         }
     }
 
-    public Binder updateUBotStorage(HashId executableContractId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey) throws Exception {
+    public Binder updateUBotStorage(HashId executableContractId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
             if(usp != null) {
-                usp.addStorageUpdateVote(storageName,fromValue,toValue,publicKey);
+                usp.addStorageUpdateVote(storageName,fromValue,toValue,publicKey,checkFromValue);
                 return Binder.of(storageName,usp.getPendingChanges(storageName));
             } else {
                 //todo: query from db
@@ -1380,8 +1392,8 @@ public class Node {
                 return usp.getSession();
             } else {
                 //todo: query from db
-                throw new IllegalArgumentException("session processor not found for " + executableContractId);
             }
+            return new Binder();
 
         });
     }
@@ -4420,7 +4432,7 @@ public class Node {
 
         private boolean voteStorageUpdate(String storageName, HashId value, NodeInfo nodeInfo, boolean hasConsensus) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteStorageUpdate from " , nodeInfo , " state " , state , " " , storageName, " -> " , value, " ", hasConsensus),
-                    DatagramAdapter.VerboseLevel.BASE);
+                    DatagramAdapter.VerboseLevel.NOTHING);
             
             if(state != Node.UBotSessionState.OPERATIONAL)
                 return false;
@@ -4679,7 +4691,7 @@ public class Node {
             }
         }
 
-        public void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey) {
+        public void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addStorageUpdateVote from " , ubotsByKey.get(publicKey) , " state " , state , " " , storageName, ": ", fromValue ," -> " , toValue, " "),
                     DatagramAdapter.VerboseLevel.BASE);
 
@@ -4687,7 +4699,9 @@ public class Node {
                 throw new IllegalStateException("UBot session for " +executableContractId +" is not established" );
 
             HashId existing = getStorage(storageName);
-            if(existing == null && fromValue == null || existing != null && fromValue != null && existing.equals(fromValue)) {
+            if(existing != null && existing.equals(toValue)) {
+                //already updated
+            } else if(!checkFromValue || (existing == null && fromValue == null || existing != null && fromValue != null && existing.equals(fromValue))) {
 
                 Integer ubotNumber = ubotsByKey.get(publicKey);
 
@@ -4729,8 +4743,6 @@ public class Node {
                 } else {
                     throw new IllegalArgumentException("UBot#"+ubotNumber+" isn't part of the pool for " + executableContractId);
                 }
-            } else if(existing != null && existing.equals(toValue)) {
-                //already updated
             } else {
                 throw new IllegalArgumentException("Value " + fromValue + " isn't a current value for storage " + storageName);
             }
@@ -4797,6 +4809,10 @@ public class Node {
 
         public Set<Integer> getCloseVotes() {
             return closeVotes;
+        }
+
+        public UBotSessionState getState() {
+            return state;
         }
     }
 

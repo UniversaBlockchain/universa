@@ -109,7 +109,8 @@ public class UBotSessionsTest extends BaseMainTest {
                 int finalI = i;
                 Do.inParallel(()->{
                     try {
-                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",null,"toValue", storageValue);
+                        //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",null,"toValue", storageValue);
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", storageValue);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -135,7 +136,8 @@ public class UBotSessionsTest extends BaseMainTest {
                 int finalI = i;
                 Do.inParallel(()->{
                     try {
-                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue,"toValue", newStorageValue);
+                        //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue,"toValue", newStorageValue);
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", newStorageValue);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -258,7 +260,8 @@ public class UBotSessionsTest extends BaseMainTest {
                 int finalI = i;
                 Do.inParallel(()->{
                     try {
-                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",newStorageValue,"toValue", newStorageValue2);
+                        //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",newStorageValue,"toValue", newStorageValue2);
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", newStorageValue2);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -284,7 +287,8 @@ public class UBotSessionsTest extends BaseMainTest {
                 int finalI = i;
                 Do.inParallel(()->{
                     try {
-                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue2,"toValue", newStorageValue3);
+                        //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue2,"toValue", newStorageValue3);
+                        c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", newStorageValue3);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
