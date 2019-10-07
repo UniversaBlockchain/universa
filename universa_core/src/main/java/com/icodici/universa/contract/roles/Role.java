@@ -121,6 +121,7 @@ public abstract class Role implements BiSerializable {
         this.contract = contract;
     }
 
+    @Deprecated
     protected Role(String name) {
         this.name = name;
     }

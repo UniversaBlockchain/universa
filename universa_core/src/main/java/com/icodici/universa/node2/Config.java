@@ -202,6 +202,7 @@ public class Config {
     private int rateLimitDisablingPayment = 5;
     private Duration unlimitPeriod = Duration.ofMinutes(5);
     private Duration maxElectionsTime = Duration.ofMinutes(15);
+    private Duration maxVoteTime = Duration.ofDays(7);
     private List<Integer> pollTimeMillis = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private List<Integer> consensusReceivedCheckTime = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
@@ -301,6 +302,9 @@ public class Config {
 
     public Duration getMaxElectionsTime() {
         return maxElectionsTime;
+    }
+    public Duration getMaxVoteTime() {
+        return maxVoteTime;
     }
 
     public Duration getMaxConsensusReceivedCheckTime() {

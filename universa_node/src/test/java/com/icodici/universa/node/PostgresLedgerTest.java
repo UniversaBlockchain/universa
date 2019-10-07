@@ -22,6 +22,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -964,4 +965,49 @@ public class PostgresLedgerTest extends TestCase {
     }
     */
 
+
+
+    @Test
+    public void votingsTest() throws Exception {
+        assertNull(ledger.getVoteExpires(HashId.createRandom()));
+        assertEquals(ledger.getVoteKeys(HashId.createRandom()).size(),0);
+
+        HashId id1 = HashId.createRandom();
+        ZonedDateTime expires = ZonedDateTime.now().plusDays(1).truncatedTo(ChronoUnit.SECONDS);
+
+        assertEquals(ledger.initiateVote(id1,expires),expires);
+
+        assertEquals(ledger.initiateVote(id1,expires.plusSeconds(100)),expires);
+        assertEquals(ledger.initiateVote(HashId.createRandom(),expires.plusSeconds(100)),expires.plusSeconds(100));
+
+
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(2)),expires);
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(3)),expires);
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
+        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
+
+
+        assertEquals(ledger.getVoteKeys(id1).size(),3);
+
+        ledger.closeVote(id1);
+
+        assertNull(ledger.getVoteExpires(id1));
+        assertEquals(ledger.getVoteKeys(id1).size(),0);
+
+
+        HashId id2 = HashId.createRandom();
+        ZonedDateTime expires2 = ZonedDateTime.now().plusSeconds(1).truncatedTo(ChronoUnit.SECONDS);
+        assertEquals(ledger.initiateVote(id2,expires2),expires2);
+        assertEquals(ledger.addVote(id2,TestKeys.publicKey(1)),expires2);
+        assertEquals(ledger.getVoteKeys(id2).size(),1);
+        Thread.sleep(2000);
+        ledger.cleanup(false);
+        assertNull(ledger.getVoteExpires(id2));
+        assertEquals(ledger.getVoteKeys(id2).size(),0);
+
+
+
+    }
 }

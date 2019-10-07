@@ -8,6 +8,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
@@ -972,6 +973,9 @@ public class PostgresLedger implements Ledger {
             db.update(sqlText, now);
 
             sqlText = "delete from follower_callbacks where stored_until < ?;";
+            db.update(sqlText, now);
+
+            sqlText = "delete from votings where expires_at < ?;";
             db.update(sqlText, now);
 
         } catch (SQLException se) {
@@ -2630,5 +2634,144 @@ public class PostgresLedger implements Ledger {
             }
         });
     }
+
+    @Override
+    public ZonedDateTime initiateVote(HashId itemId, ZonedDateTime expiresAt) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "insert into votings(hash,expires_at) values(?,?) on conflict(hash) do update set hash=EXCLUDED.hash RETURNING expires_at;"
+                            )
+            ) {
+                statement.setBytes(1, itemId.getDigest());
+                statement.setLong(2,Ut.unixTime(expiresAt));
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (rs == null)
+                        throw new Failure("initiateVote failed: returning null");
+                    rs.next();
+                    return Ut.getTime(rs.getLong(1));
+                }
+            }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("initiateVote failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("initiateVote failed:" + e);
+        }
+    }
+
+    @Override
+    public ZonedDateTime addVote(HashId itemId, PublicKey publicKey) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    ResultSet rs = db.queryRow("SELECT id,expires_at FROM votings WHERE hash = ?",
+                            itemId.getDigest()
+                    );
+            ) {
+                if(rs == null) {
+                    return null;
+                }
+                int votingId = rs.getInt(1);
+
+
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into voting_votes(voting_id,packed_key) values(?,?);"
+                                )
+                ) {
+                    statement.setLong(1, votingId);
+                    statement.setBytes(2,publicKey.pack());
+                    db.updateWithStatement(statement);
+                }
+
+
+                return Ut.getTime(rs.getLong(2));
+
+            }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addVote failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("addVote failed:" + e);
+        }
+    }
+
+    @Override
+    public ZonedDateTime getVoteExpires(HashId itemId) {
+        try {
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT expires_at FROM votings WHERE hash = ?",
+                            itemId.getDigest()
+                    );
+            ) {
+                if(rs == null)
+                    return null;
+                return Ut.getTime(rs.getLong(1));
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("getVoteExpires failed", e);
+        }
+    }
+
+    @Override
+    public Set<PublicKey> getVoteKeys(HashId itemId) {
+        try (PooledDb db = dbPool.db()) {
+            String sql = "SELECT voting_votes.packed_key AS packed_key FROM voting_votes LEFT JOIN votings ON voting_votes.voting_id=votings.id WHERE votings.hash = ?";
+            PreparedStatement statement = db.statement(sql);
+            statement.setBytes(1, itemId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                throw new Failure("getVoteKeys failed: returning null");
+            Set<PublicKey> keys = new HashSet<>();
+            while (rs.next()) {
+                keys.add(new PublicKey(rs.getBytes(1)));
+            }
+            rs.close();
+            return keys;
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getVoteKeys failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getVoteKeys failed: " + e);
+        }
+    }
+
+    @Override
+    public void closeVote(HashId itemId) {
+        try (PooledDb db = dbPool.db()) {
+
+            String sqlText = "delete from votings where hash = ?;";
+
+            try (
+                    PreparedStatement statement = db.statementReturningKeys(sqlText, itemId.getDigest())
+            ) {
+                db.updateWithStatement(statement);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("closeVote failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

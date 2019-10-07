@@ -172,6 +172,22 @@ public class Client {
         });
     }
 
+    public ZonedDateTime initiateVote(Contract contract) throws ClientError {
+        return protect(() -> {
+            return (ZonedDateTime)httpClient.command("initiateVote","packedItem",contract.getLastSealedBinary()).get("expiresAt");
+        });
+
+    }
+
+
+    public ZonedDateTime voteForContract(HashId itemId) throws ClientError {
+        return protect(() -> {
+            return (ZonedDateTime)httpClient.command("voteForContract","itemId",itemId).get("expiresAt");
+        });
+
+    }
+
+
     protected interface Executor<T> {
         T execute() throws Exception;
     }

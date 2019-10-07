@@ -22,7 +22,7 @@ public class UBotSessionsProTest {
 
     public static final Map<Integer,PrivateKey> ubotKeys = new HashMap<>();
     public static final int N = 30;
-    private static final int ATTEMPTS = 5;
+    private static final int ATTEMPTS = 5000;
 
     static {
         try {
@@ -39,8 +39,8 @@ public class UBotSessionsProTest {
     public void createSession() throws Exception {
 
         Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
-        int quorumSize = 4;
-        int poolSize = 5;
+        int quorumSize = 5;
+        int poolSize = 8;
         Contract executableContract = new Contract(TestKeys.privateKey(1));
         executableContract.getStateData().put("cloud_methods",
                 Binder.of("getRandom",
@@ -83,8 +83,9 @@ public class UBotSessionsProTest {
             readyEvent.await();
 
 
+            int votingCount = quorumSize + Do.randomInt(poolSize - quorumSize);
             Set<Integer> poolQuorum = new HashSet<>();
-            while (poolQuorum.size() < quorumSize) {
+            while (poolQuorum.size() < votingCount) {
                 poolQuorum.add(Do.sample(pool.get()));
             }
 
@@ -170,7 +171,7 @@ public class UBotSessionsProTest {
                 Do.inParallel(() -> {
                     while (true) {
                         Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
-                        System.out.println(res);
+                        System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                         Thread.sleep(500);
                         if (res.getBinder("session").isEmpty()) {
                             if (readyCounter2.incrementAndGet() == client.size()) {

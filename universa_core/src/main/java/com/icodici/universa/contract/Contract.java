@@ -56,6 +56,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
     private Binder serviceContracts;
+    private Set<PublicKey> votedByKeys;
+
+    public void setVotedByKeys(Set<PublicKey> votedByKeys) {
+        this.votedByKeys = votedByKeys;
+    }
 
     public static class UnicapsuleExpectedException extends IllegalArgumentException {
 
@@ -863,6 +868,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if(additionalSignatures != null) {
             effectiveKeys.putAll(additionalSignatures);
+        }
+
+        if(votedByKeys != null) {
+            votedByKeys.forEach(k->effectiveKeys.put(k,null));
         }
 
         newItems.forEach(c -> c.setEffectiveKeys(effectiveKeys));
@@ -4057,6 +4066,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(Role.class);
         DefaultBiMapper.registerClass(RoleLink.class);
         DefaultBiMapper.registerClass(SimpleRole.class);
+        DefaultBiMapper.registerClass(QuorumVoteRole.class);
         // other
         DefaultBiMapper.registerClass(KeyRecord.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);

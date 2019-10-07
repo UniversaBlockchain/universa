@@ -291,6 +291,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotUpdateStorage", this::ubotUpdateStorage);
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
+
+        addSecureEndpoint("initiateVote",this::initiateContractVote);
+        addSecureEndpoint("voteForContract",this::voteForContract);
+
     }
 
     @Override
@@ -629,6 +633,43 @@ public class ClientHTTPServer extends BasicHttpServer {
             throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
         }
 
+    }
+
+
+    private Binder initiateContractVote(Binder params, Session session) throws CommandFailedException {
+        try {
+            Contract c = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+            node.initiateContractVote(c);
+
+            return Binder.of("expiresAt",
+                    node.voteForContract(c.getId(),session.getPublicKey()));
+
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateContractVote",e.getMessage());
+        }
+    }
+
+
+    private Binder voteForContract(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return Binder.of("expiresAt",
+                    node.voteForContract((HashId) params.get("itemId"),session.getPublicKey()));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
+        }
+    }
+
+    private Binder getVote(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return node.getVote((HashId) params.get("itemId"));
+
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
+        }
     }
 
     private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {

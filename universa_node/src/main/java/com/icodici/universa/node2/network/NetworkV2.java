@@ -179,6 +179,14 @@ public class NetworkV2 extends Network {
                         " IN ",
                         ((ItemNotification)notification).getItemId().toString()),
                         DatagramAdapter.VerboseLevel.DETAILED);
+            } else if(notification instanceof UBotSessionNotification) {
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " SN ",
+                        ((UBotSessionNotification)notification).toString()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else {
                 report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
             }

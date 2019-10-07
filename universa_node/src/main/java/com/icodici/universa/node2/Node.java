@@ -16,6 +16,8 @@ import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.QuorumVoteRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NMutableEnvironment;
@@ -86,6 +88,8 @@ public class Node {
     private final Object ledgerRollbackLock = new Object();
     private final Network network;
     private final ItemCache cache;
+    private final VoteCache voteCache;
+
     private final ParcelCache parcelCache;
     private final EnvCache envCache;
     private final NameCache nameCache;
@@ -98,6 +102,8 @@ public class Node {
     protected AsyncEvent sanitationFinished = new AsyncEvent();
 
     private final ItemLock itemLock = new ItemLock();
+    private final ItemLock ubotLock = new ItemLock();
+    private final ItemLock voteLock = new ItemLock();
     private final ParcelLock parcelLock = new ParcelLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
@@ -168,6 +174,7 @@ public class Node {
         this.ledger = ledger;
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
+        voteCache = new VoteCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
         envCache = new EnvCache(config.getMaxCacheAge());
         nameCache = new NameCache(config.getMaxNameCacheAge());
@@ -1336,6 +1343,15 @@ public class Node {
         cache.put(requestContract,checkItem(requestContract.getId()));
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         HashId requestId = requestContract.getId();
+
+
+        //срусл
+        String methodName = requestContract.getStateData().getString("method_name");
+        Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+        Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
+        int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
+
+
         try {
             return itemLock.synchronize(executableContractId,lock -> {
                 UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
@@ -1425,6 +1441,44 @@ public class Node {
         return executorService;
     }
 
+
+    public ZonedDateTime voteForContract(HashId itemId, PublicKey publicKey) throws Exception {
+
+        return voteLock.synchronize(itemId,lock -> {
+            ZonedDateTime expiresAt =  ledger.addVote(itemId, publicKey);
+            if(expiresAt == null) {
+                expiresAt = voteCache.addVote(itemId,publicKey);
+            }
+
+            return expiresAt;
+        });
+
+    }
+
+    public ZonedDateTime initiateContractVote(Contract contract) throws Exception {
+        Role r = contract.getCreator().resolve();
+        if(!(r instanceof QuorumVoteRole)) {
+            throw new IllegalArgumentException("creator expected to resolve as QuorumVoteRole, found " + r.getClass().getSimpleName());
+        }
+
+        return voteLock.synchronize(contract.getId(),lock -> {
+            return ledger.initiateVote(contract.getId(), ZonedDateTime.now().plus(config.getMaxVoteTime()));
+        });
+    }
+
+    public Binder getVote(HashId itemId) {
+
+        ZonedDateTime expiresAt = ledger.getVoteExpires(itemId);
+        Set<PublicKey> keys;
+        if(expiresAt != null) {
+            keys = ledger.getVoteKeys(itemId);
+        } else {
+            expiresAt = voteCache.getVoteExpires(itemId);
+            keys = voteCache.getVoteKeys(itemId);
+        }
+
+        return Binder.of("keys",keys,"expiresAt",expiresAt);
+    }
 
 
     /// ParcelProcessor ///
@@ -2180,6 +2234,16 @@ public class Node {
                                 Set<HashId> invalidItems = ledger.findBadReferencesOf(referencedItems.keySet());
                                 invalidItems.forEach(id -> referencedItems.remove(id));
                             }
+
+                            Set<PublicKey> votedByKeys = voteCache.getVoteKeys(itemId);
+                            if(votedByKeys == null) {
+                                votedByKeys = new HashSet<>();
+                            }
+
+                            if(((Contract) item).getCreator().resolve() instanceof QuorumVoteRole) {
+                                votedByKeys.addAll(ledger.getVoteKeys(itemId));
+                            }
+                            ((Contract) item).setVotedByKeys(votedByKeys);
                         }
 
                         if(item.shouldBeU()) {
@@ -2191,6 +2255,8 @@ public class Node {
                                         "Item that should be U contract is not U contract");
                             }
                         } else {
+
+
                             checkPassed = item.check();
 
                             // if item is smart contract we check it additionally
@@ -4384,13 +4450,15 @@ public class Node {
             startBroadcastMyState();
         }
 
-        private void startBroadcastMyState() {
+        private synchronized void startBroadcastMyState() {
             broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,2000, TimeUnit.MILLISECONDS);
         }
 
-        private void stopBoardcastMyState() {
-            broadcaster.cancel(true);
-            broadcaster  = null;
+        private synchronized void stopBoardcastMyState() {
+            if(broadcaster != null) {
+                broadcaster.cancel(true);
+                broadcaster = null;
+            }
         }
 
 
@@ -4493,6 +4561,8 @@ public class Node {
             if(closeVotesNodes.size() >= Math.floor(0.9*network.allNodes().size()) && state == Node.UBotSessionState.OPERATIONAL) {
                 state = UBotSessionState.CLOSING;
                 voteClose(myInfo,true);
+                stopBoardcastMyState();
+                startBroadcastMyState();
             }
 
 
@@ -4591,7 +4661,7 @@ public class Node {
                     }
 
                     state = Node.UBotSessionState.OPERATIONAL;
-                    executorService.schedule(()->broadcaster.cancel(true),5,TimeUnit.SECONDS);
+                    stopBoardcastMyState();
                 }
             }
         }
@@ -4621,6 +4691,9 @@ public class Node {
 
 
         private void broadcastMyState() {
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") broadcastMyState ", state),
+                    DatagramAdapter.VerboseLevel.BASE);
+
             sendMyState(state,null);
         }
 
@@ -4663,7 +4736,7 @@ public class Node {
         }
 
         public Binder getSession() {
-            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool,"closeVotes", closeVotes);
+            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool,"closeVotes", closeVotes,"closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()), "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList()));
         }
 
         public void addRequestContractSource(NodeInfo from) {
@@ -4768,14 +4841,20 @@ public class Node {
                 }
 
                 if(sessionPool.contains(ubotNumber)) {
-                    closeVotes.add(ubotNumber);
+                    int size = -1;
+                    synchronized (closeVotes) {
+                        if(!closeVotes.contains(ubotNumber)) {
+                            closeVotes.add(ubotNumber);
+                            size = closeVotes.size();
+                        }
+                    }
 
                     String methodName = requestContract.getStateData().getString("method_name");
                     Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
                     Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
                     int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
-                    if(closeVotes.size() >= quorumSize) {
-                        voteClose(myInfo,false);
+                    if(size == quorumSize) {
+                        voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
                         startBroadcastMyState();
                     }
                 } else {
