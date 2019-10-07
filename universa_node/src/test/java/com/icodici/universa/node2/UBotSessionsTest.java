@@ -1,14 +1,18 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64u;
 import org.junit.Test;
 
 import java.io.FileOutputStream;
@@ -412,18 +416,47 @@ public class UBotSessionsTest extends BaseMainTest {
 
 
     @Test
-    public void sortLog() throws Exception {
-        String filename = "/Users/romanu/IdeaProjects/deploy/out.txt";
-        String[] res = new String(Do.read(filename)).split("\n");
+    public void createUBotRegistryContract() throws Exception {
 
-        List<String> list = new ArrayList<String>(Arrays.asList(res)).stream().sorted(new Comparator<String>() {
-            @Override
-            public int compare(String o1, String o2) {
-                return ((String)o1).compareTo((String) o2);
-            }
-        }).collect(Collectors.toList());
+        final int N = 30;
+//        final String domain = "test-ubot.mainnetwork.io";
+//        final String ip = "104.248.143.106";
+        final String domain = "localhost";
+        final String ip = "127.0.0.1";
 
-        String res2 = list.stream().collect(Collectors.joining("\n"));
-        new FileOutputStream(filename).write(res2.getBytes());
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.getKeysToSignWith().clear();
+
+        List<Binder> topology = new ArrayList<>();
+        ListRole listRole = new ListRole("ubots",contract);
+        listRole.setMode(ListRole.Mode.ALL);
+
+        for(int i = 0; i < N; i++) {
+            PublicKey publicKey = new PublicKey(Do.read("./src/ubot_config/ubot0/config/keys/ubot_"+i+".public.unikey"));
+            listRole.addRole(new SimpleRole("ubot"+i,contract,Do.listOf(publicKey.getLongAddress())));
+            topology.add(Binder.of(
+                    "number",i,
+                    "key", Base64u.encodeString(publicKey.pack()),
+                    "domain_urls",Do.listOf("https://"+domain+":"+(17000+i)),
+                    "direct_urls",Do.listOf("http://"+ip+":"+(17000+i))
+                    ));
+        }
+
+        contract.addRole(listRole);
+        contract.getStateData().put("topology",topology);
+        contract.seal();
+
+
+        new FileOutputStream("ubot_registry_contract.unicon").write(contract.getLastSealedBinary());
+
+
+        Contract c = new Contract(TestKeys.privateKey(1));
+        c.addNewItems(contract);
+        c.seal();
+
+//        Client client = new Client("universa.pro",null,yourkey);
+//        System.out.println(client.register(c.getPackedTransaction(),10000));
+
+
     }
 }
