@@ -187,6 +187,12 @@ public class Client {
 
     }
 
+    public Binder getVotes(HashId itemId) throws ClientError {
+        return protect(() -> {
+            return httpClient.command("getVotes","itemId",itemId);
+        });
+    }
+
 
     protected interface Executor<T> {
         T execute() throws Exception;

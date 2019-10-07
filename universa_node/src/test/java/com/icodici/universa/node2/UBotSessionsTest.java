@@ -11,10 +11,12 @@ import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static com.icodici.universa.node2.network.VerboseLevel.BASE;
 import static junit.framework.TestCase.assertEquals;
@@ -406,5 +408,22 @@ public class UBotSessionsTest extends BaseMainTest {
 
         ts.shutdown();
 
+    }
+
+
+    @Test
+    public void sortLog() throws Exception {
+        String filename = "/Users/romanu/IdeaProjects/deploy/out.txt";
+        String[] res = new String(Do.read(filename)).split("\n");
+
+        List<String> list = new ArrayList<String>(Arrays.asList(res)).stream().sorted(new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                return ((String)o1).compareTo((String) o2);
+            }
+        }).collect(Collectors.toList());
+
+        String res2 = list.stream().collect(Collectors.joining("\n"));
+        new FileOutputStream(filename).write(res2.getBytes());
     }
 }

@@ -1466,7 +1466,7 @@ public class Node {
         });
     }
 
-    public Binder getVote(HashId itemId) {
+    public Binder getVotes(HashId itemId) {
 
         ZonedDateTime expiresAt = ledger.getVoteExpires(itemId);
         Set<PublicKey> keys;

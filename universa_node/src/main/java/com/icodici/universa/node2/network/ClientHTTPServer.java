@@ -294,6 +294,8 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         addSecureEndpoint("initiateVote",this::initiateContractVote);
         addSecureEndpoint("voteForContract",this::voteForContract);
+        addSecureEndpoint("getVotes",this::getVotes);
+
 
     }
 
@@ -661,11 +663,11 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
-    private Binder getVote(Binder params, Session session) throws CommandFailedException {
+    private Binder getVotes(Binder params, Session session) throws CommandFailedException {
         checkNode(session, true);
 
         try {
-            return node.getVote((HashId) params.get("itemId"));
+            return node.getVotes((HashId) params.get("itemId"));
 
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());

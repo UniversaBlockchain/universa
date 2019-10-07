@@ -186,6 +186,9 @@ public class VotingTest extends BaseMainTest {
         }
         readyEvent2.await();
 
+        Binder b = client.getVotes(contract.getId());
+        System.out.println(b);
+
 
         ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
         System.out.println(ir);
@@ -238,9 +241,15 @@ public class VotingTest extends BaseMainTest {
         }
         readyEvent2.await();
 
+        Binder b = client.getVotes(contract.getId());
+        System.out.println(b);
+
         ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
         System.out.println(ir);
         assertEquals(ir.state, ItemState.APPROVED);
+
+
+
 
         ts.shutdown();
 
