@@ -1015,7 +1015,9 @@ public class Reference implements BiSerializable {
                         else
                             keys = leftOperandContract.getSealedByKeys();
 
-                        ret = ((Role) right).isAllowedForKeys(keys);
+                        ret = ((Role) right).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                              ((Role) right).getReferences(Role.RequiredMode.ANY_OF).isEmpty() &&
+                              ((Role) right).isAllowedForKeys(keys);
 
                         break;
                     default:
