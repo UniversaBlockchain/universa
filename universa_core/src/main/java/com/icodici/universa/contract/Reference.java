@@ -843,10 +843,6 @@ public class Reference implements BiSerializable {
                         }  else if (((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) ||
                                 ((right != null) && right.getClass().getName().endsWith("Binder") && ((Binder)right).get("contractForSearchByTag") != null)) {
 
-                            boolean b =false;
-                            if (rightOperand.equals("test_tag_contract2"))
-                                b = true;
-
                             Contract taggedContract = null;
                             String tag = null;
                             if ((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) {
