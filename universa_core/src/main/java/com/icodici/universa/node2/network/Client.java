@@ -18,9 +18,13 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
+import com.icodici.universa.ubot.PoolState;
+import com.icodici.universa.ubot.UBotTools;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -33,7 +37,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,6 +57,8 @@ public class Client {
     private final PublicKey nodePublicKey;
 
     List<Client> clients;
+    Map<Integer,BasicHttpClient> ubotClients = new HashMap<>();
+    List<Binder> ubotTopology;
 
     private String version;
     private List<Binder> topology;
@@ -301,8 +306,10 @@ public class Client {
         NodeRecord r = Do.sample(nodes);
         httpClient = new BasicHttpClient(r.url);
         this.nodePublicKey = r.key;
+
         if (!delayedStart)
             httpClient.start(clientPrivateKey, r.key, session);
+
     }
 
 
@@ -1416,4 +1423,204 @@ public class Client {
             return binder;
         });
     }
+
+    public Binder createSession(Contract requestContract, boolean waitPreviousSession) throws ClientError {
+        return protect(() -> {
+            Binder session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
+
+            if(session == null) {
+                throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
+            }
+
+
+            // wait session requestId
+            while (session.getString("state").equals("VOTING_REQUEST_ID")) {
+                Thread.sleep(100);
+                session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
+            }
+
+            if (waitPreviousSession) {
+                while (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
+                    if(session.getString("state").equals("CLOSING") || session.getString("state").equals("CLOSED")) {
+                        Thread.sleep(100);
+                    } else  {
+                        Thread.sleep(1000);
+                    }
+
+                    session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
+
+                    if(session == null) {
+                        throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
+                    }
+                }
+
+            } else if (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
+                return null;
+            }
+
+            while (session.get("sessionId") == null) {
+                Thread.sleep(100);
+                session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
+            }
+
+            return session;
+        });
+    }
+
+    public Binder startCloudMethod(Contract requestContract, boolean waitPreviousSession) throws ClientError {
+        Instant now = Instant.now();
+        Binder session = createSession(requestContract, waitPreviousSession);
+        System.out.println("Session created in: " + (Instant.now().toEpochMilli()-now.toEpochMilli()) + "ms");
+        if(session == null) {
+            return null;
+        }
+        List<Integer> ubots = session.getListOrThrow("sessionPool");
+
+        int randomPoolUbotNumber = Do.sample(ubots);
+
+        BasicHttpClient ubotHttpClient = connectToUbot(randomPoolUbotNumber);
+
+        Binder response;
+        try {
+            response = ubotHttpClient.command("executeCloudMethod", "contract", requestContract.getPackedTransaction());
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+
+        if(!response.getStringOrThrow("status").equals("ok")) {
+            throw new ClientError(Errors.COMMAND_FAILED,"executeCloudMethod",response.toString());
+        }
+
+        return session;
+    }
+
+    public BasicHttpClient connectToUbot(int ubotNumber) throws ClientError {
+        if(!ubotClients.containsKey(ubotNumber)) {
+
+            if(ubotTopology == null) {
+                byte[] ubotRegistryBytes = getServiceContracts().getBinaryOrThrow("ubot_registry_contract");
+                if (ubotRegistryBytes == null) {
+                    throw new ClientError(Errors.NOT_FOUND, "ubot_registry_contract", "unable to get ubot registry contract");
+                }
+                Contract ubotRegistry;
+                try {
+                    ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+                } catch (IOException e) {
+                    throw new ClientError(e);
+                }
+
+                ubotTopology = ubotRegistry.getStateData().getListOrThrow("topology");
+            }
+
+            Binder ubot = ubotTopology.stream().filter(b -> b.getIntOrThrow("number") == ubotNumber).findAny().get();
+
+            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)).replace("127.0.0.1","104.248.143.106"));
+
+            try {
+                ubotHttpClient.start(clientPrivateKey, new PublicKey(Base64u.decodeCompactString(ubot.getStringOrThrow("key"))), null);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new ClientError(e);
+            }
+            ubotClients.put(ubotNumber, ubotHttpClient);
+
+        }
+
+        return ubotClients.get(ubotNumber);
+    }
+
+    /**
+     * Gets the current state of the cloud method.
+     *
+     * @param  requestContractId - The Request contract id.
+     * @param  ubotNumber - UBot number to request the current state from.
+     * @return cloud method state, fields in the object:
+     *      state - method status,
+     *      result - method result,
+     *      errors - error list.
+     */
+    public Binder getCloudMethodState(HashId requestContractId, Integer ubotNumber) throws ClientError {
+        BasicHttpClient ubotHttpClient = connectToUbot(ubotNumber);
+
+        try {
+            return ubotHttpClient.command("getState", "requestContractId", requestContractId);
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+    }
+
+
+
+    public Binder executeCloudMethod(byte[] packedRequest, boolean waitPreviousSession,float trustLevel) throws ClientError {
+        Contract requestContract;
+        try {
+            requestContract = Contract.fromPackedTransaction(packedRequest);
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+
+
+        Binder session = startCloudMethod(requestContract, waitPreviousSession);
+
+        byte[] ubotRegistryBytes = getServiceContracts().getBinaryOrThrow("ubot_registry_contract");
+        if(ubotRegistryBytes == null) {
+            throw new ClientError(Errors.NOT_FOUND,"ubot_registry_contract","unable to get ubot registry contract");
+        }
+        Contract ubotRegistry;
+        try {
+            ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+
+
+        int quorum = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+        int minAnswersRequired = (int) Math.max(Math.ceil(quorum*trustLevel),1);
+
+        List<Integer> ubots = session.getListOrThrow("sessionPool");
+        AsyncEvent readyEvent = new AsyncEvent();
+        Map<Integer,Binder> answers = new ConcurrentHashMap<>();
+
+        ubots.forEach(ubotNumber -> {
+            Do. inParallel(() -> {
+                try {
+                    while(true) {
+                        Binder response = getCloudMethodState(requestContract.getId(),ubotNumber);
+                        if(!PoolState.valueOf(response.getStringOrThrow("state")).isRunning()) {
+                            answers.put(ubotNumber,response);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    answers.put(ubotNumber,Binder.of("state", PoolState.FAILED.name(),"exception",e));
+                }
+                Map<Binder, Long> counts =
+                        answers.values().stream().collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+
+                Long max = Collections.max(counts.values());
+                if(answers.size() == ubots.size() || max >= minAnswersRequired) {
+                    readyEvent.fire();
+                }
+            });
+        });
+
+        try {
+            readyEvent.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Map<Binder, Long> counts =
+                answers.values().stream().collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+        Long max = Collections.max(counts.values());
+        if(max >= minAnswersRequired) {
+            for(Binder res : counts.keySet()) {
+                if(counts.get(res) == max) {
+                    return res;
+                }
+            }
+        }
+        return null;
+    }
+
 }

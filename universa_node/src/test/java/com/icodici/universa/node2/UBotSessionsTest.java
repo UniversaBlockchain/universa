@@ -7,6 +7,7 @@ import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -459,4 +460,6 @@ public class UBotSessionsTest extends BaseMainTest {
 
 
     }
+
+
 }

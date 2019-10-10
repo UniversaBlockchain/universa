@@ -3352,6 +3352,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public Binder serializeWith(BiSerializer serializer) {
+            Bytes tmp = Boss.dump(data);
 
             Binder of = Binder.of(
                     "created_at", createdAt,
@@ -3361,9 +3362,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     "branch_id", branchId,
                     "origin", serializer.serialize(origin),
                     "parent", serializer.serialize(parent),
-                    "data", data,
+                    "data", serializer.serialize(data),
                     "roles", serializer.serialize(new HashMap<>(roles))
             );
+
+            data = Boss.load(tmp);
 
             if (expiresAt != null)
                 of.set("expires_at", expiresAt);

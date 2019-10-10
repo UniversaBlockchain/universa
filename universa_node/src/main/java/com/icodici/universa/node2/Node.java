@@ -28,6 +28,7 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.NetworkV2;
+import com.icodici.universa.ubot.UBotTools;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
@@ -158,7 +159,9 @@ public class Node {
             List<Binder> list = new ArrayList<>(uBotRegistry.getStateData().getListOrThrow("topology"));
             list.forEach(b->{
                 try {
-                    ubotsByKey.put(new PublicKey(Base64u.decodeCompactString(b.getStringOrThrow("key"))),b.getIntOrThrow("number"));
+                    PublicKey pk = new PublicKey(Base64u.decodeCompactString(b.getStringOrThrow("key")));
+                    ubotsByKey.put(pk,b.getIntOrThrow("number"));
+                    config.getAddressesWhiteList().add(pk.getLongAddress());
                 } catch (EncryptionError encryptionError) {
                     encryptionError.printStackTrace();
                 }
@@ -1343,13 +1346,7 @@ public class Node {
         cache.put(requestContract,checkItem(requestContract.getId()));
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         HashId requestId = requestContract.getId();
-
-
-        //срусл
-        String methodName = requestContract.getStateData().getString("method_name");
-        Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
-        Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
-        int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
+        int quorumSize = UBotTools.getRequestQuorumSize(requestContract,null);
 
 
         try {
@@ -4451,7 +4448,7 @@ public class Node {
         }
 
         private synchronized void startBroadcastMyState() {
-            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,2000, TimeUnit.MILLISECONDS);
+            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,500, TimeUnit.MILLISECONDS);
         }
 
         private synchronized void stopBoardcastMyState() {
@@ -4791,10 +4788,8 @@ public class Node {
                     map.put(ubotNumber, toValue);
                     long votesForValue = map.values().stream().filter(v->v.equals(toValue)).count();
 
-                    String methodName = requestContract.getStateData().getString("method_name");
-                    Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
-                    Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
-                    int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
+                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract,null);
+
                     if(votesForValue >= quorumSize) {
                         if(voteStorageUpdate(storageName,toValue,myInfo,false)) {
 
