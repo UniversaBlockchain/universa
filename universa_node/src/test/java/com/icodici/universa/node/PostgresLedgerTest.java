@@ -970,44 +970,51 @@ public class PostgresLedgerTest extends TestCase {
     @Test
     public void votingsTest() throws Exception {
         assertNull(ledger.getVoteExpires(HashId.createRandom()));
-        assertEquals(ledger.getVoteKeys(HashId.createRandom()).size(),0);
+        assertEquals(ledger.getVotes(HashId.createRandom()).size(),0);
 
-        HashId id1 = HashId.createRandom();
+
         ZonedDateTime expires = ZonedDateTime.now().plusDays(1).truncatedTo(ChronoUnit.SECONDS);
 
-        assertEquals(ledger.initiateVote(id1,expires),expires);
+        Contract c = new Contract(TestKeys.privateKey(1));
+        c.seal();
+        HashId id1 = c.getId();
+        Contract c2 = new Contract(TestKeys.privateKey(1));
+        c2.seal();
 
-        assertEquals(ledger.initiateVote(id1,expires.plusSeconds(100)),expires);
-        assertEquals(ledger.initiateVote(HashId.createRandom(),expires.plusSeconds(100)),expires.plusSeconds(100));
+        assertEquals(ledger.initiateVote(c,expires),expires);
 
-
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(2)),expires);
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(3)),expires);
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
-        assertEquals(ledger.addVote(id1,TestKeys.publicKey(1)),expires);
+        assertEquals(ledger.initiateVote(c,expires.plusSeconds(100)),expires);
+        assertEquals(ledger.initiateVote(c2,expires.plusSeconds(100)),expires.plusSeconds(100));
 
 
-        assertEquals(ledger.getVoteKeys(id1).size(),3);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(2).getLongAddress())),expires);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(3).getLongAddress())),expires);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
+        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
+
+
+        assertEquals(ledger.getVotes(id1).size(),3);
 
         ledger.closeVote(id1);
 
         assertNull(ledger.getVoteExpires(id1));
-        assertEquals(ledger.getVoteKeys(id1).size(),0);
+        assertEquals(ledger.getVotes(id1).size(),0);
 
 
-        HashId id2 = HashId.createRandom();
+        Contract c3 = new Contract(TestKeys.privateKey(1));
+        c3.seal();
+
+        HashId id2 = c3.getId();
         ZonedDateTime expires2 = ZonedDateTime.now().plusSeconds(1).truncatedTo(ChronoUnit.SECONDS);
-        assertEquals(ledger.initiateVote(id2,expires2),expires2);
-        assertEquals(ledger.addVote(id2,TestKeys.publicKey(1)),expires2);
-        assertEquals(ledger.getVoteKeys(id2).size(),1);
+        assertEquals(ledger.initiateVote(c3,expires2),expires2);
+        assertEquals(ledger.addVotes(id2,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires2);
+        assertEquals(ledger.getVotes(id2).size(),1);
         Thread.sleep(2000);
         ledger.cleanup(false);
         assertNull(ledger.getVoteExpires(id2));
-        assertEquals(ledger.getVoteKeys(id2).size(),0);
-
-
+        assertEquals(ledger.getVotes(id2).size(),0);
 
     }
 }

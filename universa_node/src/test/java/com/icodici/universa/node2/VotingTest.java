@@ -5,8 +5,10 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.QuorumVoteRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -32,6 +34,263 @@ import static junit.framework.TestCase.assertTrue;
 
 public class VotingTest extends BaseMainTest {
 
+
+
+    @Test
+    public void detachedContractsVotingAuthorityLevels() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+        int N = 3;
+        int M = 3;
+        int K = 3;
+
+        Contract contract = new Contract(TestKeys.privateKey(TestKeys.binaryKeys.length-1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"refSupplied.state.data.list",""+(N*M*K));
+        contract.addRole(quorumVoteRole);
+        Reference refSupplied = new Reference(contract);
+        refSupplied.name = "refSupplied";
+        refSupplied.type = Reference.TYPE_EXISTING_DEFINITION;
+        refSupplied.setConditions(Binder.of("all_of",Do.listOf("ref can_play ref2ndLevelAuth.state.roles.granted_auth")));
+        contract.addReference(refSupplied);
+
+        Reference ref2ndLevelAuth = new Reference(contract);
+        ref2ndLevelAuth.name = "ref2ndLevelAuth";
+        ref2ndLevelAuth.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref2ndLevelAuth.setConditions(Binder.of("all_of",Do.listOf("ref can_play refRootAuth.state.roles.granted_auth")));
+        contract.addReference(ref2ndLevelAuth);
+
+        Reference refRootAuth = new Reference(contract);
+        refRootAuth.name = "refRootAuth";
+        refRootAuth.type = Reference.TYPE_EXISTING_DEFINITION;
+        refRootAuth.setConditions(Binder.of("all_of",Do.listOf("ref.issuer==this.definition.data.root_authority")));
+        contract.addReference(refRootAuth);
+
+        SimpleRole role = new SimpleRole("dummy",contract);
+        role.addRequiredReference("refSupplied", Role.RequiredMode.ALL_OF);
+        role.addRequiredReference("ref2ndLevelAuth", Role.RequiredMode.ALL_OF);
+        role.addRequiredReference("refRootAuth", Role.RequiredMode.ALL_OF);
+
+        contract.addRole(role);
+
+
+        final int BASE = 0;
+
+
+        contract.getDefinition().getData().put("root_authority",TestKeys.publicKey(BASE).getLongAddress().toString());
+
+        contract.seal();
+
+        Contract rootAuthorityContract = new Contract(TestKeys.privateKey(BASE));
+        List<Contract> scndLvlAuthContracts = new ArrayList<>();
+        rootAuthorityContract.setIssuerKeys(TestKeys.publicKey(BASE).getLongAddress());
+        ListRole grantedAuth = new ListRole("granted_auth",rootAuthorityContract);
+        grantedAuth.setMode(ListRole.Mode.ANY);
+        for(int i = 0; i < K; i++) {
+            SimpleRole simpleRole = new SimpleRole("@auth"+i,rootAuthorityContract,Do.listOf(TestKeys.publicKey(BASE+1+i).getLongAddress()));
+            grantedAuth.addRole(simpleRole);
+            Contract scndLvlAuth = new Contract(TestKeys.privateKey(BASE+1+i));
+            ListRole grantedAuth2nd = new ListRole("granted_auth",scndLvlAuth);
+            grantedAuth2nd.setMode(ListRole.Mode.ANY);
+            scndLvlAuth.addRole(grantedAuth2nd);
+            for(int j = 0; j < M; j++) {
+                simpleRole = new SimpleRole("@auth"+i,scndLvlAuth,Do.listOf(TestKeys.publicKey(BASE+1+K+i*K+j).getLongAddress()));
+                grantedAuth2nd.addRole(simpleRole);
+            }
+            scndLvlAuth.seal();
+            scndLvlAuthContracts.add(scndLvlAuth);
+        }
+        rootAuthorityContract.addRole(grantedAuth);
+        rootAuthorityContract.seal();
+
+
+
+        ItemResult ir = client.register(rootAuthorityContract.getPackedTransaction(), 100000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        AtomicInteger readyCounter0 = new AtomicInteger();
+        AsyncEvent readyEvent0 = new AsyncEvent();
+
+        scndLvlAuthContracts.forEach(c -> {
+            Do.inParallel(() -> {
+                ItemResult ir2 = null;
+                try {
+                    ir2 = client.register(c.getPackedTransaction(), 100000);
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+                assertEquals(ir2.state, ItemState.APPROVED);
+                if(readyCounter0.incrementAndGet() == scndLvlAuthContracts.size()) {
+                    readyEvent0.fire();
+                }
+            });
+        });
+
+        readyEvent0.await();
+
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+
+        for(int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(() -> {
+                try {
+                    client.getClient(finalI).initiateVote(contract);
+                    if(readyCounter.incrementAndGet() == client.size()) {
+                        readyEvent.fire();
+                    }
+
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+            });
+        };
+
+        readyEvent.await();
+
+
+        AtomicInteger readyCounter2 = new AtomicInteger();
+        AsyncEvent readyEvent2 = new AsyncEvent();
+
+        for(int i = 0; i < K; i++) {
+            for(int j = 0; j < M; j++) {
+
+                Contract supplied = new Contract(TestKeys.privateKey(BASE+1+K+i*K+j));
+                List<KeyAddress> kas = new ArrayList<>();
+                for (int k = 0; k < N; k++) {
+                    kas.add(TestKeys.publicKey((i*K + j) * M + k).getLongAddress());
+                }
+                supplied.getStateData().put("list", kas);
+                supplied.seal();
+                ir = client.register(supplied.getPackedTransaction(), 100000);
+                assertEquals(ir.state, ItemState.APPROVED);
+
+
+                for (int k = 0; k < N; k++) {
+                    Client c = new Client("test_node_config_v2", null, TestKeys.privateKey((i*K + j) * M + k));
+                    for (int l = 0; l < client.size(); l++) {
+                        int finalK = l;
+                        int finalI = i;
+                        Do.inParallel(() -> {
+                            try {
+                                c.getClient(finalK).voteForContract(contract.getId(), Do.listOf(rootAuthorityContract.getLastSealedBinary(), scndLvlAuthContracts.get(finalI).getLastSealedBinary(), supplied.getLastSealedBinary()));
+                                if (readyCounter2.incrementAndGet() == client.size() * M * N * K) {
+                                    readyEvent2.fire();
+                                }
+
+                            } catch (ClientError clientError) {
+                                clientError.printStackTrace();
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        readyEvent2.await();
+        ir = client.register(contract.getPackedTransaction(), 100000);
+        System.out.println(ir);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        ts.shutdown();
+
+    }
+
+    @Test
+    public void detachedContractsVoting() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+        int N = 3;
+        int M = 5;
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"refSupplied.state.data.list",""+(N*M));
+        contract.addRole(quorumVoteRole);
+
+        SimpleRole dummy = new SimpleRole("dummy",contract);
+        dummy.addRequiredReference("refSupplied", Role.RequiredMode.ALL_OF);
+        contract.addRole(dummy);
+
+
+        Reference refSupplied = new Reference(contract);
+        refSupplied.name = "refSupplied";
+        refSupplied.type = Reference.TYPE_EXISTING_DEFINITION;
+        refSupplied.setConditions(Binder.of("all_of",Do.listOf("ref.issuer==this.definition.data.issuer")));
+        contract.addReference(refSupplied);
+        contract.getDefinition().getData().set("issuer",TestKeys.publicKey(2).getLongAddress().toString());
+        contract.seal();
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+
+        for(int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(() -> {
+                try {
+                    client.getClient(finalI).initiateVote(contract);
+                    if(readyCounter.incrementAndGet() == client.size()) {
+                        readyEvent.fire();
+                    }
+
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+            });
+        };
+
+        readyEvent.await();
+
+
+        AtomicInteger readyCounter2 = new AtomicInteger();
+        AsyncEvent readyEvent2 = new AsyncEvent();
+
+        for(int i = 0; i < M; i++) {
+
+            Contract supplied = new Contract(TestKeys.privateKey(2));
+            supplied.setIssuerKeys(TestKeys.publicKey(2).getLongAddress());
+            List<KeyAddress> kas = new ArrayList<>();
+            for(int j = 0; j < N;j++) {
+                kas.add(TestKeys.publicKey(i*N+j).getLongAddress());
+            }
+            supplied.getStateData().put("list",kas);
+            supplied.seal();
+
+            for(int j = 0; j < N; j++) {
+                Client c = new Client("test_node_config_v2", null, TestKeys.privateKey(i*N+j));
+                for (int k = 0; k < client.size(); k++) {
+                    int finalK = k;
+                    Do.inParallel(() -> {
+                        try {
+                            c.getClient(finalK).voteForContract(contract.getId(), Do.listOf(supplied.getLastSealedBinary()));
+                            if (readyCounter2.incrementAndGet() == client.size() * M * N) {
+                                readyEvent2.fire();
+                            }
+
+                        } catch (ClientError clientError) {
+                            clientError.printStackTrace();
+                        }
+                    });
+                }
+            }
+        }
+
+        readyEvent2.await();
+        ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
+        System.out.println(ir);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        ts.shutdown();
+
+    }
+
     @Test
     public void persistentVoting() throws Exception {
 
@@ -45,7 +304,7 @@ public class VotingTest extends BaseMainTest {
 
         List<KeyAddress> addresses = new ArrayList<>();
         for(int i = 0; i < 20; i++) {
-            addresses.add(TestKeys.publicKey(i).getShortAddress());
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
         }
         contract.getStateData().put("list",addresses);
 
@@ -125,7 +384,7 @@ public class VotingTest extends BaseMainTest {
 
         List<KeyAddress> addresses = new ArrayList<>();
         for(int i = 0; i < 20; i++) {
-            addresses.add(TestKeys.publicKey(i).getShortAddress());
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
         }
         contract.getStateData().put("list",addresses);
 

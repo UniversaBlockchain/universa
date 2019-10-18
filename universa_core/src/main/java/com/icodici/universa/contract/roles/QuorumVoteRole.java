@@ -4,6 +4,7 @@ import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
@@ -14,16 +15,20 @@ import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @BiType(name = "QuorumVoteRole")
 public class QuorumVoteRole extends Role {
+
+    private Long votesCount;
 
     public QuorumVoteRole() {
 
@@ -33,6 +38,10 @@ public class QuorumVoteRole extends Role {
         super(name,contract);
         this.source = source;
         this.quorum = quorum;
+
+        int idx = source.indexOf(".");
+        String from = source.substring(0,idx);
+        String what = source.substring(idx+1);
 
 
     }
@@ -57,6 +66,9 @@ public class QuorumVoteRole extends Role {
     public void initWithDsl(Binder serializedRole) {
         source = serializedRole.getStringOrThrow("source");
         quorum = serializedRole.getStringOrThrow("quorum");
+        int idx = source.indexOf(".");
+        String from = source.substring(0,idx);
+        String what = source.substring(idx+1);
     }
 
     @Override
@@ -113,80 +125,130 @@ public class QuorumVoteRole extends Role {
             return false;
         }
 
-        int idx = source.indexOf(".");
-        String from = source.substring(0,idx);
-        String what = source.substring(idx+1);
-        Contract fromContract;
-        if(from.equals("this")) {
-            fromContract = getContract();
-        } else {
-            Reference ref = getContract().getReferences().get(from);
-            if(ref == null) {
-                return false;
-            }
-
-            List<Approvable> matchingItems = ref.matchingItems;
-            if(matchingItems.size() == 0) {
-                return false;
-            } else {
-                fromContract = (Contract) matchingItems.get(0);
-            }
-        }
-        List<Role> roles;
-        Object o = fromContract.get(what);
-        if(o instanceof Role) {
-            o = ((Role) o).resolve();
-            if(!(o instanceof ListRole)) {
-                return false;
-            } else {
-                roles = new ArrayList(((ListRole) o).getRoles());
-            }
-        } else if(o instanceof List) {
-            roles = new ArrayList<>();
-            try {
-                ((List)o).forEach(item -> {
-                    if(item instanceof Role) {
-                        roles.add((Role) item);
-                    } else if(item instanceof KeyAddress || item instanceof PublicKey) {
-                        roles.add(new SimpleRole("@role"+roles.size(), Do.listOf(item)));
-                    } else if(item instanceof String) {
-                        try {
-                            roles.add(new SimpleRole("@role"+roles.size(), Do.listOf(new KeyAddress((String) item))));
-                        } catch (KeyAddress.IllegalAddressException e) {
-                            throw new IllegalArgumentException();
-                        }
-                    }
-                });
-            } catch (IllegalArgumentException e) {
-                return false;
-            }
-
-        } else {
+        List<KeyAddress> votingAddresses;
+        try {
+            votingAddresses = getVotingAddresses();
+        } catch (Exception e) {
             return false;
         }
 
+
         int minValidCount;
         if(quorum.endsWith("%")) {
-            minValidCount = (int) Math.ceil(new BigDecimal(quorum.substring(0,quorum.length()-1)).doubleValue()*roles.size()/100.0f);
+            minValidCount = (int) Math.ceil(new BigDecimal(quorum.substring(0,quorum.length()-1)).doubleValue()*votingAddresses.size()/100.0f);
         } else {
             minValidCount = Integer.parseInt(quorum);
         }
 
-        for(Role r : roles) {
-            if(r.isAllowedForKeys(keys)) {
-                minValidCount--;
+        if(votesCount != null) {
+            return minValidCount <= votesCount;
+        } else {
+            for (KeyAddress va : votingAddresses) {
+
+                if (keys.stream().anyMatch(k -> ((AbstractKey) k).isMatchingKeyAddress(va))) {
+                    minValidCount--;
+                }
+
+                if (minValidCount == 0) {
+                    break;
+                }
             }
 
-            if(minValidCount == 0) {
-                break;
+            return minValidCount == 0;
+        }
+    }
+
+    public List<KeyAddress> getVotesForKeys(Set<? extends AbstractKey> keys) {
+        List<KeyAddress> votingAddresses = getVotingAddresses();
+
+        List<KeyAddress> result = new ArrayList<>();
+        for(KeyAddress va : votingAddresses) {
+            if(keys.stream().anyMatch(k->((AbstractKey) k).isMatchingKeyAddress(va))) {
+                result.add(va);
             }
         }
-
-        return minValidCount == 0;
+        return result;
     }
+
+    public List<KeyAddress> getVotingAddresses() {
+        int idx = source.indexOf(".");
+        String from = source.substring(0,idx);
+        String what = source.substring(idx+1);
+        List<Contract> fromContracts = new ArrayList<>();
+        if(from.equals("this")) {
+            fromContracts.add(getContract());
+        } else {
+            Reference ref = getContract().getReferences().get(from);
+            if(ref == null) {
+                throw  new IllegalArgumentException("Reference with name '" + from + "' wasn't found for role " + getName());
+            }
+
+            ref.matchingItems.forEach(a -> fromContracts.add((Contract) a));
+        }
+
+        List<KeyAddress> addresses = new ArrayList<>();
+        for(Contract fromContract :  fromContracts) {
+            Object o = fromContract.get(what);
+            if (o instanceof Role) {
+                o = ((Role) o).resolve();
+                if (!(o instanceof ListRole)) {
+                    throw  new IllegalArgumentException("Path '" + what + "' is pointing to a role '" + ((Role) o).getName() + "' that is not ListRole");
+                } else {
+                    for (Role r : ((ListRole) o).getRoles()) {
+                        KeyAddress ka = r.getSimpleAddress();
+                        if(ka == null)
+                            throw  new IllegalArgumentException("Unable to extract simple address from " + r.getName() + ". Check if role is a simple role with single address and no references");
+                        checkAddress(ka);
+                        addresses.add(ka);
+                    }
+                }
+            } else if (o instanceof List) {
+                for(Object item : (List)o) {
+                    if (item instanceof Role) {
+                        KeyAddress ka = ((Role)item).getSimpleAddress();
+                        if(ka == null)
+                            throw  new IllegalArgumentException("Unable to extract simple address from " + ((Role)item).getName() + ". Check if role is a simple role with single address and no references");
+                        checkAddress(ka);
+                        addresses.add(ka);
+                    } else if (item instanceof KeyAddress) {
+                        checkAddress((KeyAddress) item);
+                        addresses.add((KeyAddress) item);
+                    } else if(item instanceof PublicKey) {
+                        throw  new IllegalArgumentException("Public keys are not allowed in QourumVoteRole source");
+                    } else if (item instanceof String) {
+                        try {
+                            KeyAddress ka = new KeyAddress((String) item);
+                            checkAddress(ka);
+                            addresses.add(ka);
+                        } catch (KeyAddress.IllegalAddressException e) {
+                            throw  new IllegalArgumentException("Unable to parse '" + item + "' into an address");
+                        }
+                    }
+                }
+            } else {
+                throw  new IllegalArgumentException("Path '" + what + "' is pointing to neither Role nor List<?>.");
+            }
+        }
+        return addresses;
+    }
+
+    private void checkAddress(KeyAddress ka) {
+        if(!ka.isLong() || ka.getTypeMark() != 0) {
+            throw  new IllegalArgumentException("Only the long addresses with type mark 0 are supported by QuorumVoteRole as a source");
+        }
+
+    }
+
 
     static {
         DefaultBiMapper.registerClass(QuorumVoteRole.class);
     }
 
+    public boolean isQuorumPercentageBased() {
+        return quorum.endsWith("%");
+    }
+
+    public void setVotesCount(Long votesCount) {
+        this.votesCount = votesCount;
+    }
 }

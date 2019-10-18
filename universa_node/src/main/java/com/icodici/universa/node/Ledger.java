@@ -7,11 +7,13 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.CallbackRecord;
 import com.icodici.universa.node2.NetConfig;
@@ -172,11 +174,16 @@ public interface Ledger {
     Set<HashId> findBadReferencesOf(Set<HashId> ids);
 
 
-    ZonedDateTime initiateVote(HashId itemId, ZonedDateTime expiresAt);
-    ZonedDateTime addVote(HashId itemId, PublicKey publicKey);
+    ZonedDateTime initiateVote(Contract contract, ZonedDateTime expiresAt);
+    ZonedDateTime addVotes(HashId itemId, List<KeyAddress> votes);
     ZonedDateTime getVoteExpires(HashId itemId);
-    Set<PublicKey> getVoteKeys(HashId itemId);
+    Set<KeyAddress> getVotes(HashId itemId);
+
+    Long getVotesCount(HashId itemId);
+
     void closeVote(HashId itemId);
+
+    Contract getVotedContract(HashId itemId);
 
 
     public static class Rollback extends Db.RollbackException {

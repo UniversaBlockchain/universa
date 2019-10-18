@@ -641,10 +641,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder initiateContractVote(Binder params, Session session) throws CommandFailedException {
         try {
             Contract c = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
-            node.initiateContractVote(c);
 
             return Binder.of("expiresAt",
-                    node.voteForContract(c.getId(),session.getPublicKey()));
+                    node.initiateContractVote(c));
 
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateContractVote",e.getMessage());
@@ -657,7 +656,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         try {
             return Binder.of("expiresAt",
-                    node.voteForContract((HashId) params.get("itemId"),session.getPublicKey()));
+                    node.voteForContract((HashId) params.get("itemId"),session.getPublicKey(),params.getList("referencedItems",null)));
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
         }

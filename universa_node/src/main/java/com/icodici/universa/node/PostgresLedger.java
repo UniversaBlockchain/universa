@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.db.Db;
@@ -2636,16 +2637,18 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public ZonedDateTime initiateVote(HashId itemId, ZonedDateTime expiresAt) {
+    public ZonedDateTime initiateVote(Contract contract, ZonedDateTime expiresAt) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "insert into votings(hash,expires_at) values(?,?) on conflict(hash) do update set hash=EXCLUDED.hash RETURNING expires_at;"
+                                    "insert into votings(hash,expires_at,packed) values(?,?,?) on conflict(hash) do update set hash=EXCLUDED.hash RETURNING expires_at;"
                             )
             ) {
-                statement.setBytes(1, itemId.getDigest());
+                statement.setBytes(1, contract.getId().getDigest());
                 statement.setLong(2,Ut.unixTime(expiresAt));
+                statement.setBytes(3,contract.getPackedTransaction());
+
                 try (ResultSet rs = statement.executeQuery()) {
                     if (rs == null)
                         throw new Failure("initiateVote failed: returning null");
@@ -2664,7 +2667,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public ZonedDateTime addVote(HashId itemId, PublicKey publicKey) {
+    public ZonedDateTime addVotes(HashId itemId, List<KeyAddress> addresses) {
         try (PooledDb db = dbPool.db()) {
             try (
                     ResultSet rs = db.queryRow("SELECT id,expires_at FROM votings WHERE hash = ?",
@@ -2676,16 +2679,17 @@ public class PostgresLedger implements Ledger {
                 }
                 int votingId = rs.getInt(1);
 
-
-                try (
-                        PreparedStatement statement =
-                                db.statement(
-                                        "insert into voting_votes(voting_id,packed_key) values(?,?);"
-                                )
-                ) {
-                    statement.setLong(1, votingId);
-                    statement.setBytes(2,publicKey.pack());
-                    db.updateWithStatement(statement);
+                for(KeyAddress ka : addresses) {
+                    try (
+                            PreparedStatement statement =
+                                    db.statement(
+                                            "insert into voting_votes(voting_id,packed_address) values(?,?) ON CONFLICT DO NOTHING;"
+                                    )
+                    ) {
+                        statement.setLong(1, votingId);
+                        statement.setBytes(2,ka.getPacked());
+                        db.updateWithStatement(statement);
+                    }
                 }
 
 
@@ -2726,27 +2730,73 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Set<PublicKey> getVoteKeys(HashId itemId) {
+    public Contract getVotedContract(HashId itemId) {
+        try {
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT packed FROM votings WHERE hash = ?",
+                            itemId.getDigest()
+                    );
+            ) {
+                if(rs == null)
+                    return null;
+                return Contract.fromPackedTransaction(rs.getBytes(1));
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("getVoteExpires failed", e);
+        }
+    }
+
+    @Override
+    public Set<KeyAddress> getVotes(HashId itemId) {
         try (PooledDb db = dbPool.db()) {
-            String sql = "SELECT voting_votes.packed_key AS packed_key FROM voting_votes LEFT JOIN votings ON voting_votes.voting_id=votings.id WHERE votings.hash = ?";
+            String sql = "SELECT voting_votes.packed_address AS packed_address FROM voting_votes LEFT JOIN votings ON voting_votes.voting_id=votings.id WHERE votings.hash = ?";
             PreparedStatement statement = db.statement(sql);
             statement.setBytes(1, itemId.getDigest());
             statement.closeOnCompletion();
             ResultSet rs = statement.executeQuery();
             if (rs == null)
-                throw new Failure("getVoteKeys failed: returning null");
-            Set<PublicKey> keys = new HashSet<>();
+                throw new Failure("getVotes failed: returning null");
+            Set<KeyAddress> addresses = new HashSet<>();
             while (rs.next()) {
-                keys.add(new PublicKey(rs.getBytes(1)));
+                addresses.add(new KeyAddress(rs.getBytes(1)));
             }
             rs.close();
-            return keys;
+            return addresses;
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("getVoteKeys failed, sql error: " + se);
+            throw new Failure("getVotes failed, sql error: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Failure("getVoteKeys failed: " + e);
+            throw new Failure("getVotes failed: " + e);
+        }
+    }
+
+    @Override
+    public Long getVotesCount(HashId itemId) {
+        try (PooledDb db = dbPool.db()) {
+            String sql = "SELECT count(*) FROM voting_votes LEFT JOIN votings ON voting_votes.voting_id=votings.id WHERE votings.hash = ?";
+            PreparedStatement statement = db.statement(sql);
+            statement.setBytes(1, itemId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                throw new Failure("getVotesCount failed: returning null");
+            rs.next();
+            long count = rs.getLong(1);
+            rs.close();
+            return count;
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getVotesCount failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getVotesCount failed: " + e);
         }
     }
 

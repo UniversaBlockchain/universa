@@ -185,6 +185,13 @@ public class Client {
     }
 
 
+    public ZonedDateTime voteForContract(HashId itemId, List<byte[]> referencedItems) throws ClientError {
+        return protect(() -> {
+            return (ZonedDateTime)httpClient.command("voteForContract","itemId",itemId, "referencedItems",referencedItems).get("expiresAt");
+        });
+
+    }
+
     public ZonedDateTime voteForContract(HashId itemId) throws ClientError {
         return protect(() -> {
             return (ZonedDateTime)httpClient.command("voteForContract","itemId",itemId).get("expiresAt");

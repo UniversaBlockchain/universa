@@ -62,6 +62,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         this.votedByKeys = votedByKeys;
     }
 
+    public void matchReferences() {
+        getQuantiser().resetNoLimit();
+        HashMap contractsTree = new HashMap(getTransactionPack().getSubItems());
+        contractsTree.putAll(getTransactionPack().getReferencedItems());
+        contractsTree.put(getId(),this);
+        try {
+            checkReferencedItems(contractsTree);
+        } catch (Quantiser.QuantiserException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static class UnicapsuleExpectedException extends IllegalArgumentException {
 
         public UnicapsuleExpectedException(String message) {
