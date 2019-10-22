@@ -46,6 +46,11 @@ public abstract class Role implements BiSerializable {
             return ((ListRole)this).getRoles().stream().anyMatch(r -> r.containReference(name));
         }
 
+        if(this instanceof QuorumVoteRole) {
+            String source = ((QuorumVoteRole)this).source;
+            return source.substring(0, source.indexOf(".")).equals(name);
+        }
+
         return false;
     }
 
