@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -183,6 +184,28 @@ public class QuorumVoteRole extends Role {
         }
 
         return minValidCount == 0;
+    }
+
+    /**
+     * Get names of {@link Reference} that are not required but are used in voting.
+     */
+    @Override
+    public Set<String> getSpecialReferences() {
+        Set<String> refs = new HashSet<>();
+
+        String sourceReference = source.substring(0, source.indexOf("."));
+        refs.add(sourceReference);
+
+        // add internal references
+        int idx = source.indexOf(".");
+        String from = source.substring(0, idx);
+        if (!from.equals("this")) {
+            Reference ref = getContract().getReferences().get(from);
+            if (ref != null)
+                refs.addAll(ref.getInternalReferences());
+        }
+
+        return refs;
     }
 
     static {

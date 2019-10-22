@@ -35,7 +35,7 @@ import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
 public abstract class Role implements BiSerializable {
 
     public boolean containReference(String name) {
-        if(requiredAllReferences.contains(name) || requiredAnyReferences.contains(name))
+        if(requiredAllReferences.contains(name) || requiredAnyReferences.contains(name) || getSpecialReferences().contains(name))
             return true;
 
         if(this instanceof RoleLink) {
@@ -44,11 +44,6 @@ public abstract class Role implements BiSerializable {
 
         if(this instanceof ListRole) {
             return ((ListRole)this).getRoles().stream().anyMatch(r -> r.containReference(name));
-        }
-
-        if(this instanceof QuorumVoteRole) {
-            String source = ((QuorumVoteRole)this).source;
-            return source.substring(0, source.indexOf(".")).equals(name);
         }
 
         return false;
@@ -501,4 +496,9 @@ public abstract class Role implements BiSerializable {
      * If this role has public keys, they will be replaced with {@link AnonymousId}.
      */
     public abstract void anonymize();
+
+    /**
+     * Get names of {@link Reference} that are not required but are used in voting.
+     */
+    public Set<String> getSpecialReferences() { return new HashSet<>(); }
 }
