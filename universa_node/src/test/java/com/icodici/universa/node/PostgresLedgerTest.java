@@ -9,6 +9,7 @@ import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeStats;
+import com.icodici.universa.node2.VoteInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Ut;
@@ -22,7 +23,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +30,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.*;
 
@@ -966,55 +968,49 @@ public class PostgresLedgerTest extends TestCase {
     */
 
 
-
     @Test
-    public void votingsTest() throws Exception {
-        assertNull(ledger.getVoteExpires(HashId.createRandom()));
-        assertEquals(ledger.getVotes(HashId.createRandom()).size(),0);
+    public void votingTest() throws Exception {
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.seal();
+
+        HashSet<HashId> candidates = new HashSet<>(Do.listOf(HashId.createRandom(), HashId.createRandom(), HashId.createRandom()));
+        ledger.initiateVoting(contract,ZonedDateTime.now().plusSeconds(1000),"owner",candidates);
 
 
-        ZonedDateTime expires = ZonedDateTime.now().plusDays(1).truncatedTo(ChronoUnit.SECONDS);
-
-        Contract c = new Contract(TestKeys.privateKey(1));
-        c.seal();
-        HashId id1 = c.getId();
-        Contract c2 = new Contract(TestKeys.privateKey(1));
-        c2.seal();
-
-        assertEquals(ledger.initiateVote(c,expires),expires);
-
-        assertEquals(ledger.initiateVote(c,expires.plusSeconds(100)),expires);
-        assertEquals(ledger.initiateVote(c2,expires.plusSeconds(100)),expires.plusSeconds(100));
+        assertEquals(ledger.getVotes(HashId.createRandom()).size(), 0);
+        assertEquals(ledger.getVotes(Do.sample(candidates)).size(), 1);
 
 
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(2).getLongAddress())),expires);
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(3).getLongAddress())),expires);
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
-        assertEquals(ledger.addVotes(id1,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires);
+        Contract contract2 = new Contract(TestKeys.privateKey(1));
+        contract2.seal();
+
+        ledger.initiateVoting(contract2,ZonedDateTime.now().plusSeconds(1000),"owner",candidates);
+
+        assertEquals(ledger.getVotes(Do.sample(candidates)).size(), 2);
 
 
-        assertEquals(ledger.getVotes(id1).size(),3);
+        VoteInfo vi1 = ledger.getVotingInfo(contract.getId());
+        VoteInfo vi2 = ledger.getVotingInfo(contract2.getId());
 
-        ledger.closeVote(id1);
+        for(HashId hashId : vi1.candidateIds.keySet()) {
+            ledger.addVotes(vi1.votingId,vi1.candidateIds.get(hashId),Do.listOf(TestKeys.publicKey(1).getLongAddress(),TestKeys.publicKey(2).getLongAddress(),TestKeys.publicKey(3).getLongAddress()));
+        }
 
-        assertNull(ledger.getVoteExpires(id1));
-        assertEquals(ledger.getVotes(id1).size(),0);
+        HashId last = null;
+        for(HashId hashId : vi2.candidateIds.keySet()) {
+            last = hashId;
+            ledger.addVotes(vi2.votingId,vi2.candidateIds.get(hashId),Do.listOf(TestKeys.publicKey(1).getLongAddress(),TestKeys.publicKey(2).getLongAddress(),TestKeys.publicKey(3).getLongAddress()));
+        }
 
 
-        Contract c3 = new Contract(TestKeys.privateKey(1));
-        c3.seal();
+        for(HashId hashId : candidates) {
+            HashId finalLast = last;
+            ledger.getVotes(hashId).forEach(vr -> assertEquals(vr.votesCount.longValue(),hashId.equals(finalLast) ? 3 : 0));
+        }
 
-        HashId id2 = c3.getId();
-        ZonedDateTime expires2 = ZonedDateTime.now().plusSeconds(1).truncatedTo(ChronoUnit.SECONDS);
-        assertEquals(ledger.initiateVote(c3,expires2),expires2);
-        assertEquals(ledger.addVotes(id2,Do.listOf(TestKeys.publicKey(1).getLongAddress())),expires2);
-        assertEquals(ledger.getVotes(id2).size(),1);
-        Thread.sleep(2000);
-        ledger.cleanup(false);
-        assertNull(ledger.getVoteExpires(id2));
-        assertEquals(ledger.getVotes(id2).size(),0);
+
+
 
     }
 }

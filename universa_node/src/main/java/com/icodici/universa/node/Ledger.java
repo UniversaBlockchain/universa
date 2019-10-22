@@ -9,16 +9,12 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node2.CallbackRecord;
-import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.NCallbackService;
-import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
 
 import java.time.Duration;
@@ -174,16 +170,16 @@ public interface Ledger {
     Set<HashId> findBadReferencesOf(Set<HashId> ids);
 
 
-    ZonedDateTime initiateVote(Contract contract, ZonedDateTime expiresAt);
-    ZonedDateTime addVotes(HashId itemId, List<KeyAddress> votes);
-    ZonedDateTime getVoteExpires(HashId itemId);
-    Set<KeyAddress> getVotes(HashId itemId);
+    VoteInfo initiateVoting(Contract contract, ZonedDateTime expiresAt, String roleName, Set<HashId> candidates);
+    VoteInfo getVotingInfo(HashId votingId);
 
-    Long getVotesCount(HashId itemId);
+    void addVotes(long votingId, long candidateId, List<KeyAddress> votes);
+
+    default List<VoteResult> getVotes(HashId candidateId) {return getVotes(candidateId,false);}
+    public List<VoteResult> getVotes(HashId candidateId, boolean queryAddresses);
 
     void closeVote(HashId itemId);
 
-    Contract getVotedContract(HashId itemId);
 
 
     public static class Rollback extends Db.RollbackException {

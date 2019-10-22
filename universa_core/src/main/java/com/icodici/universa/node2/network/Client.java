@@ -179,7 +179,7 @@ public class Client {
 
     public ZonedDateTime initiateVote(Contract contract) throws ClientError {
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("initiateVote","packedItem",contract.getLastSealedBinary()).get("expiresAt");
+            return (ZonedDateTime)httpClient.command("initiateContractVote","packedItem",contract.getLastSealedBinary()).get("expiresAt");
         });
 
     }

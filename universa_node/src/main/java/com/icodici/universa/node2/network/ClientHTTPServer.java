@@ -292,7 +292,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
 
-        addSecureEndpoint("initiateVote",this::initiateContractVote);
+        addSecureEndpoint("initiateContractVote",this::initiateContractVote);
         addSecureEndpoint("voteForContract",this::voteForContract);
         addSecureEndpoint("getVotes",this::getVotes);
 
@@ -641,9 +641,11 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder initiateContractVote(Binder params, Session session) throws CommandFailedException {
         try {
             Contract c = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+            String roleName = params.getString("role","creator");
+            List<HashId> candidates = params.getList("candidates",Do.listOf(c.getId()));
 
             return Binder.of("expiresAt",
-                    node.initiateContractVote(c));
+                    node.initiateContractVote(c,roleName,candidates));
 
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateContractVote",e.getMessage());
@@ -655,8 +657,17 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session, true);
 
         try {
+            HashId candidateId = (HashId) params.get("candidateId");
+            HashId votingId = (HashId) params.get("votingId");
+            if(candidateId == null && votingId == null) {
+                HashId itemId = (HashId) params.get("itemId");
+                candidateId = itemId;
+                votingId = itemId;
+            }
+
+
             return Binder.of("expiresAt",
-                    node.voteForContract((HashId) params.get("itemId"),session.getPublicKey(),params.getList("referencedItems",null)));
+                    node.voteForContract(votingId,candidateId,session.getPublicKey(),params.getList("referencedItems",null)));
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
         }

@@ -1440,17 +1440,25 @@ public class Node {
     }
 
 
-    public ZonedDateTime voteForContract(HashId itemId, PublicKey publicKey, List<Bytes> referencedItems) throws Exception {
+    public ZonedDateTime voteForContract(HashId votingItem, HashId candidateId, PublicKey publicKey, List<Bytes> referencedItems) throws Exception {
 
-        return voteLock.synchronize(itemId,lock -> {
-            Contract votedContract = ledger.getVotedContract(itemId);
-            if(votedContract != null) {
-                QuorumVoteRole role = votedContract.getCreator().resolve();
+        return voteLock.synchronize(votingItem,lock -> {
+            VoteInfo votingInfo = ledger.getVotingInfo(votingItem);
+            if(votingInfo != null) {
+                if(!votingInfo.candidateIds.containsKey(candidateId)) {
+                    throw new IllegalArgumentException("Candidate '" + candidateId + "' wasn't found in candidate list of voting " + votingItem);
+                }
+
+                Contract votingContract = votingInfo.contract;
+                String roleName = votingInfo.roleName;
+                long votingId = votingInfo.votingId;
+                ZonedDateTime expires = votingInfo.expires;
+                QuorumVoteRole role = votingContract.getRole(roleName).resolve();
                 if(role.isQuorumPercentageBased() && referencedItems != null && referencedItems.size() > 0) {
                     throw new IllegalArgumentException("Quorum of '"+role.getName()+"' is percentage based. It is not allowed to provide an additional referenced items voting such roles");
                 }
 
-                TransactionPack tp = votedContract.getTransactionPack();
+                TransactionPack tp = votingContract.getTransactionPack();
 
                 if (referencedItems != null) {
                     for (Bytes ri : referencedItems) {
@@ -1472,46 +1480,38 @@ public class Node {
                     }
                 });
 
-                votedContract.matchReferences();
+                votingContract.matchReferences();
 
 
                 Set<PublicKey> keys = new HashSet<PublicKey>();
                 keys.add(publicKey);
 
                 List<KeyAddress> votes = role.getVotesForKeys(keys);
-                return ledger.addVotes(itemId, votes);
+                ledger.addVotes(votingId,votingInfo.candidateIds.get(candidateId), votes);
+                return expires;
             } else {
-                return voteCache.addVote(itemId,publicKey);
+                return voteCache.addVote(votingItem,publicKey);
             }
 
         });
 
     }
 
-    public ZonedDateTime initiateContractVote(Contract contract) throws Exception {
-        Role r = contract.getCreator().resolve();
+    public ZonedDateTime initiateContractVote(Contract contract, String roleName, List<HashId> candidates) throws Exception {
+        Role r = contract.getRole(roleName).resolve();
         if(!(r instanceof QuorumVoteRole)) {
             throw new IllegalArgumentException("creator expected to resolve as QuorumVoteRole, found " + r.getClass().getSimpleName());
         }
 
         return voteLock.synchronize(contract.getId(),lock -> {
-            return ledger.initiateVote(contract, ZonedDateTime.now().plus(config.getMaxVoteTime()));
+            return ledger.initiateVoting(contract, ZonedDateTime.now().plus(config.getMaxVoteTime()),roleName,new HashSet<>(candidates)).expires;
         });
     }
 
     public Binder getVotes(HashId itemId) {
 
-        ZonedDateTime expiresAt = ledger.getVoteExpires(itemId);
-        Set<PublicKey> keys = null;
-        Set<KeyAddress> addresses = null;
-        if(expiresAt != null) {
-            addresses = ledger.getVotes(itemId);
-        }
-
-        keys = voteCache.getVoteKeys(itemId);
-
-
-        return Binder.of("keys",keys,"expiresAt",expiresAt, "addresses", addresses);
+        Set<PublicKey> keys = voteCache.getVoteKeys(itemId);
+        return Binder.of("keys",keys);
     }
 
 
@@ -2270,19 +2270,25 @@ public class Node {
                                 invalidItems.forEach(id -> referencedItems.remove(id));
                             }
 
+                            //vote cache
                             Set<PublicKey> votedByKeys = voteCache.getVoteKeys(itemId);
                             if(votedByKeys == null) {
                                 votedByKeys = new HashSet<>();
                             }
-
-                            Role r = contract.getCreator().resolve();
-                            if(r instanceof QuorumVoteRole) {
-                                ((QuorumVoteRole)r).setVotesCount(ledger.getVotesCount(itemId));
-                                if(contract.getParent() != null) {
-                                    Contract parent = contract.getTransactionPack().getSubItem(contract.getParent());
-                                }
-                            }
                             ((Contract) item).setVotedByKeys(votedByKeys);
+
+
+                            //permanent voting
+                            ledger.getVotes(itemId).forEach(vr->{
+                                Contract si = vr.votingItem.equals(itemId) ? contract : contract.getTransactionPack().getSubItem(vr.votingItem);
+                                if(si != null) {
+                                    Role role = si.getRole(vr.roleName);
+                                    if(role != null && role.resolve() instanceof QuorumVoteRole) {
+                                        ((QuorumVoteRole)role.resolve()).setVotesCount(vr.votesCount);
+                                    }
+                                }
+                            });
+
                         }
 
                         if(item.shouldBeU()) {
