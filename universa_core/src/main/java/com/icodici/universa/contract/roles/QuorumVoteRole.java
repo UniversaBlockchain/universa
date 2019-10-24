@@ -194,13 +194,11 @@ public class QuorumVoteRole extends Role {
         Set<String> refs = new HashSet<>();
 
         String sourceReference = source.substring(0, source.indexOf("."));
-        refs.add(sourceReference);
 
-        // add internal references
-        int idx = source.indexOf(".");
-        String from = source.substring(0, idx);
-        if (!from.equals("this")) {
-            Reference ref = getContract().getReferences().get(from);
+        if (!sourceReference.equals("this")) {
+            refs.add(sourceReference);
+            // add internal references
+            Reference ref = getContract().getReferences().get(sourceReference);
             if (ref != null)
                 refs.addAll(ref.getInternalReferences());
         }
