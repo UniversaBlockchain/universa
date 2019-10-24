@@ -411,6 +411,11 @@ public class ReferenceConditionsTest {
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
         assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(refContract2));
+
+        assertEquals(refContract1.getReferences().get("ref_cont").getInternalReferences().size(), 1);
+        assertTrue(refContract1.getReferences().get("ref_cont").getInternalReferences().contains("ref_cont2"));
+        assertEquals(refContract2.getReferences().get("ref_cont3").getInternalReferences().size(), 1);
+        assertTrue(refContract2.getReferences().get("ref_cont3").getInternalReferences().contains("ref_cont4"));
     }
 
     @Test(timeout = 60000)
@@ -460,6 +465,11 @@ public class ReferenceConditionsTest {
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
         assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(refContract2));
+
+        assertEquals(refContract1.getReferences().get("ref_cont").getInternalReferences().size(), 1);
+        assertTrue(refContract1.getReferences().get("ref_cont").getInternalReferences().contains("ref_cont2"));
+        assertEquals(refContract2.getReferences().get("ref_cont3").getInternalReferences().size(), 1);
+        assertTrue(refContract2.getReferences().get("ref_cont3").getInternalReferences().contains("ref_cont4"));
     }
 
 }

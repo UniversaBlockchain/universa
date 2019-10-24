@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -239,6 +240,25 @@ public class QuorumVoteRole extends Role {
 
     }
 
+    /**
+     * Get names of {@link Reference} that are not required but are used in voting.
+     */
+    @Override
+    public Set<String> getSpecialReferences() {
+        Set<String> refs = new HashSet<>();
+
+        String sourceReference = source.substring(0, source.indexOf("."));
+
+        if (!sourceReference.equals("this")) {
+            refs.add(sourceReference);
+            // add internal references
+            Reference ref = getContract().getReferences().get(sourceReference);
+            if (ref != null)
+                refs.addAll(ref.getInternalReferences());
+        }
+
+        return refs;
+    }
 
     static {
         DefaultBiMapper.registerClass(QuorumVoteRole.class);
