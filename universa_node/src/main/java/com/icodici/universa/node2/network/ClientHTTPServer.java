@@ -292,9 +292,12 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
 
-        addSecureEndpoint("initiateContractVote",this::initiateContractVote);
+        addSecureEndpoint("initiateVoting",this::initiateVoting);
         addSecureEndpoint("voteForContract",this::voteForContract);
-        addSecureEndpoint("getVotes",this::getVotes);
+
+
+        addSecureEndpoint("addKeyToContract",this::addKeyToContract);
+        addSecureEndpoint("getContractKeys",this::getContractKeys);
 
 
     }
@@ -638,51 +641,48 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
 
-    private Binder initiateContractVote(Binder params, Session session) throws CommandFailedException {
+    private Binder initiateVoting(Binder params, Session session) throws CommandFailedException {
         try {
             Contract c = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
             String roleName = params.getString("role","creator");
-            List<HashId> candidates = params.getList("candidates",Do.listOf(c.getId()));
+            List<HashId> candidates = params.getListOrThrow("candidates");
 
             return Binder.of("expiresAt",
-                    node.initiateContractVote(c,roleName,candidates));
+                    node.initiateVoting(c,roleName,new HashSet(candidates)));
 
         } catch (Exception e) {
-            throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateContractVote",e.getMessage());
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateVoting",e.getMessage());
         }
     }
 
+    private Binder addKeyToContract(Binder params, Session session) throws CommandFailedException {
+        return Binder.of("expiresAt",
+                node.addKeyToContract((HashId) params.get("itemId"), session.getPublicKey()));
+    }
+
+    private Binder getContractKeys(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return node.getContractKeys((HashId) params.get("itemId"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"getContractKeys",e.getMessage());
+        }
+    }
 
     private Binder voteForContract(Binder params, Session session) throws CommandFailedException {
         checkNode(session, true);
-
         try {
-            HashId candidateId = (HashId) params.get("candidateId");
-            HashId votingId = (HashId) params.get("votingId");
-            if(candidateId == null && votingId == null) {
-                HashId itemId = (HashId) params.get("itemId");
-                candidateId = itemId;
-                votingId = itemId;
-            }
-
-
+            HashId candidateId = (HashId) params.getOrThrow("candidateId");
+            HashId votingId = (HashId) params.getOrThrow("votingId");
             return Binder.of("expiresAt",
-                    node.voteForContract(votingId,candidateId,session.getPublicKey(),params.getList("referencedItems",null)));
+                    node.voteForContract(votingId, candidateId, session.getPublicKey(), params.getList("referencedItems", null)));
         } catch (Exception e) {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
         }
     }
 
-    private Binder getVotes(Binder params, Session session) throws CommandFailedException {
-        checkNode(session, true);
 
-        try {
-            return node.getVotes((HashId) params.get("itemId"));
-
-        } catch (Exception e) {
-            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
-        }
-    }
 
     private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
         HashId executableContractId = params.getOrThrow("executableContractId");

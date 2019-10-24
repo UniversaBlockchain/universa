@@ -6,10 +6,8 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
-import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.QuorumVoteRole;
-import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.roles.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.network.Client;
@@ -22,6 +20,8 @@ import org.junit.Test;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +34,220 @@ import static junit.framework.TestCase.assertTrue;
 
 public class VotingTest extends BaseMainTest {
 
+    @Test
+    public void persistentVotingChangeOwnerReferenced() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+        for(int i = 0; i < client.size(); i++) {
+            client.getClient(i);
+        }
+
+        Contract referenced = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("change_owner",referenced,"this.state.data.list","90%");
+        referenced.addRole(quorumVoteRole);
+
+        List<KeyAddress> addresses = new ArrayList<>();
+        for(int i = 0; i < 20; i++) {
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
+        }
+        referenced.getStateData().put("list",addresses);
+        referenced.seal();
+
+        assertEquals(client.register(referenced.getPackedTransaction(),10000).state,ItemState.APPROVED);
+
+
+        Contract updated = new Contract(TestKeys.privateKey(1));
+
+        Reference reference = new Reference(updated);
+        reference.name = "change_owner";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.id==this.state.data.referenced",
+                "this can_play ref.state.roles.change_owner")));
+        updated.addReference(reference);
+
+        updated.getStateData().put("referenced",referenced.getId().toBase64String());
+
+        SimpleRole owner = new SimpleRole("owner",updated);
+        owner.addRequiredReference("change_owner", Role.RequiredMode.ALL_OF);
+        updated.addRole(owner);
+        updated.seal();
+
+        assertEquals(client.register(updated.getPackedTransaction(),10000).state,ItemState.APPROVED);
+
+
+        Contract revision1 = updated.createRevision(TestKeys.privateKey(4));
+        revision1.setOwnerKey(TestKeys.publicKey(2).getLongAddress());
+        revision1.seal();
+        revision1.getTransactionPack().addReferencedItem(referenced);
+
+        Contract revision2 = updated.createRevision(TestKeys.privateKey(4));
+        revision2.setOwnerKey(TestKeys.publicKey(3).getLongAddress());
+        revision2.seal();
+        revision2.getTransactionPack().addReferencedItem(referenced);
+
+
+        Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
+
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+        for(int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(() -> {
+                try {
+                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(referenced,"change_owner",Do.listOf(revision1.getId(),revision2.getId())));
+                    if(readyCounter.incrementAndGet() == client.size()) {
+                        readyEvent.fire();
+                    }
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+            });
+        };
+
+        readyEvent.await();
+
+        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
+
+
+        ts.shutdown();
+        ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+
+        AtomicInteger readyCounter2 = new AtomicInteger();
+        AsyncEvent readyEvent2 = new AsyncEvent();
+
+
+        for(int j = 0; j < 19; j++) {
+            int finalJ = j;
+            Do.inParallel(() -> {
+                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
+                for (int i = 0; i < keyClient.size(); i++) {
+                    int finalI = i;
+                    Do.inParallel(() -> {
+                        try {
+                            assertEquals(keyClient.getClient(finalI).voteForContract(referenced.getId(),revision2.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
+
+                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
+                                readyEvent2.fire();
+                            }
+                        } catch (ClientError clientError) {
+                            clientError.printStackTrace();
+                        }
+                    });
+                }
+            });
+        }
+        readyEvent2.await();
+
+
+        assertEquals(client.register(revision1.getPackedTransaction(),100000).state, ItemState.DECLINED);
+        assertEquals(client.register(revision2.getPackedTransaction(),100000).state, ItemState.APPROVED);
+
+        ts.shutdown();
+    }
+
+    @Test
+    public void persistentVotingChangeOwner() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+        for(int i = 0; i < client.size(); i++) {
+            client.getClient(i);
+        }
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("change_owner",contract,"this.state.data.list","90%");
+        contract.addRole(quorumVoteRole);
+
+        List<KeyAddress> addresses = new ArrayList<>();
+        for(int i = 0; i < 20; i++) {
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
+        }
+        contract.getStateData().put("list",addresses);
+
+        contract.addPermission(new ChangeOwnerPermission(new RoleLink("@chown","change_owner")));
+        contract.seal();
+
+        assertEquals(client.register(contract.getPackedTransaction(),10000).state,ItemState.APPROVED);
+
+
+        Contract revision1 = contract.createRevision(TestKeys.privateKey(4));
+        revision1.setOwnerKey(TestKeys.publicKey(2).getLongAddress());
+        revision1.seal();
+
+        Contract revision2 = contract.createRevision(TestKeys.privateKey(4));
+        revision2.setOwnerKey(TestKeys.publicKey(3).getLongAddress());
+        revision2.seal();
+
+
+        Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
+
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+        for(int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(() -> {
+                try {
+                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"change_owner",Do.listOf(revision1.getId(),revision2.getId())));
+                    if(readyCounter.incrementAndGet() == client.size()) {
+                        readyEvent.fire();
+                    }
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+            });
+        };
+
+        readyEvent.await();
+
+        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
+
+
+        ts.shutdown();
+        ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+
+        AtomicInteger readyCounter2 = new AtomicInteger();
+        AsyncEvent readyEvent2 = new AsyncEvent();
+
+
+        for(int j = 0; j < 19; j++) {
+            int finalJ = j;
+            Do.inParallel(() -> {
+                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
+                for (int i = 0; i < keyClient.size(); i++) {
+                    int finalI = i;
+                    Do.inParallel(() -> {
+                        try {
+                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),revision2.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
+
+                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
+                                readyEvent2.fire();
+                            }
+                        } catch (ClientError clientError) {
+                            clientError.printStackTrace();
+                        }
+                    });
+                }
+            });
+        }
+        readyEvent2.await();
+
+
+        assertEquals(client.register(revision1.getPackedTransaction(),100000).state, ItemState.DECLINED);
+        assertEquals(client.register(revision2.getPackedTransaction(),100000).state, ItemState.APPROVED);
+
+        ts.shutdown();
+    }
 
 
     @Test
@@ -139,7 +353,7 @@ public class VotingTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(() -> {
                 try {
-                    client.getClient(finalI).initiateVote(contract);
+                    client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId()));
                     if(readyCounter.incrementAndGet() == client.size()) {
                         readyEvent.fire();
                     }
@@ -177,7 +391,7 @@ public class VotingTest extends BaseMainTest {
                         int finalI = i;
                         Do.inParallel(() -> {
                             try {
-                                c.getClient(finalK).voteForContract(contract.getId(), Do.listOf(rootAuthorityContract.getLastSealedBinary(), scndLvlAuthContracts.get(finalI).getLastSealedBinary(), supplied.getLastSealedBinary()));
+                                c.getClient(finalK).voteForContract(contract.getId(),contract.getId(), Do.listOf(rootAuthorityContract.getLastSealedBinary(), scndLvlAuthContracts.get(finalI).getLastSealedBinary(), supplied.getLastSealedBinary()));
                                 if (readyCounter2.incrementAndGet() == client.size() * M * N * K) {
                                     readyEvent2.fire();
                                 }
@@ -235,7 +449,7 @@ public class VotingTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(() -> {
                 try {
-                    client.getClient(finalI).initiateVote(contract);
+                    client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId()));
                     if(readyCounter.incrementAndGet() == client.size()) {
                         readyEvent.fire();
                     }
@@ -269,7 +483,7 @@ public class VotingTest extends BaseMainTest {
                     int finalK = k;
                     Do.inParallel(() -> {
                         try {
-                            c.getClient(finalK).voteForContract(contract.getId(), Do.listOf(supplied.getLastSealedBinary()));
+                            c.getClient(finalK).voteForContract(contract.getId(),contract.getId(), Do.listOf(supplied.getLastSealedBinary()));
                             if (readyCounter2.incrementAndGet() == client.size() * M * N) {
                                 readyEvent2.fire();
                             }
@@ -319,7 +533,7 @@ public class VotingTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(() -> {
                 try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract));
+                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId())));
                     if(readyCounter.incrementAndGet() == client.size()) {
                         readyEvent.fire();
                     }
@@ -351,7 +565,7 @@ public class VotingTest extends BaseMainTest {
                     int finalI = i;
                     Do.inParallel(() -> {
                         try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
+                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
 
                             if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
                                 readyEvent2.fire();
@@ -399,7 +613,7 @@ public class VotingTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(() -> {
                 try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract));
+                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId())));
                     if(readyCounter.incrementAndGet() == client.size()) {
                         readyEvent.fire();
                     }
@@ -431,7 +645,7 @@ public class VotingTest extends BaseMainTest {
                     int finalI = i;
                     Do.inParallel(() -> {
                         try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
+                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
 
                             if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
                                 readyEvent2.fire();
@@ -444,9 +658,6 @@ public class VotingTest extends BaseMainTest {
             });
         }
         readyEvent2.await();
-
-        Binder b = client.getVotes(contract.getId());
-        System.out.println(b);
 
 
         ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
@@ -486,7 +697,7 @@ public class VotingTest extends BaseMainTest {
                     int finalI = i;
                     Do.inParallel(() -> {
                         try {
-                            assertTrue(keyClient.getClient(finalI).voteForContract(contract.getId()).isBefore(ZonedDateTime.now().plusHours(2)));
+                            assertTrue(keyClient.getClient(finalI).signContractBySessionKey(contract.getId()).isBefore(ZonedDateTime.now().plusHours(2)));
 
                             if(readyCounter2.incrementAndGet() == 10*keyClient.size()) {
                                 readyEvent2.fire();
@@ -500,7 +711,7 @@ public class VotingTest extends BaseMainTest {
         }
         readyEvent2.await();
 
-        Binder b = client.getVotes(contract.getId());
+        Binder b = client.getContractKeys(contract.getId());
         System.out.println(b);
 
         ItemResult ir = client.register(contract.getPackedTransaction(), 100000);

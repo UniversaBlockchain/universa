@@ -1444,74 +1444,77 @@ public class Node {
 
         return voteLock.synchronize(votingItem,lock -> {
             VoteInfo votingInfo = ledger.getVotingInfo(votingItem);
-            if(votingInfo != null) {
-                if(!votingInfo.candidateIds.containsKey(candidateId)) {
-                    throw new IllegalArgumentException("Candidate '" + candidateId + "' wasn't found in candidate list of voting " + votingItem);
-                }
 
-                Contract votingContract = votingInfo.contract;
-                String roleName = votingInfo.roleName;
-                long votingId = votingInfo.votingId;
-                ZonedDateTime expires = votingInfo.expires;
-                QuorumVoteRole role = votingContract.getRole(roleName).resolve();
-                if(role.isQuorumPercentageBased() && referencedItems != null && referencedItems.size() > 0) {
-                    throw new IllegalArgumentException("Quorum of '"+role.getName()+"' is percentage based. It is not allowed to provide an additional referenced items voting such roles");
-                }
-
-                TransactionPack tp = votingContract.getTransactionPack();
-
-                if (referencedItems != null) {
-                    for (Bytes ri : referencedItems) {
-                        try {
-                            tp.addReferencedItem(Contract.fromPackedTransaction(ri.getData()));
-                        } catch (IOException e) {
-                            throw new IllegalArgumentException(e);
-                        }
-                    }
-                }
-
-                getServiceContracts().forEach((k, v) -> {
-                    try {
-                        Contract c = new Contract(v,tp);
-                        tp.addReferencedItem(c);
-                        tp.addTag(TransactionPack.TAG_PREFIX_RESERVED+k, c.getId());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-
-                votingContract.matchReferences();
-
-
-                Set<PublicKey> keys = new HashSet<PublicKey>();
-                keys.add(publicKey);
-
-                List<KeyAddress> votes = role.getVotesForKeys(keys);
-                ledger.addVotes(votingId,votingInfo.candidateIds.get(candidateId), votes);
-                return expires;
-            } else {
-                return voteCache.addVote(votingItem,publicKey);
+            if(votingInfo == null) {
+                throw new IllegalArgumentException("Voting " + votingItem + " doesn't exist");
+            }
+            if(!votingInfo.candidateIds.containsKey(candidateId)) {
+                throw new IllegalArgumentException("Candidate '" + candidateId + "' wasn't found in candidate list of voting " + votingItem);
             }
 
+            Contract votingContract = votingInfo.contract;
+            String roleName = votingInfo.roleName;
+            long votingId = votingInfo.votingId;
+            ZonedDateTime expires = votingInfo.expires;
+            QuorumVoteRole role = votingContract.getRole(roleName).resolve();
+            if(role.isQuorumPercentageBased() && referencedItems != null && referencedItems.size() > 0) {
+                throw new IllegalArgumentException("Quorum of '"+role.getName()+"' is percentage based. It is not allowed to provide an additional referenced items voting such roles");
+            }
+
+            TransactionPack tp = votingContract.getTransactionPack();
+
+            if (referencedItems != null) {
+                for (Bytes ri : referencedItems) {
+                    try {
+                        tp.addReferencedItem(Contract.fromPackedTransaction(ri.getData()));
+                    } catch (IOException e) {
+                        throw new IllegalArgumentException(e);
+                    }
+                }
+            }
+
+            getServiceContracts().forEach((k, v) -> {
+                try {
+                    Contract c = new Contract(v,tp);
+                    tp.addReferencedItem(c);
+                    tp.addTag(TransactionPack.TAG_PREFIX_RESERVED+k, c.getId());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            votingContract.matchReferences();
+
+
+            Set<PublicKey> keys = new HashSet<PublicKey>();
+            keys.add(publicKey);
+
+            List<KeyAddress> votes = role.getVotesForKeys(keys);
+            ledger.addVotes(votingId,votingInfo.candidateIds.get(candidateId), votes);
+            return expires;
         });
 
     }
 
-    public ZonedDateTime initiateContractVote(Contract contract, String roleName, List<HashId> candidates) throws Exception {
+    public ZonedDateTime initiateVoting(Contract contract, String roleName, Set<HashId> candidates) throws Exception {
         Role r = contract.getRole(roleName).resolve();
         if(!(r instanceof QuorumVoteRole)) {
             throw new IllegalArgumentException("creator expected to resolve as QuorumVoteRole, found " + r.getClass().getSimpleName());
         }
 
         return voteLock.synchronize(contract.getId(),lock -> {
-            return ledger.initiateVoting(contract, ZonedDateTime.now().plus(config.getMaxVoteTime()),roleName,new HashSet<>(candidates)).expires;
+            return ledger.initiateVoting(contract, ZonedDateTime.now().plus(config.getMaxVoteTime()),roleName,candidates).expires;
         });
     }
 
-    public Binder getVotes(HashId itemId) {
+    public Binder getContractKeys(HashId itemId) {
 
         Set<PublicKey> keys = voteCache.getVoteKeys(itemId);
         return Binder.of("keys",keys);
+    }
+
+    public ZonedDateTime addKeyToContract(HashId itemId, PublicKey publicKey) {
+        return voteCache.addVote(itemId,publicKey);
     }
 
 
@@ -2281,6 +2284,9 @@ public class Node {
                             //permanent voting
                             ledger.getVotes(itemId).forEach(vr->{
                                 Contract si = vr.votingItem.equals(itemId) ? contract : contract.getTransactionPack().getSubItem(vr.votingItem);
+                                if(si == null) {
+                                    si = contract.getTransactionPack().getReferencedItems().get(vr.votingItem);
+                                }
                                 if(si != null) {
                                     Role role = si.getRole(vr.roleName);
                                     if(role != null && role.resolve() instanceof QuorumVoteRole) {

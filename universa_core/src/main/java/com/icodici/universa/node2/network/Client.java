@@ -177,31 +177,39 @@ public class Client {
         });
     }
 
-    public ZonedDateTime initiateVote(Contract contract) throws ClientError {
+    public ZonedDateTime initiateVote(Contract votingContract, String votingRole, Collection<HashId> candidates) throws ClientError {
+
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("initiateContractVote","packedItem",contract.getLastSealedBinary()).get("expiresAt");
+            return (ZonedDateTime)httpClient.command("initiateVoting","packedItem",votingContract.getPackedTransaction(),"role",votingRole,"candidates",candidates).get("expiresAt");
         });
 
     }
 
 
-    public ZonedDateTime voteForContract(HashId itemId, List<byte[]> referencedItems) throws ClientError {
+    public ZonedDateTime voteForContract(HashId voteId, HashId candidateId, List<byte[]> referencedItems) throws ClientError {
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("voteForContract","itemId",itemId, "referencedItems",referencedItems).get("expiresAt");
+            return (ZonedDateTime)httpClient.command("voteForContract","votingId",voteId,"candidateId",candidateId, "referencedItems",referencedItems).get("expiresAt");
         });
 
     }
 
-    public ZonedDateTime voteForContract(HashId itemId) throws ClientError {
+    public ZonedDateTime voteForContract(HashId voteId, HashId candidateId) throws ClientError {
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("voteForContract","itemId",itemId).get("expiresAt");
+            return (ZonedDateTime)httpClient.command("voteForContract","votingId",voteId,"candidateId",candidateId).get("expiresAt");
         });
 
     }
 
-    public Binder getVotes(HashId itemId) throws ClientError {
+    public ZonedDateTime signContractBySessionKey(HashId itemId) throws ClientError {
         return protect(() -> {
-            return httpClient.command("getVotes","itemId",itemId);
+            return (ZonedDateTime)httpClient.command("addKeyToContract","itemId",itemId).get("expiresAt");
+        });
+
+    }
+
+    public Binder getContractKeys(HashId itemId) throws ClientError {
+        return protect(() -> {
+            return httpClient.command("getContractKeys","itemId",itemId);
         });
     }
 
