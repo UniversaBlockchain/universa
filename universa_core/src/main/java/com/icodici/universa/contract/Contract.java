@@ -4039,6 +4039,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Config.forceInit(Contract.class);
         Config.forceInit(ChangeNumberPermission.class);
         Config.forceInit(ChangeOwnerPermission.class);
+        Config.forceInit(ChangeRolePermission.class);
         Config.forceInit(SplitJoinPermission.class);
         Config.forceInit(PublicKey.class);
         Config.forceInit(PrivateKey.class);
