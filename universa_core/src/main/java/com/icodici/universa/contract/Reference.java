@@ -1628,7 +1628,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    public boolean isMatchingWith(Approvable a, Collection<Contract> contracts, int iteration) {
+    private boolean isMatchingWith(Approvable a, Collection<Contract> contracts, int iteration) {
         //todo: add this checking for matching with given item
 
         if (iteration > 16)
@@ -2098,6 +2098,101 @@ public class Reference implements BiSerializable {
     public Reference setContract(Contract contract) {
         baseContract = contract;
         return this;
+    }
+
+    public Set<String> getInternalReferences() {
+        return getInternalReferences(0);
+    }
+
+    private Set<String> getInternalReferences(int iteration) {
+        if (iteration > 16)
+            throw new IllegalArgumentException("Recursive checking references have more 16 iterations");
+
+        return getInternalReferencesFromConditions(conditions, iteration);
+    }
+
+    private Set<String> getInternalReferencesFromConditions(Binder conditions, int iteration) {
+        Set<String> refs = new HashSet<>();
+
+        if ((conditions == null) || (conditions.size() == 0))
+            return refs;
+
+        if (conditions.containsKey(all_of.name())) {
+            List<Object> condList = conditions.getList(all_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected all_of conditions");
+
+            for (Object item: condList)
+                if (item.getClass().getName().endsWith("String"))
+                    refs.addAll(getInternalReferencesFromCondition((String) item, iteration));        // not pre-parsed (old) version
+                else
+                    refs.addAll(getInternalReferencesFromConditions((Binder) item, iteration));
+
+        } else if (conditions.containsKey(any_of.name())) {
+            List<Object> condList = conditions.getList(any_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected any_of conditions");
+
+            for (Object item: condList)
+                if (item.getClass().getName().endsWith("String"))
+                    refs.addAll(getInternalReferencesFromCondition((String) item, iteration));        // not pre-parsed (old) version
+                else
+                    refs.addAll(getInternalReferencesFromConditions((Binder) item, iteration));
+
+        } else if (conditions.containsKey("operator"))                                             // pre-parsed version
+            refs.addAll(getInternalReferencesFromCondition(conditions, iteration));
+        else
+            throw new IllegalArgumentException("Expected all_of or any_of");
+
+        return refs;
+    }
+
+    private Set<String> getInternalReferencesFromCondition(String condition, int iteration) {
+        return getInternalReferencesFromCondition(parseCondition(condition), iteration);
+    }
+
+    private Set<String> getInternalReferencesFromCondition(Binder condition, int iteration) {
+        Set<String> refs = new HashSet<>();
+
+        String leftOperand = condition.getString("leftOperand", null);
+        String rightOperand = condition.getString("rightOperand", null);
+
+        int typeLeftOperand = condition.getIntOrThrow("typeOfLeftOperand");
+        int typeRightOperand = condition.getIntOrThrow("typeOfRightOperand");
+
+        compareOperandType typeOfLeftOperand = compareOperandType.values()[typeLeftOperand];
+        compareOperandType typeOfRightOperand = compareOperandType.values()[typeRightOperand];
+
+        int firstPointPos;
+        if (typeOfLeftOperand == compareOperandType.FIELD && !leftOperand.startsWith("ref.") &&
+            !leftOperand.startsWith("this.") && ((firstPointPos = leftOperand.indexOf(".")) > 0)) {
+
+            if (baseContract == null)
+                throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
+
+            String refName = leftOperand.substring(0, firstPointPos);
+            refs.add(refName);
+
+            Reference ref = baseContract.findReferenceByName(refName);
+            if (ref != null)
+                refs.addAll(ref.getInternalReferences(iteration + 1));
+        }
+
+        if (typeOfRightOperand == compareOperandType.FIELD && !rightOperand.startsWith("ref.") &&
+                !rightOperand.startsWith("this.") && ((firstPointPos = rightOperand.indexOf(".")) > 0)) {
+
+            if (baseContract == null)
+                throw new IllegalArgumentException("Use right operand in condition: " + rightOperand + ". But this contract not initialized.");
+
+            String refName = rightOperand.substring(0, firstPointPos);
+            refs.add(refName);
+
+            Reference ref = baseContract.findReferenceByName(refName);
+            if (ref != null)
+                refs.addAll(ref.getInternalReferences(iteration + 1));
+        }
+
+        return refs;
     }
 
     @Override
