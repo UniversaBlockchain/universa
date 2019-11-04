@@ -2788,6 +2788,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         if (name.startsWith("references."))
                             return (T) findReferenceByName(name.substring(11), "transactional");
                 }
+            } else {
+                return null;
             }
         } else switch (name) {
             case "id":
