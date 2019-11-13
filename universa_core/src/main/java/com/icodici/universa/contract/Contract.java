@@ -35,6 +35,7 @@ import org.yaml.snakeyaml.Yaml;
 import javax.script.ScriptException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -433,6 +434,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));
             return new Contract().initializeWithDsl(binder);
         }
+    }
+
+    /**
+     * Create contract importing its parameters with passed yaml string. No signatures are added automatically. It is required to add signatures before check.
+     * @param dslString containing Yaml representation of contract
+     */
+    public static Contract fromDslString(String dslString) throws IOException {
+        Yaml yaml = new Yaml();
+        Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(dslString)));
+        return new Contract().initializeWithDsl(binder);
+    }
+
+    /**
+     * Create contract importing its parameters with passed yaml stream. No signatures are added automatically. It is required to add signatures before check.
+     * @param dslStream containing Yaml representation of contract
+     */
+    public static Contract fromDslStream(InputStream dslStream) throws IOException {
+        Yaml yaml = new Yaml();
+            Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(dslStream)));
+            return new Contract().initializeWithDsl(binder);
     }
 
     /**
