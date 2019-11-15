@@ -1224,6 +1224,32 @@ public class Node {
     }
 
 
+    private void dbgStartParcelProcessor(Parcel parcel) {
+        new PaidOperationProcessor(parcel.getId(), parcel.getPayment(), ()->{
+            return checkItemInternal(parcel.getPayloadContract().getId(), parcel.getId(), parcel.getPayloadContract(), true, false);
+        }, new Object());
+    }
+
+
+    /// AbstractProcessor ///
+
+    private class AbstractProcessor {
+        public AbstractProcessor() {
+
+        }
+    }
+
+
+    /// PaidOperationProcessor ///
+
+    private class PaidOperationProcessor {
+        private ItemProcessor paymentProcessor;
+        private AbstractProcessor operationProcessor;
+        public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
+        }
+    }
+
+
     /// ParcelProcessor ///
 
     private class ParcelProcessor {
