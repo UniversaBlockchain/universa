@@ -29,6 +29,8 @@ public class RoleExtractor {
             Set<PublicKey> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeys(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }
@@ -47,6 +49,8 @@ public class RoleExtractor {
             Set<AnonymousId> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractAnonymousIds(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }
@@ -65,6 +69,8 @@ public class RoleExtractor {
             Set<KeyAddress> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyAddresses(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet(((QuorumVoteRole) role).getVotingAddresses());
         }
         return null;
     }

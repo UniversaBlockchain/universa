@@ -4081,6 +4081,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(Role.class);
         DefaultBiMapper.registerClass(RoleLink.class);
         DefaultBiMapper.registerClass(SimpleRole.class);
+        DefaultBiMapper.registerClass(QuorumVoteRole.class);
         // other
         DefaultBiMapper.registerClass(KeyRecord.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
