@@ -12,7 +12,6 @@ import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
-import net.sergeych.utils.Bytes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -195,7 +194,8 @@ public class Reference implements BiSerializable {
     }
 
     //Operators
-    final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_a "," is_inherit ","inherits ","inherit "," can_play "};
+    final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches ",
+            " is_a "," is_inherit ","inherits ","inherit "," can_play "," in "};
 
     final static int DEFINED = 0;
     final static int UNDEFINED = 1;
@@ -211,6 +211,7 @@ public class Reference implements BiSerializable {
     final static int INHERITS = 11;
     final static int INHERIT = 12;
     final static int CAN_PLAY = 13;
+    final static int IN = 14;
 
     //Operations
     final static String[] operations = {"+", "-", "*", "/"};
@@ -1016,6 +1017,63 @@ public class Reference implements BiSerializable {
                               ((Role) right).isAllowedForKeys(keys);
 
                         break;
+                    case IN:
+                        if (!(right instanceof Set || right instanceof List))
+                            throw new IllegalArgumentException("Expected Set or List in condition in right operand: " + rightOperand);
+
+                        if (left instanceof HashId || ((Collection<Object>) right).stream().anyMatch(item -> item instanceof HashId)) {
+                            Set<HashId> leftSet = new HashSet<>();
+                            Set<HashId> rightSet = new HashSet<>();
+
+                            if (left == null)
+                                leftSet.add(HashId.withDigest(leftOperand));
+                            else if (left instanceof HashId)
+                                leftSet.add((HashId) left);
+                            else if (left instanceof String)
+                                leftSet.add(HashId.withDigest((String) left));
+                            else if (left instanceof Set || left instanceof List) {
+                                for (Object item: (Collection) left) {
+                                    if (item instanceof HashId)
+                                        leftSet.add((HashId) item);
+                                    else if (item instanceof String)
+                                        leftSet.add(HashId.withDigest((String) item));
+                                    else
+                                        throw new IllegalArgumentException("Unexpected type of collection item in left operand in condition: " + leftOperand);
+                                }
+                            } else
+                                throw new IllegalArgumentException("Unexpected type of left operand in condition: " + leftOperand);
+
+                            for (Object item: (Collection) right) {
+                                if (item instanceof HashId)
+                                    rightSet.add((HashId) item);
+                                else if (item instanceof String)
+                                    rightSet.add(HashId.withDigest((String) item));
+                                else
+                                    throw new IllegalArgumentException("Unexpected type of collection item in right operand in condition: " + rightOperand);
+                            }
+
+                            ret = rightSet.containsAll(leftSet);
+
+                            if (!ret)
+                                ret = false;
+
+                        } else {
+                            Set<Object> leftSet = new HashSet<>();
+                            Set<Object> rightSet = new HashSet<>();
+
+                            if (left == null)
+                                leftSet.add(leftOperand);
+                            else if (left instanceof Set || left instanceof List)
+                                leftSet.addAll((Collection) left);
+                            else
+                                leftSet.add(left);
+
+                            rightSet.addAll((Collection) right);
+
+                            ret = rightSet.containsAll(leftSet);
+                        }
+
+                        break;
                     default:
                         throw new IllegalArgumentException("Invalid operator in condition");
                 }
@@ -1314,7 +1372,10 @@ public class Reference implements BiSerializable {
             }
         }
 
-        for (int i = 2; i < INHERITS; i++) {
+        for (int i = 2; i <= IN; i++) {
+            if (i >= INHERITS && i <= CAN_PLAY)     // skipping operators with a different syntax
+                continue;
+
             int operPos = condition.indexOf(operators[i]);
             int firstMarkPos = condition.indexOf("\"");
             int lastMarkPos = condition.lastIndexOf("\"");

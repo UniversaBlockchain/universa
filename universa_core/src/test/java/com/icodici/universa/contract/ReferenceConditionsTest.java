@@ -1,11 +1,13 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.List;
 
 import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
@@ -152,13 +154,27 @@ public class ReferenceConditionsTest {
 
         contract1.getReferences().get("ref_time").setConditions(conditions);
 
-        contract2.seal();
+        // for checking "in" operator
+        HashId randomHash2 = HashId.createRandom();
 
-        Contract contract3 = contract2.createRevision(key);
-        contract3.seal();
+        Contract contract4 = new Contract(key);
+        Contract contract5 = new Contract(key);
+        contract4.seal();
+        contract5.seal();
+        contract1.addNewItems(contract4, contract5);
+
+        contract2.getStateData().set("ids", Do.listOf(HashId.createRandom().toBase64String(), randomHash2.toBase64String()));
+        contract2.getStateData().set("saved_id", randomHash2.toBase64String());
+        contract2.getStateData().set("saved_id_of_sub_contract1", contract4.getId(true).toBase64String());
+        contract2.getStateData().set("saved_id_of_sub_contract2", contract5.getId(true).toBase64String());
+
+        contract2.seal();
 
         // signature to check can_play operator
         contract2.addSignatureToSeal(key);
+
+        Contract contract3 = contract2.createRevision(key);
+        contract3.seal();
 
         contract1.getStateData().set("contract2_origin", contract2.getOrigin().toBase64String());
         contract1.getStateData().set("contract2_id", contract2.getId().toBase64String());
@@ -166,6 +182,66 @@ public class ReferenceConditionsTest {
 
         contract1.getState().setBranchNumber(25);
         System.out.println("branchId: " + contract1.getState().getBranchId());
+
+        // for checking "in" operator
+        HashId randomHash = HashId.createRandom();
+
+        contract1.getStateData().set("ids1", Do.listOf(HashId.createRandom().toBase64String(),
+                contract2.getId(true).toBase64String(), randomHash.toBase64String()));
+        contract1.getStateData().set("ids2", Do.listOf(contract2.getId(true).toBase64String()));
+        contract1.getStateData().set("ids3", new HashSet<>(Do.listOf(HashId.createRandom().toBase64String(),
+                contract2.getId(true).toBase64String(), randomHash2.toBase64String())));
+        contract1.getStateData().set("ids4", new HashSet<>(Do.listOf(contract2.getId(true).toBase64String())));
+        contract1.getStateData().set("ids5", Do.listOf(HashId.createRandom().toBase64String(),
+                HashId.createRandom().toBase64String(), randomHash.toBase64String()));
+
+        contract1.getStateData().set("saved_contract_id", contract2.getId(true).toBase64String());
+        contract1.getStateData().set("saved_id", randomHash.toBase64String());
+        contract1.getStateData().set("saved_id_from_contract2", randomHash2.toBase64String());
+        contract1.getStateData().set("saved_sub_contract_id1", contract4.getId(true).toBase64String());
+        contract1.getStateData().set("saved_sub_contract_id2", contract5.getId(true).toBase64String());
+
+        conditions = contract1.getReferences().get("ref_in").getConditions();
+        condList = conditions.getList(all_of.name(), null);
+
+        condList.add("\"" + contract2.getId(true).toBase64String() + "\" in this.state.data.ids1");
+        condList.add("\"" + contract2.getId(true).toBase64String() + "\" in this.state.data.ids2");
+        condList.add("\"" + contract2.getId(true).toBase64String() + "\" in this.state.data.ids3");
+        condList.add("\"" + contract2.getId(true).toBase64String() + "\" in this.state.data.ids4");
+        condList.add("this.state.data.saved_contract_id in this.state.data.ids1");
+        condList.add("this.state.data.saved_contract_id in this.state.data.ids2");
+        condList.add("this.state.data.saved_contract_id in this.state.data.ids3");
+        condList.add("this.state.data.saved_contract_id in this.state.data.ids4");
+
+        condList.add("\"" + randomHash.toBase64String() + "\" in this.state.data.ids1");
+        condList.add("\"" + randomHash.toBase64String() + "\" in this.state.data.ids5");
+        condList.add("this.state.data.saved_id in this.state.data.ids1");
+        condList.add("this.state.data.saved_id in this.state.data.ids5");
+
+        condList.add("\"" + randomHash2.toBase64String() + "\" in this.state.data.ids3");
+        condList.add("this.state.data.saved_id_from_contract2 in this.state.data.ids3");
+
+        condList.add("\"" + randomHash2.toBase64String() + "\" in ref.state.data.ids");
+        condList.add("this.state.data.saved_id_from_contract2 in ref.state.data.ids");
+        condList.add("ref.state.data.saved_id in ref.state.data.ids");
+
+        condList.add("\"" + contract4.getId(true).toBase64String() + "\" in this.newItems");
+        condList.add("\"" + contract5.getId(true).toBase64String() + "\" in this.newItems");
+        condList.add("this.state.data.saved_sub_contract_id1 in this.newItems");
+        condList.add("this.state.data.saved_sub_contract_id2 in this.newItems");
+        condList.add("ref.state.data.saved_id_of_sub_contract1 in this.newItems");
+        condList.add("ref.state.data.saved_id_of_sub_contract2 in this.newItems");
+
+        contract1.getReferences().get("ref_in").setConditions(conditions);
+
+        conditions = contract1.getReferences().get("ref_in_for_revoking").getConditions();
+        condList = conditions.getList(all_of.name(), null);
+
+        condList.add("\"" + contract2.getId(true).toBase64String() + "\" in ref.revokingItems");
+        condList.add("this.state.data.saved_contract_id in ref.revokingItems");
+
+        contract1.getReferences().get("ref_in_for_revoking").setConditions(conditions);
+
         contract1.seal();
 
         // signature to check can_play operator
@@ -218,6 +294,9 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_arithmetic").matchingItems.contains(contract2));
         System.out.println("Check tags conditions");
         assertTrue(refContract.getReferences().get("ref_tags").matchingItems.contains(contract2));
+        System.out.println("Check in conditions");
+        assertTrue(refContract.getReferences().get("ref_in").matchingItems.contains(contract2));
+        assertTrue(refContract.getReferences().get("ref_in_for_revoking").matchingItems.contains(contract3));
     }
 
     @Test

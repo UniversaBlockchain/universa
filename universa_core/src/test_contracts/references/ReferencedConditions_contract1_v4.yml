@@ -1451,6 +1451,28 @@ state:
          - this.tag != ref.definition.data.tag2
          # mirroring ===========================================================================================//
 
+ - reference:
+     name: ref_in
+     where:
+       all_of:
+         - ref.id in this.state.data.ids1
+         - ref.id in this.state.data.ids2
+         - ref.id in this.state.data.ids3
+         - ref.id in this.state.data.ids4
+         - ref.origin in this.state.data.ids1
+         - ref.origin in this.state.data.ids2
+         - ref.origin in this.state.data.ids3
+         - ref.origin in this.state.data.ids4
+
+ - reference:
+     name: ref_in_for_revoking
+     where:
+       all_of:
+         - ref.state.parent in this.state.data.ids1
+         - ref.state.parent in this.state.data.ids2
+         - ref.state.parent in this.state.data.ids3
+         - ref.state.parent in this.state.data.ids4
+
  # required section. any application data that could be changed.
  data:
    tag: test_tag_contract1
