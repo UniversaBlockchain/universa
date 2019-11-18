@@ -382,7 +382,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // issuer is owner, link roles
         addRole(new RoleLink("owner", this, "issuer"));
         addRole(new RoleLink("creator", this,"issuer"));
-        RoleLink roleLink = new RoleLink("@change_ower_role",this,"owner");
+        RoleLink roleLink = new RoleLink("@change_owner_role",this,"owner");
         // owner can change permission
         addPermission(new ChangeOwnerPermission(roleLink));
         // issuer should sign
