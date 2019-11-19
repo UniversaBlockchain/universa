@@ -476,6 +476,30 @@ public class Reference implements BiSerializable {
         return result;
     }
 
+    private Role prepareRoleToComparison(Object item) {
+        if (item instanceof RoleLink)
+            return ((RoleLink) item).resolve();
+        else if (item instanceof String) {
+            try {
+                String roleString = ((String) item).replaceAll("\\s+", "");       // for key in quotes
+
+                if (roleString.length() > 72) {
+                    // Key
+                    PublicKey publicKey = new PublicKey(Base64u.decodeCompactString(roleString));
+                    return new SimpleRole("roleToComparison", null, Do.listOf(publicKey));
+                } else {
+                    // Address
+                    KeyAddress ka = new KeyAddress(roleString);
+                    return new SimpleRole("roleToComparison", null, Do.listOf(ka));
+                }
+            }
+            catch (Exception e) {
+                throw new IllegalArgumentException("Key or address compare error in condition: " + e.getMessage());
+            }
+        } else
+            return (Role) item;
+    }
+
     /**
      *The comparison method for finding reference contract
      *
@@ -774,6 +798,7 @@ public class Reference implements BiSerializable {
 
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
+
                         } else if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) ||
                                    ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) { // if role - compare with role, key or address
                             if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) &&
@@ -799,33 +824,15 @@ public class Reference implements BiSerializable {
                                         compareOperand = leftOperand;
                                 }
 
-                                if(role instanceof RoleLink) {
-                                    role  = role.resolve();
-                                }
+                                role = prepareRoleToComparison(role);
+                                Role compareRole = prepareRoleToComparison(compareOperand);
 
-                                try {
-                                    compareOperand = compareOperand.replaceAll("\\s+", "");       // for key in quotes
-
-                                    if (compareOperand.length() > 72) {
-                                        // Key
-                                        PublicKey publicKey = new PublicKey(Base64u.decodeCompactString(compareOperand));
-                                        SimpleRole simpleRole = new SimpleRole(role.getName(),null, Do.listOf(publicKey));
-                                        ret = role.equalsIgnoreName(simpleRole);
-                                    } else {
-                                        // Address
-                                        KeyAddress ka = new KeyAddress(compareOperand);
-                                        SimpleRole simpleRole = new SimpleRole(role.getName(),null, Do.listOf(ka));
-                                        ret = role.equalsIgnoreName(simpleRole);
-                                    }
-                                }
-                                catch (Exception e) {
-                                    throw new IllegalArgumentException("Key or address compare error in condition: " + e.getMessage());
-                                }
+                                ret = role.equalsIgnoreName(compareRole);
 
                                 if (indxOperator == NOT_EQUAL)
                                     ret = !ret;
-
                             }
+
                         } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
                                    ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
                             long leftTime = objectCastToTimeSeconds(left, leftOperand, typeOfLeftOperand);
@@ -834,10 +841,10 @@ public class Reference implements BiSerializable {
                             if (((indxOperator == NOT_EQUAL) && (leftTime != rightTime)) ||
                                 ((indxOperator == EQUAL) && (leftTime == rightTime)))
                                 ret = true;
-                        }  else if (((left != null) && left.getClass().getName().endsWith("Reference")) ||
-                                ((right != null) && right.getClass().getName().endsWith("Reference"))) {
+                        }  else if ((left != null) && left.getClass().getName().endsWith("Reference") &&
+                                    (right != null) && right.getClass().getName().endsWith("Reference")) {
 
-                            boolean equals = ((Reference)left).equalsIgnoreType((Reference) right);
+                            boolean equals = ((Reference) left).equalsIgnoreType((Reference) right);
 
                             ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
 
@@ -905,6 +912,7 @@ public class Reference implements BiSerializable {
                                            ((indxOperator == EQUAL) && left.equals(right)))
                                     ret = true;
                             }
+
                         } else {
                             Object field;
                             String compareOperand;
@@ -1018,60 +1026,89 @@ public class Reference implements BiSerializable {
 
                         break;
                     case IN:
+                        if (typeOfLeftOperand == compareOperandType.FIELD && left == null)
+                            break;
+
+                        if (typeOfRightOperand == compareOperandType.FIELD && right == null)
+                            break;
+
                         if (!(right instanceof Set || right instanceof List))
-                            throw new IllegalArgumentException("Expected Set or List in condition in right operand: " + rightOperand);
+                            break;
 
-                        if (left instanceof HashId || ((Collection<Object>) right).stream().anyMatch(item -> item instanceof HashId)) {
-                            Set<HashId> leftSet = new HashSet<>();
-                            Set<HashId> rightSet = new HashSet<>();
+                        Set<Object> leftSet = new HashSet<>();
+                        Set<Object> rightSet = new HashSet<>();
 
-                            if (left == null)
-                                leftSet.add(HashId.withDigest(leftOperand));
-                            else if (left instanceof HashId)
-                                leftSet.add((HashId) left);
-                            else if (left instanceof String)
-                                leftSet.add(HashId.withDigest((String) left));
-                            else if (left instanceof Set || left instanceof List) {
-                                for (Object item: (Collection) left) {
-                                    if (item instanceof HashId)
-                                        leftSet.add((HashId) item);
-                                    else if (item instanceof String)
-                                        leftSet.add(HashId.withDigest((String) item));
-                                    else
-                                        throw new IllegalArgumentException("Unexpected type of collection item in left operand in condition: " + leftOperand);
-                                }
-                            } else
-                                throw new IllegalArgumentException("Unexpected type of left operand in condition: " + leftOperand);
+                        if (left == null)
+                            leftSet.add(leftOperand);
+                        else if (left instanceof Set || left instanceof List)
+                            leftSet.addAll((Collection) left);
+                        else
+                            leftSet.add(left);
 
-                            for (Object item: (Collection) right) {
+                        if (leftSet.isEmpty()) {
+                            ret = true;
+                            break;
+                        }
+
+                        rightSet.addAll((Collection) right);
+
+                        if (leftSet.stream().anyMatch(item -> item instanceof HashId) ||
+                            rightSet.stream().anyMatch(item -> item instanceof HashId)) {
+                            Set<HashId> leftHashSet = new HashSet<>();
+                            Set<HashId> rightHashSet = new HashSet<>();
+
+                            for (Object item: leftSet) {
                                 if (item instanceof HashId)
-                                    rightSet.add((HashId) item);
+                                    leftHashSet.add((HashId) item);
                                 else if (item instanceof String)
-                                    rightSet.add(HashId.withDigest((String) item));
+                                    leftHashSet.add(HashId.withDigest((String) item));
                                 else
-                                    throw new IllegalArgumentException("Unexpected type of collection item in right operand in condition: " + rightOperand);
+                                    throw new IllegalArgumentException(
+                                        "Unexpected type (expect HashId or String) of collection item in left operand in condition: " + leftOperand);
                             }
 
+                            for (Object item: rightSet) {
+                                if (item instanceof HashId)
+                                    rightHashSet.add((HashId) item);
+                                else if (item instanceof String)
+                                    rightHashSet.add(HashId.withDigest((String) item));
+                                else
+                                    throw new IllegalArgumentException(
+                                        "Unexpected type (expect HashId or String) of collection item in right operand in condition: " + rightOperand);
+                            }
+
+                            ret = rightHashSet.containsAll(leftHashSet);
+
+                        } else if (leftSet.stream().anyMatch(item -> item instanceof Role) ||
+                                   rightSet.stream().anyMatch(item -> item instanceof Role)) {
+                            Set<Role> leftRoleSet = new HashSet<>();
+                            Set<Role> rightRoleSet = new HashSet<>();
+
+                            for (Object item: leftSet) {
+                                if (item instanceof Role || item instanceof String)
+                                    leftRoleSet.add(prepareRoleToComparison(item));
+                                else
+                                    throw new IllegalArgumentException(
+                                        "Unexpected type (expect Role or String) of collection item in left operand in condition: " + leftOperand);
+                            }
+
+                            for (Object item: rightSet) {
+                                if (item instanceof Role || item instanceof String)
+                                    rightRoleSet.add(prepareRoleToComparison(item));
+                                else
+                                    throw new IllegalArgumentException(
+                                        "Unexpected type (expect Role or String) of collection item in right operand in condition: " + rightOperand);
+                            }
+
+                            ret = leftRoleSet.stream().allMatch(leftRole -> rightRoleSet.stream().anyMatch(leftRole::equalsIgnoreName));
+
+                        } else if (leftSet.stream().allMatch(item -> item instanceof Reference) &&
+                                   rightSet.stream().allMatch(item -> item instanceof Reference)) {
+                            ret = leftSet.stream().allMatch(leftRef -> rightSet.stream().anyMatch(
+                                    rightRef -> ((Reference) leftRef).equalsIgnoreType((Reference) rightRef)));
+
+                        } else
                             ret = rightSet.containsAll(leftSet);
-
-                            if (!ret)
-                                ret = false;
-
-                        } else {
-                            Set<Object> leftSet = new HashSet<>();
-                            Set<Object> rightSet = new HashSet<>();
-
-                            if (left == null)
-                                leftSet.add(leftOperand);
-                            else if (left instanceof Set || left instanceof List)
-                                leftSet.addAll((Collection) left);
-                            else
-                                leftSet.add(left);
-
-                            rightSet.addAll((Collection) right);
-
-                            ret = rightSet.containsAll(leftSet);
-                        }
 
                         break;
                     default:
