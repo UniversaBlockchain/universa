@@ -59,11 +59,11 @@ public class ReferenceConditionsTest {
 
         contract2.seal();
 
-        Contract contract3 = contract2.createRevision(key);
-        contract3.seal();
-
         // signature to check can_play operator
         contract2.addSignatureToSeal(key);
+
+        Contract contract3 = contract2.createRevision(key);
+        contract3.seal();
 
         contract1.getStateData().set("contract2_origin", contract2.getOrigin().toBase64String());
         contract1.getStateData().set("contract2_id", contract2.getId().toBase64String());
@@ -200,6 +200,12 @@ public class ReferenceConditionsTest {
         contract1.getStateData().set("saved_id_from_contract2", randomHash2.toBase64String());
         contract1.getStateData().set("saved_sub_contract_id1", contract4.getId(true).toBase64String());
         contract1.getStateData().set("saved_sub_contract_id2", contract5.getId(true).toBase64String());
+
+        contract1.getStateData().set("newItemsId", contract4.getId(true).toBase64String());
+        contract1.getStateData().set("newItemsIds", Do.listOf(contract4.getId(true).toBase64String(),
+                contract5.getId(true).toBase64String()));
+        contract1.getStateData().set("revokingItemsId", contract2.getId(true).toBase64String());
+        contract1.getStateData().set("revokingItemsIds", Do.listOf(contract2.getId(true).toBase64String()));
 
         conditions = contract1.getReferences().get("ref_in").getConditions();
         condList = conditions.getList(all_of.name(), null);
