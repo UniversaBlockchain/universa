@@ -576,7 +576,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
             QuorumVoteRole role = new QuorumVoteRole("", contract, "refUbotRegistry.state.roles.ubots", node.getSessionQuorum(sessionId));
 
-            if(!contract.getCreator().resolve().equalsIgnoreName(role) || !contract.getReferences().get("refUbotRegistry").equals(reference)) {
+            if(!contract.getCreator().resolve().equalsIgnoreName(role) || !contract.getReferences().get("refUbotRegistry").equalsIgnoreType(reference)) {
                 throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a ubot pool contract.");
             }
 
