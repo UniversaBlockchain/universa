@@ -60,7 +60,17 @@ public class QuorumVoteRole extends Role {
 
     @Override
     protected boolean equalsIgnoreNameAndRefs(Role otherRole) {
-        return false;
+        if(!(otherRole instanceof QuorumVoteRole))
+            return false;
+        if(!isValid() || !otherRole.isValid())
+            return false;
+
+        if(!source.equals(((QuorumVoteRole) otherRole).source))
+            return false;
+
+        if(!quorum.equals(((QuorumVoteRole) otherRole).quorum))
+            return false;
+        return true;
     }
 
     @Override

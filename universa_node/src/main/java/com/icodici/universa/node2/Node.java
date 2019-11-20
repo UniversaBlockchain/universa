@@ -4942,11 +4942,46 @@ public class Node {
         public UBotSessionState getState() {
             return state;
         }
+
+        public String getSessionQuorum() {
+            return ""+UBotTools.getRequestQuorumSize(requestContract,null);
+        }
     }
 
     private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {
         ubotStorage.putIfAbsent(executableContractId,new ConcurrentHashMap<>());
         ubotStorage.get(executableContractId).putAll(storages);
+    }
+
+
+    public boolean isSessionUbot(PublicKey key, HashId sessionId) {
+        Optional<UBotSessionProcessor> usp = ubotSessionProcessors.values().stream().filter(sp-> {
+            HashId id = (HashId) sp.getSession().get("sessionId");
+            return  id != null && id.equals(sessionId);
+        }).findAny();
+
+        if(!usp.isPresent())
+            return false;
+
+        if(ubotsByKey.containsKey(key) && usp.get().sessionPool.contains(ubotsByKey.get(key))) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    public String getSessionQuorum(HashId sessionId) {
+        Optional<UBotSessionProcessor> usp = ubotSessionProcessors.values().stream().filter(sp-> {
+            HashId id = (HashId) sp.getSession().get("sessionId");
+            return  id != null && id.equals(sessionId);
+        }).findAny();
+
+        if(!usp.isPresent())
+            return null;
+
+        return usp.get().getSessionQuorum();
+
     }
 
 }

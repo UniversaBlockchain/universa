@@ -16,6 +16,8 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.Reference;
+import com.icodici.universa.contract.roles.QuorumVoteRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -291,6 +293,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotUpdateStorage", this::ubotUpdateStorage);
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
+        addSecureEndpoint("ubotApprove", this::ubotApprove);
 
         addSecureEndpoint("initiateVoting",this::initiateVoting);
         addSecureEndpoint("voteForContract",this::voteForContract);
@@ -541,6 +544,46 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of(
                     "itemResult",
                     node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            System.out.println("approve ERROR: " + e.getMessage());
+
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approve", e.getMessage()));
+        }
+    }
+
+
+    private Binder ubotApprove(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+
+        checkNode(session);
+
+
+
+        HashId sessionId = params.getOrThrow("sessionId");
+        if(!node.isSessionUbot(session.getPublicKey(),sessionId)) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a Ubot key OR no session found with given id OR Ubot doesn't belong to session");
+        }
+
+
+
+        try {
+            Contract contract = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+
+            Reference reference = new Reference(contract);
+            reference.name = "refUbotRegistry";
+            reference.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
+
+            QuorumVoteRole role = new QuorumVoteRole("", contract, "refUbotRegistry.state.roles.ubots", node.getSessionQuorum(sessionId));
+
+            if(!contract.getCreator().resolve().equalsIgnoreName(role) || !contract.getReferences().get("refUbotRegistry").equals(reference)) {
+                throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a ubot pool contract.");
+            }
+
+
+            return Binder.of(
+                    "itemResult",
+                    node.registerItem(contract)
             );
         } catch (Exception e) {
             System.out.println("approve ERROR: " + e.getMessage());
