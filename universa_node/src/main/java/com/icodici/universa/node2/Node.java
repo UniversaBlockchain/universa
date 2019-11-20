@@ -1347,8 +1347,6 @@ public class Node {
         cache.put(requestContract,checkItem(requestContract.getId()));
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         HashId requestId = requestContract.getId();
-        int quorumSize = UBotTools.getRequestQuorumSize(requestContract,null);
-
 
         try {
             return itemLock.synchronize(executableContractId,lock -> {
@@ -4691,10 +4689,7 @@ public class Node {
                         abortSession();
                         return;
                     }
-                    String methodName = requestContract.getStateData().getString("method_name");
-                    Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
-                    Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
-                    int poolSize = methodBinder.getBinderOrThrow("pool").getIntOrThrow("size");
+
                     Contract uBotRegistry;
                     try {
                         uBotRegistry = Contract.fromSealedBinary(serviceContracts.get("ubot_registry_contract"));
@@ -4702,10 +4697,11 @@ public class Node {
                         throw new IllegalStateException(e);
                     }
 
+                    int poolSize = UBotTools.getRequestPoolSize(requestContract, uBotRegistry);
+
                     sessionId = sessionIds.get(myInfo);
 
-
-                    sessionPool = computeSessionPool(sessionId,poolSize,uBotRegistry);
+                    sessionPool = computeSessionPool(sessionId, poolSize, uBotRegistry);
                     if(sessionPool == null) {
                         abortSession();
                         return;
@@ -4842,9 +4838,20 @@ public class Node {
                     map.put(ubotNumber, toValue);
                     long votesForValue = map.values().stream().filter(v->v.equals(toValue)).count();
 
-                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract,null);
+                    byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
+                    if (ubotRegistryBytes == null)
+                        throw new IllegalStateException("Unable to get ubot registry contract");
 
-                    if(votesForValue >= quorumSize) {
+                    Contract ubotRegistry;
+                    try {
+                        ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
+                    }
+
+                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+
+                    if (votesForValue >= quorumSize) {
                         if(voteStorageUpdate(storageName,toValue,myInfo,false)) {
 
                             if(storageUpdateBroadcasters.containsKey(storageName)) {
@@ -4898,19 +4905,26 @@ public class Node {
                         }
                     }
 
-                    String methodName = requestContract.getStateData().getString("method_name");
-                    Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
-                    Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
-                    int quorumSize = methodBinder.getBinderOrThrow("quorum").getIntOrThrow("size");
-                    if(size == quorumSize) {
+                    byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
+                    if (ubotRegistryBytes == null)
+                        throw new IllegalStateException("Unable to get ubot registry contract");
+
+                    Contract ubotRegistry;
+                    try {
+                        ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
+                    }
+
+                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+
+                    if (size == quorumSize) {
                         voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
                         startBroadcastMyState();
                     }
                 } else {
                     throw new IllegalArgumentException("UBot#"+ubotNumber+" isn't part of the pool for " + executableContractId);
                 }
-
-
         }
 
 
@@ -4944,7 +4958,18 @@ public class Node {
         }
 
         public String getSessionQuorum() {
-            return ""+UBotTools.getRequestQuorumSize(requestContract,null);
+            byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
+            if (ubotRegistryBytes == null)
+                throw new IllegalStateException("Unable to get ubot registry contract");
+
+            Contract ubotRegistry;
+            try {
+                ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
+            }
+
+            return "" + UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
         }
     }
 
