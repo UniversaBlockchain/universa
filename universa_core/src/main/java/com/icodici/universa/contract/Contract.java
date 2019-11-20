@@ -4066,6 +4066,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(Reference.class);
 
         DefaultBiMapper.registerClass(Permission.class);
+        DefaultBiMapper.registerClass(PaidOperation.class);
     }
 
     public static Contract fromSealedBinary(byte[] sealedBinary) throws IOException {

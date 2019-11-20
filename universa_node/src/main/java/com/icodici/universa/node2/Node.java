@@ -10,6 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
@@ -94,10 +95,12 @@ public class Node {
 
     private final ItemLock itemLock = new ItemLock();
     private final ParcelLock parcelLock = new ParcelLock();
+    private final ItemLock paidOperationLock = new ItemLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<HashId, PaidOperationProcessor> paidOperationProcessors = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
     private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
@@ -347,6 +350,28 @@ public class Node {
                     DatagramAdapter.VerboseLevel.BASE);
             throw new RuntimeException("failed to process parcel", e);
         }
+    }
+
+    public boolean registerPaidOperation(PaidOperation paidOperation) {
+        report(getLabel(), () -> "register PaidOperation(type=" + paidOperation.getOperationType() + "): " +
+                paidOperation.getId(), DatagramAdapter.VerboseLevel.BASE);
+        try {
+            Object x = checkPaidOperationInternal(paidOperation.getId(), paidOperation, true);
+            if (x instanceof PaidOperationProcessor) {
+                report(getLabel(), () -> "PaidOperation(type=" + paidOperation.getOperationType() + ") processor created for paidOperation: " +
+                        paidOperation.getId(), DatagramAdapter.VerboseLevel.BASE);
+                return true;
+            }
+
+            report(getLabel(), () -> "PaidOperation(type=" + paidOperation.getOperationType() + ") processor hasn't created: " +
+                    paidOperation.getId(), DatagramAdapter.VerboseLevel.BASE);
+            return false;
+        } catch (Exception e) {
+            report(getLabel(), () -> "register PaidOperation(type=" + paidOperation.getOperationType() + "): " +
+                    paidOperation.getId() + " failed", DatagramAdapter.VerboseLevel.BASE);
+            throw new RuntimeException("failed to process PaidOperation: " + e.toString(), e);
+        }
+
     }
 
     /**
@@ -928,6 +953,32 @@ public class Node {
         }
     }
 
+    protected Object checkPaidOperationInternal(@NonNull HashId paidOperationId, PaidOperation paidOperation, boolean autoStart) {
+        try {
+            return paidOperationLock.synchronize(paidOperationId, (lock) -> {
+                // let's look existing processor
+                PaidOperationProcessor processor = paidOperationProcessors.get(paidOperationId);
+                if (processor != null)
+                    return processor;
+
+                // if nothing found and need to create new - create it
+                if (autoStart) {
+//                    if (paidOperation != null) {
+//                        synchronized (paidOperationCache) {
+//                            paidOperationCache.put(paidOperation);
+//                        }
+//                    }
+                    processor = new PaidOperationProcessor(paidOperationId, paidOperation, lock);
+                    paidOperationProcessors.put(paidOperationId, processor);
+                    return processor;
+                } else {
+                    return ItemResult.UNDEFINED;
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("failed to checkPaidOperationInternal: " + e.toString(), e);
+        }
+    }
 
     private SimpleDateFormat dataFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
@@ -1246,6 +1297,8 @@ public class Node {
         private ItemProcessor paymentProcessor;
         private AbstractProcessor operationProcessor;
         public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
+        }
+        public PaidOperationProcessor(HashId operationId, PaidOperation paidOperation, Object lock) {
         }
     }
 

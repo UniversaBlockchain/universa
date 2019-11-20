@@ -15,6 +15,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
@@ -265,6 +266,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("pingNode", this::pingNode);
         addSecureEndpoint("setVerbose", this::setVerbose);
         addSecureEndpoint("approveParcel", this::approveParcel);
+        addSecureEndpoint("approvePaidOperation", this::approvePaidOperation);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
         addSecureEndpoint("storageGetRate", this::storageGetRate);
@@ -546,6 +548,20 @@ public class ClientHTTPServer extends BasicHttpServer {
             System.out.println("approveParcel ERROR: " + e.getMessage());
             return Binder.of(
                     "result", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
+        }
+    }
+
+    private Binder approvePaidOperation(Binder params, Session session) throws IOException {
+        checkNode(session);
+        try {
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(PaidOperation.unpack(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            System.out.println("approvePaidOperation ERROR: " + e.getMessage());
+            return Binder.of(
+                    "result", itemResultOfError(Errors.COMMAND_FAILED,"approvePaidOperation", e.getMessage()));
         }
     }
 
