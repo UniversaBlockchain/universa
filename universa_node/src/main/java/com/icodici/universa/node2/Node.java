@@ -4924,7 +4924,10 @@ public class Node {
                 sizeFinished = closeVotesFinished.size();
             }
 
-            if (sizeFinished == quorumSize || (size >= quorumSize && poolSize - size + sizeFinished == quorumSize - 1)) {
+            if (sizeFinished == quorumSize ||
+                (size >= quorumSize && poolSize - size + sizeFinished == quorumSize - 1) ||
+                (size == quorumSize && poolSize - size + sizeFinished < quorumSize)) {
+
                 voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
                 startBroadcastMyState();
             }
