@@ -1396,11 +1396,11 @@ public class Node {
         });
     }
 
-    public Binder closeUBotSession(HashId executableContractId, PublicKey publicKey) throws Exception {
+    public Binder closeUBotSession(HashId executableContractId, PublicKey publicKey, boolean finished) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
             if(usp != null) {
-                usp.addSessionCloseVote(publicKey);
+                usp.addSessionCloseVote(publicKey, finished);
                 return usp.getSession();
             } else {
                 //todo: query from db
@@ -4452,6 +4452,9 @@ public class Node {
         private final Integer myRandom;
         private HashId requestId;
         private Contract requestContract;
+        private Contract ubotRegistry;
+        private int quorumSize;
+        private int poolSize;
 
         private Set<NodeInfo> requestContractSources = new HashSet<>();
         private Map<NodeInfo,HashId> requestIds = new ConcurrentHashMap<>();
@@ -4472,6 +4475,7 @@ public class Node {
         private Map<String, ScheduledFuture<?>> storageUpdateBroadcasters = new ConcurrentHashMap<>();
         private Map<String, ScheduledFuture<?>> storageUpdateVoteExpirators = new ConcurrentHashMap<>();
         private Set<Integer> closeVotes = ConcurrentHashMap.newKeySet();
+        private Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
         private Map<NodeInfo,Boolean> closeVotesNodes = new ConcurrentHashMap<>();
 
 
@@ -4497,6 +4501,21 @@ public class Node {
             myRandom = Do.randomInt(Integer.MAX_VALUE);
             voteRequestId(myInfo,requestId,HashId.of(Boss.pack(myRandom)));
             startBroadcastMyState();
+        }
+
+        private synchronized void initPoolAndQuorum() {
+            byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
+            if (ubotRegistryBytes == null)
+                throw new IllegalStateException("Unable to get ubot registry contract");
+
+            try {
+                ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
+            }
+
+            quorumSize = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+            poolSize = UBotTools.getRequestPoolSize(requestContract, ubotRegistry);
         }
 
         private synchronized void startBroadcastMyState() {
@@ -4690,18 +4709,11 @@ public class Node {
                         return;
                     }
 
-                    Contract uBotRegistry;
-                    try {
-                        uBotRegistry = Contract.fromSealedBinary(serviceContracts.get("ubot_registry_contract"));
-                    } catch (IOException e) {
-                        throw new IllegalStateException(e);
-                    }
-
-                    int poolSize = UBotTools.getRequestPoolSize(requestContract, uBotRegistry);
+                    initPoolAndQuorum();
 
                     sessionId = sessionIds.get(myInfo);
 
-                    sessionPool = computeSessionPool(sessionId, poolSize, uBotRegistry);
+                    sessionPool = computeSessionPool(sessionId);
                     if(sessionPool == null) {
                         abortSession();
                         return;
@@ -4713,8 +4725,8 @@ public class Node {
             }
         }
 
-        private Set<Integer> computeSessionPool(HashId sessionId, int poolSize, Contract uBotRegistry) {
-            List<Binder> list = new ArrayList<>(uBotRegistry.getStateData().getListOrThrow("topology"));
+        private Set<Integer> computeSessionPool(HashId sessionId) {
+            List<Binder> list = new ArrayList<>(ubotRegistry.getStateData().getListOrThrow("topology"));
 
             if(list.size() < poolSize)
                 return null;
@@ -4783,7 +4795,16 @@ public class Node {
         }
 
         public Binder getSession() {
-            return Binder.of("state",state.name(),"requestId", requestId,"sessionId",sessionId, "sessionPool",sessionPool,"closeVotes", closeVotes,"closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()), "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList()));
+            return Binder.of(
+                "state", state.name(),
+                "requestId", requestId,
+                "sessionId", sessionId,
+                "sessionPool", sessionPool,
+                "closeVotes", closeVotes,
+                "closeVotesFinished", closeVotesFinished,
+                "closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()),
+                "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList())
+            );
         }
 
         public void addRequestContractSource(NodeInfo from) {
@@ -4838,19 +4859,6 @@ public class Node {
                     map.put(ubotNumber, toValue);
                     long votesForValue = map.values().stream().filter(v->v.equals(toValue)).count();
 
-                    byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
-                    if (ubotRegistryBytes == null)
-                        throw new IllegalStateException("Unable to get ubot registry contract");
-
-                    Contract ubotRegistry;
-                    try {
-                        ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
-                    } catch (IOException e) {
-                        throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
-                    }
-
-                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
-
                     if (votesForValue >= quorumSize) {
                         if(voteStorageUpdate(storageName,toValue,myInfo,false)) {
 
@@ -4878,56 +4886,49 @@ public class Node {
 
         }
 
-        public void addSessionCloseVote(PublicKey publicKey) {
+        public void addSessionCloseVote(PublicKey publicKey, boolean finished) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addSessionCloseVote from " , ubotsByKey.get(publicKey)),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            if(state != Node.UBotSessionState.OPERATIONAL) {
-                if(state == UBotSessionState.CLOSING)
+            if (state != Node.UBotSessionState.OPERATIONAL) {
+                if (state == UBotSessionState.CLOSING)
                     return;
 
                 throw new IllegalStateException("UBot session for " + executableContractId + " is not established");
             }
 
-                Integer ubotNumber = ubotsByKey.get(publicKey);
+            Integer ubotNumber = ubotsByKey.get(publicKey);
 
+            if (ubotNumber == null)
+                throw new IllegalArgumentException("Unknown UBot with key " + publicKey);
 
-                if(ubotNumber == null) {
-                    throw new IllegalArgumentException("Unknown UBot with key " + publicKey);
+            if (!sessionPool.contains(ubotNumber))
+                throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + executableContractId);
+
+            int size = -1;
+            synchronized (closeVotes) {
+                if (!closeVotes.contains(ubotNumber)) {
+                    closeVotes.add(ubotNumber);
+                    size = closeVotes.size();
                 }
+            }
 
-                if(sessionPool.contains(ubotNumber)) {
-                    int size = -1;
-                    synchronized (closeVotes) {
-                        if(!closeVotes.contains(ubotNumber)) {
-                            closeVotes.add(ubotNumber);
-                            size = closeVotes.size();
-                        }
-                    }
+            if (size == -1)
+                return;
 
-                    byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
-                    if (ubotRegistryBytes == null)
-                        throw new IllegalStateException("Unable to get ubot registry contract");
+            int sizeFinished;
+            synchronized (closeVotesFinished) {
+                if (finished && !closeVotesFinished.contains(ubotNumber))
+                    closeVotesFinished.add(ubotNumber);
 
-                    Contract ubotRegistry;
-                    try {
-                        ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
-                    } catch (IOException e) {
-                        throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
-                    }
+                sizeFinished = closeVotesFinished.size();
+            }
 
-                    int quorumSize = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
-
-                    if (size == quorumSize) {
-                        voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
-                        startBroadcastMyState();
-                    }
-                } else {
-                    throw new IllegalArgumentException("UBot#"+ubotNumber+" isn't part of the pool for " + executableContractId);
-                }
+            if (sizeFinished == quorumSize || (size >= quorumSize && poolSize - size + sizeFinished == quorumSize - 1)) {
+                voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
+                startBroadcastMyState();
+            }
         }
-
-
 
         private void stopStorageUpdateVote(String name) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") stopStorageUpdateVote state " , state , " " , name),
@@ -4958,18 +4959,7 @@ public class Node {
         }
 
         public String getSessionQuorum() {
-            byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
-            if (ubotRegistryBytes == null)
-                throw new IllegalStateException("Unable to get ubot registry contract");
-
-            Contract ubotRegistry;
-            try {
-                ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
-            } catch (IOException e) {
-                throw new IllegalStateException("Unable to unpack ubot registry contract: " + e.toString());
-            }
-
-            return "" + UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+            return "" + quorumSize;
         }
     }
 

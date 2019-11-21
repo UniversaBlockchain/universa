@@ -675,7 +675,8 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         try {
             HashId executableContractId = params.getOrThrow("executableContractId");
-            return Binder.of("session", node.closeUBotSession(executableContractId,session.getPublicKey()));
+            boolean finished = params.getBooleanOrThrow("finished");
+            return Binder.of("session", node.closeUBotSession(executableContractId, session.getPublicKey(), finished));
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());

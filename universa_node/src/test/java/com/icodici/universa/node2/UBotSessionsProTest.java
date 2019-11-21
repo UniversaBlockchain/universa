@@ -155,7 +155,7 @@ public class UBotSessionsProTest {
                     int finalI = i;
                     Do.inParallel(() -> {
                         try {
-                            c.getClient(finalI).command("ubotCloseSession", "executableContractId", executableContract.getId());
+                            c.getClient(finalI).command("ubotCloseSession", "executableContractId", executableContract.getId(), "finished", true);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
