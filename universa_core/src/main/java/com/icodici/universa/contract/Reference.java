@@ -477,7 +477,9 @@ public class Reference implements BiSerializable {
     }
 
     private Role prepareRoleToComparison(Object item) {
-        if (item instanceof RoleLink)
+        if (item instanceof RoleLink &&
+                ((RoleLink) item).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                ((RoleLink) item).getReferences(Role.RequiredMode.ANY_OF).isEmpty())
             return ((RoleLink) item).resolve();
         else if (item instanceof String) {
             try {
@@ -803,8 +805,12 @@ public class Reference implements BiSerializable {
                                    ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) { // if role - compare with role, key or address
                             if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) &&
                                 ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) {
-                                if (((indxOperator == NOT_EQUAL) && !((Role)left).equalsIgnoreName((Role) right)) ||
-                                    ((indxOperator == EQUAL) && ((Role)left).equalsIgnoreName((Role) right)))
+
+                                Role leftRole = prepareRoleToComparison(left);
+                                Role rightRole = prepareRoleToComparison(right);
+
+                                if (((indxOperator == NOT_EQUAL) && !leftRole.equalsIgnoreName(rightRole)) ||
+                                    ((indxOperator == EQUAL) && leftRole.equalsIgnoreName(rightRole)))
                                     ret = true;
 
                             } else {

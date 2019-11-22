@@ -109,9 +109,16 @@ public class RoleLink extends Role {
      */
     @Override
     public <T extends Role> T resolve() {
+        return resolve(false);
+    }
+
+    public <T extends Role> T resolve(boolean ignoreRefs) {
         int maxDepth = 40;
         for (Role r = this; maxDepth > 0; maxDepth--) {
-            if (r instanceof RoleLink) {
+            if (r instanceof RoleLink && (ignoreRefs || maxDepth == 40 || (
+                r.getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                r.getReferences(Role.RequiredMode.ANY_OF).isEmpty()))) {
+
                 r = ((RoleLink) r).getRole();
                 if (r == null)
                     return null;
@@ -282,11 +289,10 @@ public class RoleLink extends Role {
         if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
             return null;
 
+        Role r = resolve(ignoreRefs);
+        if (r != null)
+            return r.getSimpleAddress(ignoreRefs);
 
-        Role r = resolve();
-        if(r != null) {
-            return  r.getSimpleAddress(ignoreRefs);
-        }
         return null;
     }
 
