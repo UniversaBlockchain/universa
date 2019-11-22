@@ -33,7 +33,13 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import com.icodici.universa.contract.services.*;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,6 +60,7 @@ import java.util.stream.Collectors;
 public class Node {
 
     private static final int MAX_SANITATING_RECORDS = 64;
+    private final File serviceContractsDir;
 
     NodeStats nodeStats = new NodeStats();
 
@@ -87,6 +94,7 @@ public class Node {
     private final ItemInformer informer = new ItemInformer();
     private final NCallbackService callbackService;
     private Map<String,byte[]> serviceContracts = new HashMap<>();
+    private Map<HashId,String> serviceOrigins = new HashMap<>();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
@@ -130,13 +138,25 @@ public class Node {
         }
     });
 
-    public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey) {
-
-        try {
-            ClassLoader classLoader = getClass().getClassLoader();
-            serviceContracts.put("node_config_contract",Do.read(classLoader.getResourceAsStream("contracts/node_config_contract.unicon")));
-        } catch (Exception e) {
-            e.printStackTrace();
+    public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network, PrivateKey nodeKey, File serviceContractsDir) {
+        this.serviceContractsDir = serviceContractsDir;
+        if(serviceContractsDir != null) {
+            try {
+                List<Path> list = Files.list(serviceContractsDir.toPath()).filter(p -> p.toString().endsWith(".unicon")).collect(Collectors.toList());
+                list.forEach(p -> {
+                    try {
+                        String fileName = p.getFileName().toString();
+                        String contractName = fileName.substring(0, fileName.length() - ".unicon".length());
+                        byte[] bytes = Files.readAllBytes(p);
+                        serviceContracts.put(contractName, bytes);
+                        serviceOrigins.put(Contract.fromSealedBinary(bytes).getOrigin(), contractName);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         this.config = config;
@@ -3696,6 +3716,18 @@ public class Node {
     private void checkSpecialItem(Approvable item) {
         if(item instanceof Contract) {
             Contract contract = (Contract) item;
+            if(serviceOrigins.containsKey(contract.getOrigin())) {
+                byte[] bytes = contract.getLastSealedBinary();
+                String name = serviceOrigins.get(contract.getOrigin());
+                serviceContracts.put(name,bytes);
+                try {
+                    Files.write(new File(serviceContractsDir.getAbsolutePath()+File.separator+name+".unicon").toPath(),bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,StandardOpenOption.WRITE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
             checkForNetConfig(contract);
             checkForSetUnlimit(contract);
         }

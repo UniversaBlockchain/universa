@@ -1015,14 +1015,10 @@ public class Reference implements BiSerializable {
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
-                        if (leftOperand.equals("this"))
-                            keys = leftOperandContract.getEffectiveKeys();
-                        else
-                            keys = leftOperandContract.getSealedByKeys();
+                        keys = leftOperandContract.getEffectiveKeys();
 
-                        ret = ((Role) right).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
-                              ((Role) right).getReferences(Role.RequiredMode.ANY_OF).isEmpty() &&
-                              ((Role) right).isAllowedForKeys(keys);
+
+                        ret = ((Role) right).isAllowedForKeys(keys);
 
                         break;
                     case IN:

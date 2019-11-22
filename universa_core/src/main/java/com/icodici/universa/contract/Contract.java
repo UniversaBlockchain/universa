@@ -899,6 +899,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean checkReferencedItems(Map<HashId, Contract> neighbourContracts, boolean roleRefsOnly) throws Quantiser.QuantiserException {
         validRoleReferences.clear();
 
+        //if not a referenced item itself set the effective keys for referenced
+        //items to the effective keys of current contract
+        if(!getTransactionPack().getReferencedItems().containsKey(getId())) {
+
+            for (Contract ri : getTransactionPack().getReferencedItems().values()) {
+                ri.setEffectiveKeys(effectiveKeys, false);
+            }
+
+            for (Contract ri : getTransactionPack().getReferencedItems().values()) {
+                ri.checkReferencedItems(neighbourContracts, true);
+            }
+        }
+
         if (getReferences().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
             return true;
@@ -2510,6 +2523,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Set given role to given keys
+     * @param roleName name of a role
+     * @param keys keys to set "owner" role to
+     * @return role
+     */
+    public Role setRoleKeys(String roleName, Object... keys) {
+        return setRoleKeys(roleName,asList(keys));
+    }
+
+    /**
+     * Set given role to given keys
+     * @param roleName name of a role
+     * @param keys keys to set "owner" role to
+     * @return role
+     */
+    public Role setRoleKeys(String roleName, Collection<?> keys) {
+        return addRole(new SimpleRole(roleName,this,keys));
+    }
+
+    /**
      * Set "owner" role to given keys
      * @param keys keys to set "owner" role to
      * @return owner role
@@ -4077,6 +4110,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(Contract.class);
         DefaultBiMapper.registerClass(ChangeNumberPermission.class);
         DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
+        DefaultBiMapper.registerClass(ChangeRolePermission.class);
         DefaultBiMapper.registerClass(ModifyDataPermission.class);
         DefaultBiMapper.registerClass(RevokePermission.class);
         DefaultBiMapper.registerClass(SplitJoinPermission.class);
