@@ -1275,17 +1275,17 @@ public class Node {
     }
 
 
-    private void dbgStartParcelProcessor(Parcel parcel) {
-        new PaidOperationProcessor(parcel.getId(), parcel.getPayment(), ()->{
-            return checkItemInternal(parcel.getPayloadContract().getId(), parcel.getId(), parcel.getPayloadContract(), true, false);
-        }, new Object());
-    }
+//    private void dbgStartParcelProcessor(Parcel parcel) {
+//        new PaidOperationProcessor(parcel.getId(), parcel.getPayment(), ()->{
+//            return checkItemInternal(parcel.getPayloadContract().getId(), parcel.getId(), parcel.getPayloadContract(), true, false);
+//        }, new Object());
+//    }
 
 
     /// AbstractProcessor ///
 
     private class AbstractProcessor {
-        public AbstractProcessor() {
+        public AbstractProcessor(Supplier onSuccess, Supplier onFailure) {
 
         }
     }
@@ -1294,11 +1294,80 @@ public class Node {
     /// PaidOperationProcessor ///
 
     private class PaidOperationProcessor {
+        private PaidOperation paidOperation;
         private ItemProcessor paymentProcessor;
         private AbstractProcessor operationProcessor;
-        public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
-        }
+
+        private final Object mutex;
+
+//        public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
+//        }
         public PaidOperationProcessor(HashId operationId, PaidOperation paidOperation, Object lock) {
+            this.mutex = lock;
+            this.paidOperation = paidOperation;
+
+            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId + " created", DatagramAdapter.VerboseLevel.BASE);
+
+            if (this.paidOperation != null)
+                executorService.submit(() -> paidOperationDownloaded(),Node.this.toString() + " popr > paidOperation " +
+                        paidOperation + " :: PaidOperationProcessor -> paidOperationDownloaded");
+        }
+
+        private void paidOperationDownloaded() {
+            report(getLabel(), () -> "PaidOperationProcessor for: " + paidOperation.getId() + " :: paidOperationDownloaded, state ?", DatagramAdapter.VerboseLevel.BASE);
+
+            synchronized (mutex) {
+
+                Contract payment = paidOperation.getPaymentContract();
+                payment.getQuantiser().reset(config.getPaymentQuantaLimit());
+
+                Object x = checkItemInternal(payment.getId(), null, payment, true, true);
+//                if (x instanceof ItemProcessor) {
+//                    paymentProcessor = ((ItemProcessor) x);
+//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+//                            parcelId, " :: payment is processing, item processing state: ",
+//                            paymentProcessor.processingState, ", parcel processing state ", processingState,
+//                            ", item state ", paymentProcessor.getState()),
+//                            DatagramAdapter.VerboseLevel.BASE);
+//
+//                    // if current item processor for payment was inited by another parcel we should decline this payment
+//                    if(!parcelId.equals(paymentProcessor.parcelId)) {
+//                        paymentResult = ItemResult.UNDEFINED;
+//                    }
+//                } else {
+//                    paymentResult = (ItemResult) x;
+//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+//                            parcelId, " :: payment already processed, parcel processing state ",
+//                            processingState,
+//                            ", item state ", paymentResult.state),
+//                            DatagramAdapter.VerboseLevel.BASE);
+//
+//                    // if ledger already have approved state for payment it means onw of two:
+//                    // 1. payment was already processed and cannot be used as payment for current parcel
+//                    // 2. payment having been processing but this node starts too old and consensus already got.
+//                    // So, in both ways we can answer undefined
+//                    if (paymentResult.state == ItemState.APPROVED) {
+//                        paymentResult = ItemResult.UNDEFINED;
+//                    }
+//                }
+//                // we freeze payload checking until payment will be approved
+//                x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
+//                if (x instanceof ItemProcessor) {
+//                    payloadProcessor = ((ItemProcessor) x);
+//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+//                            parcelId, " :: payload is processing, item processing state: ",
+//                            payloadProcessor.processingState, ", parcel processing state ", processingState,
+//                            ", item state ", payloadProcessor.getState()),
+//                            DatagramAdapter.VerboseLevel.BASE);
+//                } else {
+//                    payloadResult = (ItemResult) x;
+//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+//                            parcelId, " :: payload already processed, parcel processing state ",
+//                            processingState,
+//                            ", item state ", payloadResult.state),
+//                            DatagramAdapter.VerboseLevel.BASE);
+//                }
+            }
         }
     }
 

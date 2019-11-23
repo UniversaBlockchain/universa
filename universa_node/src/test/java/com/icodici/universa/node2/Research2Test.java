@@ -805,6 +805,9 @@ public class Research2Test {
         mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
         client.command("approvePaidOperation", "packedItem", paidOperation.getPackedBinary());
 
+        System.out.println("sleep...");
+        Thread.sleep(4000);
+
         System.out.println("\n === done ===\n\n\n\n\n\n\n\n\n");
         mm.forEach(x -> x.shutdown());
     }
