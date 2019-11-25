@@ -9,6 +9,7 @@ import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -159,8 +160,8 @@ public class QuorumVoteRole extends Role {
      * @return true if role is allowed to keys
      */
     @Override
-    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        if(!super.isAllowedForKeys(keys)) {
+    public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        if(!super.isAllowedForKeysQuantized(keys)) {
             return false;
         }
 

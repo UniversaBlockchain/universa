@@ -518,8 +518,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("revoke").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
-        c.getValidRoleReferences().addAll(references);
+//
+//        assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+//        c.getValidRoleReferences().addAll(references);
         assertTrue(r.isAllowedForKeys(stepaPublicKeys));
 
         System.out.println("revoke permission :" + c.getPermissions().get("revoke"));

@@ -5189,6 +5189,7 @@ public class BaseNetworkTest extends TestCase {
 
         ContractsService.addReferenceToContract(llcProperty2, newAccountCertificate, "account_in_bank_certificate", Reference.TYPE_EXISTING_STATE, newListConditions, true);
 
+        llcProperty2.getTransactionPack().addReferencedItem(oldAccountCertificate);
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertTrue(llcProperty2.isOk());
@@ -7558,7 +7559,7 @@ public class BaseNetworkTest extends TestCase {
 //        assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-//        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 

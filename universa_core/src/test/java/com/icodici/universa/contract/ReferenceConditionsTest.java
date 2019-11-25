@@ -87,31 +87,30 @@ public class ReferenceConditionsTest {
         tp.addSubItem(contract3);
         tp.addReferencedItem(contract3);
 
-        Contract refContract = new Contract(contract1.seal(), tp);
-        refContract.check();
+        contract1.check();
 
         System.out.println("Check roles conditions");
-        assertTrue(refContract.getReferences().get("ref_roles").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_roles").matchingItems.contains(contract2));
         System.out.println("Check integer conditions");
-        assertTrue(refContract.getReferences().get("ref_integer").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_integer").matchingItems.contains(contract2));
         System.out.println("Check float conditions");
-        assertTrue(refContract.getReferences().get("ref_float").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_float").matchingItems.contains(contract2));
         System.out.println("Check string conditions");
-        assertTrue(refContract.getReferences().get("ref_string").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_string").matchingItems.contains(contract2));
         System.out.println("Check boolean conditions");
-        assertTrue(refContract.getReferences().get("ref_boolean").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_boolean").matchingItems.contains(contract2));
         System.out.println("Check inherited conditions");
-        assertTrue(refContract.getReferences().get("ref_inherited").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_inherited").matchingItems.contains(contract2));
         System.out.println("Check time conditions");
-        assertTrue(refContract.getReferences().get("ref_time").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_time").matchingItems.contains(contract2));
         System.out.println("Check ref_hashes conditions");
-        assertTrue(refContract.getReferences().get("ref_hashes").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_hashes").matchingItems.contains(contract2));
         System.out.println("Check ref_bigdecimal conditions");
-        assertTrue(refContract.getReferences().get("ref_bigdecimal").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_bigdecimal").matchingItems.contains(contract2));
         System.out.println("Check parent conditions");
-        assertTrue(refContract.getReferences().get("ref_parent").matchingItems.contains(contract3));
+        assertTrue(contract1.getReferences().get("ref_parent").matchingItems.contains(contract3));
         System.out.println("Check can_play conditions");
-        assertTrue(refContract.getReferences().get("ref_can_play").matchingItems.contains(contract2));
+        assertTrue(contract1.getReferences().get("ref_can_play").matchingItems.contains(contract2));
      }
 
     @Test
@@ -271,7 +270,7 @@ public class ReferenceConditionsTest {
         tp.addTag("test_tag_contract2", contract2.getId());
         tp.addTag("test_tag_contract3", contract3.getId());
 
-        Contract refContract = new Contract(contract1.seal(), tp);
+        Contract refContract = contract1;
         refContract.check();
 
         System.out.println("Check roles conditions");

@@ -14,6 +14,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -246,8 +247,8 @@ public class SimpleRole extends Role {
      * @return true if role is allowed to keys
      */
     @Override
-    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        if(!super.isAllowedForKeys(keys)) {
+    public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        if(!super.isAllowedForKeysQuantized(keys)) {
             return false;
         }
 
@@ -418,7 +419,7 @@ public class SimpleRole extends Role {
      * @param anotherRole is other {@link SimpleRole} with keys
      * @return true if role is allowed to keys from other {@link SimpleRole}
      */
-    public boolean isAllowedForKeys(SimpleRole anotherRole) {
+    public boolean isAllowedForKeys(SimpleRole anotherRole) throws Quantiser.QuantiserException {
         return isAllowedForKeys(anotherRole.keyRecords.keySet());
     }
 

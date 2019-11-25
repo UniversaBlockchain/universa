@@ -114,6 +114,15 @@ public class Quantiser {
         }
     }
 
-    public class QuantiserException extends IOException {}
+    public static class QuantiserExceptionRuntime extends RuntimeException {
+
+        public QuantiserExceptionRuntime(QuantiserException e) {
+            super(e);
+        }
+    }
+
+    public class QuantiserException extends IOException {
+
+    }
 
 }

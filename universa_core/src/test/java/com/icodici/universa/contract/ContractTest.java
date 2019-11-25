@@ -26,6 +26,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.JsonTool;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hamcrest.Matchers;
@@ -33,7 +34,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.FileOutputStream;
+import java.io.*;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -1452,6 +1453,129 @@ public class ContractTest extends ContractTestBase {
         assertEquals(r.getName(),"qwerty123");
         assertTrue(r instanceof SimpleRole);
         assertEquals(r.getSimpleAddress(),TestKeys.publicKey(1).getLongAddress());
+    }
+
+    @Test
+    public void referenceChainsGood() throws Exception{
+        PrivateKey key1 = TestKeys.privateKey(0);
+        PrivateKey key2 = TestKeys.privateKey(1);
+        PrivateKey key3 = TestKeys.privateKey(2);
+        PrivateKey key4 = TestKeys.privateKey(3);
+
+        Contract a = new Contract(key1);
+        Contract b = new Contract(key2);
+        Contract c = new Contract(key3);
+        Contract d = new Contract(key4);
+
+        d.addRole(new SimpleRole("target",d,Do.listOf(key1.getPublicKey().getLongAddress())));
+        d.seal();
+
+        c.addRole(new SimpleRole("link_to_d",c));
+        c.getRole("link_to_d").addRequiredReference("link_to_d_ref", Role.RequiredMode.ALL_OF);
+        Reference reference = new Reference(c);
+        reference.name = "link_to_d_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==this.definition.data.d_origin",
+                "this can_play ref.state.roles.target"
+        )));
+        c.addReference(reference);
+        c.getDefinition().getData().put("d_origin",d.getOrigin().toBase64String());
+        c.seal();
+
+
+        b.addRole(new SimpleRole("link_to_c",b));
+        b.getRole("link_to_c").addRequiredReference("link_to_c_ref", Role.RequiredMode.ALL_OF);
+        reference = new Reference(b);
+        reference.name = "link_to_c_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==this.definition.data.c_origin",
+                "this can_play ref.state.roles.link_to_d"
+        )));
+        b.addReference(reference);
+        b.getDefinition().getData().put("c_origin",c.getOrigin().toBase64String());
+        b.seal();
+
+        a.addRole(new SimpleRole("link_to_b",a));
+        a.getRole("link_to_b").addRequiredReference("link_to_b_ref", Role.RequiredMode.ALL_OF);
+        reference = new Reference(a);
+        reference.name = "link_to_b_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==this.definition.data.b_origin",
+                "this can_play ref.state.roles.link_to_c"
+        )));
+        a.addReference(reference);
+        a.getDefinition().getData().put("b_origin",b.getOrigin().toBase64String());
+        a.addRole(new RoleLink("issuer",a,"link_to_b"));
+        a.seal();
+
+
+        a.getTransactionPack().addReferencedItem(b);
+        a.getTransactionPack().addReferencedItem(c);
+        a.getTransactionPack().addReferencedItem(d);
+        a.check();
+        a.traceErrors();
+        assertTrue(a.isOk());
+        
+    }
+
+
+    @Test
+    public void referenceChainsCirle() throws Exception{
+        PrivateKey key1 = TestKeys.privateKey(0);
+        PrivateKey key2 = TestKeys.privateKey(1);
+        PrivateKey key3 = TestKeys.privateKey(2);
+
+        Contract a = new Contract(key1);
+        Contract b = new Contract(key2);
+        Contract c = new Contract(key3);
+
+        c.addRole(new SimpleRole("target",c));
+        c.getRole("target").addRequiredReference("link_to_b_ref", Role.RequiredMode.ALL_OF);
+        Reference reference = new Reference(c);
+        reference.name = "link_to_b_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.definition.data.key_b==this.definition.data.key_c",
+                "this can_play ref.state.roles.target"
+        )));
+        c.addReference(reference);
+        c.getDefinition().getData().put("key_c","value");
+        c.seal();
+
+
+        b.addRole(new SimpleRole("target",b));
+        b.getRole("target").addRequiredReference("link_to_c_ref", Role.RequiredMode.ALL_OF);
+        reference = new Reference(b);
+        reference.name = "link_to_c_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==this.definition.data.c_origin",
+                "this can_play ref.state.roles.target"
+        )));
+        b.addReference(reference);
+        b.getDefinition().getData().put("c_origin",c.getOrigin().toBase64String());
+        b.getDefinition().getData().put("key_b","value");
+        b.seal();
+
+        a.addRole(new SimpleRole("target",a));
+        a.getRole("target").addRequiredReference("link_to_b_ref", Role.RequiredMode.ALL_OF);
+        reference = new Reference(a);
+        reference.name = "link_to_b_ref";
+        reference.setConditions(Binder.of("all_of",Do.listOf(
+                "ref.origin==this.definition.data.b_origin",
+                "this can_play ref.state.roles.target"
+        )));
+        a.addReference(reference);
+        a.getDefinition().getData().put("b_origin",b.getOrigin().toBase64String());
+        a.addRole(new RoleLink("issuer",a,"target"));
+        a.seal();
+
+
+        a.getTransactionPack().addReferencedItem(b);
+        a.getTransactionPack().addReferencedItem(c);
+
+        assertFalse(a.check());
+
+
+
     }
 
 }

@@ -14,6 +14,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -200,8 +201,8 @@ public class ListRole extends Role {
      * @return true if role is allowed to keys
      */
     @Override
-    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        if(!super.isAllowedForKeys(keys))
+    public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        if(!super.isAllowedForKeysQuantized(keys))
             return false;
 
         if(this.mode == null) {
@@ -214,7 +215,7 @@ public class ListRole extends Role {
     }
 
 
-    private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
+    private boolean processQuorumMode(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
         int counter = this.quorumSize;
         boolean result = counter == 0;
 
@@ -233,12 +234,22 @@ public class ListRole extends Role {
     }
 
 
-    private boolean processAllMode(Set<? extends AbstractKey> keys) {
-        return this.roles.stream().allMatch(role -> role.isAllowedForKeys(keys));
+    private boolean processAllMode(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        for(Role role : this.roles) {
+            if(!role.isAllowedForKeys(keys)) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    private boolean processAnyMode(Set<? extends AbstractKey> keys) {
-        return this.roles.stream().anyMatch(role -> role.isAllowedForKeys(keys));
+    private boolean processAnyMode(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        for(Role role : this.roles) {
+            if(role.isAllowedForKeys(keys)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
