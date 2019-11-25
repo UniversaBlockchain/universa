@@ -2264,7 +2264,7 @@ public class Reference implements BiSerializable {
         compareOperandType typeOfRightOperand = compareOperandType.values()[typeRightOperand];
 
         int firstPointPos;
-        if (typeOfLeftOperand == compareOperandType.FIELD && !leftOperand.startsWith("ref.") &&
+        if (leftOperand != null && typeOfLeftOperand == compareOperandType.FIELD && !leftOperand.startsWith("ref.") &&
             !leftOperand.startsWith("this.") && ((firstPointPos = leftOperand.indexOf(".")) > 0)) {
 
             if (baseContract == null)
@@ -2278,8 +2278,8 @@ public class Reference implements BiSerializable {
                 refs.addAll(ref.getInternalReferences(iteration + 1));
         }
 
-        if (typeOfRightOperand == compareOperandType.FIELD && !rightOperand.startsWith("ref.") &&
-                !rightOperand.startsWith("this.") && ((firstPointPos = rightOperand.indexOf(".")) > 0)) {
+        if (rightOperand != null && typeOfRightOperand == compareOperandType.FIELD && !rightOperand.startsWith("ref.") &&
+            !rightOperand.startsWith("this.") && ((firstPointPos = rightOperand.indexOf(".")) > 0)) {
 
             if (baseContract == null)
                 throw new IllegalArgumentException("Use right operand in condition: " + rightOperand + ". But this contract not initialized.");
