@@ -46,6 +46,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
+    private PaidOperationCache paidOperationCache;
     private EnvCache envCache;
     private NetConfig netConfig;
     private Config config;
@@ -120,6 +121,34 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
             if (data != null) {
                 // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
+        on("/paidOperation", (request, response) -> {
+            String encodedString = request.getPath().substring(15);
+
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
+
+            byte[] data = null;
+            if (encodedString.equals("cache_test")) {
+                data = "the cache test data".getBytes();
+            } else {
+                HashId id = HashId.withDigest(encodedString);
+                if (paidOperationCache != null) {
+                    PaidOperation p = (PaidOperation) paidOperationCache.get(id);
+                    if (p != null) {
+                        data = p.pack();
+                    }
+                }
+            }
+            if (data != null) {
+                // paidOperation should be same immutable like contracts: cache forever
                 Binder hh = response.getHeaders();
                 hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
                 hh.put("Cache-Control", "max-age=315360000");
@@ -981,6 +1010,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setParcelCache(ParcelCache cache) {
         this.parcelCache = cache;
+    }
+
+    public void setPaidOperationCache(PaidOperationCache cache) {
+        this.paidOperationCache = cache;
     }
 
     public void setEnvCache(EnvCache cache) {

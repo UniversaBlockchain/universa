@@ -789,6 +789,9 @@ public class Research2Test {
         Main main = mm.get(0);
         PrivateKey myKey = TestKeys.privateKey(0);
 
+        System.out.println("wait for sanitation...");
+        Thread.sleep(9000);
+
         Client client = new Client(myKey, main.myInfo, null);
         System.out.println("\n\n\n\n\n\n\n\n === start ===\n");
 
@@ -801,12 +804,22 @@ public class Research2Test {
         assertEquals(ItemState.APPROVED, itemResult.state);
         mm.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
-        PaidOperation paidOperation = new PaidOperation(uContract.getTransactionPack(), "debug_paid_operation", new Binder());
-        mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
+        Contract payment = uContract.createRevision(myKey);
+        payment.getStateData().set("transaction_units", 8900);
+        payment.seal();
+
+        Contract testPayload = new Contract(myKey);
+        testPayload.seal();
+        Parcel testParcel = new Parcel(testPayload.getTransactionPack(), payment.getTransactionPack());
+        PaidOperation paidOperation = new PaidOperation(payment.getTransactionPack(), "debug_paid_operation", new Binder());
+        //mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
+        mm.get(3).node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;
         client.command("approvePaidOperation", "packedItem", paidOperation.getPackedBinary());
+        //client.registerParcel(testParcel.pack());
 
         System.out.println("sleep...");
         Thread.sleep(4000);
+        System.out.println("payment state: " + client.getState(payment.getId()));
 
         System.out.println("\n === done ===\n\n\n\n\n\n\n\n\n");
         mm.forEach(x -> x.shutdown());

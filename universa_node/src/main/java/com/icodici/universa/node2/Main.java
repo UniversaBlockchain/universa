@@ -223,6 +223,7 @@ public class Main {
         node = new Node(config, myInfo, ledger, network, nodeKey);
         cache = node.getCache();
         parcelCache = node.getParcelCache();
+        paidOperationCache = node.getPaidOperationCache();
         envCache = node.getEnvCache();
 
         StateRecord r = ledger.getRecord(HashId.withDigest("bS/c4YMidaVuzTBhHLkGPFAvPbZQHybzQnXAoBwaZYM8eLYb7mAkVYEpuqKRXYc7anqX47BeNdvFN1n7KluH9A=="));
@@ -233,6 +234,7 @@ public class Main {
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);
+        clientHTTPServer.setPaidOperationCache(paidOperationCache);
         clientHTTPServer.setEnvCache(envCache);
         clientHTTPServer.setLocalCors(myInfo.getPublicHost().equals("localhost"));
     }
@@ -387,6 +389,7 @@ public class Main {
     public Node node;
     public ItemCache cache = new ItemCache(Duration.ofMinutes(30));
     public ParcelCache parcelCache = new ParcelCache(Duration.ofMinutes(30));
+    public PaidOperationCache paidOperationCache = new PaidOperationCache(Duration.ofMinutes(30));
 
 
     private void startClientHttpServer() throws Exception {
@@ -399,6 +402,7 @@ public class Main {
         clientHTTPServer = new ClientHTTPServer(nodeKey, myInfo.getClientAddress().getPort(), logger);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);
+        clientHTTPServer.setPaidOperationCache(paidOperationCache);
         clientHTTPServer.setNetConfig(netConfig);
 //        node = new Node()
     }

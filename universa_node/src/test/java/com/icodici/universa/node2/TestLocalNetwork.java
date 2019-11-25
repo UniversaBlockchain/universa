@@ -12,6 +12,7 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
@@ -223,6 +224,27 @@ public class TestLocalNetwork extends Network {
 
             return des_parcel;
 //        return parcel;
+        }
+    }
+
+    @Override
+    synchronized public PaidOperation getPaidOperation(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        synchronized (mutex) {
+            Node node = nodes.get(nodeInfo);
+
+            PaidOperation parcel = node.getPaidOperation(itemId);
+            byte[] array = parcel.pack();
+
+            //unpack
+            PaidOperation unpacked = null;
+            try {
+                unpacked = PaidOperation.unpack(array);
+            } catch (Exception e) {
+                System.out.println("error unpacked PaidOperation");
+                e.printStackTrace();
+            }
+
+            return unpacked;
         }
     }
 

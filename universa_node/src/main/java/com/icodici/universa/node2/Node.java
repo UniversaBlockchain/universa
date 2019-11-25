@@ -83,6 +83,7 @@ public class Node {
     private final Network network;
     private final ItemCache cache;
     private final ParcelCache parcelCache;
+    private final PaidOperationCache paidOperationCache;
     private final EnvCache envCache;
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
@@ -149,6 +150,7 @@ public class Node {
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
+        paidOperationCache = new PaidOperationCache(config.getMaxCacheAge());
         envCache = new EnvCache(config.getMaxCacheAge());
         nameCache = new NameCache(config.getMaxNameCacheAge());
         config.updateConsensusConfig(network.getNodesCount());
@@ -657,18 +659,25 @@ public class Node {
      */
     private final void obtainCommonNotification(ItemNotification notification) {
 
-        // get processor, create if need
-        // register my vote
-        Object x = checkItemInternal(notification.getItemId(), null, null, true, true);
-        NodeInfo from = notification.getFrom();
-
         // If it is not ParcelNotification we think t is payment type of notification
         ParcelNotification.ParcelNotificationType notType;
+        ParcelNotification.ParcelNotificationClass notClass;
         if(notification instanceof ParcelNotification) {
             notType = ((ParcelNotification)notification).getType();
+            notClass = ((ParcelNotification)notification).getNotificationClass();
         } else {
             notType = ParcelNotification.ParcelNotificationType.PAYMENT;
+            notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
         }
+
+        // get processor, create if need
+        // register my vote
+        Object x;
+        if (notClass == ParcelNotification.ParcelNotificationClass.PAID_OPERATION)
+            x = checkPaidItemInternal(notification.getItemId(), null, null, true, true);
+        else
+            x = checkItemInternal(notification.getItemId(), null, null, true, true);
+        NodeInfo from = notification.getFrom();
 
         if (x instanceof ItemResult) {
             ItemResult r = (ItemResult) x;
@@ -681,7 +690,8 @@ public class Node {
                                 null,
                                 r,
                                 false,
-                                notType)
+                                notType,
+                                notClass)
                 );
             }
         } else if (x instanceof ItemProcessor) {
@@ -707,7 +717,8 @@ public class Node {
                                     null,
                                     ip.getResult(),
                                     ip.needsVoteFrom(from),
-                                    notType)
+                                    notType,
+                                    notClass)
                     );
                 }
                 return null;
@@ -730,7 +741,11 @@ public class Node {
         } else {
 
             // check if item for notification is already processed
-            Object item_x = checkItemInternal(notification.getItemId());
+            Object item_x;
+            if (notification.getNotificationClass() == ParcelNotification.ParcelNotificationClass.PAID_OPERATION)
+                item_x = checkPaidItemInternal(notification.getItemId());
+            else
+                item_x = checkItemInternal(notification.getItemId());
             // if already processed and result has consensus - answer immediately
             if (item_x instanceof ItemResult && ((ItemResult) item_x).state.isConsensusFound()) {
                 NodeInfo from = notification.getFrom();
@@ -744,12 +759,17 @@ public class Node {
                                     notification.getParcelId(),
                                     r,
                                     false,
-                                    notification.getType())
+                                    notification.getType(),
+                                    notification.getNotificationClass())
                     );
                 }
             } else {
                 // if we haven't results for item, we looking for or create parcel processor
-                Object x = checkParcelInternal(notification.getParcelId(), null, true);
+                Object x;
+                if (notification.getNotificationClass() == ParcelNotification.ParcelNotificationClass.PAID_OPERATION)
+                    x = checkPaidOperationInternal(notification.getParcelId(), null, true);
+                else
+                    x = checkParcelInternal(notification.getParcelId(), null, true);
                 NodeInfo from = notification.getFrom();
 
                 if (x instanceof ParcelProcessor) {
@@ -780,7 +800,8 @@ public class Node {
                                                     notification.getParcelId(),
                                                     pp.getPaymentResult(),
                                                     pp.needsPaymentVoteFrom(from),
-                                                    notification.getType())
+                                                    notification.getType(),
+                                                    notification.getNotificationClass())
                                     );
                                 }
                             } else {
@@ -793,7 +814,55 @@ public class Node {
                                                     notification.getParcelId(),
                                                     pp.getPayloadResult(),
                                                     pp.needsPayloadVoteFrom(from),
-                                                    notification.getType())
+                                                    notification.getType(),
+                                                    notification.getNotificationClass())
+                                    );
+                                }
+                            }
+                        }
+                        return null;
+                    });
+                } else if (x instanceof PaidOperationProcessor) {
+                    PaidOperationProcessor pop = (PaidOperationProcessor) x;
+                    ItemResult resultVote = notification.getItemResult();
+                    pop.lock(() -> {
+                        // we might still need to download and process it
+                        if (resultVote.haveCopy) {
+                            pop.addToSources(from);
+                        }
+                        if (resultVote.state != ItemState.PENDING)
+                            pop.vote(from, resultVote.state, notification.getType().isU());
+                        else
+                            log.e("pending vote on parcel " + notification.getParcelId()
+                                    + " and item " + notification.getItemId() + " from " + from);
+                        // We answer only if (1) answer is requested and (2) we have position on the subject:
+                        if (notification.answerIsRequested()) {
+                            // if notification type is payment, we use payment data from parcel, otherwise we use payload data
+                            if (notification.getType().isU()) {
+                                if (pop.getPaymentState() != ItemState.PENDING) {
+                                    network.deliver(
+                                            from,
+                                            new ParcelNotification(myInfo,
+                                                    notification.getItemId(),
+                                                    notification.getParcelId(),
+                                                    pop.getPaymentResult(),
+                                                    pop.needsPaymentVoteFrom(from),
+                                                    notification.getType(),
+                                                    notification.getNotificationClass())
+                                    );
+                                }
+                            } else {
+                                // parcel for payload
+                                if (pop.getPayloadState() != ItemState.PENDING) {
+                                    network.deliver(
+                                            from,
+                                            new ParcelNotification(myInfo,
+                                                    notification.getItemId(),
+                                                    notification.getParcelId(),
+                                                    pop.getPayloadResult(),
+                                                    pop.needsPayloadVoteFrom(from),
+                                                    notification.getType(),
+                                                    notification.getNotificationClass())
                                     );
                                 }
                             }
@@ -814,6 +883,14 @@ public class Node {
         return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false);
     }
 
+    private Object checkPaidItemInternal(@NonNull HashId itemId) {
+        return checkItemInternal(itemId, null, null,false, false, false, true);
+    }
+
+    private Object checkPaidItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart, boolean forceChecking) {
+        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false, true);
+    }
+
     /**
      * Optimized for various usages, check the item, start processing as need, return object depending on the current
      * state. Note that actual error codes are set to the item itself.
@@ -830,8 +907,8 @@ public class Node {
      *         ItemResult if it is already processed or can't be processed, say, created_at field is too far in
      *         the past, in which case result state will be ItemState#DISCARDED.
      */
-    private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item,
-                                       boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
+    private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart,
+                                     boolean forceChecking, boolean ommitItemResult, boolean usedForPaidOperation) {
         try {
             // first, let's lock to the item id:
             report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId),
@@ -888,7 +965,7 @@ public class Node {
                     report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
                             "nothing found, will create item processor"),
                             DatagramAdapter.VerboseLevel.BASE);
-                    ItemProcessor processor = new ItemProcessor(itemId, parcelId, item, lock, forceChecking);
+                    ItemProcessor processor = new ItemProcessor(itemId, parcelId, item, lock, forceChecking, usedForPaidOperation);
                     processors.put(itemId, processor);
                     return processor;
                 } else {
@@ -907,6 +984,11 @@ public class Node {
         } catch (Exception e) {
             throw new RuntimeException("failed to checkItem", e);
         }
+    }
+
+    private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item,
+                                     boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
+        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, ommitItemResult, false);
     }
 
     protected Object checkParcelInternal(@NonNull HashId parcelId) {
@@ -963,11 +1045,11 @@ public class Node {
 
                 // if nothing found and need to create new - create it
                 if (autoStart) {
-//                    if (paidOperation != null) {
-//                        synchronized (paidOperationCache) {
-//                            paidOperationCache.put(paidOperation);
-//                        }
-//                    }
+                    if (paidOperation != null) {
+                        synchronized (paidOperationCache) {
+                            paidOperationCache.put(paidOperation);
+                        }
+                    }
                     processor = new PaidOperationProcessor(paidOperationId, paidOperation, lock);
                     paidOperationProcessors.put(paidOperationId, processor);
                     return processor;
@@ -1046,6 +1128,16 @@ public class Node {
         }
     }
 
+    /**
+     * @return cached {@link PaidOperation} or null if it is missing
+     */
+    public PaidOperation getPaidOperation(HashId operationId) {
+        synchronized (paidOperationCache) {
+            @Nullable PaidOperation i = paidOperationCache.get(operationId);
+            return i;
+        }
+    }
+
     public int countElections() {
         return processors.size();
     }
@@ -1056,6 +1148,10 @@ public class Node {
 
     public ParcelCache getParcelCache() {
         return parcelCache;
+    }
+
+    public PaidOperationCache getPaidOperationCache() {
+        return paidOperationCache;
     }
 
     public Ledger getLedger() {
@@ -1104,6 +1200,7 @@ public class Node {
         }
         cache.shutdown();
         parcelCache.shutdown();
+        paidOperationCache.shutdown();
         nameCache.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
@@ -1294,15 +1391,22 @@ public class Node {
     /// PaidOperationProcessor ///
 
     private class PaidOperationProcessor {
+        private HashId operationId;
         private PaidOperation paidOperation;
         private ItemProcessor paymentProcessor;
         private AbstractProcessor operationProcessor;
+        private ItemResult paymentResult = null;
 
+        private Set<NodeInfo> sources = new HashSet<>();
+        private HashMap<NodeInfo, ItemState> paymentDelayedVotes = new HashMap<>();
         private final Object mutex;
+
+        private ScheduledFuture<?> downloader;
 
 //        public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
 //        }
         public PaidOperationProcessor(HashId operationId, PaidOperation paidOperation, Object lock) {
+            this.operationId = operationId;
             this.mutex = lock;
             this.paidOperation = paidOperation;
 
@@ -1313,43 +1417,92 @@ public class Node {
                         paidOperation + " :: PaidOperationProcessor -> paidOperationDownloaded");
         }
 
+        private void pulseDownload() {
+//            if(processingState.canContinue()) {
+
+//                if (!processingState.isProcessedToConsensus()) {
+//                    processingState = ParcelProcessingState.DOWNLOADING;
+
+                    synchronized (mutex) {
+                        if (paidOperation == null && (downloader == null || downloader.isDone())) {
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(),
+                                    Node.this.toString() + " > PaidOperationProcessor " + operationId + " :: pulseDownload -> download");
+                        }
+                    }
+//                }
+//            }
+        }
+
+        private void download() {
+//            if(processingState.canContinue()) {
+
+                int retryCounter = config.getGetItemRetryCount();
+                while (!isPayloadPollingExpired() && paidOperation == null) {
+                    if (sources.isEmpty()) {
+//                        log.e("empty sources for download tasks, stopping");
+                        return;
+                    } else {
+                        try {
+                            // first we have to wait for sources
+                            NodeInfo source;
+                            // Important: it could be disturbed by notifications
+                            synchronized (sources) {
+                                source = Do.sample(sources);
+                            }
+                            paidOperation = network.getPaidOperation(operationId, source, config.getMaxGetItemTime());
+                            if (paidOperation != null) {
+                                paidOperationDownloaded();
+                                return;
+                            } else {
+                                Thread.sleep(1000);
+                                retryCounter -= 1;
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (retryCounter <= 0)
+                        return;
+                }
+//            }
+        }
+
         private void paidOperationDownloaded() {
-            report(getLabel(), () -> "PaidOperationProcessor for: " + paidOperation.getId() + " :: paidOperationDownloaded, state ?", DatagramAdapter.VerboseLevel.BASE);
+            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId + " :: paidOperationDownloaded, state ?", DatagramAdapter.VerboseLevel.BASE);
 
             synchronized (mutex) {
 
                 Contract payment = paidOperation.getPaymentContract();
                 payment.getQuantiser().reset(config.getPaymentQuantaLimit());
 
-                Object x = checkItemInternal(payment.getId(), null, payment, true, true);
-//                if (x instanceof ItemProcessor) {
-//                    paymentProcessor = ((ItemProcessor) x);
-//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
-//                            parcelId, " :: payment is processing, item processing state: ",
-//                            paymentProcessor.processingState, ", parcel processing state ", processingState,
-//                            ", item state ", paymentProcessor.getState()),
-//                            DatagramAdapter.VerboseLevel.BASE);
-//
-//                    // if current item processor for payment was inited by another parcel we should decline this payment
-//                    if(!parcelId.equals(paymentProcessor.parcelId)) {
-//                        paymentResult = ItemResult.UNDEFINED;
-//                    }
-//                } else {
-//                    paymentResult = (ItemResult) x;
-//                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
-//                            parcelId, " :: payment already processed, parcel processing state ",
-//                            processingState,
-//                            ", item state ", paymentResult.state),
-//                            DatagramAdapter.VerboseLevel.BASE);
-//
-//                    // if ledger already have approved state for payment it means onw of two:
-//                    // 1. payment was already processed and cannot be used as payment for current parcel
-//                    // 2. payment having been processing but this node starts too old and consensus already got.
-//                    // So, in both ways we can answer undefined
-//                    if (paymentResult.state == ItemState.APPROVED) {
-//                        paymentResult = ItemResult.UNDEFINED;
-//                    }
-//                }
+                Object x = checkPaidItemInternal(payment.getId(), paidOperation.getId(), payment, true, true);
+                if (x instanceof ItemProcessor) {
+                    paymentProcessor = ((ItemProcessor) x);
+                    report(getLabel(), () -> "PaidOperationProcessor for: " +
+                            operationId + " :: payment is processing, item processing state: " +
+                            paymentProcessor.processingState + ", parcel processing state ?" +
+                            ", item state " + paymentProcessor.getState(),
+                            DatagramAdapter.VerboseLevel.BASE);
+
+                    // if current item processor for payment was inited by another parcel we should decline this payment
+                    if(!operationId.equals(paymentProcessor.parcelId)) {
+                        paymentResult = ItemResult.UNDEFINED;
+                    }
+                } else {
+                    paymentResult = (ItemResult) x;
+                    report(getLabel(), () -> "parcel processor for: " +
+                            operationId + " :: payment already processed, parcel processing state " +
+                            "?" + ", item state " + paymentResult.state,
+                            DatagramAdapter.VerboseLevel.BASE);
+
+                    // if ledger already have approved state for payment it means onw of two:
+                    // 1. payment was already processed and cannot be used as payment for current parcel
+                    // 2. payment having been processing but this node starts too old and consensus already got.
+                    // So, in both ways we can answer undefined
+                    if (paymentResult.state == ItemState.APPROVED) {
+                        paymentResult = ItemResult.UNDEFINED;
+                    }
+                }
 //                // we freeze payload checking until payment will be approved
 //                x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
 //                if (x instanceof ItemProcessor) {
@@ -1367,6 +1520,103 @@ public class Node {
 //                            ", item state ", payloadResult.state),
 //                            DatagramAdapter.VerboseLevel.BASE);
 //                }
+            }
+//            pulseProcessing();
+//            downloadedEvent.fire();
+        }
+
+        private final void vote(NodeInfo node, ItemState state, boolean isU) {
+//            if(processingState.canContinue()) {
+
+                // if we got vote but item processor not exist yet - we store that vote.
+                // Otherwise we give vote to item processor
+                if(isU){
+                    if (paymentProcessor != null) {
+                        paymentProcessor.vote(node, state);
+                    } else {
+                        paymentDelayedVotes.put(node, state);
+                    }
+                }
+//                else {
+//                    if (payloadProcessor != null) {
+//                        payloadProcessor.vote(node, state);
+//                    } else {
+//                        payloadDelayedVotes.put(node, state);
+//                    }
+//                }
+//            }
+        }
+
+        public ItemResult getPaymentResult() {
+            if(paymentResult != null)
+                return paymentResult;
+            if(paymentProcessor != null)
+                return paymentProcessor.getResult();
+            return ItemResult.UNDEFINED;
+        }
+
+        private ItemState getPaymentState() {
+            if(paymentResult != null)
+                return paymentResult.state;
+            if(paymentProcessor != null)
+                return paymentProcessor.getState();
+            return ItemState.PENDING;
+        }
+
+        public ItemResult getPayloadResult() {
+//            if(payloadResult != null)
+//                return payloadResult;
+//            if(payloadProcessor != null)
+//                return payloadProcessor.getResult();
+            return ItemResult.UNDEFINED;
+        }
+
+        private ItemState getPayloadState() {
+//            if(payloadResult != null)
+//                return payloadResult.state;
+//            if(payloadProcessor != null)
+//                return payloadProcessor.getState();
+            return ItemState.PENDING;
+        }
+
+        private boolean isPayloadPollingExpired() {
+//            if(payloadProcessor != null)
+//                return payloadProcessor.isPollingExpired();
+            return false;
+        }
+
+        /**
+         * true if we need to get payload vote from a node
+         */
+        private final boolean needsPayloadVoteFrom(NodeInfo node) {
+//            if(payloadProcessor != null)
+//                return payloadProcessor.needsVoteFrom(node);
+            return false;
+        }
+
+        /**
+         * true if we need to get payment vote from a node
+         */
+        private final boolean needsPaymentVoteFrom(NodeInfo node) {
+            if(paymentProcessor != null)
+                return paymentProcessor.needsVoteFrom(node);
+            return false;
+        }
+
+        private final void addToSources(NodeInfo node) {
+            if (paidOperation != null)
+                return;
+
+            synchronized (sources) {
+                if (sources.add(node)) {
+                    pulseDownload();
+                }
+            }
+        }
+
+        public <T> T lock(Supplier<T> c) {
+            synchronized (mutex) {
+                return (T) c.get();
             }
         }
     }
@@ -1894,6 +2144,8 @@ public class Node {
         private RunnableWithDynamicPeriod poller;
         private RunnableWithDynamicPeriod consensusReceivedChecker;
 
+        private boolean usedForPaidOperation;
+
         /**
          * Processor for item that will be processed from check to poll and other processes.
          *
@@ -1942,12 +2194,15 @@ public class Node {
          * @param lock is object for synchronization (it is object from {@link ItemLock} that points to item's hashId)
          * @param isCheckingForce if true checking item processing without delays.
          *                        If false checking item wait until forceChecking() will be called.
+         * @param usedForPaidOperation if true, it would use PaidOperation' notifications, else - Parcel' notifications
          */
-        public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce) {
+        public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce, boolean usedForPaidOperation) {
 
 
             mutex = lock;
             this.isCheckingForce = isCheckingForce;
+
+            this.usedForPaidOperation = usedForPaidOperation;
 
             processingState = ItemProcessingState.INIT;
             this.itemId = itemId;
@@ -2484,7 +2739,10 @@ public class Node {
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
-                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
+                ParcelNotification.ParcelNotificationClass notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
+                if (usedForPaidOperation)
+                    notClass = ParcelNotification.ParcelNotificationClass.PAID_OPERATION;
+                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType, notClass);
                 network.broadcast(myInfo, notification);
             }
         }
@@ -2539,7 +2797,10 @@ public class Node {
                     } else {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                     }
-                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
+                    ParcelNotification.ParcelNotificationClass notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
+                    if (usedForPaidOperation)
+                        notClass = ParcelNotification.ParcelNotificationClass.PAID_OPERATION;
+                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType, notClass);
                     List<NodeInfo> nodes = network.allNodes();
                     for(NodeInfo node : nodes) {
                         if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
@@ -3198,7 +3459,10 @@ public class Node {
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
-                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
+                ParcelNotification.ParcelNotificationClass notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
+                if (usedForPaidOperation)
+                    notClass = ParcelNotification.ParcelNotificationClass.PAID_OPERATION;
+                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType, notClass);
                 List<NodeInfo> nodes = network.allNodes();
                 for(NodeInfo node : nodes) {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {

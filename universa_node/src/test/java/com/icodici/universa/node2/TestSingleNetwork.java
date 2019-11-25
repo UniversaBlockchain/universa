@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
@@ -50,6 +51,11 @@ public class TestSingleNetwork extends Network {
 
     @Override
     public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        return null;
+    }
+
+    @Override
+    public PaidOperation getPaidOperation(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         return null;
     }
 
