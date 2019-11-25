@@ -224,7 +224,7 @@ public class ListRole extends Role {
         for (Role role : roles) {
             if (result) break;
 
-            if (role != null && role.isAllowedForKeys(keys) && --counter == 0) {
+            if (role != null && role.isAllowedForKeysQuantized(keys) && --counter == 0) {
                 result = true;
                 break;
             }

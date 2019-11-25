@@ -186,7 +186,7 @@ public class RoleLink extends Role {
             return false;
 
         final Role role = resolve();
-        return (role == null) ? false : role.isAllowedForKeys(keys);
+        return (role == null) ? false : role.isAllowedForKeysQuantized(keys);
     }
 
     /**

@@ -420,7 +420,7 @@ public class SimpleRole extends Role {
      * @return true if role is allowed to keys from other {@link SimpleRole}
      */
     public boolean isAllowedForKeys(SimpleRole anotherRole) throws Quantiser.QuantiserException {
-        return isAllowedForKeys(anotherRole.keyRecords.keySet());
+        return isAllowedForKeysQuantized(anotherRole.keyRecords.keySet());
     }
 
     @Override
