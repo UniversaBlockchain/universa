@@ -477,7 +477,9 @@ public class Reference implements BiSerializable {
     }
 
     private Role prepareRoleToComparison(Object item) {
-        if (item instanceof RoleLink)
+        if (item instanceof RoleLink &&
+                ((RoleLink) item).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                ((RoleLink) item).getReferences(Role.RequiredMode.ANY_OF).isEmpty())
             return ((RoleLink) item).resolve();
         else if (item instanceof String) {
             try {
@@ -803,8 +805,12 @@ public class Reference implements BiSerializable {
                                    ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) { // if role - compare with role, key or address
                             if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) &&
                                 ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) {
-                                if (((indxOperator == NOT_EQUAL) && !((Role)left).equalsIgnoreName((Role) right)) ||
-                                    ((indxOperator == EQUAL) && ((Role)left).equalsIgnoreName((Role) right)))
+
+                                Role leftRole = prepareRoleToComparison(left);
+                                Role rightRole = prepareRoleToComparison(right);
+
+                                if (((indxOperator == NOT_EQUAL) && !leftRole.equalsIgnoreName(rightRole)) ||
+                                    ((indxOperator == EQUAL) && leftRole.equalsIgnoreName(rightRole)))
                                     ret = true;
 
                             } else {
@@ -2258,7 +2264,7 @@ public class Reference implements BiSerializable {
         compareOperandType typeOfRightOperand = compareOperandType.values()[typeRightOperand];
 
         int firstPointPos;
-        if (typeOfLeftOperand == compareOperandType.FIELD && !leftOperand.startsWith("ref.") &&
+        if (leftOperand != null && typeOfLeftOperand == compareOperandType.FIELD && !leftOperand.startsWith("ref.") &&
             !leftOperand.startsWith("this.") && ((firstPointPos = leftOperand.indexOf(".")) > 0)) {
 
             if (baseContract == null)
@@ -2272,8 +2278,8 @@ public class Reference implements BiSerializable {
                 refs.addAll(ref.getInternalReferences(iteration + 1));
         }
 
-        if (typeOfRightOperand == compareOperandType.FIELD && !rightOperand.startsWith("ref.") &&
-                !rightOperand.startsWith("this.") && ((firstPointPos = rightOperand.indexOf(".")) > 0)) {
+        if (rightOperand != null && typeOfRightOperand == compareOperandType.FIELD && !rightOperand.startsWith("ref.") &&
+            !rightOperand.startsWith("this.") && ((firstPointPos = rightOperand.indexOf(".")) > 0)) {
 
             if (baseContract == null)
                 throw new IllegalArgumentException("Use right operand in condition: " + rightOperand + ". But this contract not initialized.");
