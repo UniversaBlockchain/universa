@@ -17,7 +17,7 @@ public class PaidOperation implements BiSerializable {
     private byte[] packedBinary = null;
     private HashId hashId = null;
 
-    private int quantasLimit = 0;
+    private int quantaLimit = 0;
     private boolean isTestPayment = false;
 
     public PaidOperation() {
@@ -63,20 +63,20 @@ public class PaidOperation implements BiSerializable {
             // set pay quantasLimit for payload processing
             if (hasTestU) {
                 isTestPayment = true;
-                quantasLimit = Quantiser.quantaPerU * (
+                quantaLimit = Quantiser.quantaPerU * (
                         parent.getStateData().getIntOrThrow("test_transaction_units")
                                 - payment.getContract().getStateData().getIntOrThrow("test_transaction_units")
                 );
-                if (quantasLimit <= 0) {
+                if (quantaLimit <= 0) {
                     isTestPayment = false;
-                    quantasLimit = Quantiser.quantaPerU * (
+                    quantaLimit = Quantiser.quantaPerU * (
                             parent.getStateData().getIntOrThrow("transaction_units")
                                     - payment.getContract().getStateData().getIntOrThrow("transaction_units")
                     );
                 }
             } else {
                 isTestPayment = false;
-                quantasLimit = Quantiser.quantaPerU * (
+                quantaLimit = Quantiser.quantaPerU * (
                         parent.getStateData().getIntOrThrow("transaction_units")
                                 - payment.getContract().getStateData().getIntOrThrow("transaction_units")
                 );
@@ -84,8 +84,6 @@ public class PaidOperation implements BiSerializable {
         }
 
         payment.getContract().setShouldBeU(true);
-//        payload.getContract().setLimitedForTestnet(isTestPayment);
-//        payload.getContract().getNew().forEach(c -> c.setLimitedForTestnet(isTestPayment));
     }
 
     @Override
@@ -149,8 +147,8 @@ public class PaidOperation implements BiSerializable {
         return hashId;
     }
 
-    public int getQuantasLimit() {
-        return quantasLimit;
+    public int getQuantaLimit() {
+        return quantaLimit;
     }
 
     static {

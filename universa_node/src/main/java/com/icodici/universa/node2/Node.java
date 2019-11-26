@@ -1371,19 +1371,50 @@ public class Node {
         return nodeInfoProvider;
     }
 
-
-//    private void dbgStartParcelProcessor(Parcel parcel) {
-//        new PaidOperationProcessor(parcel.getId(), parcel.getPayment(), ()->{
-//            return checkItemInternal(parcel.getPayloadContract().getId(), parcel.getId(), parcel.getPayloadContract(), true, false);
-//        }, new Object());
-//    }
-
-
     /// AbstractProcessor ///
 
-    private class AbstractProcessor {
-        public AbstractProcessor(Supplier onSuccess, Supplier onFailure) {
+    abstract private class AbstractProcessor {
+        protected Runnable onSuccess;
+        protected Consumer<String> onFailure;
 
+        public AbstractProcessor(Runnable onSuccess, Consumer<String> onFailure) {
+            this.onSuccess = onSuccess;
+            this.onFailure = onFailure;
+        }
+
+        abstract public void start(int quantaLimit, Binder operationData);
+
+    }
+
+    public AbstractProcessor createAbstractProcessorForType(String operationType, Runnable onSuccess, Consumer<String> onFailure) {
+        switch (operationType) {
+            case "test_operation":
+                return new TestWorkProcessor(onSuccess, onFailure);
+            default:
+                return null;
+        }
+    }
+
+    private class TestWorkProcessor extends AbstractProcessor {
+        public TestWorkProcessor(Runnable onSuccess, Consumer<String> onFailure) {
+            super(onSuccess, onFailure);
+        }
+
+        @Override
+        public void start(int quantaLimit, Binder operationData) {
+            executorService.submit(()->{
+                try {
+                    String field1 = operationData.getStringOrThrow("field1");
+                    report(getLabel(), ()->"TestWorkProcessor work... U limit = " + quantaLimit/Quantiser.quantaPerU +
+                            ", field1 = " + field1, DatagramAdapter.VerboseLevel.BASE);
+                    Thread.sleep(5000);
+                    report(getLabel(), ()->"TestWorkProcessor work... done", DatagramAdapter.VerboseLevel.BASE);
+                    onSuccess.run();
+                } catch (Exception e) {
+                    report(getLabel(), ()->"TestWorkProcessor work... exception: " + e.toString(), DatagramAdapter.VerboseLevel.BASE);
+                    onFailure.accept(e.toString());
+                }
+            });
         }
     }
 
@@ -1468,54 +1499,52 @@ public class Node {
                     // if payment is ok, wait payload
                     if (paymentResult.state.isApproved()) {
                         if(!paidOperation.getPaymentContract().isLimitedForTestnet())
-                            ledger.savePayment(paidOperation.getQuantasLimit()/Quantiser.quantaPerU, paymentProcessor != null ?
+                            ledger.savePayment(paidOperation.getQuantaLimit()/Quantiser.quantaPerU, paymentProcessor != null ?
                                     paymentProcessor.record.getCreatedAt() :
                                     ledger.getRecord(paidOperation.getPaymentContract().getId()).getCreatedAt());
 
-                        report(getLabel(), () -> concatReportMessage("PaidOperationProcessor for: ",
-                                operationId, " :: check payload, state ", processingState),
+                        report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                                " :: check payload, state " + processingState,
                                 DatagramAdapter.VerboseLevel.BASE);
 
+                        processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+                        report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                                " :: starting operationProcessor..., state " + processingState,
+                                DatagramAdapter.VerboseLevel.BASE);
+                        AsyncEvent<Void> completeEvent = new AsyncEvent<>();
+                        AtomicBoolean isSuccess = new AtomicBoolean(false);
+                        operationProcessor = createAbstractProcessorForType(paidOperation.getOperationType(), ()->{
+                            // onSuccess
+                            isSuccess.set(true);
+                            completeEvent.fire();
+                        }, (errorText)->{
+                            // onError
+                            isSuccess.set(false);
+                            completeEvent.fire();
+                        });
+                        if (operationProcessor != null) {
+                            operationProcessor.start(paidOperation.getQuantaLimit(), paidOperation.getOperationData());
+                            completeEvent.await();
+                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
+                            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                                    " :: operationProcessor work is finished (isSuccess="+isSuccess+"), state " +
+                                    processingState, DatagramAdapter.VerboseLevel.BASE);
+                        } else {
+                            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                                    " :: unknown operationType ("+paidOperation.getOperationType()+"), rolling back, state " +
+                                    processingState, DatagramAdapter.VerboseLevel.BASE);
+                        }
 
+                        // finish
+                        processingState = ParcelProcessingState.FINISHED;
+                        report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                                " :: all done, state " + processingState, DatagramAdapter.VerboseLevel.BASE);
 
-//                        if (payloadResult == null) {
-//
-//                            processingState = ParcelProcessingState.PAYLOAD_CHECKING;
-//
-//                            payload.getQuantiser().reset(parcel.getQuantasLimit());
-//
-//                            // force payload checking (we've freeze it at processor start)
-//                            payloadProcessor.forceChecking(true);
-//
-//                            for (NodeInfo ni : payloadDelayedVotes.keySet())
-//                                payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
-//                            payloadDelayedVotes.clear();
-//
-//                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
-//                            if (!payloadProcessor.isDone()) {
-//                                payloadProcessor.doneEvent.await();
-//                            }
-//                            payloadResult = payloadProcessor.getResult();
-//                        }
-//
-//                        if ((payloadResult != null) && payloadResult.state.isApproved())
-//                            if(!payload.isLimitedForTestnet()) {
-//                                int paidU = payload.getStateData().getInt(NSmartContract.PAID_U_FIELD_NAME, 0);
-//                                if (paidU > 0)
-//                                    ledger.savePayment(paidU, payloadProcessor != null ? payloadProcessor.record.getCreatedAt() : ledger.getRecord(payload.getId()).getCreatedAt());
-//                            }
-//                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
-//                                parcelId, " :: payload checked, state ", processingState),
-//                                DatagramAdapter.VerboseLevel.BASE);
                     } else {
                         report(getLabel(), () -> "PaidOperationProcessor for: " +
                                 operationId + " :: payment was not approved: " + paymentResult.state +
                                 ", state " + processingState,
                                 DatagramAdapter.VerboseLevel.BASE);
-//                        if(payloadProcessor != null) {
-//                            payloadProcessor.emergencyBreak();
-//                            payloadProcessor.doneEvent.await();
-//                        }
                     }
 
                     // we got payment and payload result, can fire done event for waiters
@@ -1527,13 +1556,10 @@ public class Node {
 
                     //doneEvent.fire();
 
-                    // but we want to wait until paymentProcessor and payloadProcessor will be removed
+                    // but we want to wait until paymentProcessor will be removed
                     if(paymentProcessor != null && paymentProcessor.processingState != ItemProcessingState.FINISHED) {
                         paymentProcessor.removedEvent.await();
                     }
-//                    if(payloadProcessor != null && payloadProcessor.processingState != ItemProcessingState.FINISHED) {
-//                        payloadProcessor.removedEvent.await();
-//                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     processingState = ParcelProcessingState.FINISHED;

@@ -789,8 +789,8 @@ public class Research2Test {
         Main main = mm.get(0);
         PrivateKey myKey = TestKeys.privateKey(0);
 
-        System.out.println("wait for sanitation...");
-        Thread.sleep(9000);
+//        System.out.println("wait for sanitation...");
+//        Thread.sleep(9000);
 
         Client client = new Client(myKey, main.myInfo, null);
         System.out.println("\n\n\n\n\n\n\n\n === start ===\n");
@@ -811,15 +811,15 @@ public class Research2Test {
         Contract testPayload = new Contract(myKey);
         testPayload.seal();
         Parcel testParcel = new Parcel(testPayload.getTransactionPack(), payment.getTransactionPack());
-        PaidOperation paidOperation = new PaidOperation(payment.getTransactionPack(), "debug_paid_operation", new Binder());
-        //mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
+        PaidOperation paidOperation = new PaidOperation(payment.getTransactionPack(), "test_operation", new Binder("field1", "value1"));
+        mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
         //mm.get(3).node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;
         System.out.println("\nregister... paymentId="+paidOperation.getPaymentContract().getId() + ", operationId=" + paidOperation.getId());
         client.command("approvePaidOperation", "packedItem", paidOperation.pack());
         //client.registerParcel(testParcel.pack());
 
         System.out.println("sleep...");
-        Thread.sleep(4000);
+        Thread.sleep(8000);
         itemResult = client.getState(payment.getId());
         System.out.println("payment state: " + itemResult);
 
