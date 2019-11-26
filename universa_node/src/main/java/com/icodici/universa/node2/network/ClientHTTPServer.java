@@ -290,6 +290,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
+        addSecureEndpoint("getPaidOperationProcessingState", this::getPaidOperationProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("resyncItem", this::resyncItem);
         addSecureEndpoint("pingNode", this::pingNode);
@@ -812,6 +813,21 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of(
                     "processingState",
                     "getParcelProcessingState ERROR: " + e.getMessage()
+            );
+        }
+    }
+
+    private Binder getPaidOperationProcessingState(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+        try {
+            return Binder.of("processingState",
+                    node.checkPaidOperationProcessingState((HashId) params.get("operationId")));
+        } catch (Exception e) {
+            System.out.println("getPaidOperationProcessingState ERROR: " + e.getMessage());
+            //TODO: return processing state not String
+            return Binder.of(
+                    "processingState",
+                    "getPaidOperationProcessingState ERROR: " + e.getMessage()
             );
         }
     }

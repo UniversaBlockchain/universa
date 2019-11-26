@@ -442,6 +442,29 @@ public class Node {
     }
 
 
+    /**
+     * Check the paid operation's processing state. If it is not under processing (not start or already finished)
+     * return ParcelProcessingState.NOT_EXIST
+     */
+    public @NonNull ParcelProcessingState checkPaidOperationProcessingState(HashId operationId) {
+
+        report(getLabel(), () -> "check PaidOperationProcessor state for: " + operationId,
+                DatagramAdapter.VerboseLevel.BASE);
+        Object x = checkPaidOperationInternal(operationId, null, false);
+        if (x instanceof PaidOperationProcessor) {
+            report(getLabel(), () -> "PaidOperationProcessor for: " +
+                    operationId + " state is " + ((PaidOperationProcessor) x).processingState,
+                    DatagramAdapter.VerboseLevel.BASE);
+            return ((PaidOperationProcessor) x).processingState;
+        }
+        report(getLabel(), () -> "parcel processor for parcel: " +
+                operationId + " was not found",
+                DatagramAdapter.VerboseLevel.BASE);
+
+        return ParcelProcessingState.NOT_EXIST;
+    }
+
+
     @Deprecated
     public @NonNull Binder extendedCheckItem(HashId itemId) {
 
