@@ -813,13 +813,15 @@ public class Research2Test {
         Parcel testParcel = new Parcel(testPayload.getTransactionPack(), payment.getTransactionPack());
         PaidOperation paidOperation = new PaidOperation(payment.getTransactionPack(), "debug_paid_operation", new Binder());
         //mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
-        mm.get(3).node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;
-        client.command("approvePaidOperation", "packedItem", paidOperation.getPackedBinary());
+        //mm.get(3).node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;
+        System.out.println("\nregister... paymentId="+paidOperation.getPaymentContract().getId() + ", operationId=" + paidOperation.getId());
+        client.command("approvePaidOperation", "packedItem", paidOperation.pack());
         //client.registerParcel(testParcel.pack());
 
         System.out.println("sleep...");
         Thread.sleep(4000);
-        System.out.println("payment state: " + client.getState(payment.getId()));
+        itemResult = client.getState(payment.getId());
+        System.out.println("payment state: " + itemResult);
 
         System.out.println("\n === done ===\n\n\n\n\n\n\n\n\n");
         mm.forEach(x -> x.shutdown());

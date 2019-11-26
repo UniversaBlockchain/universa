@@ -1399,16 +1399,19 @@ public class Node {
 
         private Set<NodeInfo> sources = new HashSet<>();
         private HashMap<NodeInfo, ItemState> paymentDelayedVotes = new HashMap<>();
+        private ParcelProcessingState processingState;
+
         private final Object mutex;
 
         private ScheduledFuture<?> downloader;
+        private ScheduledFuture<?> processSchedule;
 
-//        public PaidOperationProcessor(HashId operationId, TransactionPack payment, Supplier<Object> operationSupplier, Object lock) {
-//        }
         public PaidOperationProcessor(HashId operationId, PaidOperation paidOperation, Object lock) {
             this.operationId = operationId;
             this.mutex = lock;
             this.paidOperation = paidOperation;
+
+            processingState = ParcelProcessingState.INIT;
 
             report(getLabel(), () -> "PaidOperationProcessor for: " + operationId + " created", DatagramAdapter.VerboseLevel.BASE);
 
@@ -1417,11 +1420,139 @@ public class Node {
                         paidOperation + " :: PaidOperationProcessor -> paidOperationDownloaded");
         }
 
-        private void pulseDownload() {
-//            if(processingState.canContinue()) {
+        private void pulseProcessing() {
+            report(getLabel(), () -> "PaidOperationProcessor for: " +
+                    operationId + " :: pulseProcessing, state " + processingState,
+                    DatagramAdapter.VerboseLevel.BASE);
+            if(processingState.canContinue()) {
+                synchronized (mutex) {
+                    if (processSchedule == null || processSchedule.isDone()) {
+                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process(),
+                                Node.this.toString() + " PaidOperationProcessor " + operationId + " :: pulseProcessing -> process");
+                    }
+                }
+            }
+        }
 
-//                if (!processingState.isProcessedToConsensus()) {
-//                    processingState = ParcelProcessingState.DOWNLOADING;
+        private void process() {
+            report(getLabel(), () -> "PaidOperationProcessor for: " +
+                    operationId + " :: process, payment " +
+                    paidOperation.getPaymentContract().getId() + ", operationType " +
+                    paidOperation.getOperationType() + ", state " + processingState,
+                    DatagramAdapter.VerboseLevel.BASE);
+            if(processingState.canContinue()) {
+
+                processingState = ParcelProcessingState.PREPARING;
+                try {
+                    report(getLabel(), () -> "PaidOperationProcessor for: " +
+                            operationId + " :: check payment, state " + processingState,
+                            DatagramAdapter.VerboseLevel.BASE);
+                    // wait payment
+                    if (paymentResult == null) {
+                        processingState = ParcelProcessingState.PAYMENT_CHECKING;
+
+                        for (NodeInfo ni : paymentDelayedVotes.keySet())
+                            paymentProcessor.vote(ni, paymentDelayedVotes.get(ni));
+                        paymentDelayedVotes.clear();
+
+                        processingState = ParcelProcessingState.PAYMENT_POLLING;
+                        if(!paymentProcessor.isDone()) {
+                            paymentProcessor.doneEvent.await();
+                        }
+                        paymentResult = paymentProcessor.getResult();
+                    }
+
+                    report(getLabel(), () -> "PaidOperationProcessor for: " +
+                            operationId + " :: payment checked, state " + paymentResult.state + ", processingState " + processingState,
+                            DatagramAdapter.VerboseLevel.BASE);
+                    // if payment is ok, wait payload
+                    if (paymentResult.state.isApproved()) {
+                        if(!paidOperation.getPaymentContract().isLimitedForTestnet())
+                            ledger.savePayment(paidOperation.getQuantasLimit()/Quantiser.quantaPerU, paymentProcessor != null ?
+                                    paymentProcessor.record.getCreatedAt() :
+                                    ledger.getRecord(paidOperation.getPaymentContract().getId()).getCreatedAt());
+
+                        report(getLabel(), () -> concatReportMessage("PaidOperationProcessor for: ",
+                                operationId, " :: check payload, state ", processingState),
+                                DatagramAdapter.VerboseLevel.BASE);
+
+
+
+//                        if (payloadResult == null) {
+//
+//                            processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+//
+//                            payload.getQuantiser().reset(parcel.getQuantasLimit());
+//
+//                            // force payload checking (we've freeze it at processor start)
+//                            payloadProcessor.forceChecking(true);
+//
+//                            for (NodeInfo ni : payloadDelayedVotes.keySet())
+//                                payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
+//                            payloadDelayedVotes.clear();
+//
+//                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
+//                            if (!payloadProcessor.isDone()) {
+//                                payloadProcessor.doneEvent.await();
+//                            }
+//                            payloadResult = payloadProcessor.getResult();
+//                        }
+//
+//                        if ((payloadResult != null) && payloadResult.state.isApproved())
+//                            if(!payload.isLimitedForTestnet()) {
+//                                int paidU = payload.getStateData().getInt(NSmartContract.PAID_U_FIELD_NAME, 0);
+//                                if (paidU > 0)
+//                                    ledger.savePayment(paidU, payloadProcessor != null ? payloadProcessor.record.getCreatedAt() : ledger.getRecord(payload.getId()).getCreatedAt());
+//                            }
+//                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+//                                parcelId, " :: payload checked, state ", processingState),
+//                                DatagramAdapter.VerboseLevel.BASE);
+                    } else {
+                        report(getLabel(), () -> "PaidOperationProcessor for: " +
+                                operationId + " :: payment was not approved: " + paymentResult.state +
+                                ", state " + processingState,
+                                DatagramAdapter.VerboseLevel.BASE);
+//                        if(payloadProcessor != null) {
+//                            payloadProcessor.emergencyBreak();
+//                            payloadProcessor.doneEvent.await();
+//                        }
+                    }
+
+                    // we got payment and payload result, can fire done event for waiters
+                    processingState = ParcelProcessingState.FINISHED;
+
+                    report(getLabel(), () -> "PaidOperationProcessor for: " +
+                            operationId + " :: processing finished, state " + processingState,
+                            DatagramAdapter.VerboseLevel.BASE);
+
+                    //doneEvent.fire();
+
+                    // but we want to wait until paymentProcessor and payloadProcessor will be removed
+                    if(paymentProcessor != null && paymentProcessor.processingState != ItemProcessingState.FINISHED) {
+                        paymentProcessor.removedEvent.await();
+                    }
+//                    if(payloadProcessor != null && payloadProcessor.processingState != ItemProcessingState.FINISHED) {
+//                        payloadProcessor.removedEvent.await();
+//                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    processingState = ParcelProcessingState.FINISHED;
+                    //doneEvent.fire();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    processingState = ParcelProcessingState.FINISHED;
+                    //doneEvent.fire();
+                }
+
+                removeSelf();
+            }
+        }
+
+        private void pulseDownload() {
+            if(processingState.canContinue()) {
+
+                if (!processingState.isProcessedToConsensus()) {
+                    processingState = ParcelProcessingState.DOWNLOADING;
 
                     synchronized (mutex) {
                         if (paidOperation == null && (downloader == null || downloader.isDone())) {
@@ -1429,12 +1560,12 @@ public class Node {
                                     Node.this.toString() + " > PaidOperationProcessor " + operationId + " :: pulseDownload -> download");
                         }
                     }
-//                }
-//            }
+                }
+            }
         }
 
         private void download() {
-//            if(processingState.canContinue()) {
+            if(processingState.canContinue()) {
 
                 int retryCounter = config.getGetItemRetryCount();
                 while (!isPayloadPollingExpired() && paidOperation == null) {
@@ -1464,11 +1595,11 @@ public class Node {
                     if (retryCounter <= 0)
                         return;
                 }
-//            }
+            }
         }
 
         private void paidOperationDownloaded() {
-            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId + " :: paidOperationDownloaded, state ?", DatagramAdapter.VerboseLevel.BASE);
+            report(getLabel(), () -> "PaidOperationProcessor for: " + operationId + " :: paidOperationDownloaded, state " + processingState, DatagramAdapter.VerboseLevel.BASE);
 
             synchronized (mutex) {
 
@@ -1480,7 +1611,7 @@ public class Node {
                     paymentProcessor = ((ItemProcessor) x);
                     report(getLabel(), () -> "PaidOperationProcessor for: " +
                             operationId + " :: payment is processing, item processing state: " +
-                            paymentProcessor.processingState + ", parcel processing state ?" +
+                            paymentProcessor.processingState + ", PaidOperation processing state " + processingState +
                             ", item state " + paymentProcessor.getState(),
                             DatagramAdapter.VerboseLevel.BASE);
 
@@ -1490,9 +1621,9 @@ public class Node {
                     }
                 } else {
                     paymentResult = (ItemResult) x;
-                    report(getLabel(), () -> "parcel processor for: " +
-                            operationId + " :: payment already processed, parcel processing state " +
-                            "?" + ", item state " + paymentResult.state,
+                    report(getLabel(), () -> "PaidOperationProcessor for: " +
+                            operationId + " :: payment already processed, PaidOperation processing state " +
+                            processingState + ", item state " + paymentResult.state,
                             DatagramAdapter.VerboseLevel.BASE);
 
                     // if ledger already have approved state for payment it means onw of two:
@@ -1521,12 +1652,11 @@ public class Node {
 //                            DatagramAdapter.VerboseLevel.BASE);
 //                }
             }
-//            pulseProcessing();
-//            downloadedEvent.fire();
+            pulseProcessing();
         }
 
         private final void vote(NodeInfo node, ItemState state, boolean isU) {
-//            if(processingState.canContinue()) {
+            if(processingState.canContinue()) {
 
                 // if we got vote but item processor not exist yet - we store that vote.
                 // Otherwise we give vote to item processor
@@ -1544,7 +1674,7 @@ public class Node {
 //                        payloadDelayedVotes.put(node, state);
 //                    }
 //                }
-//            }
+            }
         }
 
         public ItemResult getPaymentResult() {
@@ -1619,6 +1749,31 @@ public class Node {
                 return (T) c.get();
             }
         }
+
+        private final void removeSelf() {
+            report(getLabel(), () -> "PaidOperationProcessor for: " +
+                    operationId + " :: removeSelf, state " + processingState,
+                    DatagramAdapter.VerboseLevel.BASE);
+            if(processingState.canRemoveSelf()) {
+                paidOperationProcessors.remove(operationId);
+
+                stopDownloader();
+                stopProcesser();
+
+                //doneEvent.fire();
+            }
+        }
+
+        private void stopDownloader() {
+            if (downloader != null)
+                downloader.cancel(true);
+        }
+
+        private void stopProcesser() {
+            if (processSchedule != null)
+                processSchedule.cancel(true);
+        }
+
     }
 
 

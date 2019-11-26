@@ -1,6 +1,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -15,6 +16,9 @@ public class PaidOperation implements BiSerializable {
 
     private byte[] packedBinary = null;
     private HashId hashId = null;
+
+    private int quantasLimit = 0;
+    private boolean isTestPayment = false;
 
     public PaidOperation() {
     }
@@ -43,6 +47,47 @@ public class PaidOperation implements BiSerializable {
         return operation.getBinderOrThrow("operationData");
     }
 
+    protected void prepareForNode() {
+
+        // general idea - take U from payment's parent and take U from payment itself and calculate difference - it will be payment amount in U.
+        // then check test or real payment by field names.
+        Contract parent = null;
+        for(Contract c : payment.getContract().getRevoking()) {
+            if(c.getId().equals(payment.getContract().getParent())) {
+                parent = c;
+                break;
+            }
+        }
+        if(parent != null) {
+            boolean hasTestU = payment.getContract().getStateData().get("test_transaction_units") != null;
+            // set pay quantasLimit for payload processing
+            if (hasTestU) {
+                isTestPayment = true;
+                quantasLimit = Quantiser.quantaPerU * (
+                        parent.getStateData().getIntOrThrow("test_transaction_units")
+                                - payment.getContract().getStateData().getIntOrThrow("test_transaction_units")
+                );
+                if (quantasLimit <= 0) {
+                    isTestPayment = false;
+                    quantasLimit = Quantiser.quantaPerU * (
+                            parent.getStateData().getIntOrThrow("transaction_units")
+                                    - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                    );
+                }
+            } else {
+                isTestPayment = false;
+                quantasLimit = Quantiser.quantaPerU * (
+                        parent.getStateData().getIntOrThrow("transaction_units")
+                                - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                );
+            }
+        }
+
+        payment.getContract().setShouldBeU(true);
+//        payload.getContract().setLimitedForTestnet(isTestPayment);
+//        payload.getContract().getNew().forEach(c -> c.setLimitedForTestnet(isTestPayment));
+    }
+
     @Override
     public synchronized Binder serialize(BiSerializer s) {
         return Binder.of(
@@ -55,6 +100,8 @@ public class PaidOperation implements BiSerializable {
     public synchronized void deserialize(Binder data, BiDeserializer ds) throws IOException {
         payment = TransactionPack.unpack(data.getBinary("payment"));
         operation = data.getBinder("operation");
+
+        prepareForNode();
     }
 
     /**
@@ -74,22 +121,22 @@ public class PaidOperation implements BiSerializable {
     }
 
     /**
-     * Pack stored payment and operation data to binary, recalculate packedBinary and hashId.
+     * Return packed binary. Does recreatePackedBinary() only if it was not called previously, else return cached binary.
      * @return a packed binary
      */
     public byte[] pack() {
-        packedBinary = Boss.pack(this);
-        hashId = HashId.of(packedBinary);
+        if (packedBinary == null)
+            recreatePackedBinary();
         return packedBinary;
     }
 
     /**
-     * Return packed binary. Does pack() only if it was not called previously, else return cached binary.
+     * Pack stored payment and operation data to binary, recalculate packedBinary and hashId.
      * @return a packed binary
      */
-    public byte[] getPackedBinary() {
-        if (packedBinary == null)
-            pack();
+    public byte[] recreatePackedBinary() {
+        packedBinary = Boss.pack(this);
+        hashId = HashId.of(packedBinary);
         return packedBinary;
     }
 
@@ -100,6 +147,10 @@ public class PaidOperation implements BiSerializable {
         if (hashId == null)
             pack();
         return hashId;
+    }
+
+    public int getQuantasLimit() {
+        return quantasLimit;
     }
 
     static {
