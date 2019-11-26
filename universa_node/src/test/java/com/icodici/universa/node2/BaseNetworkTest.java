@@ -18509,4 +18509,55 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckDeclined(batch);
     }
+
+    @Test(timeout = 60000)
+    public void recursiveCheckReferences() throws Exception {
+
+        Contract c = new Contract(TestKeys.privateKey(1));
+        HashId id = null;
+
+        for (int i = 0; i < 16; i++) {
+            Contract sc = new Contract(TestKeys.privateKey(i + 1));
+
+            List<String> listCondition = new ArrayList<>();
+            listCondition.add("ref can_play ref.owner");
+            if (id != null)
+                listCondition.add("ref.id == \"" + id.toBase64String() + "\"");
+
+            Binder condition = new Binder();
+            condition.set("all_of", listCondition);
+
+            Reference ref = new Reference(sc);
+            ref.name = "ref" + i;
+            ref.type = Reference.TYPE_EXISTING_DEFINITION;
+            ref.setConditions(condition);
+            sc.addReference(ref);
+
+            SimpleRole ownerRole = new SimpleRole("owner", sc, new KeyRecord(TestKeys.publicKey(i + 1)));
+            ownerRole.addRequiredReference("ref" + i, Role.RequiredMode.ALL_OF);
+
+            sc.addRole(ownerRole);
+
+            sc.seal();
+            c.addNewItems(sc);
+
+            id = sc.getId();
+        }
+
+        List<String> listCondition = new ArrayList<>();
+        listCondition.add("ref can_play ref.owner");
+
+        Binder condition = new Binder();
+        condition.set("all_of", listCondition);
+
+        Reference ref = new Reference(c);
+        ref.name = "ref_base";
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref.setConditions(condition);
+        c.addReference(ref);
+
+        c.seal();
+
+        registerAndCheckApproved(c);
+    }
 }
