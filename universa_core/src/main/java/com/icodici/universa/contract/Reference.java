@@ -8,6 +8,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -323,7 +324,7 @@ public class Reference implements BiSerializable {
     }
 
     private Object evaluateOperand(String operand, compareOperandType typeOfOperand, int conversion, Contract refContract,
-                                   Collection<Contract> contracts, int iteration) throws Exception {
+                                   Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Exception {
         Contract operandContract = null;
         int firstPointPos;
 
@@ -348,8 +349,12 @@ public class Reference implements BiSerializable {
                 if (ref == null)
                     throw new IllegalArgumentException("Not found reference: " + operand.substring(0, firstPointPos));
 
+                // quantize reference
+                if (quantiser != null)
+                    ref.quantize(quantiser, contracts.size());
+
                 for (Contract checkedContract : contracts)
-                    if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                    if (ref.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                         operandContract = checkedContract;
 
                 if (operandContract == null)
@@ -370,7 +375,7 @@ public class Reference implements BiSerializable {
         }
     }
 
-    private Object evaluateExpression(Binder expression, Contract refContract, Collection<Contract> contracts, int iteration) {
+    private Object evaluateExpression(Binder expression, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         Object left;
         Object right;
         Object result;
@@ -398,14 +403,14 @@ public class Reference implements BiSerializable {
         try {
             // evaluate operands
             if (typeOfLeftOperand == compareOperandType.EXPRESSION)
-                left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+                left = evaluateExpression(leftExpression, refContract, contracts, iteration, quantiser);
             else
-                left = evaluateOperand(leftOperand, typeOfLeftOperand, leftConversion, refContract, contracts, iteration);
+                left = evaluateOperand(leftOperand, typeOfLeftOperand, leftConversion, refContract, contracts, iteration, quantiser);
 
             if (typeOfRightOperand == compareOperandType.EXPRESSION)
-                right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+                right = evaluateExpression(rightExpression, refContract, contracts, iteration, quantiser);
             else
-                right = evaluateOperand(rightOperand, typeOfRightOperand, rightConversion, refContract, contracts, iteration);
+                right = evaluateOperand(rightOperand, typeOfRightOperand, rightConversion, refContract, contracts, iteration, quantiser);
 
             if (left == null || right == null)
                 return null;
@@ -527,7 +532,8 @@ public class Reference implements BiSerializable {
                                    boolean isBigDecimalConversion,
                                    int indxOperator,
                                    Collection<Contract> contracts,
-                                   int iteration)
+                                   int iteration,
+                                   Quantiser quantiser) throws Quantiser.QuantiserException
     {
         boolean ret = false;
         Contract leftOperandContract = null;
@@ -564,8 +570,12 @@ public class Reference implements BiSerializable {
                     if (ref == null)
                         throw new IllegalArgumentException("Not found reference: " + leftOperand.substring(0, firstPointPos));
 
+                    // quantize reference
+                    if (quantiser != null)
+                        ref.quantize(quantiser, contracts.size());
+
                     for (Contract checkedContract : contracts)
-                        if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                        if (ref.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                             leftOperandContract = checkedContract;
 
                     if (leftOperandContract == null)
@@ -592,8 +602,12 @@ public class Reference implements BiSerializable {
                         if (ref == null)
                             throw new IllegalArgumentException("Not found reference: " + leftOperand);
 
+                        // quantize reference
+                        if (quantiser != null)
+                            ref.quantize(quantiser, contracts.size());
+
                         for (Contract checkedContract : contracts)
-                            if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                            if (ref.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                                 leftOperandContract = checkedContract;
 
                         if (leftOperandContract == null)
@@ -624,8 +638,12 @@ public class Reference implements BiSerializable {
                     if (ref == null)
                         throw new IllegalArgumentException("Not found reference: " + rightOperand.substring(0, firstPointPos));
 
+                    // quantize reference
+                    if (quantiser != null)
+                        ref.quantize(quantiser, contracts.size());
+
                     for (Contract checkedContract : contracts)
-                        if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                        if (ref.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                             rightOperandContract = checkedContract;
 
                     if (rightOperandContract == null)
@@ -649,7 +667,7 @@ public class Reference implements BiSerializable {
 
             if (leftExpression != null) {
                 try {
-                    left = evaluateExpression(leftExpression, refContract, contracts, iteration);
+                    left = evaluateExpression(leftExpression, refContract, contracts, iteration, quantiser);
                 } catch (IllegalArgumentException e) {
                     if (e.getMessage().contains("Not found referenced contract for reference"))
                         return false;
@@ -664,7 +682,7 @@ public class Reference implements BiSerializable {
 
             if (rightExpression != null) {
                 try {
-                    right = evaluateExpression(rightExpression, refContract, contracts, iteration);
+                    right = evaluateExpression(rightExpression, refContract, contracts, iteration, quantiser);
                 } catch (IllegalArgumentException e) {
                     if (e.getMessage().contains("Not found referenced contract for reference"))
                         return false;
@@ -1000,7 +1018,7 @@ public class Reference implements BiSerializable {
                         if ((right == null) || !right.getClass().getName().endsWith("Reference"))
                             throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
-                        ret = ((Reference) left).isInherited((Reference) right, refContract, contracts, iteration + 1);
+                        ret = ((Reference) left).isInherited((Reference) right, refContract, contracts, iteration + 1, quantiser);
 
                         break;
                     case INHERIT:
@@ -1010,7 +1028,11 @@ public class Reference implements BiSerializable {
                         if ((right == null) || !right.getClass().getName().endsWith("Reference"))
                             throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
-                        ret = ((Reference) right).isMatchingWith(refContract, contracts, iteration + 1);
+                        // quantize reference
+                        if (quantiser != null)
+                            ((Reference) right).quantize(quantiser, contracts.size());
+
+                        ret = ((Reference) right).isMatchingWithQuantized(refContract, contracts, iteration + 1, quantiser);
 
                         break;
                     case CAN_PLAY:
@@ -1022,7 +1044,6 @@ public class Reference implements BiSerializable {
 
                         Set<PublicKey> keys;
                         keys = leftOperandContract.getReferenceContextKeys();
-
 
                         ret = ((Role) right).isAllowedForKeysQuantized(keys);
 
@@ -1116,8 +1137,10 @@ public class Reference implements BiSerializable {
                     default:
                         throw new IllegalArgumentException("Invalid operator in condition");
                 }
-            }
-            catch (Exception e) {
+
+            } catch (Quantiser.QuantiserException e) {
+                throw e;
+            } catch (Exception e) {
                 e.printStackTrace();
                 throw new IllegalArgumentException("Error compare operands in condition: " + e.getMessage());
             }
@@ -1560,7 +1583,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    private boolean checkCondition(Binder condition, Contract ref, Collection<Contract> contracts, int iteration) {
+    private boolean checkCondition(Binder condition, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
         compareOperandType typeOfLeftOperand;
         compareOperandType typeOfRightOperand;
@@ -1584,7 +1607,7 @@ public class Reference implements BiSerializable {
 
         boolean isBigDecimalConversion = (leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL);
 
-        return compareOperands(ref, leftOperand, rightOperand, left, right, typeOfLeftOperand, typeOfRightOperand, isBigDecimalConversion, operator, contracts, iteration);
+        return compareOperands(ref, leftOperand, rightOperand, left, right, typeOfLeftOperand, typeOfRightOperand, isBigDecimalConversion, operator, contracts, iteration, quantiser);
     }
 
     /**
@@ -1595,10 +1618,10 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    private boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration) {
+    private boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
         Binder parsed = parseCondition(condition);
-        return checkCondition(parsed, ref, contracts, iteration);
+        return checkCondition(parsed, ref, contracts, iteration, quantiser);
     }
 
     /**
@@ -1656,7 +1679,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    private boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration) {
+    private boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
         boolean result;
 
@@ -1672,11 +1695,11 @@ public class Reference implements BiSerializable {
             result = true;
             for (Object item: condList) {
                 if (item.getClass().getName().endsWith("String"))
-                    result = result && checkCondition((String) item, ref, contracts, iteration);        // not pre-parsed (old) version
+                    result = result && checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                     //Binder insideBinder = new Binder(insideHashMap);
-                    result = result && checkConditions((Binder) item, ref, contracts, iteration);
+                    result = result && checkConditions((Binder) item, ref, contracts, iteration, quantiser);
             }
         }
         else if (conditions.containsKey(any_of.name()))
@@ -1688,19 +1711,78 @@ public class Reference implements BiSerializable {
             result = false;
             for (Object item: condList) {
                 if (item.getClass().getName().endsWith("String"))
-                    result = result || checkCondition((String) item, ref, contracts, iteration);        // not pre-parsed (old) version
+                    result = result || checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                     //Binder insideBinder = new Binder(insideHashMap);
-                    result = result || checkConditions((Binder) item, ref, contracts, iteration);
+                    result = result || checkConditions((Binder) item, ref, contracts, iteration, quantiser);
             }
         }
         else if (conditions.containsKey("operator"))                                                    // pre-parsed version
-            result = checkCondition(conditions, ref, contracts, iteration);
+            result = checkCondition(conditions, ref, contracts, iteration, quantiser);
         else
             throw new IllegalArgumentException("Expected all_of or any_of");
 
         return result;
+    }
+
+    private void quantizeCondition(Binder condition, Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
+
+        int rate = neighboursCount / 10;
+        if (rate < 1)
+            rate = 1;
+
+        int operator = condition.getIntOrThrow("operator");
+        if (operator <= UNDEFINED)
+            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_DEFINED, rate);
+        else if (operator <= IS_INHERIT)
+            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CONDITION, rate);
+        else if (operator == CAN_PLAY)
+            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CAN_PLAY, rate);
+        else if (operator == IN)
+            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_IN, rate);
+    }
+
+    private void quantizeCondition(String condition, Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
+
+        Binder parsed = parseCondition(condition);
+        quantizeCondition(parsed, quantiser, neighboursCount);
+    }
+
+    private void quantizeConditions(Binder conditions, Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
+        if ((conditions == null) || (conditions.size() == 0))
+            return;
+
+        if (conditions.containsKey(all_of.name())) {
+            List<Object> condList = conditions.getList(all_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected all_of conditions");
+
+            for (Object item: condList) {
+                if (item instanceof String)
+                    quantizeCondition((String) item, quantiser, neighboursCount);        // not pre-parsed (old) version
+                else
+                    quantizeConditions((Binder) item, quantiser, neighboursCount);
+            }
+        } else if (conditions.containsKey(any_of.name())) {
+            List<Object> condList = conditions.getList(any_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected any_of conditions");
+
+            for (Object item: condList) {
+                if (item instanceof String)
+                    quantizeCondition((String) item, quantiser, neighboursCount);        // not pre-parsed (old) version
+                else
+                    quantizeConditions((Binder) item, quantiser, neighboursCount);
+            }
+        } else if (conditions.containsKey("operator"))           // pre-parsed version
+            quantizeCondition(conditions, quantiser, neighboursCount);
+        else
+            throw new IllegalArgumentException("Expected all_of or any_of");
+    }
+
+    public void quantize(Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
+        quantizeConditions(conditions, quantiser, neighboursCount);
     }
 
     /**
@@ -1717,8 +1799,17 @@ public class Reference implements BiSerializable {
      * @param contracts contract list to check for matching
      * @return true if match or false
      */
+    @Deprecated
     public boolean isMatchingWith(Approvable a, Collection<Contract> contracts) {
-        return isMatchingWith(a, contracts, 0);
+        try {
+            return isMatchingWithQuantized(a, contracts, 0, null);
+        } catch (Quantiser.QuantiserException ex) {
+            return false;
+        }
+    }
+
+    public boolean isMatchingWithQuantized(Approvable a, Collection<Contract> contracts, Quantiser quantiser) throws Quantiser.QuantiserException {
+        return isMatchingWithQuantized(a, contracts, 0, quantiser);
     }
 
     /**
@@ -1728,7 +1819,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    private boolean isMatchingWith(Approvable a, Collection<Contract> contracts, int iteration) {
+    private boolean isMatchingWithQuantized(Approvable a, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         //todo: add this checking for matching with given item
 
         if (iteration > 16)
@@ -1757,18 +1848,18 @@ public class Reference implements BiSerializable {
 
             //check conditions
             if (result) {
-                result = checkConditions(conditions, contract, contracts, iteration);
+                result = checkConditions(conditions, contract, contracts, iteration, quantiser);
             }
         }
 
         return result;
     }
 
-    private boolean isInherited(Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
-        return isInherited(conditions, ref, refContract, contracts, iteration);
+    private boolean isInherited(Reference ref, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
+        return isInherited(conditions, ref, refContract, contracts, iteration, quantiser);
     }
 
-    private boolean isInherited(Binder conditions, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+    private boolean isInherited(Binder conditions, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         if ((conditions == null) || (conditions.size() == 0))
             return false;
 
@@ -1787,33 +1878,33 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Expected any_of conditions");
         }
         else if (conditions.containsKey("operator"))
-            return isInheritedParsed(conditions, ref, refContract, contracts, iteration);
+            return isInheritedParsed(conditions, ref, refContract, contracts, iteration, quantiser);
         else
             throw new IllegalArgumentException("Expected all_of or any_of");
 
         if (condList != null)
             for (Object item: condList)
                 if (item.getClass().getName().endsWith("String")) {
-                    if (isInherited((String) item, ref, refContract, contracts, iteration))
+                    if (isInherited((String) item, ref, refContract, contracts, iteration, quantiser))
                         return true;
-                } else if (isInherited((Binder) item, ref, refContract, contracts, iteration))
+                } else if (isInherited((Binder) item, ref, refContract, contracts, iteration, quantiser))
                         return true;
 
         return false;
     }
 
-    private boolean isInheritedParsed(Binder condition, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+    private boolean isInheritedParsed(Binder condition, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
         int operator = condition.getIntOrThrow("operator");
         String rightOperand = condition.getString("rightOperand", null);
 
         if (((operator == INHERITS) || (operator == INHERIT)) && (rightOperand != null))
-            return isInheritedOperand(rightOperand, ref, refContract, contracts, iteration);
+            return isInheritedOperand(rightOperand, ref, refContract, contracts, iteration, quantiser);
 
         return false;
     }
 
-    private boolean isInherited(String condition, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+    private boolean isInherited(String condition, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         for (int i = INHERITS; i <= INHERIT; i++) {
             int operPos = condition.indexOf(operators[i]);
 
@@ -1824,14 +1915,14 @@ public class Reference implements BiSerializable {
 
                 String rightOperand = subStrR.replaceAll("\\s+", "");
 
-                return isInheritedOperand(rightOperand, ref, refContract, contracts, iteration);
+                return isInheritedOperand(rightOperand, ref, refContract, contracts, iteration, quantiser);
             }
         }
 
         return false;
     }
 
-    private boolean isInheritedOperand(String rightOperand, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+    private boolean isInheritedOperand(String rightOperand, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         Contract rightOperandContract = null;
         Object right = null;
         int firstPointPos;
@@ -1853,8 +1944,12 @@ public class Reference implements BiSerializable {
             if (refLink == null)
                 throw new IllegalArgumentException("Not found reference: " + rightOperand.substring(0, firstPointPos));
 
+            // quantize reference
+            if (quantiser != null)
+                refLink.quantize(quantiser, contracts.size());
+
             for (Contract checkedContract : contracts)
-                if (refLink.isMatchingWith(checkedContract, contracts, iteration + 1))
+                if (refLink.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                     rightOperandContract = checkedContract;
 
             if (rightOperandContract == null)

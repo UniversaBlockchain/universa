@@ -18558,6 +18558,16 @@ public class BaseNetworkTest extends TestCase {
 
         c.seal();
 
-        registerAndCheckApproved(c);
+        boolean exc = false;
+        c.getQuantiser().reset(30000);
+        try {
+            c.check();
+        } catch (Quantiser.QuantiserException ex) {
+            exc = true;
+        }
+        assertTrue(exc);
+
+        Parcel parcel = registerWithNewParcel(TransactionPack.unpack(c.getPackedTransaction()));
+        waitAndCheckState(parcel, ItemState.UNDEFINED);
     }
 }

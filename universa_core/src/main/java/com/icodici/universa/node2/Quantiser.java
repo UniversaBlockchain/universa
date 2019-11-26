@@ -39,7 +39,10 @@ public class Quantiser {
             }
     }
 
-
+    public void multipleAddWorkCost(QuantiserProcesses process, int rate) throws QuantiserException {
+        for (int i = 0; i < rate; i++)
+            addWorkCost(process);
+    }
 
     public void addWorkCostFrom(Quantiser quantiser) throws QuantiserException {
         quantaSum_ += quantiser.getQuantaSum();
@@ -80,7 +83,11 @@ public class Quantiser {
         PRICE_SPLITJOIN_PERM,
         PRICE_REVOKE_VERSION,
         PRICE_REGISTER_VERSION,
-        PRICE_CHECK_REFERENCED_VERSION;
+        PRICE_CHECK_REFERENCED_VERSION,
+        PRICE_CHECK_REFERENCE_DEFINED,
+        PRICE_CHECK_REFERENCE_CONDITION,
+        PRICE_CHECK_REFERENCE_CAN_PLAY,
+        PRICE_CHECK_REFERENCE_IN;
 
         /**
          * Return cost of the process.
@@ -109,6 +116,18 @@ public class Quantiser {
 
                 case PRICE_CHECK_REFERENCED_VERSION:
                     return 1;
+
+                case PRICE_CHECK_REFERENCE_DEFINED:
+                    return 1;
+
+                case PRICE_CHECK_REFERENCE_CONDITION:
+                    return 2;
+
+                case PRICE_CHECK_REFERENCE_CAN_PLAY:
+                    return 4;
+
+                case PRICE_CHECK_REFERENCE_IN:
+                    return 4;
             }
             return 0;
         }

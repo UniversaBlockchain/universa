@@ -29,6 +29,7 @@ import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Ut;
+import org.bouncycastle.asn1.bc.ObjectDataSequence;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
@@ -100,6 +101,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return quantiser;
     }
 
+    private void setQuantiser(Quantiser newQuantiser) {
+        quantiser = newQuantiser;
+    }
+
     /**
      * Instance that keep cost of processing contract
      */
@@ -134,9 +139,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public Contract(Binder data, @NonNull TransactionPack pack) throws IOException {
-        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
-
         this.transactionPack = pack;
+
+        this.getQuantiser().reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
+
         isNeedVerifySealedKeys = true;
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new UnicapsuleExpectedException("wrong object type, unicapsule required");
@@ -223,7 +229,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IOException on the various format errors
      */
     public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
-        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
+        this.transactionPack = pack;
+
+        this.getQuantiser().reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
         this.sealedBinary = sealed;
         if (!data.getStringOrThrow("type").equals("unicapsule"))
@@ -360,7 +368,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Create an empty new contract
      */
     public Contract() {
-        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
+        this.getQuantiser().reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
         definition = new Definition();
         state = new State();
@@ -766,18 +774,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // verify signatures of new items
         for (Contract c: newItems) {
-            // Add verification signatures from new item quanta
-            c.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+            c.setQuantiser(getQuantiser());
             c.verifySignatures();
-            quantiser.addWorkCostFrom(c.quantiser);
         }
 
         // verify signatures of revoking items
         for (Contract c: revokingItems) {
-            // Add verification signatures from revoking item quanta
-            c.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+            c.setQuantiser(getQuantiser());
             c.verifySealedKeys(true);
-            quantiser.addWorkCostFrom(c.quantiser);
         }
     }
 
@@ -795,9 +799,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         //clear existing errors before check
         //errors.clear();
 
-        quantiser.reset(quantiser.getQuantaLimit());
-
-        if(prefix.isEmpty()) {
+        if (prefix.isEmpty()) {
+            getQuantiser().reset(getQuantiser().getQuantaLimit());
             verifySignatures();
             Map<HashId, Contract> contractsTree = new HashMap(getTransactionPack().getSubItems());
             contractsTree.putAll(getTransactionPack().getReferencedItems());
@@ -807,30 +810,32 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // Add register a version quanta (for self)
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
+        getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
 
         // quantize revoking items
         for (int i = 0; i < revokingItems.size(); i++) {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
+            getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }
 
         // quantize referenced items
         for (int i = 0; i < getReferences().size(); i++) {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
+            getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
         //After we added cost for all sig checks we must include additional signatures
         //on regular basis so it affect the check in all ways
 
         getTransactionPack().setReferenceContextKeys(getEffectiveKeys());
 
-        checkReferencedItems();
+        if (transactionPack != null)
+            for (Contract ri: transactionPack.getReferencedItems().values())
+                ri.setQuantiser(getQuantiser());
 
+        checkReferencedItems();
 
         try {
             // common check for all cases
             //            errors.clear();
             basicCheck();
-
 
             if (state.origin == null)
                 checkRootContract();
@@ -904,6 +909,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         Collection<Contract> neighbours = neighbourContracts == null ? new HashSet<>() : neighbourContracts.values();
 
+        // quantize references
+        for (final Reference r : getReferences().values())
+            r.quantize(getQuantiser(), neighbours.size());
+
         // check each reference, all must be ok
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
@@ -926,7 +935,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     if ((((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
                             (rm.contract_id != null && rm.contract_id.equals(neighbour.id))) && checkOneReference(rm, neighbour)) ||
                             (rm.getConditions().size() > 0))    // new format of reference with conditions, transactional_id - optional
-                        if (rm.isMatchingWith(neighbour, neighbours)) {
+                        if (rm.isMatchingWithQuantized(neighbour, neighbours, getQuantiser())) {
                             rm.addMatchingItem(neighbour);
                             rm_check = true;
                             break;
@@ -935,7 +944,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             } else if ((rm.type == Reference.TYPE_EXISTING_DEFINITION) || (rm.type == Reference.TYPE_EXISTING_STATE)) {
 
                 for(Contract neighbour : neighbours) {
-                    if(rm.isMatchingWith(neighbour,neighbours)) {
+                    if(rm.isMatchingWithQuantized(neighbour, neighbours, getQuantiser())) {
                         rm.addMatchingItem(neighbour);
                     }
                 }
@@ -1221,7 +1230,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return cost in quantas
      */
     public int getProcessedCost() {
-        return quantiser.getQuantaSum();
+        return getQuantiser().getQuantaSum();
     }
 
     /**
@@ -1230,7 +1239,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return cost in "U"
      */
     public int getProcessedCostU() {
-        return (int) Math.ceil( (double) quantiser.getQuantaSum() / Quantiser.quantaPerU);
+        return (int) Math.ceil( (double) getQuantiser().getQuantaSum() / Quantiser.quantaPerU);
     }
 
     /**
@@ -2849,9 +2858,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             case "tag":
                 return (T) Binder.of("contractForSearchByTag", this);
             case "newItems":
-                return (T) getNewItems().stream().map(c -> ((Contract) c).getId(true)).collect(Collectors.toSet());
             case "revokingItems":
-                return (T) getRevokingItems().stream().map(c -> ((Contract) c).getId(true)).collect(Collectors.toSet());
+                if (sealedBinary == null || apiLevel < 3)
+                    return null;
+
+                byte[] contractBytes = Boss.unpack(sealedBinary).getBinaryOrThrow("data");
+                Binder contractData = Boss.load(contractBytes, null);
+                Set<HashId> hashes = new HashSet<>();
+
+                String key = name.replace("Items", "");
+                for (Object b: contractData.getList(key, Collections.EMPTY_LIST))
+                    hashes.add(HashId.withDigest(((Binder) b).getBinaryOrThrow("composite3")));
+
+                return (T) hashes;
         }
         throw new IllegalArgumentException("bad root: " + originalName);
     }
@@ -3231,9 +3250,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     protected void verifySignatureQuantized(PublicKey key) throws Quantiser.QuantiserException {
         // Add check signature quanta
         if(key.getBitStrength() == 2048) {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_2048_SIG);
+            getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_2048_SIG);
         } else {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
+            getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
         }
     }
 
@@ -3246,11 +3265,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public void checkApplicablePermissionQuantized(Permission permission) throws Quantiser.QuantiserException {
         // Add check an applicable permission quanta
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_APPLICABLE_PERM);
+        getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_APPLICABLE_PERM);
 
         // Add check a splitjoin permission	in addition to the permission check quanta
         if(permission instanceof SplitJoinPermission) {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_SPLITJOIN_PERM);
+            getQuantiser().addWorkCost(Quantiser.QuantiserProcesses.PRICE_SPLITJOIN_PERM);
         }
     }
 
@@ -3258,9 +3277,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     protected void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
-        contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+        contract.setQuantiser(getQuantiser());
         contract.check(prefix);
-        quantiser.addWorkCostFrom(contract.quantiser);
     }
 
 
