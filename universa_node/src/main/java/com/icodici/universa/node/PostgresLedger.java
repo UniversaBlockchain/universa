@@ -2464,8 +2464,17 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    private void clearExpiredNameEntries(PooledDb db) throws SQLException {
+        db.update("DELETE FROM name_entry WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id = name_entry.environment_id) = 0");
+    }
+
     private void clearEmptyEnvironments(PooledDb db) throws SQLException {
-        db.update("DELETE FROM environments WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id=environments.id) = 0");
+        db.update("DELETE FROM environments WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM name_entry WHERE name_entry.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM contract_storage WHERE contract_storage.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM contract_subscription WHERE contract_subscription.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM follower_environments WHERE follower_environments.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM follower_callbacks WHERE follower_callbacks.environment_id = environments.id) = 0");
     }
 
     public void clearExpiredNameRecords(Duration holdDuration) {
@@ -2480,6 +2489,7 @@ public class PostgresLedger implements Ledger {
                 statement.setLong(1, Ut.unixTime(before));
                 statement.closeOnCompletion();
                 statement.executeUpdate();
+                clearExpiredNameEntries(db);
                 clearEmptyEnvironments(db);
             }
         } catch (SQLException se) {

@@ -819,10 +819,8 @@ public class Reference implements BiSerializable {
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
 
-                        } else if (left instanceof Role || left instanceof RoleLink ||
-                                   right instanceof Role || right instanceof RoleLink) { // if role - compare with role, key or address
-                            if ((left instanceof Role || left instanceof RoleLink) &&
-                                (right instanceof Role || right instanceof RoleLink)) {
+                        } else if (left instanceof Role || right instanceof Role) { // if role - compare with role, key or address
+                            if (left instanceof Role && right instanceof Role) {
 
                                 Role leftRole = prepareRoleToComparison(left);
                                 Role rightRole = prepareRoleToComparison(right);
@@ -834,7 +832,7 @@ public class Reference implements BiSerializable {
                             } else {
                                 Role role;
                                 String compareOperand;
-                                if (left instanceof Role || left instanceof RoleLink) {
+                                if (left instanceof Role) {
                                     role = (Role) left;
                                     if (right instanceof String)
                                         compareOperand = (String) right;
@@ -879,7 +877,7 @@ public class Reference implements BiSerializable {
                             String tag = null;
                             if (left instanceof Binder && ((Binder)left).get("contractForSearchByTag") != null) {
                                 if (((Binder)left).get("contractForSearchByTag") instanceof Contract &&
-                                    right == null || right instanceof String) {
+                                    (right == null || right instanceof String)) {
                                     taggedContract = (Contract) ((Binder)left).get("contractForSearchByTag");
 
                                     if (right instanceof String)
@@ -889,7 +887,7 @@ public class Reference implements BiSerializable {
                                 }
                             } else {
                                 if (((Binder)right).get("contractForSearchByTag") instanceof Contract &&
-                                    left == null || left instanceof String) {
+                                    (left == null || left instanceof String)) {
                                     taggedContract = (Contract) ((Binder)right).get("contractForSearchByTag");
 
                                     if (left instanceof String)
@@ -1039,7 +1037,7 @@ public class Reference implements BiSerializable {
                         if (right == null)
                             return false;
 
-                        if (!(right instanceof Role || right instanceof RoleLink))
+                        if (!(right instanceof Role))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
