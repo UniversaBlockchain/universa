@@ -240,12 +240,12 @@ public class Reference implements BiSerializable {
     }
 
     private boolean isObjectMayCastToDouble(Object obj) throws Exception {
-        return obj.getClass().getName().endsWith("Float") || obj.getClass().getName().endsWith("Double");
+        return obj instanceof Float || obj instanceof Double;
     }
 
     private boolean isObjectMayCastToLong(Object obj) throws Exception {
-        return obj.getClass().getName().endsWith("Byte") || obj.getClass().getName().endsWith("Short") ||
-               obj.getClass().getName().endsWith("Integer") || obj.getClass().getName().endsWith("Long");
+        return obj instanceof Byte || obj  instanceof Short ||
+               obj instanceof Integer || obj instanceof Long;
     }
 
     private double objectCastToDouble(Object obj) throws Exception {
@@ -264,13 +264,13 @@ public class Reference implements BiSerializable {
     private long objectCastToLong(Object obj) throws Exception {
         long val;
 
-        if (obj.getClass().getName().endsWith("Byte"))
+        if (obj instanceof Byte)
             val = (byte) obj;
-        else if (obj.getClass().getName().endsWith("Short"))
+        else if (obj instanceof Short)
             val = (short) obj;
-        else if (obj.getClass().getName().endsWith("Integer"))
+        else if (obj instanceof Integer)
             val = (int) obj;
-        else if (obj.getClass().getName().endsWith("Long"))
+        else if (obj instanceof Long)
             val = (long) obj;
         else
             throw new IllegalArgumentException("Expected number operand in condition.");
@@ -284,9 +284,9 @@ public class Reference implements BiSerializable {
         if ((obj == null) && (typeOfOperand == compareOperandType.FIELD))
             throw new IllegalArgumentException("Error getting operand: " + operand);
 
-        if ((obj != null) && obj.getClass().getName().endsWith("ZonedDateTime"))
+        if (obj instanceof ZonedDateTime)
             val = ((ZonedDateTime) obj).toEpochSecond();
-        else if ((obj != null) && obj.getClass().getName().endsWith("String"))
+        else if (obj instanceof String)
             val = ZonedDateTime.parse((String) obj, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))).toEpochSecond();
         else if ((obj != null) && isObjectMayCastToLong(obj))
             val = objectCastToLong(obj);
@@ -306,10 +306,10 @@ public class Reference implements BiSerializable {
         if ((obj == null) && (typeOfOperand == compareOperandType.FIELD))
             throw new IllegalArgumentException("Error getting operand: " + operand);
 
-        if ((obj != null) && obj.getClass().getName().endsWith("BigDecimal"))
+        if (obj instanceof BigDecimal)
             return (BigDecimal) obj;
 
-        if ((obj != null) && obj.getClass().getName().endsWith("String"))
+        if (obj instanceof String)
             val = new BigDecimal((String) obj);
         else if ((obj != null) && isObjectMayCastToLong(obj))
             val = new BigDecimal(objectCastToLong(obj));
@@ -427,7 +427,7 @@ public class Reference implements BiSerializable {
                         (int) objectCastToLong(right), RoundingMode.CEILING);
 
             else if ((leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL) ||
-                left.getClass().getName().endsWith("BigDecimal") || right.getClass().getName().endsWith("BigDecimal")) {
+                left instanceof BigDecimal || right instanceof BigDecimal) {
                 // BigDecimals
                 if (operation == PLUS)
                     result = objectCastToBigDecimal(left, null, compareOperandType.FIELD).add(
@@ -676,7 +676,7 @@ public class Reference implements BiSerializable {
                 }
 
                 typeOfLeftOperand = compareOperandType.FIELD;
-                if (left != null && left.getClass().getName().endsWith("BigDecimal"))
+                if (left instanceof BigDecimal)
                     isBigDecimalConversion = true;
             }
 
@@ -691,7 +691,7 @@ public class Reference implements BiSerializable {
                 }
 
                 typeOfRightOperand = compareOperandType.FIELD;
-                if (right != null && right.getClass().getName().endsWith("BigDecimal"))
+                if (right instanceof BigDecimal)
                     isBigDecimalConversion = true;
             }
 
@@ -716,8 +716,8 @@ public class Reference implements BiSerializable {
                                 ((indxOperator == LESS_OR_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) < 1)) ||
                                 ((indxOperator == MORE_OR_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) > -1)))
                                 ret = true;
-                        } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
-                                  ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
+                        } else if (left instanceof ZonedDateTime ||
+                                  right instanceof ZonedDateTime) {
                             long leftTime = objectCastToTimeSeconds(left, leftOperand, typeOfLeftOperand);
                             long rightTime = objectCastToTimeSeconds(right, rightOperand, typeOfRightOperand);
 
@@ -795,21 +795,21 @@ public class Reference implements BiSerializable {
                                 ((indxOperator == NOT_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) != 0)))
                                 ret = true;
 
-                        } else if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
-                            ((right != null) && right.getClass().getName().endsWith("HashId"))) {
+                        } else if (left instanceof HashId ||
+                            right instanceof HashId) {
                             HashId leftID;
                             HashId rightID;
 
-                            if ((left != null) && left.getClass().getName().endsWith("HashId"))
+                            if (left instanceof HashId)
                                 leftID = (HashId) left;
-                            else if ((left != null) && left.getClass().getName().endsWith("String"))
+                            else if (left instanceof String)
                                 leftID = HashId.withDigest((String) left);
                             else
                                 leftID = HashId.withDigest(leftOperand);
 
-                            if ((right != null) && right.getClass().getName().endsWith("HashId"))
+                            if (right instanceof HashId)
                                 rightID = (HashId) right;
-                            else if ((right != null) && right.getClass().getName().endsWith("String"))
+                            else if (right instanceof String)
                                 rightID = HashId.withDigest((String) right);
                             else
                                 rightID = HashId.withDigest(rightOperand);
@@ -819,10 +819,10 @@ public class Reference implements BiSerializable {
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
 
-                        } else if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) ||
-                                   ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) { // if role - compare with role, key or address
-                            if (((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) &&
-                                ((right != null) && (right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))) {
+                        } else if (left instanceof Role || left instanceof RoleLink ||
+                                   right instanceof Role || right instanceof RoleLink) { // if role - compare with role, key or address
+                            if ((left instanceof Role || left instanceof RoleLink) &&
+                                (right instanceof Role || right instanceof RoleLink)) {
 
                                 Role leftRole = prepareRoleToComparison(left);
                                 Role rightRole = prepareRoleToComparison(right);
@@ -834,15 +834,15 @@ public class Reference implements BiSerializable {
                             } else {
                                 Role role;
                                 String compareOperand;
-                                if ((left != null) && (left.getClass().getName().endsWith("Role") || left.getClass().getName().endsWith("RoleLink"))) {
+                                if (left instanceof Role || left instanceof RoleLink) {
                                     role = (Role) left;
-                                    if ((right != null) && (right.getClass().getName().endsWith("String")))
+                                    if (right instanceof String)
                                         compareOperand = (String) right;
                                     else
                                         compareOperand = rightOperand;
                                 } else {
                                     role = (Role) right;
-                                    if ((left != null) && (left.getClass().getName().endsWith("String")))
+                                    if (left instanceof String)
                                         compareOperand = (String) left;
                                     else
                                         compareOperand = leftOperand;
@@ -857,42 +857,42 @@ public class Reference implements BiSerializable {
                                     ret = !ret;
                             }
 
-                        } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
-                                   ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
+                        } else if (left instanceof ZonedDateTime ||
+                                   right instanceof ZonedDateTime) {
                             long leftTime = objectCastToTimeSeconds(left, leftOperand, typeOfLeftOperand);
                             long rightTime = objectCastToTimeSeconds(right, rightOperand, typeOfRightOperand);
 
                             if (((indxOperator == NOT_EQUAL) && (leftTime != rightTime)) ||
                                 ((indxOperator == EQUAL) && (leftTime == rightTime)))
                                 ret = true;
-                        }  else if ((left != null) && left.getClass().getName().endsWith("Reference") &&
-                                    (right != null) && right.getClass().getName().endsWith("Reference")) {
+                        }  else if (left instanceof Reference &&
+                                    right instanceof Reference) {
 
                             boolean equals = ((Reference) left).equalsIgnoreType((Reference) right);
 
                             ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
 
-                        }  else if (((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) ||
-                                ((right != null) && right.getClass().getName().endsWith("Binder") && ((Binder)right).get("contractForSearchByTag") != null)) {
+                        }  else if ((left instanceof Binder && ((Binder)left).get("contractForSearchByTag") != null) ||
+                                (right instanceof Binder && ((Binder)right).get("contractForSearchByTag") != null)) {
 
                             Contract taggedContract = null;
                             String tag = null;
-                            if ((left != null) && left.getClass().getName().endsWith("Binder") && ((Binder)left).get("contractForSearchByTag") != null) {
-                                if (((Binder)left).get("contractForSearchByTag").getClass().getName().endsWith("Contract") &&
-                                    (right == null || right.getClass().getName().endsWith("String"))) {
+                            if (left instanceof Binder && ((Binder)left).get("contractForSearchByTag") != null) {
+                                if (((Binder)left).get("contractForSearchByTag") instanceof Contract &&
+                                    right == null || right instanceof String) {
                                     taggedContract = (Contract) ((Binder)left).get("contractForSearchByTag");
 
-                                    if (right != null && right.getClass().getName().endsWith("String"))
+                                    if (right instanceof String)
                                         tag = (String) right;
                                     else
                                         tag = rightOperand;
                                 }
                             } else {
-                                if (((Binder)right).get("contractForSearchByTag").getClass().getName().endsWith("Contract") &&
-                                    (left == null || left.getClass().getName().endsWith("String"))) {
+                                if (((Binder)right).get("contractForSearchByTag") instanceof Contract &&
+                                    left == null || left instanceof String) {
                                     taggedContract = (Contract) ((Binder)right).get("contractForSearchByTag");
 
-                                    if (left != null && left.getClass().getName().endsWith("String"))
+                                    if (left instanceof String)
                                         tag = (String) left;
                                     else
                                         tag = leftOperand;
@@ -1012,10 +1012,10 @@ public class Reference implements BiSerializable {
                         // deprecate warning
                         System.out.println("WARNING: Operator 'is_inherit' was deprecated. Use operator 'is_a'.");
                     case IS_A:
-                        if ((left == null) || !left.getClass().getName().endsWith("Reference"))
+                        if ((left == null) || !(left instanceof Reference))
                             throw new IllegalArgumentException("Expected reference in condition in left operand: " + leftOperand);
 
-                        if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+                        if ((right == null) || !(right instanceof Reference))
                             throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
                         ret = ((Reference) left).isInherited((Reference) right, refContract, contracts, iteration + 1, quantiser);
@@ -1025,7 +1025,7 @@ public class Reference implements BiSerializable {
                         // deprecate warning
                         System.out.println("WARNING: Operator 'inherit' was deprecated. Use operator 'inherits'.");
                     case INHERITS:
-                        if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+                        if ((right == null) || !(right instanceof Reference))
                             throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
                         // quantize reference
@@ -1039,7 +1039,7 @@ public class Reference implements BiSerializable {
                         if (right == null)
                             return false;
 
-                        if (!(right.getClass().getName().endsWith("Role") || right.getClass().getName().endsWith("RoleLink")))
+                        if (!(right instanceof Role || right instanceof RoleLink))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
@@ -1649,9 +1649,9 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Expected all_of or any_of conditions");
 
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))
+                if (item instanceof String)
                     parsedList.add(parseCondition((String) item));
-                else if (item.getClass().getName().endsWith("LinkedHashMap")) {
+                else if (item instanceof LinkedHashMap) {
                     LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                     Binder insideBinder = new Binder(insideHashMap);
                     Binder parsed = parseConditions(insideBinder);
@@ -1694,7 +1694,7 @@ public class Reference implements BiSerializable {
 
             result = true;
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))
+                if (item instanceof String)
                     result = result && checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
@@ -1710,7 +1710,7 @@ public class Reference implements BiSerializable {
 
             result = false;
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))
+                if (item instanceof String)
                     result = result || checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
@@ -1884,7 +1884,7 @@ public class Reference implements BiSerializable {
 
         if (condList != null)
             for (Object item: condList)
-                if (item.getClass().getName().endsWith("String")) {
+                if (item instanceof String) {
                     if (isInherited((String) item, ref, refContract, contracts, iteration, quantiser))
                         return true;
                 } else if (isInherited((Binder) item, ref, refContract, contracts, iteration, quantiser))
@@ -1962,7 +1962,7 @@ public class Reference implements BiSerializable {
         if (rightOperandContract != null)
             right = rightOperandContract.get(rightOperand);
 
-        if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+        if ((right == null) || !(right  instanceof Reference))
             throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
         if (((Reference) right).equals(ref))
@@ -2214,12 +2214,12 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Expected all_of or any_of conditions");
 
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))       // already assembled condition
+                if (item instanceof String)       // already assembled condition
                     assembledList.add(item);
                 else {
                     Binder parsed = null;
                     String cond = null;
-                    if (item.getClass().getName().endsWith("LinkedHashMap")) {
+                    if (item instanceof LinkedHashMap) {
                         LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                         Binder insideBinder = new Binder(insideHashMap);
                         parsed = assemblyConditions(insideBinder);
@@ -2318,7 +2318,7 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Expected all_of conditions");
 
             for (Object item: condList)
-                if (item.getClass().getName().endsWith("String"))
+                if (item instanceof String)
                     refs.addAll(getInternalReferencesFromCondition((String) item, iteration));        // not pre-parsed (old) version
                 else
                     refs.addAll(getInternalReferencesFromConditions((Binder) item, iteration));
@@ -2329,7 +2329,7 @@ public class Reference implements BiSerializable {
                 throw new IllegalArgumentException("Expected any_of conditions");
 
             for (Object item: condList)
-                if (item.getClass().getName().endsWith("String"))
+                if (item instanceof String)
                     refs.addAll(getInternalReferencesFromCondition((String) item, iteration));        // not pre-parsed (old) version
                 else
                     refs.addAll(getInternalReferencesFromConditions((Binder) item, iteration));
