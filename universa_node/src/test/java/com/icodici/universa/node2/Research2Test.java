@@ -815,11 +815,12 @@ public class Research2Test {
         //mm.forEach(m -> {m.node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;});
         //mm.get(3).node.verboseLevel = DatagramAdapter.VerboseLevel.BASE;
         System.out.println("\nregister... paymentId="+paidOperation.getPaymentContract().getId() + ", operationId=" + paidOperation.getId());
-        client.registerPaidOperationWithState(paidOperation.pack(), 10000);
+        ItemResult operationResult = client.registerPaidOperationWithState(paidOperation.pack(), 10000);
+        System.out.println("operationResult: " + operationResult);
         //client.registerParcel(testParcel.pack());
 
-        itemResult = client.getState(payment.getId());
-        System.out.println("payment state: " + itemResult);
+        System.out.println("payment state: " + client.getState(payment.getId()));
+        System.out.println("uContract state: " + client.getState(uContract.getId()));
 
         System.out.println("\n === done ===\n\n\n\n\n\n\n\n\n");
         mm.forEach(x -> x.shutdown());

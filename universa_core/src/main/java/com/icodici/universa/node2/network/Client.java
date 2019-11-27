@@ -648,7 +648,8 @@ public class Client {
      * Send the PaidOperation to network and wait for it processing is complete.
      * @param packed {@ling PaidOperation} binary
      * @param millisToWait maximum time to wait
-     * @return TODO: ???
+     * @return payment contract state. If here comes APPROVED - that means what operation was completed successfully.
+     *          If not, payment contract will be in DECLINED state.
      * @throws ClientError
      */
     public ItemResult registerPaidOperationWithState(byte[] packed, long millisToWait) throws ClientError {

@@ -354,6 +354,14 @@ public class Node {
         }
     }
 
+    /**
+     * Start registration processor for {@link PaidOperation}.
+     * Use {@link Node#checkPaidOperationProcessingState(HashId)} for its internal state tracking.
+     * If PaidOperation processing completed with failure, payment contract will be DECLINED,
+     * so you can get final PaidOperation result state by checking payment contract state.
+     * @param paidOperation {@link PaidOperation}
+     * @return true if PaidOperation was launched to processing. Otherwise exception will be thrown.
+     */
     public boolean registerPaidOperation(PaidOperation paidOperation) {
         report(getLabel(), () -> "register PaidOperation(type=" + paidOperation.getOperationType() + "): " +
                 paidOperation.getId(), DatagramAdapter.VerboseLevel.BASE);
@@ -907,11 +915,11 @@ public class Node {
     }
 
     private Object checkPaidItemInternal(@NonNull HashId itemId) {
-        return checkItemInternal(itemId, null, null,false, false, false, true);
+        return checkItemInternal(itemId, null, null,false, false, false, true, true);
     }
 
     private Object checkPaidItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart, boolean forceChecking) {
-        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false, true);
+        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false, true, true);
     }
 
     /**
@@ -931,7 +939,8 @@ public class Node {
      *         the past, in which case result state will be ItemState#DISCARDED.
      */
     private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart,
-                                     boolean forceChecking, boolean ommitItemResult, boolean usedForPaidOperation) {
+                                     boolean forceChecking, boolean ommitItemResult, boolean usedForPaidOperation,
+                                     boolean enablePause) {
         try {
             // first, let's lock to the item id:
             report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId),
@@ -988,7 +997,7 @@ public class Node {
                     report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
                             "nothing found, will create item processor"),
                             DatagramAdapter.VerboseLevel.BASE);
-                    ItemProcessor processor = new ItemProcessor(itemId, parcelId, item, lock, forceChecking, usedForPaidOperation);
+                    ItemProcessor processor = new ItemProcessor(itemId, parcelId, item, lock, forceChecking, usedForPaidOperation, enablePause);
                     processors.put(itemId, processor);
                     return processor;
                 } else {
@@ -1011,7 +1020,7 @@ public class Node {
 
     private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item,
                                      boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
-        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, ommitItemResult, false);
+        return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, ommitItemResult, false, false);
     }
 
     protected Object checkParcelInternal(@NonNull HashId parcelId) {
@@ -1509,18 +1518,14 @@ public class Node {
                             paymentProcessor.vote(ni, paymentDelayedVotes.get(ni));
                         paymentDelayedVotes.clear();
 
-                        processingState = ParcelProcessingState.PAYMENT_POLLING;
-                        if(!paymentProcessor.isDone()) {
-                            paymentProcessor.doneEvent.await();
-                        }
-                        paymentResult = paymentProcessor.getResult();
+                        paymentProcessor.pauseEvent.await();
                     }
 
                     report(getLabel(), () -> "PaidOperationProcessor for: " +
-                            operationId + " :: payment checked, state " + paymentResult.state + ", processingState " + processingState,
+                            operationId + " :: payment checked, state " + paymentProcessor.getResult().state + ", processingState " + processingState,
                             DatagramAdapter.VerboseLevel.BASE);
                     // if payment is ok, wait payload
-                    if (paymentResult.state.isApproved()) {
+                    if (paymentProcessor.getResult().state.isApproved()) {
                         if(!paidOperation.getPaymentContract().isLimitedForTestnet())
                             ledger.savePayment(paidOperation.getQuantaLimit()/Quantiser.quantaPerU, paymentProcessor != null ?
                                     paymentProcessor.record.getCreatedAt() :
@@ -1539,10 +1544,12 @@ public class Node {
                         operationProcessor = createAbstractProcessorForType(paidOperation.getOperationType(), ()->{
                             // onSuccess
                             isSuccess.set(true);
+                            paymentProcessor.resume(false);
                             completeEvent.fire();
                         }, (errorText)->{
                             // onError
                             isSuccess.set(false);
+                            paymentProcessor.resume(true);
                             completeEvent.fire();
                         });
                         if (operationProcessor != null) {
@@ -1557,6 +1564,13 @@ public class Node {
                                     " :: unknown operationType ("+paidOperation.getOperationType()+"), rolling back, state " +
                                     processingState, DatagramAdapter.VerboseLevel.BASE);
                         }
+
+                        // wait for resumed payment
+                        processingState = ParcelProcessingState.PAYMENT_POLLING;
+                        if(!paymentProcessor.isDone()) {
+                            paymentProcessor.doneEvent.await();
+                        }
+                        paymentResult = paymentProcessor.getResult();
 
                         // finish
                         processingState = ParcelProcessingState.FINISHED;
@@ -2349,6 +2363,8 @@ public class Node {
         private RunnableWithDynamicPeriod consensusReceivedChecker;
 
         private boolean usedForPaidOperation;
+        private AsyncEvent<Void> pauseEvent = null;
+        private AsyncEvent<Boolean> resumeEvent = null;
 
         /**
          * Processor for item that will be processed from check to poll and other processes.
@@ -2399,12 +2415,18 @@ public class Node {
          * @param isCheckingForce if true checking item processing without delays.
          *                        If false checking item wait until forceChecking() will be called.
          * @param usedForPaidOperation if true, it would use PaidOperation' notifications, else - Parcel' notifications
+         * @param enablePause if true, processor would stop before committing approved state (continues on resume())
          */
-        public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce, boolean usedForPaidOperation) {
+        public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce, boolean usedForPaidOperation, boolean enablePause) {
 
 
             mutex = lock;
             this.isCheckingForce = isCheckingForce;
+
+            if (enablePause) {
+                pauseEvent = new AsyncEvent<>();
+                resumeEvent = new AsyncEvent<>();
+            }
 
             this.usedForPaidOperation = usedForPaidOperation;
 
@@ -2443,6 +2465,11 @@ public class Node {
                 executorService.submit(() -> itemDownloaded(),
                         Node.this.toString() + toString() + " :: ItemProcessor -> itemDownloaded");
             }
+        }
+
+        public void resume(boolean rollbackRequired) {
+            if (resumeEvent != null)
+                resumeEvent.fire(rollbackRequired);
         }
 
         //////////// download section /////////////
@@ -3237,6 +3264,19 @@ public class Node {
         }
 
         private void downloadAndCommit() {
+            if (resumeEvent != null) {
+                boolean rollbackRequired;
+                try {
+                    pauseEvent.fire();
+                    rollbackRequired = resumeEvent.await();
+                } catch (InterruptedException e) {
+                    rollbackRequired = false;
+                }
+                if (rollbackRequired) {
+                    rollbackChanges(ItemState.DECLINED);
+                    return;
+                }
+            }
             if(processingState.canContinue()) {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
@@ -3794,6 +3834,8 @@ public class Node {
             downloadedEvent.fire();
             pollingReadyEvent.fire();
             doneEvent.fire();
+            if (pauseEvent != null)
+                pauseEvent.fire();
 
             if(processingState.canContinue()) {
                 checkIfAllReceivedConsensus();
