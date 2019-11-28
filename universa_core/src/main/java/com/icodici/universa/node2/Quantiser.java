@@ -9,11 +9,8 @@ public class Quantiser {
     private boolean isCalculationFinished_ = false;
     public static int quantaPerU = Config.quantiser_quantaPerU;
 
-
     public Quantiser() {
     }
-
-
 
     public void reset(int newLimit) {
         quantaSum_ = 0;
@@ -21,13 +18,9 @@ public class Quantiser {
         isCalculationFinished_ = false;
     }
 
-
-
     public void resetNoLimit() {
         reset(-1);
     }
-
-
 
     public void addWorkCost(QuantiserProcesses process) throws QuantiserException {
         quantaSum_ += process.getCost();
@@ -54,26 +47,17 @@ public class Quantiser {
             }
     }
 
-
-
     public int getQuantaSum() {
         return quantaSum_;
     }
-
-
 
     public int getQuantaLimit() {
         return quantaLimit_;
     }
 
-
-
     public boolean isCalculationFinished() {return isCalculationFinished_;}
 
-
-
     public void finishCalculation() {isCalculationFinished_ = true;}
-
 
     public enum QuantiserProcesses {
 

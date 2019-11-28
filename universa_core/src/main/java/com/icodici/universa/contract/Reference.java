@@ -520,7 +520,9 @@ public class Reference implements BiSerializable {
      * @param indxOperator index operator in array of operators
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
+     * @param quantiser quantizer cost of the contract
      * @return true if match or false
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     private boolean compareOperands(Contract refContract,
                                    String leftOperand,
@@ -1575,11 +1577,14 @@ public class Reference implements BiSerializable {
 
     /**
      * Check condition of reference
+     *
      * @param condition condition to check for matching
      * @param ref contract to check for matching
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
+     * @param quantiser quantizer cost of the contract
      * @return true if match or false
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     private boolean checkCondition(Binder condition, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
@@ -1610,11 +1615,14 @@ public class Reference implements BiSerializable {
 
     /**
      * Check not pre-parsed condition of reference (old version)
+     *
      * @param condition condition to check for matching
      * @param ref contract to check for matching
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
+     * @param quantiser quantizer cost of the contract
      * @return true if match or false
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     private boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
@@ -1624,6 +1632,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Pre-parsing conditions of reference
+     *
      * @param conds is binder of not-parsed (string) conditions
      * @return result {@link Binder} with parsed conditions
      */
@@ -1671,11 +1680,14 @@ public class Reference implements BiSerializable {
 
     /**
      * Check conditions of references
+     *
      * @param conditions binder with conditions to check for matching
      * @param ref contract to check for matching
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
+     * @param quantiser quantizer cost of the contract
      * @return true if match or false
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     private boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
@@ -1779,12 +1791,21 @@ public class Reference implements BiSerializable {
             throw new IllegalArgumentException("Expected all_of or any_of");
     }
 
+    /**
+     * Method quantizes all the conditions of the reference, i.e. determines the cost of processing all
+     * the conditions of the reference
+     *
+     * @param quantiser quantizer cost of the contract
+     * @param neighboursCount the number of contracts that are checked for compliance with the reference
+     * @throws Quantiser.QuantiserException if processing cost limit is got
+     */
     public void quantize(Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
         quantizeConditions(conditions, quantiser, neighboursCount);
     }
 
     /**
      * Check if reference is valid i.e. have matching with criteria items
+     *
      * @return true or false
      */
     public boolean isValid() {
@@ -1793,6 +1814,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Check if given item matching with current reference criteria
+     *
      * @param a item to check for matching
      * @param contracts contract list to check for matching
      * @return true if match or false
@@ -1806,16 +1828,28 @@ public class Reference implements BiSerializable {
         }
     }
 
+    /**
+     * Check if given item matching with current reference criteria
+     *
+     * @param a item to check for matching
+     * @param contracts contract list to check for matching
+     * @param quantiser quantizer cost of the contract
+     * @return true if match
+     * @throws Quantiser.QuantiserException if processing cost limit is got
+     */
     public boolean isMatchingWithQuantized(Approvable a, Collection<Contract> contracts, Quantiser quantiser) throws Quantiser.QuantiserException {
         return isMatchingWithQuantized(a, contracts, 0, quantiser);
     }
 
     /**
      * Check if given item matching with current reference criteria
+     *
      * @param a item to check for matching
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
+     * @param quantiser quantizer cost of the contract
      * @return true if match or false
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     private boolean isMatchingWithQuantized(Approvable a, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
         //todo: add this checking for matching with given item
@@ -1971,6 +2005,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Get the name from the reference
+     *
      * @return name reference
      */
     public String getName() {
@@ -1979,6 +2014,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Set the name for the reference
+     *
      * @return this reference
      */
     public Reference setName(String name) {
@@ -2009,6 +2045,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Get the list of roles from the reference
+     *
      * @return roles from reference
      */
     public List<String> getRoles() {
@@ -2017,6 +2054,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Add the roles for the reference
+     *
      * @return this reference
      */
     public Reference addRole(String role) {
@@ -2026,6 +2064,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Set the list of roles for the reference
+     *
      * @return this reference
      */
     public Reference setRoles(List<String> roles) {
@@ -2035,6 +2074,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Get the list of fields from the reference
+     *
      * @return list of fields reference
      */
     public List<String> getFields() {
@@ -2043,6 +2083,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Add the field for the reference
+     *
      * @return this reference
      */
     public Reference addField(String field) {
@@ -2052,6 +2093,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Set the list of fields for the reference
+     *
      * @return this reference
      */
     public Reference setFields(List<String> fields) {
@@ -2061,6 +2103,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Assembly expression of reference condition
+     *
      * @param expression is binder of parsed expression
      * @return result {@link String} with assembled expression
      */
@@ -2129,6 +2172,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Assembly condition of reference
+     *
      * @param condition is binder of parsed condition
      * @return result {@link String} with assembled condition
      */
@@ -2192,6 +2236,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Assembly conditions of reference
+     *
      * @param conds is binder of parsed conditions
      * @return result {@link Binder} with assembled (string) conditions
      */
@@ -2243,6 +2288,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Get the conditions from the reference
+     *
      * @return conditions reference
      */
     public Binder getConditions() {
@@ -2251,6 +2297,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Export the conditions from the reference as strings
+     *
      * @return strings conditions reference
      */
     public Binder exportConditions() {
@@ -2259,6 +2306,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Set the conditions from the reference
+     *
      * @return this reference
      */
     public Reference setConditions(Binder conditions) {
@@ -2269,6 +2317,7 @@ public class Reference implements BiSerializable {
     //TODO: The method allows to mark the contract as matching reference, bypassing the validation
     /**
      * Add the matching item for the reference
+     *
      * @return this reference
      */
     public Reference addMatchingItem(Approvable a) {
@@ -2278,6 +2327,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Get the base contract in which the reference is located
+     *
      * @return base contract
      */
     public Contract getContract() {
@@ -2286,6 +2336,7 @@ public class Reference implements BiSerializable {
 
     /**
      * Set the base contract from the reference
+     *
      * @return this reference
      */
     public Reference setContract(Contract contract) {
