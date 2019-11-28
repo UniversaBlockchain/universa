@@ -205,31 +205,31 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                 nameCache.unlockNameList(nameList);
                 nameCache.unlockOriginList(originsList);
 
-                immutable.subscriptionsSet.removeAll(subscriptionsToDestroy);
-                immutable.subscriptionsSet.addAll(subscriptionsToAdd);
-
-                immutable.storagesSet.removeAll(storagesToDestroy);
-                immutable.storagesSet.addAll(storagesToAdd);
-
-                immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
-                immutable.nameRecordsSet.addAll(nameRecordsToAdd);
-
-                immutable.nameRecordEntriesSet.removeAll(nameRecordEntriesToDestroy);
-                immutable.nameRecordEntriesSet.addAll(nameRecordEntriesToAdd);
-
-                immutable.kvStore.clear();
-                for (String key : kvStore.keySet()) {
-                    immutable.kvStore.set(key, kvStore.get(key));
-                }
-
-                if (followerService != null)
-                    followerService.save();
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
             return null;
         });
+
+        immutable.subscriptionsSet.removeAll(subscriptionsToDestroy);
+        immutable.subscriptionsSet.addAll(subscriptionsToAdd);
+
+        immutable.storagesSet.removeAll(storagesToDestroy);
+        immutable.storagesSet.addAll(storagesToAdd);
+
+        immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
+        immutable.nameRecordsSet.addAll(nameRecordsToAdd);
+
+        immutable.nameRecordEntriesSet.removeAll(nameRecordEntriesToDestroy);
+        immutable.nameRecordEntriesSet.addAll(nameRecordEntriesToAdd);
+
+        immutable.kvStore.clear();
+        for (String key : kvStore.keySet()) {
+            immutable.kvStore.set(key, kvStore.get(key));
+        }
+
+        if (followerService != null)
+            followerService.save();
 
         ledger.clearExpiredStorageContractBinaries();
     }
