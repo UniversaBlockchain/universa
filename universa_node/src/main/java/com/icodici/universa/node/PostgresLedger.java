@@ -1502,23 +1502,29 @@ public class PostgresLedger implements Ledger {
         if (conflicts.size() == 0) {
             NSmartContract nsc = environment.getContract();
             removeEnvironment(nsc.getId());
-            long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
 
-            for (NameRecord nr : environment.nameRecords()) {
-                NNameRecord nnr = (NNameRecord)nr;
-                nnr.setEnvironmentId(envId);
-                addNameRecord(nnr);
-            }
+            transaction(() -> {
+                long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
 
-            for (ContractSubscription css : environment.subscriptions())
-                saveSubscriptionInStorage(css.getHashId(), css.isChainSubscription(), css.expiresAt(), envId);
+                for (NameRecord nr : environment.nameRecords()) {
+                    NNameRecord nnr = (NNameRecord)nr;
+                    nnr.setEnvironmentId(envId);
+                    addNameRecord(nnr);
+                }
 
-            for (ContractStorage cst : environment.storages())
-                saveContractInStorage(cst.getContract().getId(), cst.getPackedContract(), cst.expiresAt(), cst.getContract().getOrigin(), envId);
+                for (ContractSubscription css : environment.subscriptions())
+                    saveSubscriptionInStorage(css.getHashId(), css.isChainSubscription(), css.expiresAt(), envId);
 
-            FollowerService fs = environment.getFollowerService();
-            if (fs != null)
-                saveFollowerEnvironment(envId, fs.expiresAt(), fs.mutedAt(), fs.getCallbacksSpent(), fs.getStartedCallbacks());
+                for (ContractStorage cst : environment.storages())
+                    saveContractInStorage(cst.getContract().getId(), cst.getPackedContract(), cst.expiresAt(), cst.getContract().getOrigin(), envId);
+
+                FollowerService fs = environment.getFollowerService();
+                if (fs != null)
+                    saveFollowerEnvironment(envId, fs.expiresAt(), fs.mutedAt(), fs.getCallbacksSpent(), fs.getStartedCallbacks());
+
+                return null;
+            });
+
         }
         return conflicts;
     }
