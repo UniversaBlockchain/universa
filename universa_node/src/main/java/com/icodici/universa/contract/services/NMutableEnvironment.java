@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.Ledger;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -144,90 +145,93 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     public void save() {
-
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());
 
-        subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
+        ledger.transaction(() -> {
+            try {
+                subscriptionsToSave.forEach(sub-> ledger.updateSubscriptionInStorage(sub.getId(), sub.expiresAt()));
 
-        subscriptionsToSave.forEach(sub-> ledger.updateSubscriptionInStorage(sub.getId(), sub.expiresAt()));
+                subscriptionsToAdd.forEach(sub -> {
+                        long subId = ledger.saveSubscriptionInStorage(sub.getHashId(), sub.isChainSubscription(), sub.expiresAt(), getId());
+                        sub.setId(subId);
+                    }
+                );
 
-        subscriptionsToAdd.forEach(sub -> {
-                    long subId = ledger.saveSubscriptionInStorage(sub.getHashId(), sub.isChainSubscription(), sub.expiresAt(), getId());
-                    sub.setId(subId);
+                subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));
+
+                storagesToSave.forEach(storage-> ledger.updateStorageExpiresAt(storage.getId(), storage.expiresAt()));
+
+                storagesToAdd.forEach(storage -> {
+                        long storageId = ledger.saveContractInStorage(storage.getContract().getId(), storage.getPackedContract(),
+                                storage.expiresAt(), storage.getContract().getOrigin(), getId());
+                        storage.setId(storageId);
+                    }
+                );
+
+                storagesToDestroy.forEach(storage -> ledger.removeEnvironmentStorage(storage.getId()));
+
+                List<String> addressList = new LinkedList<>();
+                List<String> nameList = new LinkedList<>();
+                List<HashId> originsList = new LinkedList<>();
+
+                nameRecordEntriesToAdd.forEach( nre -> {
+                    ledger.addNameRecordEntry(nre);
+                    if(nre.getOrigin() != null) {
+                        originsList.add(nre.getOrigin());
+                    }
+
+                    if(nre.getLongAddress() != null) {
+                        addressList.add(nre.getLongAddress());
+                    }
+
+                    if(nre.getShortAddress() != null) {
+                        addressList.add(nre.getShortAddress());
+                    }
+                });
+
+                nameRecordsToSave.forEach(nameRecord -> {
+                    ledger.updateNameRecord(nameRecord.getId(),nameRecord.expiresAt());
+                    nameList.add(nameRecord.getNameReduced());
+                });
+                nameRecordsToAdd.forEach(nameRecord -> {
+                    ledger.addNameRecord(nameRecord);
+                    nameList.add(nameRecord.getNameReduced());
+                });
+
+                nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord));
+                nameRecordEntriesToDestroy.forEach(nameRecordEntry -> ledger.removeNameRecordEntry(nameRecordEntry));
+
+                nameCache.unlockAddressList(addressList);
+                nameCache.unlockNameList(nameList);
+                nameCache.unlockOriginList(originsList);
+
+                immutable.subscriptionsSet.removeAll(subscriptionsToDestroy);
+                immutable.subscriptionsSet.addAll(subscriptionsToAdd);
+
+                immutable.storagesSet.removeAll(storagesToDestroy);
+                immutable.storagesSet.addAll(storagesToAdd);
+
+                immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
+                immutable.nameRecordsSet.addAll(nameRecordsToAdd);
+
+                immutable.nameRecordEntriesSet.removeAll(nameRecordEntriesToDestroy);
+                immutable.nameRecordEntriesSet.addAll(nameRecordEntriesToAdd);
+
+                immutable.kvStore.clear();
+                for (String key : kvStore.keySet()) {
+                    immutable.kvStore.set(key, kvStore.get(key));
                 }
-        );
 
-        storagesToDestroy.forEach(storage -> ledger.removeEnvironmentStorage(storage.getId()));
+                if (followerService != null)
+                    followerService.save();
 
-        storagesToSave.forEach(storage-> ledger.updateStorageExpiresAt(storage.getId(), storage.expiresAt()));
-
-        storagesToAdd.forEach(storage -> {
-                    long storageId = ledger.saveContractInStorage(storage.getContract().getId(), storage.getPackedContract(),
-                            storage.expiresAt(), storage.getContract().getOrigin(), getId());
-                    storage.setId(storageId);
-                }
-        );
-
-        nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord));
-        nameRecordEntriesToDestroy.forEach(nameRecordEntry -> ledger.removeNameRecordEntry(nameRecordEntry));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        });
 
         ledger.clearExpiredStorageContractBinaries();
-
-        List<String> addressList = new LinkedList<>();
-        List<String> nameList = new LinkedList<>();
-        List<HashId> originsList = new LinkedList<>();
-
-
-        nameRecordEntriesToAdd.forEach( nre -> {
-            ledger.addNameRecordEntry(nre);
-            if(nre.getOrigin() != null) {
-                originsList.add(nre.getOrigin());
-            }
-
-            if(nre.getLongAddress() != null) {
-                addressList.add(nre.getLongAddress());
-            }
-
-            if(nre.getShortAddress() != null) {
-                addressList.add(nre.getShortAddress());
-            }
-
-        });
-
-        nameRecordsToSave.forEach(nameRecord -> {
-            ledger.updateNameRecord(nameRecord.getId(),nameRecord.expiresAt());
-            nameList.add(nameRecord.getNameReduced());
-        });
-        nameRecordsToAdd.forEach(nameRecord -> {
-            ledger.addNameRecord(nameRecord);
-            nameList.add(nameRecord.getNameReduced());
-        });
-
-
-        nameCache.unlockAddressList(addressList);
-        nameCache.unlockNameList(nameList);
-        nameCache.unlockOriginList(originsList);
-
-        immutable.subscriptionsSet.removeAll(subscriptionsToDestroy);
-        immutable.subscriptionsSet.addAll(subscriptionsToAdd);
-
-        immutable.storagesSet.removeAll(storagesToDestroy);
-        immutable.storagesSet.addAll(storagesToAdd);
-
-        immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
-        immutable.nameRecordsSet.addAll(nameRecordsToAdd);
-
-        immutable.nameRecordEntriesSet.removeAll(nameRecordEntriesToDestroy);
-        immutable.nameRecordEntriesSet.addAll(nameRecordEntriesToAdd);
-
-
-        immutable.kvStore.clear();
-        for (String key : kvStore.keySet()) {
-            immutable.kvStore.set(key, kvStore.get(key));
-        }
-
-        if (followerService != null)
-            followerService.save();
     }
 
     public Binder getKVStore() {
