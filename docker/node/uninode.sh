@@ -1,2 +1,2 @@
 #!/bin/sh
-java -jar /deploy/build-core/libs/uninode-all.jar "$@"
+java -jar /deploy/build-node/libs/uninode-all.jar "$@"
