@@ -36,7 +36,6 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-1:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 1
     networks:
@@ -61,7 +60,6 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-2:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 2
     networks:
@@ -86,7 +84,6 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-3:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 3
     networks:
@@ -111,7 +108,6 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-4:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 4
     networks:
