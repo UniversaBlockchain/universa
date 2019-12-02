@@ -6,6 +6,6 @@ http_server_port: 2082
 udp_server_port: 2700
 node_number: 2
 public_host: localhost
-node_name: node-2-local.utoken.io
+node_name: node-2-local
 ip:
 - 10.6.0.12

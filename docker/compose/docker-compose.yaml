@@ -15,10 +15,11 @@ services:
     volumes:
      - ./init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
     networks:
-      main:
+      universa_4nodes:
         aliases:
           - db
         ipv4_address: 10.6.0.10
+        ipv6_address: fdf0:e132:efcf:2fae::10
   node-1-local:
     image: universa/node:latest
     command: --config /deploy/
@@ -39,10 +40,11 @@ services:
     environment:
       NODE_INDEX: 1
     networks:
-      main:
+      universa_4nodes:
         aliases:
-          - node-1-local.utoken.io
+          - node-1-local
         ipv4_address: 10.6.0.11
+        ipv6_address: fdf0:e132:efcf:2fae::11
   node-2-local:
     image: universa/node:latest
     command: --config /deploy/
@@ -63,10 +65,11 @@ services:
     environment:
       NODE_INDEX: 2
     networks:
-      main:
+      universa_4nodes:
         aliases:
-          - node-2-local.utoken.io
+          - node-2-local
         ipv4_address: 10.6.0.12
+        ipv6_address: fdf0:e132:efcf:2fae::12
   node-3-local:
     image: universa/node:latest
     command: --config /deploy/
@@ -87,10 +90,11 @@ services:
     environment:
       NODE_INDEX: 3
     networks:
-      main:
+      universa_4nodes:
         aliases:
-          - node-3-local.utoken.io
+          - node-3-local
         ipv4_address: 10.6.0.13
+        ipv6_address: fdf0:e132:efcf:2fae::13
   node-4-local:
     image: universa/node:latest
     command: --config /deploy/
@@ -111,15 +115,21 @@ services:
     environment:
       NODE_INDEX: 4
     networks:
-      main:
+      universa_4nodes:
         aliases:
-          - node-4-local.utoken.io
+          - node-4-local
         ipv4_address: 10.6.0.14
-      
+        ipv6_address: fdf0:e132:efcf:2fae::14
+
 networks:
-  main:
+  universa_4nodes:
     driver: bridge
+    enable_ipv6: true
     ipam:
-     config:
-       - subnet: 10.6.0.0/16
-         gateway: 10.6.0.1
+      config:
+        - subnet:  10.6.0.0/16
+          gateway: 10.6.0.1
+        # Generated using https://simpledns.com/private-ipv6
+        - subnet:  fdf0:e132:efcf:2fae::/64
+          gateway: fdf0:e132:efcf:2fae::1
+        # IPs:     fdf0:e132:efcf:2fae:xxxx:xxxx:xxxx:xxxx
