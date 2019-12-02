@@ -9,3 +9,4 @@ public_host: localhost
 node_name: node-3-local
 ip:
 - 10.6.0.13
+# fdf0:e132:efcf:2fae::13
