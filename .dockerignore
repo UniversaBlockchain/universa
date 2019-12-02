@@ -1,0 +1,11 @@
+.git
+.DS_Store
+.gitignore
+.gradle
+.idea
+README.md
+build
+out
+*-nogit
+.class
+.jar
