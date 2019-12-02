@@ -4,20 +4,28 @@ This is the Universa network codebase (Java core), containing the node, the cons
 
 The latest documentation on Universa is available in Universa Knowledge Base at [kb.universablockchain.com](https://kb.universablockchain.com). For a visual guide on the documentation topics, visit the Universa Development Map at [lnd.im/UniversaDevelopmentMap](https://lnd.im/UniversaDevelopmentMap).
 
+
+## Docker image
+
+If you are looking for the information on Universa Docker images, please consult the [kb.universablockchain.com/universa_docker_images/92](https://kb.universablockchain.com/universa_docker_images/92) Knowledge Base page.
+
+
 ## Build Dependencies
 
 To build, you need to have the following installed:
 
-- [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) (not tested with JDK 9 or newer).
+- [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or newer (being tested with OpenJDK 11).
 - [Gradle](https://gradle.org/install).
 
-To access the Github repository, you may need some git client. The further examples assume you are using the command-line `git` client. To properly clone it from Github, you may need to create an SSH key pair, to register on [Github site](https://github.com) and to [add your SSH public key](https://github.com/settings/keys) on Github.
+To access the Github repository, you may need some Git client. The further examples assume you are using the command-line `git` client. To properly clone it from Github, you may need to create an SSH key pair, to register on [Github site](https://github.com) and to [add your SSH public key](https://github.com/settings/keys) on Github.
 
 ### Build Dependencies: Debian/Ubuntu Linux
 
 (Tested with Ubuntu 16.04 LTS, Debian Linux 9.3).
 
 To build Universa, you need to setup Java (JDK) and Gradle (the Java build tool used in Universa).
+
+Note: alternately, you may set up OpenJDK 11 using the standard packages for your Linux distribution. This is not covered here as usually it is much easier.
 
 #### Setup Java: webupd8 approach (suggested)
 

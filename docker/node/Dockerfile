@@ -1,3 +1,7 @@
+# To build:
+#   docker build --tag universa/node:latest --compress -f docker/node/Dockerfile .
+#   docker push universa/node
+
 #
 # Multi-stage build
 #
@@ -23,8 +27,8 @@ RUN echo \
 FROM openjdk:11-jre-slim-buster as universa
 COPY --from=build_universa /deploy/build-client /deploy/build-client
 COPY --from=build_universa /deploy/build-node /deploy/build-node
-#COPY /docker/node/uninode.sh /deploy/uninode
-#COPY /docker/node/uniclient.sh /deploy/uniclient
+RUN echo \
+    && mkdir -p /deploy/config/contracts
 
 EXPOSE 2052
 EXPOSE 2082
