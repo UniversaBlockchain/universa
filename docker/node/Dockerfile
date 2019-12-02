@@ -25,8 +25,8 @@ RUN echo \
 # Copy only the needed files.
 
 FROM openjdk:11-jre-slim-buster as universa
-COPY --from=build_universa /deploy/build-client /deploy/build-client
-COPY --from=build_universa /deploy/build-node /deploy/build-node
+COPY --from=build_universa /deploy/build-client/libs/uniclient.jar /deploy/build-client/libs/uniclient.jar
+COPY --from=build_universa /deploy/build-node/libs/uninode-all.jar /deploy/build-node/libs/uninode-all.jar
 RUN echo \
     && mkdir -p /deploy/config/contracts
 
