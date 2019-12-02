@@ -1,12 +1,15 @@
 ---
-http_client_port: 2052
+http_client_port: 2055
+public_http_port: 2055
 http_client_listen:
-- 127.0.0.1
-http_server_port: 2082
-udp_server_port: 2700
+- 0.0.0.0
+http_server_port: 2085
+udp_server_port: 2703
 database: jdbc:postgresql://db:5432/node4db?user=node4user&password=uniPass
 node_number: 4
-public_host: node-4-local
+public_host: 127.0.0.1
 node_name: node-4-local
 ip:
-- 10.6.0.14
+- 127.0.0.1
+ipv6:
+- fdf0:e132:efcf:2fae::14

@@ -1,12 +1,14 @@
 ---
 http_client_port: 2052
+public_http_port: 2052
 http_client_listen:
 - 0.0.0.0
 http_server_port: 2082
 udp_server_port: 2700
 node_number: 1
-public_host: localhost
+public_host: 127.0.0.1
 node_name: node-1-local
 ip:
-- 10.6.0.11
-# fdf0:e132:efcf:2fae::11
+- 127.0.0.1
+ipv6:
+- fdf0:e132:efcf:2fae::11

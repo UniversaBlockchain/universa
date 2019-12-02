@@ -34,6 +34,7 @@ services:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-1/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-1:/deploy/tmp
@@ -51,14 +52,15 @@ services:
     links:
      - db
     ports:
-      - 2053:2052
-      - 2083:2082
-      - 2701:2700
+      - 2053:2053
+      - 2083:2083
+      - 2701:2701
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-2/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-2:/deploy/tmp
@@ -76,14 +78,15 @@ services:
     links:
      - db
     ports:
-      - 2054:2052
-      - 2084:2082
-      - 2702:2700
+      - 2054:2054
+      - 2084:2084
+      - 2702:2702
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-3/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-3:/deploy/tmp
@@ -101,14 +104,15 @@ services:
     links:
      - db
     ports:
-      - 2055:2052
-      - 2085:2082
-      - 2703:2700
+      - 2055:2055
+      - 2085:2085
+      - 2703:2703
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-4/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-4:/deploy/tmp
