@@ -15,7 +15,7 @@ services:
     volumes:
      - ./init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
     networks:
-      universa_4nodes:
+      net_4nodes:
         aliases:
           - db
         ipv4_address: 10.6.0.10
@@ -41,7 +41,7 @@ services:
     environment:
       NODE_INDEX: 1
     networks:
-      universa_4nodes:
+      net_4nodes:
         aliases:
           - node-1-local
         ipv4_address: 10.6.0.11
@@ -67,7 +67,7 @@ services:
     environment:
       NODE_INDEX: 2
     networks:
-      universa_4nodes:
+      net_4nodes:
         aliases:
           - node-2-local
         ipv4_address: 10.6.0.12
@@ -93,7 +93,7 @@ services:
     environment:
       NODE_INDEX: 3
     networks:
-      universa_4nodes:
+      net_4nodes:
         aliases:
           - node-3-local
         ipv4_address: 10.6.0.13
@@ -119,14 +119,14 @@ services:
     environment:
       NODE_INDEX: 4
     networks:
-      universa_4nodes:
+      net_4nodes:
         aliases:
           - node-4-local
         ipv4_address: 10.6.0.14
         ipv6_address: fdf0:e132:efcf:2fae::14
 
 networks:
-  universa_4nodes:
+  net_4nodes:
     driver: bridge
     enable_ipv6: true
     ipam:
