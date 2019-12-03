@@ -481,8 +481,8 @@ public class Reference implements BiSerializable {
         return result;
     }
 
-    private Role prepareRoleToComparison(Object item) {
-        if (item instanceof RoleLink &&
+    private Role prepareRoleToComparison(Object item, boolean doResolve) {
+        if (item instanceof RoleLink && doResolve &&
                 ((RoleLink) item).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
                 ((RoleLink) item).getReferences(Role.RequiredMode.ANY_OF).isEmpty())
             return ((RoleLink) item).resolve();
@@ -824,12 +824,20 @@ public class Reference implements BiSerializable {
                         } else if (left instanceof Role || right instanceof Role) { // if role - compare with role, key or address
                             if (left instanceof Role && right instanceof Role) {
 
-                                Role leftRole = prepareRoleToComparison(left);
-                                Role rightRole = prepareRoleToComparison(right);
+                                Role leftRole = prepareRoleToComparison(left, false);
+                                Role rightRole = prepareRoleToComparison(right, false);
 
-                                if (((indxOperator == NOT_EQUAL) && !leftRole.equalsIgnoreName(rightRole)) ||
-                                    ((indxOperator == EQUAL) && leftRole.equalsIgnoreName(rightRole)))
-                                    ret = true;
+                                ret = leftRole.equalsIgnoreName(rightRole);
+
+                                if (!ret && (leftRole instanceof RoleLink || rightRole instanceof RoleLink)) {
+                                    if (leftRole instanceof RoleLink)
+                                        leftRole = prepareRoleToComparison(left, true);
+
+                                    if (rightRole instanceof RoleLink)
+                                        rightRole = prepareRoleToComparison(right, true);
+
+                                    ret = leftRole.equalsIgnoreName(rightRole);
+                                }
 
                             } else {
                                 Role role;
@@ -848,14 +856,19 @@ public class Reference implements BiSerializable {
                                         compareOperand = leftOperand;
                                 }
 
-                                role = prepareRoleToComparison(role);
-                                Role compareRole = prepareRoleToComparison(compareOperand);
+                                role = prepareRoleToComparison(role, false);
+                                Role compareRole = prepareRoleToComparison(compareOperand, false);
 
                                 ret = role.equalsIgnoreName(compareRole);
 
-                                if (indxOperator == NOT_EQUAL)
-                                    ret = !ret;
+                                if (!ret && role instanceof RoleLink) {
+                                    role = prepareRoleToComparison(role, true);
+                                    ret = role.equalsIgnoreName(compareRole);
+                                }
                             }
+
+                            if (indxOperator == NOT_EQUAL)
+                                ret = !ret;
 
                         } else if (left instanceof ZonedDateTime ||
                                    right instanceof ZonedDateTime) {
@@ -1108,17 +1121,25 @@ public class Reference implements BiSerializable {
                             Set<Role> rightRoleSet = new HashSet<>();
 
                             for (Object item: leftSet) {
-                                if (item instanceof Role || item instanceof String)
-                                    leftRoleSet.add(prepareRoleToComparison(item));
-                                else
+                                if (item instanceof Role || item instanceof String) {
+                                    Role role = prepareRoleToComparison(item, false);
+                                    leftRoleSet.add(role);
+
+                                    if (role instanceof RoleLink)
+                                        leftRoleSet.add(prepareRoleToComparison(item, true));
+                                } else
                                     throw new IllegalArgumentException(
                                         "Unexpected type (expect Role or String) of collection item in left operand in condition: " + leftOperand);
                             }
 
                             for (Object item: rightSet) {
-                                if (item instanceof Role || item instanceof String)
-                                    rightRoleSet.add(prepareRoleToComparison(item));
-                                else
+                                if (item instanceof Role || item instanceof String) {
+                                    Role role = prepareRoleToComparison(item, false);
+                                    rightRoleSet.add(role);
+
+                                    if (role instanceof RoleLink)
+                                        rightRoleSet.add(prepareRoleToComparison(item, true));
+                                } else
                                     throw new IllegalArgumentException(
                                         "Unexpected type (expect Role or String) of collection item in right operand in condition: " + rightOperand);
                             }
