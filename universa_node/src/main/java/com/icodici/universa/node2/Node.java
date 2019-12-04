@@ -602,7 +602,7 @@ public class Node {
                     usp.voteClose(notification.getFrom(), true);
                 }
 
-                if(usp.state.ordinal() > state.ordinal() && notification.isDoAnswer()) {
+                if(usp.state.ordinal() >= state.ordinal() && notification.isDoAnswer()) {
                     usp.sendMyState(state,notification.getFrom());
                 }
 
@@ -4457,6 +4457,7 @@ public class Node {
         private int poolSize;
 
         private Set<NodeInfo> requestContractSources = new HashSet<>();
+        private Set<NodeInfo> answered = new HashSet<>();
         private Map<NodeInfo,HashId> requestIds = new ConcurrentHashMap<>();
         private Map<NodeInfo,HashId> randomHashes = new ConcurrentHashMap<>();
         private Map<NodeInfo,Integer> randomNumbers = new ConcurrentHashMap<>();
@@ -4466,10 +4467,11 @@ public class Node {
         private ScheduledFuture<?> broadcaster;
         private HashId sessionId;
         private Set<Integer> sessionPool;
+        ZonedDateTime timeout;
+        ZonedDateTime nodeTimeout;
 
         private Map<String, HashId> storages = new ConcurrentHashMap<>();
         private Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
-
 
         private Map<String, Map<NodeInfo,List>> storageUpdateVotes = new ConcurrentHashMap<>();
         private Map<String, ScheduledFuture<?>> storageUpdateBroadcasters = new ConcurrentHashMap<>();
@@ -4489,7 +4491,7 @@ public class Node {
         private void removeSelf() {
             ubotSessionProcessors.remove(executableContractId);
             storageUpdateVotes.keySet().forEach(name->stopStorageUpdateVote(name));
-            stopBoardcastMyState();
+            stopBroadcastMyState();
         }
 
         public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract) {
@@ -4499,6 +4501,9 @@ public class Node {
             this.requestContract = requestContract;
             state = Node.UBotSessionState.VOTING_REQUEST_ID;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
+
+            timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+            nodeTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionNode());
             voteRequestId(myInfo,requestId,HashId.of(Boss.pack(myRandom)));
             startBroadcastMyState();
         }
@@ -4519,35 +4524,37 @@ public class Node {
         }
 
         private synchronized void startBroadcastMyState() {
-            broadcaster = executorService.scheduleAtFixedRate(()->broadcastMyState(),0,500, TimeUnit.MILLISECONDS);
+            broadcaster = executorService.scheduleAtFixedRate(this::broadcastMyState,0,500, TimeUnit.MILLISECONDS);
         }
 
-        private synchronized void stopBoardcastMyState() {
+        private synchronized void stopBroadcastMyState() {
             if(broadcaster != null) {
                 broadcaster.cancel(true);
                 broadcaster = null;
             }
         }
 
-
         private void voteRequestId(NodeInfo nodeInfo, HashId requestId, HashId hashOfRandom) {
             report(getLabel(), () -> concatReportMessage("(",executableContractId,") voteRequestId from" , nodeInfo + " state ", state),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            
-            if(state != Node.UBotSessionState.VOTING_REQUEST_ID)
+            if (state != Node.UBotSessionState.VOTING_REQUEST_ID)
                 return;
-            randomHashes.put(nodeInfo,hashOfRandom);
-            requestIds.put(nodeInfo,requestId);
+
+            answered.add(nodeInfo);
+            randomHashes.put(nodeInfo, hashOfRandom);
+            requestIds.put(nodeInfo, requestId);
             checkVote();
         }
 
         private void voteRandom(NodeInfo nodeInfo, Integer random) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteRandom from" , nodeInfo , " state " , state),
                     DatagramAdapter.VerboseLevel.BASE);
-            if(state != Node.UBotSessionState.COLLECTING_RANDOMS)
+            if (state != Node.UBotSessionState.COLLECTING_RANDOMS)
                 return;
-            if(randomHashes.get(nodeInfo).equals(HashId.of(Boss.pack(random)))) {
+
+            answered.add(nodeInfo);
+            if (randomHashes.get(nodeInfo) != null && randomHashes.get(nodeInfo).equals(HashId.of(Boss.pack(random)))) {
                 randomNumbers.put(nodeInfo, random);
                 checkVote();
             } else {
@@ -4559,10 +4566,11 @@ public class Node {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteSessionId from" , nodeInfo , " state " , state),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            if(state != Node.UBotSessionState.VOTING_SESSION_ID)
+            if (state != Node.UBotSessionState.VOTING_SESSION_ID)
                 return;
 
-            sessionIds.put(nodeInfo,sessionId);
+            answered.add(nodeInfo);
+            sessionIds.put(nodeInfo, sessionId);
             checkVote();
         }
 
@@ -4629,58 +4637,63 @@ public class Node {
             if(closeVotesNodes.size() >= Math.floor(0.9*network.allNodes().size()) && state == Node.UBotSessionState.OPERATIONAL) {
                 state = UBotSessionState.CLOSING;
                 voteClose(myInfo,true);
-                stopBoardcastMyState();
+                stopBroadcastMyState();
                 startBroadcastMyState();
             }
-
 
             if(state == UBotSessionState.CLOSING && new HashSet(closeVotesNodes.values()).size() == 1) {
                 abortSession();
             }
-
         }
 
-
         private void checkVote() {
-            if(state == Node.UBotSessionState.VOTING_REQUEST_ID) {
-                if (requestIds.size() == network.allNodes().size()) {
-                    Set<HashId> variants = requestIds.values().stream().collect(Collectors.toSet());
-                    if(variants.size() == 1) {
+            if (state == Node.UBotSessionState.VOTING_REQUEST_ID) {
+                if (requestIds.size() == network.allNodes().size() ||
+                    (requestIds.size() >= config.getPositiveConsensus() && ZonedDateTime.now().isAfter(nodeTimeout))) {
+
+                    Set<HashId> variants = new HashSet<>(requestIds.values());
+                    if (variants.size() == 1) {
                         requestId = variants.iterator().next();
                     } else {
                         long max = 0;
-                        Set<HashId> maxAt = new HashSet<>();
-                        for(HashId variant : variants) {
+                        Map<HashId, Long> counts = new ConcurrentHashMap<>();
+                        for (HashId variant: variants) {
                             long count = requestIds.values().stream().filter(x -> x.equals(variant)).count();
-                            if(count > max) {
+                            counts.put(variant, count);
+                            if (count > max)
                                 max = count;
-                                maxAt.clear();
-                            }
-
-                            if(count == max) {
-                                maxAt.add(variant);
-                            }
                         }
 
-                        if(maxAt.size() == 1) {
+                        Set<HashId> maxAt = new HashSet<>();
+                        final long top = max + requestIds.size() - network.allNodes().size();
+                        counts.forEach((hash, count) -> {
+                            if (count >= top)
+                                maxAt.add(hash);
+                        });
+
+                        if (maxAt.size() == 1) {
                             requestId = maxAt.iterator().next();
                         } else {
                             requestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
                         }
                     }
                     state = Node.UBotSessionState.COLLECTING_RANDOMS;
-                    voteRandom(myInfo,myRandom);
+                    answered.clear();
+                    voteRandom(myInfo, myRandom);
                     broadcastMyState();
                 }
-            } else if(state == Node.UBotSessionState.COLLECTING_RANDOMS) {
-                if(randomNumbers.size() == network.allNodes().size()) {
+
+            } else if (state == Node.UBotSessionState.COLLECTING_RANDOMS) {
+                if (randomNumbers.size() == requestIds.size()) {
                     state = Node.UBotSessionState.VOTING_SESSION_ID;
                     List<Integer> sortedRandoms = randomNumbers.keySet().stream().sorted(Comparator.comparingInt(NodeInfo::getNumber)).map(ni->randomNumbers.get(ni)).collect(Collectors.toList());
-                    voteSessionId(myInfo,HashId.of(Boss.pack(Do.listOf(requestId,sortedRandoms))));
+                    answered.clear();
+                    voteSessionId(myInfo, HashId.of(Boss.pack(Do.listOf(requestId, sortedRandoms))));
                     broadcastMyState();
                 }
+
             } else if(state == Node.UBotSessionState.VOTING_SESSION_ID) {
-                if(sessionIds.size() == network.allNodes().size()) {
+                if (sessionIds.size() >= config.getPositiveConsensus()) {
                     //all session ids should be equals. So put into set it should have size == 1
                     if(sessionIds.values().stream().collect(Collectors.toSet()).size() > 1) {
                         abortSession();
@@ -4719,8 +4732,9 @@ public class Node {
                         return;
                     }
 
+                    answered.clear();
                     state = Node.UBotSessionState.OPERATIONAL;
-                    stopBoardcastMyState();
+                    stopBroadcastMyState();
                 }
             }
         }
@@ -4748,48 +4762,55 @@ public class Node {
             return pool;
         }
 
-
         private void broadcastMyState() {
-            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") broadcastMyState ", state),
+            report(getLabel(), () -> concatReportMessage( "(", executableContractId, ") broadcastMyState ", state),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            sendMyState(state,null);
+            if (ZonedDateTime.now().isBefore(timeout))
+                sendMyState(state, null);
+            else
+                abortSession();
+        }
+
+        private List<Object> getStatePayload(Node.UBotSessionState state) {
+            switch (state) {
+                case VOTING_REQUEST_ID:
+                    return Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo));
+
+                case COLLECTING_RANDOMS:
+                    Integer random = randomNumbers.get(myInfo);
+                    if (random == null)
+                        abortSession();
+                    return Do.listOf(state.ordinal(),random);
+
+                case VOTING_SESSION_ID:
+                    return Do.listOf(state.ordinal(),sessionIds.get(myInfo));
+
+                case OPERATIONAL:
+                    return Do.listOf(state.ordinal(),sessionId,closeVotesNodes.containsKey(myInfo),closeVotesNodes.getOrDefault(myInfo,false));
+
+                case CLOSING:
+                    return Do.listOf(state.ordinal(),sessionId,true,true);
+
+                default:
+                    return null;
+            }
         }
 
         private void sendMyState(Node.UBotSessionState state, NodeInfo to) {
-            List<Object> payload;
+            List<Object> payload = getStatePayload(state);
 
-            switch (state) {
-                case VOTING_REQUEST_ID:
-                    payload = Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo));
-                    break;
-                case COLLECTING_RANDOMS:
-                    Integer random = randomNumbers.get(myInfo);
-                    if(random == null) {
-                        abortSession();
-                    }
-                    payload = Do.listOf(state.ordinal(),random);
-                    break;
-                case VOTING_SESSION_ID:
-                    payload = Do.listOf(state.ordinal(),sessionIds.get(myInfo));
-                    break;
-                case OPERATIONAL:
-                    payload = Do.listOf(state.ordinal(),sessionId,closeVotesNodes.containsKey(myInfo),closeVotesNodes.getOrDefault(myInfo,false));
-                    break;
-                case CLOSING:
-                    payload = Do.listOf(state.ordinal(),sessionId,true,true);
-                    break;
-                default:
-                    payload = null;
-                    break;
-            }
-
-            if(payload != null) {
-                Notification notification = new UBotSessionNotification(myInfo, executableContractId,  to == null,requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload);
-                if(to != null) {
-                    network.deliver(to,notification);
+            if (payload != null) {
+                Notification notification = new UBotSessionNotification(myInfo, executableContractId,  to == null,
+                        requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload);
+                if (to != null) {
+                    network.deliver(to, notification);
                 } else {
-                    network.broadcast(myInfo, notification);
+                    network.eachNode(node -> {
+                        if (!node.equals(myInfo) && !answered.contains(node) &&
+                                (state == UBotSessionState.VOTING_REQUEST_ID || requestIds.containsKey(node)))
+                            network.deliver(node, notification);
+                    });
                 }
             }
         }

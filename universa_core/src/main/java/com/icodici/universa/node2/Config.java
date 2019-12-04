@@ -219,6 +219,8 @@ public class Config {
     private Duration followerCallbackStateStoreTime = Duration.ofDays(3);
     private Duration followerCallbackSynchronizationInterval = Duration.ofHours(12);
     private BigDecimal ratioNodesSendFollowerCallbackToComplete = BigDecimal.valueOf(0.3);
+    private Duration maxWaitSessionConsensus = Duration.ofSeconds(20);
+    private Duration maxWaitSessionNode = Duration.ofSeconds(5);
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -557,5 +559,13 @@ public class Config {
 
     public void setRatioNodesSendFollowerCallbackToComplete(BigDecimal ratioNodesSendFollowerCallbackToComplete) {
         this.ratioNodesSendFollowerCallbackToComplete = ratioNodesSendFollowerCallbackToComplete;
+    }
+
+    public Duration getMaxWaitSessionConsensus() {
+        return maxWaitSessionConsensus;
+    }
+
+    public Duration getMaxWaitSessionNode() {
+        return maxWaitSessionNode;
     }
 }
