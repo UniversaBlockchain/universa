@@ -71,7 +71,8 @@ public class Quantiser {
         PRICE_CHECK_REFERENCE_DEFINED,
         PRICE_CHECK_REFERENCE_CONDITION,
         PRICE_CHECK_REFERENCE_CAN_PLAY,
-        PRICE_CHECK_REFERENCE_IN;
+        PRICE_CHECK_REFERENCE_IN,
+        PRICE_CHECK_REFERENCE_CAN_PERFORM;
 
         /**
          * Return cost of the process.
@@ -111,6 +112,8 @@ public class Quantiser {
                     return 4;
 
                 case PRICE_CHECK_REFERENCE_IN:
+                    return 4;
+                case PRICE_CHECK_REFERENCE_CAN_PERFORM:
                     return 4;
             }
             return 0;

@@ -1476,7 +1476,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_d_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==this.definition.data.d_origin",
-                "this can_play ref.state.roles.target"
+                "this can_perform ref.state.roles.target"
         )));
         c.addReference(reference);
         c.getDefinition().getData().put("d_origin",d.getOrigin().toBase64String());
@@ -1489,7 +1489,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_c_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==this.definition.data.c_origin",
-                "this can_play ref.state.roles.link_to_d"
+                "this can_perform ref.state.roles.link_to_d"
         )));
         b.addReference(reference);
         b.getDefinition().getData().put("c_origin",c.getOrigin().toBase64String());
@@ -1501,7 +1501,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_b_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==this.definition.data.b_origin",
-                "this can_play ref.state.roles.link_to_c"
+                "this can_perform ref.state.roles.link_to_c"
         )));
         a.addReference(reference);
         a.getDefinition().getData().put("b_origin",b.getOrigin().toBase64String());
@@ -1535,7 +1535,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_b_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.definition.data.key_b==this.definition.data.key_c",
-                "this can_play ref.state.roles.target"
+                "this can_perform ref.state.roles.target"
         )));
         c.addReference(reference);
         c.getDefinition().getData().put("key_c","value");
@@ -1548,7 +1548,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_c_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==this.definition.data.c_origin",
-                "this can_play ref.state.roles.target"
+                "this can_perform ref.state.roles.target"
         )));
         b.addReference(reference);
         b.getDefinition().getData().put("c_origin",c.getOrigin().toBase64String());
@@ -1561,7 +1561,7 @@ public class ContractTest extends ContractTestBase {
         reference.name = "link_to_b_ref";
         reference.setConditions(Binder.of("all_of",Do.listOf(
                 "ref.origin==this.definition.data.b_origin",
-                "this can_play ref.state.roles.target"
+                "this can_perform ref.state.roles.target"
         )));
         a.addReference(reference);
         a.getDefinition().getData().put("b_origin",b.getOrigin().toBase64String());

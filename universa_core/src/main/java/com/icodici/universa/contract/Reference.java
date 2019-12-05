@@ -196,7 +196,7 @@ public class Reference implements BiSerializable {
 
     //Operators
     final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches ",
-            " is_a "," is_inherit ","inherits ","inherit "," can_play "," in "};
+            " is_a "," is_inherit ","inherits ","inherit "," can_play "," in ", " can_perform "};
 
     final static int DEFINED = 0;
     final static int UNDEFINED = 1;
@@ -213,6 +213,37 @@ public class Reference implements BiSerializable {
     final static int INHERIT = 12;
     final static int CAN_PLAY = 13;
     final static int IN = 14;
+    final static int CAN_PERFORM = 15;
+
+    // UPDATE WHEN ADDING NEW OPERATOR
+    final static int OPERATORS_COUNT = 16;
+
+    final static Set<Integer> simpleBinaryOperators = new HashSet<>();
+    final static Set<Integer> simpleUnaryOperators = new HashSet<>();
+    final static Set<Integer> inheritanceOperators = new HashSet<>();
+    final static Set<Integer> roleOperators = new HashSet<>();
+    static {
+        simpleUnaryOperators.add(DEFINED);
+        simpleUnaryOperators.add(UNDEFINED);
+
+        simpleBinaryOperators.add(LESS_OR_EQUAL);
+        simpleBinaryOperators.add(MORE_OR_EQUAL);
+        simpleBinaryOperators.add(LESS);
+        simpleBinaryOperators.add(MORE);
+        simpleBinaryOperators.add(NOT_EQUAL);
+        simpleBinaryOperators.add(EQUAL);
+        simpleBinaryOperators.add(MATCHES);
+        simpleBinaryOperators.add(IS_A);
+        simpleBinaryOperators.add(IS_INHERIT);
+        simpleBinaryOperators.add(IN);
+
+        inheritanceOperators.add(INHERITS);
+        inheritanceOperators.add(INHERIT);
+
+        roleOperators.add(CAN_PLAY);
+        roleOperators.add(CAN_PERFORM);
+    }
+
 
     //Operations
     final static String[] operations = {"+", "-", "*", "/"};
@@ -588,7 +619,7 @@ public class Reference implements BiSerializable {
                 } else
                     throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
             } else if (typeOfLeftOperand == compareOperandType.CONSTOTHER) {
-                if (indxOperator == CAN_PLAY) {
+                if (indxOperator == CAN_PLAY || indxOperator == CAN_PERFORM) {
                     if (leftOperand.equals("ref")) {
                         leftOperandContract = refContract;
                     } else if (leftOperand.equals("this")) {
@@ -662,7 +693,7 @@ public class Reference implements BiSerializable {
 
         // check operator
         if (rightOperand != null || rightExpression != null) {
-            if ((leftOperandContract != null) && (indxOperator != CAN_PLAY))
+            if ((leftOperandContract != null) && (indxOperator != CAN_PLAY) && (indxOperator != CAN_PERFORM))
                 left = leftOperandContract.get(leftOperand);
             if (rightOperandContract != null)
                 right = rightOperandContract.get(rightOperand);
@@ -1056,9 +1087,27 @@ public class Reference implements BiSerializable {
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
                         Set<PublicKey> keys;
-                        keys = leftOperandContract.getReferenceContextKeys();
+                        if (leftOperand.equals("this"))
+                            keys = leftOperandContract.getEffectiveKeys();
+                        else
+                            keys = leftOperandContract.getSealedByKeys();
 
-                        ret = ((Role) right).isAllowedForKeysQuantized(keys);
+                        Role roleToBePlayed = ((Role) right).resolve();
+
+                        ret = roleToBePlayed.getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                                roleToBePlayed.getReferences(Role.RequiredMode.ANY_OF).isEmpty() &&
+                                roleToBePlayed.isAllowedForKeys(keys);
+
+                        break;
+
+                    case CAN_PERFORM:
+                        if (right == null)
+                            return false;
+
+                        if (!(right instanceof Role))
+                            throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
+
+                        ret = ((Role) right).isAllowedForKeysQuantized(leftOperandContract.getReferenceContextKeys());
 
                         break;
                     case IN:
@@ -1439,7 +1488,7 @@ public class Reference implements BiSerializable {
         int leftConversion = NO_CONVERSION;
         int rightConversion = NO_CONVERSION;
 
-        for (int i = 0; i < 2; i++) {
+        for (Integer i : simpleUnaryOperators) {
             int operPos = condition.lastIndexOf(operators[i]);
 
             if ((operPos >= 0) && (condition.length() - operators[i].length() == operPos)) {
@@ -1455,9 +1504,7 @@ public class Reference implements BiSerializable {
             }
         }
 
-        for (int i = 2; i <= IN; i++) {
-            if (i >= INHERITS && i <= CAN_PLAY)     // skipping operators with a different syntax
-                continue;
+        for (Integer i : simpleBinaryOperators) {
 
             int operPos = condition.indexOf(operators[i]);
             int firstMarkPos = condition.indexOf("\"");
@@ -1551,7 +1598,7 @@ public class Reference implements BiSerializable {
             return packCondition(i, leftOperand, rightOperand, left, right, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
         }
 
-        for (int i = INHERITS; i <= INHERIT; i++) {
+        for (Integer i : inheritanceOperators) {
             int operPos = condition.indexOf(operators[i]);
 
             if ((operPos == 0) || ((operPos > 0) && (condition.charAt(operPos - 1) != '_'))) {
@@ -1570,27 +1617,29 @@ public class Reference implements BiSerializable {
             }
         }
 
-        int operPos = condition.indexOf(operators[CAN_PLAY]);
-        if (operPos > 0) {
-            // Parsing left operand
-            String subStrL = condition.substring(0, operPos);
-            if (subStrL.length() == 0)
-                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing left operand.");
+        for (Integer i : roleOperators) {
+            int operPos = condition.indexOf(operators[i]);
+            if (operPos > 0) {
+                // Parsing left operand
+                String subStrL = condition.substring(0, operPos);
+                if (subStrL.length() == 0)
+                    throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing left operand.");
 
-            String leftOperand = subStrL.replaceAll("\\s+", "");
-            if (leftOperand.contains("."))
-                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Left operand must be a reference to a contract.");
+                String leftOperand = subStrL.replaceAll("\\s+", "");
+                if (leftOperand.contains("."))
+                    throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Left operand must be a reference to a contract.");
 
-            String subStrR = condition.substring(operPos + operators[CAN_PLAY].length());
-            if (subStrR.length() == 0)
-                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
+                String subStrR = condition.substring(operPos + operators[i].length());
+                if (subStrR.length() == 0)
+                    throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
 
-            // Parsing right operand
-            String rightOperand = subStrR.replaceAll("\\s+", "");
-            if (!isFieldOperand(rightOperand))
-                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Right operand must be a role field.");
+                // Parsing right operand
+                String rightOperand = subStrR.replaceAll("\\s+", "");
+                if (!isFieldOperand(rightOperand))
+                    throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Right operand must be a role field.");
 
-            return packCondition(CAN_PLAY, leftOperand, rightOperand, null, null, compareOperandType.CONSTOTHER, compareOperandType.FIELD, leftConversion, rightConversion);
+                return packCondition(i, leftOperand, rightOperand, null, null, compareOperandType.CONSTOTHER, compareOperandType.FIELD, leftConversion, rightConversion);
+            }
         }
 
         throw new IllegalArgumentException("Invalid format of condition: " + condition);
@@ -1757,6 +1806,8 @@ public class Reference implements BiSerializable {
         return result;
     }
 
+    private final static ZonedDateTime referencesBecomeQuantizedDate = ZonedDateTime.of(2021,1,1,0,0,0,0,ZoneId.of("Z"));
+
     private void quantizeCondition(Binder condition, Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {
 
         int rate = neighboursCount / 10;
@@ -1764,14 +1815,20 @@ public class Reference implements BiSerializable {
             rate = 1;
 
         int operator = condition.getIntOrThrow("operator");
-        if (operator <= UNDEFINED)
-            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_DEFINED, rate);
-        else if (operator <= IS_INHERIT)
-            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CONDITION, rate);
-        else if (operator == CAN_PLAY)
-            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CAN_PLAY, rate);
-        else if (operator == IN)
-            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_IN, rate);
+
+        if(baseContract != null && baseContract.getCreatedAt().isAfter(referencesBecomeQuantizedDate)) {
+            if (operator <= UNDEFINED)
+                quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_DEFINED, rate);
+            else if (operator <= IS_INHERIT)
+                quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CONDITION, rate);
+            else if (operator == CAN_PLAY)
+                quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CAN_PLAY, rate);
+            else if (operator == IN)
+                quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_IN, rate);
+        }
+
+        if (operator == CAN_PERFORM)
+            quantiser.multipleAddWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCE_CAN_PERFORM, rate);
     }
 
     private void quantizeCondition(String condition, Quantiser quantiser, int neighboursCount) throws Quantiser.QuantiserException {

@@ -18520,7 +18520,7 @@ public class BaseNetworkTest extends TestCase {
             Contract sc = new Contract(TestKeys.privateKey(i + 1));
 
             List<String> listCondition = new ArrayList<>();
-            listCondition.add("ref can_play ref.owner");
+            listCondition.add("ref can_perform ref.owner");
             if (id != null)
                 listCondition.add("ref.id == \"" + id.toBase64String() + "\"");
 
@@ -18545,7 +18545,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         List<String> listCondition = new ArrayList<>();
-        listCondition.add("ref can_play ref.owner");
+        listCondition.add("ref can_perform ref.owner");
 
         Binder condition = new Binder();
         condition.set("all_of", listCondition);
