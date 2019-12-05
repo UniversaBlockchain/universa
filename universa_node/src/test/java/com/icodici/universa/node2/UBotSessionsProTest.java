@@ -231,7 +231,7 @@ public class UBotSessionsProTest {
                     Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
                     System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                     Thread.sleep(500);
-                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state", "").equals("OPERATIONAL")) {
                         if(readyCounter.incrementAndGet() == client.size()) {
                             readyEvent.fire();
                         }

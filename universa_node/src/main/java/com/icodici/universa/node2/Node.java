@@ -4637,6 +4637,7 @@ public class Node {
             if(closeVotesNodes.size() >= Math.floor(0.9*network.allNodes().size()) && state == Node.UBotSessionState.OPERATIONAL) {
                 state = UBotSessionState.CLOSING;
                 voteClose(myInfo,true);
+                timeout = null;
                 stopBroadcastMyState();
                 startBroadcastMyState();
             }
@@ -4680,6 +4681,8 @@ public class Node {
                     state = Node.UBotSessionState.COLLECTING_RANDOMS;
                     answered.clear();
                     voteRandom(myInfo, myRandom);
+                    timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+                    nodeTimeout = null;
                     broadcastMyState();
                 }
 
@@ -4689,6 +4692,8 @@ public class Node {
                     List<Integer> sortedRandoms = randomNumbers.keySet().stream().sorted(Comparator.comparingInt(NodeInfo::getNumber)).map(ni->randomNumbers.get(ni)).collect(Collectors.toList());
                     answered.clear();
                     voteSessionId(myInfo, HashId.of(Boss.pack(Do.listOf(requestId, sortedRandoms))));
+                    timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+                    nodeTimeout = null;
                     broadcastMyState();
                 }
 
@@ -4766,9 +4771,12 @@ public class Node {
             report(getLabel(), () -> concatReportMessage( "(", executableContractId, ") broadcastMyState ", state),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            if (ZonedDateTime.now().isBefore(timeout))
+            if (timeout == null || ZonedDateTime.now().isBefore(timeout)) {
                 sendMyState(state, null);
-            else
+
+                if (nodeTimeout != null && ZonedDateTime.now().isAfter(nodeTimeout))
+                    checkVote();
+            } else
                 abortSession();
         }
 
@@ -4950,6 +4958,7 @@ public class Node {
                 (size == quorumSize && poolSize - size + sizeFinished < quorumSize)) {
 
                 voteClose(myInfo,state != Node.UBotSessionState.OPERATIONAL);
+                timeout = null;
                 startBroadcastMyState();
             }
         }
