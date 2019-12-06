@@ -4483,7 +4483,6 @@ public class Node {
 
 
         private void abortSession() {
-            //new Error().printStackTrace();
             Node.this.saveUBotStorage(executableContractId,storages);
             System.out.println(myInfo + "("+executableContractId+") abortSession ");
             state = Node.UBotSessionState.CLOSED;
@@ -4643,12 +4642,14 @@ public class Node {
             if(closeVotesNodes.size() >= config.getPositiveConsensus() && state == Node.UBotSessionState.OPERATIONAL) {
                 state = UBotSessionState.CLOSING;
                 voteClose(myInfo,true);
-                timeout = null;
-                stopBroadcastMyState();
-                startBroadcastMyState();
+                if (state == UBotSessionState.CLOSING) {
+                    timeout = null;
+                    stopBroadcastMyState();
+                    startBroadcastMyState();
+                }
             }
 
-            if(state == UBotSessionState.CLOSING && new HashSet(closeVotesNodes.values()).size() == 1) {
+            if(state == UBotSessionState.CLOSING && closeVotesNodes.values().stream().allMatch(v -> v)) {
                 abortSession();
             }
         }
