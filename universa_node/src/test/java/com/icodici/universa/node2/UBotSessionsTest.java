@@ -103,7 +103,7 @@ public class UBotSessionsTest extends BaseMainTest {
         Set<Client> quorumClients = new HashSet<>();
         poolQuorum.forEach(n-> {
             try {
-                quorumClients.add(new Client(".src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n)));
+                quorumClients.add(new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
