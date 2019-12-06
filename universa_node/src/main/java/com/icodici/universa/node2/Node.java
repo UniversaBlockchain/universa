@@ -4465,6 +4465,7 @@ public class Node {
 
         Node.UBotSessionState state;
         private ScheduledFuture<?> broadcaster;
+        private HashId mySessionId;
         private HashId sessionId;
         private Set<Integer> sessionPool;
         ZonedDateTime timeout;
@@ -4482,6 +4483,7 @@ public class Node {
 
 
         private void abortSession() {
+            //new Error().printStackTrace();
             Node.this.saveUBotStorage(executableContractId,storages);
             System.out.println(myInfo + "("+executableContractId+") abortSession ");
             state = Node.UBotSessionState.CLOSED;
@@ -4558,6 +4560,8 @@ public class Node {
                 randomNumbers.put(nodeInfo, random);
                 checkVote();
             } else {
+                report(getLabel(), () -> concatReportMessage( "(",executableContractId,") inappropriate random from" , nodeInfo , " state " , state),
+                        DatagramAdapter.VerboseLevel.BASE);
                 abortSession();
             }
         }
@@ -4604,17 +4608,19 @@ public class Node {
                     }
                 }
 
-                if (max >= Math.floor(network.allNodes().size() * 0.9)) {
+                if (max >= config.getPositiveConsensus()) {
                     storages.put(storageName, maxAt);
                     Map<Integer, HashId> m = storageUpdates.get(storageName);
-                    HashId finalMaxAt = maxAt;
                     voteStorageUpdate(storageName,maxAt,myInfo,true);
-                    m.forEach((k, v)->{
-                        if(v.equals(finalMaxAt)) {
-                            m.remove(k);
-                        }
-                    });
 
+                    if (m != null) {
+                        HashId finalMaxAt = maxAt;
+                        m.forEach((k, v)->{
+                            if(v.equals(finalMaxAt)) {
+                                m.remove(k);
+                            }
+                        });
+                    }
                 }
             }
 
@@ -4634,7 +4640,7 @@ public class Node {
                 throw new IllegalStateException("UBot session for " +executableContractId +" is not established" );
 
             closeVotesNodes.put(nodeInfo,hasConsensus);
-            if(closeVotesNodes.size() >= Math.floor(0.9*network.allNodes().size()) && state == Node.UBotSessionState.OPERATIONAL) {
+            if(closeVotesNodes.size() >= config.getPositiveConsensus() && state == Node.UBotSessionState.OPERATIONAL) {
                 state = UBotSessionState.CLOSING;
                 voteClose(myInfo,true);
                 timeout = null;
@@ -4678,8 +4684,10 @@ public class Node {
                             requestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
                         }
                     }
-                    state = Node.UBotSessionState.COLLECTING_RANDOMS;
+
                     answered.clear();
+                    state = Node.UBotSessionState.COLLECTING_RANDOMS;
+
                     voteRandom(myInfo, myRandom);
                     timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
                     nodeTimeout = null;
@@ -4688,10 +4696,13 @@ public class Node {
 
             } else if (state == Node.UBotSessionState.COLLECTING_RANDOMS) {
                 if (randomNumbers.size() == requestIds.size()) {
-                    state = Node.UBotSessionState.VOTING_SESSION_ID;
                     List<Integer> sortedRandoms = randomNumbers.keySet().stream().sorted(Comparator.comparingInt(NodeInfo::getNumber)).map(ni->randomNumbers.get(ni)).collect(Collectors.toList());
+                    mySessionId = HashId.of(Boss.pack(Do.listOf(requestId, sortedRandoms)));
+
                     answered.clear();
-                    voteSessionId(myInfo, HashId.of(Boss.pack(Do.listOf(requestId, sortedRandoms))));
+                    state = Node.UBotSessionState.VOTING_SESSION_ID;
+
+                    voteSessionId(myInfo, mySessionId);
                     timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
                     nodeTimeout = null;
                     broadcastMyState();
@@ -4783,22 +4794,19 @@ public class Node {
         private List<Object> getStatePayload(Node.UBotSessionState state) {
             switch (state) {
                 case VOTING_REQUEST_ID:
-                    return Do.listOf(state.ordinal(),requestIds.get(myInfo),randomHashes.get(myInfo));
+                    return Do.listOf(state.ordinal(), requestIds.get(myInfo), randomHashes.get(myInfo));
 
                 case COLLECTING_RANDOMS:
-                    Integer random = randomNumbers.get(myInfo);
-                    if (random == null)
-                        abortSession();
-                    return Do.listOf(state.ordinal(),random);
+                    return Do.listOf(state.ordinal(), myRandom);
 
                 case VOTING_SESSION_ID:
-                    return Do.listOf(state.ordinal(),sessionIds.get(myInfo));
+                    return Do.listOf(state.ordinal(), mySessionId);
 
                 case OPERATIONAL:
-                    return Do.listOf(state.ordinal(),sessionId,closeVotesNodes.containsKey(myInfo),closeVotesNodes.getOrDefault(myInfo,false));
+                    return Do.listOf(state.ordinal(), sessionId, closeVotesNodes.containsKey(myInfo), closeVotesNodes.getOrDefault(myInfo,false));
 
                 case CLOSING:
-                    return Do.listOf(state.ordinal(),sessionId,true,true);
+                    return Do.listOf(state.ordinal(), sessionId, true, true);
 
                 default:
                     return null;
