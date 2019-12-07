@@ -254,7 +254,7 @@ public class UBotSessionsTest extends BaseMainTest {
         Set<Client> quorumClients2 = new HashSet<>();
         poolQuorum2.forEach(n-> {
             try {
-                quorumClients2.add(new Client(".src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n)));
+                quorumClients2.add(new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -424,7 +424,7 @@ public class UBotSessionsTest extends BaseMainTest {
             Client client = null;
             while (client == null) {
                 try {
-                    client = new Client(".src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n));
+                    client = new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n));
                 } catch (ConnectException e) {
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -579,7 +579,7 @@ public class UBotSessionsTest extends BaseMainTest {
             Client client = null;
             while (client == null) {
                 try {
-                    client =new Client(".src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n));
+                    client =new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n));
                 } catch (ConnectException e) {
                 } catch (IOException e) {
                     e.printStackTrace();

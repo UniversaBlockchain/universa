@@ -4509,6 +4509,28 @@ public class Node {
             startBroadcastMyState();
         }
 
+        public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
+            this.executableContractId = compact.executableContractId;
+            this.requestId = compact.requestId;
+            try {
+                this.requestContract = Contract.fromPackedTransaction(compact.requestContract);
+            } catch (IOException e) {
+                System.err.println(getLabel() + "UBotSessionProcessor: unable to unpack loaded requestContract from database");
+                e.printStackTrace();
+            }
+            this.state = UBotSessionState.byOrdinal(compact.state);
+            this.sessionId = compact.sessionId;
+            this.storages.putAll(compact.storages);
+            compact.storageUpdates.forEach((k, v) -> this.storageUpdates.put(k, new ConcurrentHashMap<>(v)));
+            this.closeVotes.addAll(compact.closeVotes);
+            this.closeVotesFinished.addAll(compact.closeVotesFinished);
+
+            this.myRandom = 0; // not needed for saved state
+            this.sessionPool = computeSessionPool(sessionId);
+            timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+            nodeTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionNode());
+        }
+
         private synchronized void initPoolAndQuorum() {
             byte[] ubotRegistryBytes = getServiceContracts().get("ubot_registry_contract");
             if (ubotRegistryBytes == null)
@@ -5003,6 +5025,28 @@ public class Node {
         public String getSessionQuorum() {
             return "" + quorumSize;
         }
+
+        public void saveToLedger() {
+            Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
+            compact.id = 0; // will be generated automatically if needed
+            compact.executableContractId = this.executableContractId;
+            compact.requestId = this.requestId;
+            compact.requestContract = this.requestContract.getPackedTransaction();
+            compact.state = this.state.ordinal();
+            compact.sessionId = this.sessionId;
+            compact.storages = this.storages;
+            compact.storageUpdates = this.storageUpdates;
+            compact.closeVotes = this.closeVotes;
+            compact.closeVotesFinished = this.closeVotesFinished;
+            ledger.saveUbotSession(compact);
+        }
+    }
+
+    private UBotSessionProcessor loadUBotSessionProcessorFromLedger(HashId executableContractId) {
+        Ledger.UbotSessionCompact compact = ledger.loadUbotSession(executableContractId);
+        UBotSessionProcessor usp = new UBotSessionProcessor(compact);
+        usp.initPoolAndQuorum();
+        return usp;
     }
 
     private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {

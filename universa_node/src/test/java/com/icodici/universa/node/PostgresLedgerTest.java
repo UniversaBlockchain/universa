@@ -26,12 +26,10 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 
 import static org.junit.Assert.*;
 
@@ -1012,5 +1010,85 @@ public class PostgresLedgerTest extends TestCase {
 
 
 
+    }
+
+    @Test
+    public void ubotSessionTest() throws Exception {
+        Map<String, HashId> storages = new ConcurrentHashMap<>();
+        storages.put("s1", HashId.createRandom());
+        storages.put("s2", HashId.createRandom());
+        storages.put("s3", HashId.createRandom());
+        Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
+        storageUpdates.put("s1", new ConcurrentHashMap<>());
+        storageUpdates.get("s1").put(1, HashId.createRandom());
+        storageUpdates.get("s1").put(2, HashId.createRandom());
+        storageUpdates.get("s1").put(3, HashId.createRandom());
+        storageUpdates.put("s2", new ConcurrentHashMap<>());
+        storageUpdates.get("s2").put(4, HashId.createRandom());
+        storageUpdates.get("s2").put(5, HashId.createRandom());
+        Set<Integer> closeVotes = ConcurrentHashMap.newKeySet();
+        closeVotes.add(1);
+        closeVotes.add(2);
+        closeVotes.add(3);
+        Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
+        closeVotesFinished.add(4);
+        closeVotesFinished.add(5);
+
+        Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
+        compact.id = 0; // will be generated automatically if needed
+        compact.executableContractId = HashId.createRandom();
+        compact.requestId = HashId.createRandom();
+        compact.requestContract = Do.randomBytes(1024);
+        compact.state = 33;
+        compact.sessionId = HashId.createRandom();
+        compact.storages = storages;
+        compact.storageUpdates = storageUpdates;
+        compact.closeVotes = closeVotes;
+        compact.closeVotesFinished = closeVotesFinished;
+
+        BiConsumer<Ledger.UbotSessionCompact, Ledger.UbotSessionCompact> assertUbotSessionCompactEquals = (expected, loaded) -> {
+            assertEquals(expected.executableContractId, loaded.executableContractId);
+            assertEquals(expected.requestId, loaded.requestId);
+            assertArrayEquals(expected.requestContract, loaded.requestContract);
+            assertEquals(expected.state, loaded.state);
+            assertEquals(expected.sessionId, loaded.sessionId);
+            assertEquals(expected.storages.size(), loaded.storages.size());
+            expected.storages.forEach((k, v) -> {
+                assertTrue(loaded.storages.containsKey(k));
+                assertEquals(v, loaded.storages.get(k));
+            });
+            assertEquals(expected.storageUpdates.size(), loaded.storageUpdates.size());
+            expected.storageUpdates.forEach((k, v) -> {
+                assertTrue(loaded.storageUpdates.containsKey(k));
+                Map<Integer,HashId> lv = loaded.storageUpdates.get(k);
+                assertEquals(v.size(), lv.size());
+                v.forEach((k0, v0) -> {
+                    assertTrue(lv.containsKey(k0));
+                    assertEquals(v0, lv.get(k0));
+                });
+            });
+            assertEquals(expected.closeVotes.size(), loaded.closeVotes.size());
+            assertTrue(loaded.closeVotes.containsAll(expected.closeVotes));
+            assertEquals(expected.closeVotesFinished.size(), loaded.closeVotesFinished.size());
+            assertTrue(loaded.closeVotesFinished.containsAll(expected.closeVotesFinished));
+        };
+
+        // test creation of new ubot_session in ledger
+        ledger.saveUbotSession(compact);
+        Ledger.UbotSessionCompact loaded = ledger.loadUbotSession(compact.executableContractId);
+        assertUbotSessionCompactEquals.accept(compact, loaded);
+
+        // test update of existing ubot_session
+        loaded.state = 44;
+        loaded.requestId = HashId.createRandom();
+        loaded.storages.put("s4", HashId.createRandom());
+        loaded.storageUpdates.get("s1").clear();
+        loaded.closeVotes.add(8);
+        loaded.closeVotesFinished.clear();
+        loaded.closeVotesFinished.add(42);
+        ledger.saveUbotSession(loaded);
+        Ledger.UbotSessionCompact loaded2 = ledger.loadUbotSession(loaded.executableContractId);
+        assertEquals(loaded.id, loaded2.id);
+        assertUbotSessionCompactEquals.accept(loaded, loaded2);
     }
 }

@@ -180,6 +180,20 @@ public interface Ledger {
 
     void closeVote(HashId itemId);
 
+    class UbotSessionCompact {
+        public long id; // record id in database
+        public HashId executableContractId;
+        public HashId requestId;
+        public byte[] requestContract;
+        public int state;
+        public HashId sessionId;
+        public Map<String, HashId> storages;
+        public Map<String, Map<Integer,HashId>> storageUpdates;
+        public Set<Integer> closeVotes;
+        public Set<Integer> closeVotesFinished;
+    };
+    void saveUbotSession(UbotSessionCompact sessionCompact);
+    UbotSessionCompact loadUbotSession(HashId executableContractId);
 
 
     public static class Rollback extends Db.RollbackException {

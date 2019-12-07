@@ -33,6 +33,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -2847,5 +2848,102 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public void saveUbotSession(UbotSessionCompact sessionCompact) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement(
+        "insert into ubot_session(" +
+                    "executable_contract_id," +
+                    "save_timestamp," +
+                    "request_id," +
+                    "request_contract," +
+                    "state," +
+                    "session_id," +
+                    "storages," +
+                    "storage_updates," +
+                    "close_votes," +
+                    "close_votes_finished) " +
+                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json) " +
+                "on conflict(executable_contract_id) do update set " +
+                    "save_timestamp = excluded.save_timestamp," +
+                    "request_id = excluded.request_id," +
+                    "request_contract = excluded.request_contract," +
+                    "state = excluded.state," +
+                    "session_id = excluded.session_id," +
+                    "storages = excluded.storages," +
+                    "storage_updates = excluded.storage_updates," +
+                    "close_votes = excluded.close_votes," +
+                    "close_votes_finished = excluded.close_votes_finished;"
+            );
+            Map<String, String> storages_b64 = new ConcurrentHashMap<>();
+            sessionCompact.storages.forEach((k, v) -> storages_b64.put(k, v.toBase64String()));
+            Map<String, Map<Integer,String>> storageUpdates_b64 = new ConcurrentHashMap<>();
+            sessionCompact.storageUpdates.forEach((k, v) -> {
+                Map<Integer,String> innerMap = new ConcurrentHashMap<>();
+                storageUpdates_b64.put(k, innerMap);
+                v.forEach((k0, v0) -> innerMap.put(k0, v0.toBase64String()));
+            });
+            statement.setBytes(1, sessionCompact.executableContractId.getDigest());
+            statement.setLong(2, System.currentTimeMillis());
+            statement.setBytes(3, sessionCompact.requestId.getDigest());
+            statement.setBytes(4, sessionCompact.requestContract);
+            statement.setInt(5, sessionCompact.state);
+            statement.setBytes(6, sessionCompact.sessionId.getDigest());
+            statement.setString(7, JsonTool.toJsonString(storages_b64));
+            statement.setString(8, JsonTool.toJsonString(storageUpdates_b64));
+            statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotes));
+            statement.setString(10, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotSession failed:" + e);
+        }
+    }
+
+    @Override
+    public UbotSessionCompact loadUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            UbotSessionCompact compact = new UbotSessionCompact();
+            compact.executableContractId = HashId.withDigest(rs.getBytes("executable_contract_id"));
+            compact.requestId = HashId.withDigest(rs.getBytes("request_id"));
+            compact.requestContract = rs.getBytes("request_contract");
+            compact.state = rs.getInt("state");
+            compact.sessionId = HashId.withDigest(rs.getBytes("session_id"));
+            compact.storages = new ConcurrentHashMap<>();
+            Map<String,String> storages_b64 = JsonTool.fromJson(rs.getString("storages"));
+            storages_b64.forEach((k, v) -> compact.storages.put(k, HashId.withDigest(v)));
+            compact.storageUpdates = new ConcurrentHashMap<>();
+            Map<String, Map<String,String>> storageUpdates_b64 = JsonTool.fromJson(rs.getString("storage_updates"));
+            storageUpdates_b64.forEach((k, v) -> {
+                Map<Integer,HashId> map = new ConcurrentHashMap<>();
+                v.forEach((k0, v0) -> map.put(Integer.parseInt(k0), HashId.withDigest(v0)));
+                compact.storageUpdates.put(k, map);
+            });
+            compact.closeVotes = ConcurrentHashMap.newKeySet();
+            List<Long> closeVotes = JsonTool.fromJson(rs.getString("close_votes"));
+            closeVotes.forEach(v -> compact.closeVotes.add(v.intValue()));
+            compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
+            List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
+            closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
+            return compact;
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
 
 }
