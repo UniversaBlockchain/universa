@@ -2946,4 +2946,17 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public void deleteUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_session where executable_contract_id=?", executableContractId.getDigest());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
 }

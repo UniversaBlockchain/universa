@@ -194,6 +194,7 @@ public interface Ledger {
     };
     void saveUbotSession(UbotSessionCompact sessionCompact);
     UbotSessionCompact loadUbotSession(HashId executableContractId);
+    void deleteUbotSession(HashId executableContractId);
 
 
     public static class Rollback extends Db.RollbackException {

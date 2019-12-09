@@ -403,7 +403,7 @@ public class UBotSessionsTest extends BaseMainTest {
         while(true) {
             Thread.sleep(100);
             Binder res = ubotClient.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
-            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && (res.getBinderOrThrow("pending").get("default") == null || res.getBinderOrThrow("pending").getBinder("default").size() == 0)) {
                 break;
             }
         }
@@ -422,9 +422,10 @@ public class UBotSessionsTest extends BaseMainTest {
         }
 
         while(true) {
-            Thread.sleep(100);
+            Thread.sleep(1000);
             Binder res = ubotClient.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
-            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+            System.out.println("res: " + res);
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && (res.getBinderOrThrow("pending").get("default") == null || res.getBinderOrThrow("pending").getBinder("default").size() == 0)) {
                 break;
             }
         }
