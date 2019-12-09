@@ -116,7 +116,7 @@ public class RoleLink extends Role {
     public <T extends Role> T resolve(boolean ignoreRefs) {
         int maxDepth = 40;
         for (Role r = this; maxDepth > 0; maxDepth--) {
-            if (r instanceof RoleLink && (ignoreRefs || maxDepth == 40 || (
+            if (r instanceof RoleLink && (ignoreRefs || (
                 r.getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
                 r.getReferences(Role.RequiredMode.ANY_OF).isEmpty()))) {
 
@@ -142,7 +142,8 @@ public class RoleLink extends Role {
     @Override
     @Deprecated
     public Set<KeyRecord> getKeyRecords() {
-        return resolve().getKeyRecords();
+        final Role role = resolve();
+        return (role == null) ? null : role.getKeyRecords();
     }
 
     /**
@@ -189,10 +190,20 @@ public class RoleLink extends Role {
      */
     @Override
     public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+
+        //refereces are checked here
         if(!super.isAllowedForKeysQuantized(keys))
             return false;
 
-        final Role role = resolve();
+        //having references checked we can take one step
+        Role role = getRole();
+        if(role == null)
+            return false;
+
+        //resolve possible further links
+        role =  role.resolve();
+
+        //check allowance with keys
         return (role == null) ? false : role.isAllowedForKeysQuantized(keys);
     }
 
@@ -203,7 +214,9 @@ public class RoleLink extends Role {
      */
     @Override
     public boolean isValid() {
-        final Role role = resolve();
+        //ignore references here
+        final Role role = resolve(false);
+
         return (role == null) ? false : role.isValid();
     }
 
@@ -280,18 +293,17 @@ public class RoleLink extends Role {
      */
     @Override
     public void anonymize() {
-        final Role role = resolve();
+        //ignore references here
+        final Role role = resolve(false);
+        
         if (role != null)
             role.anonymize();
     }
 
     @Override
     @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
-        if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
-            return null;
-
         Role r = resolve(ignoreRefs);
-        if (r != null)
+        if (r != null && r != this)
             return r.getSimpleAddress(ignoreRefs);
 
         return null;

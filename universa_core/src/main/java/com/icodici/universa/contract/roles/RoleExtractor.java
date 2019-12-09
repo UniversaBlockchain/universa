@@ -44,7 +44,7 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleAnonymousIds();
         } else if(role instanceof RoleLink) {
-            return extractAnonymousIds(role.resolve());
+            return extractAnonymousIds(((RoleLink)role).resolve(false));
         } else if(role instanceof ListRole) {
             Set<AnonymousId> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractAnonymousIds(r)));
@@ -64,7 +64,7 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeyAddresses();
         } else if(role instanceof RoleLink) {
-            return extractKeyAddresses(role.resolve());
+            return extractKeyAddresses(((RoleLink)role).resolve(false));
         } else if(role instanceof ListRole) {
             Set<KeyAddress> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyAddresses(r)));
@@ -79,7 +79,7 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeyRecords();
         } else if(role instanceof RoleLink) {
-            return extractKeyRecords(role.resolve());
+            return extractKeyRecords(((RoleLink)role).resolve(false));
         } else if(role instanceof ListRole) {
             Set<KeyRecord> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyRecords(r)));
