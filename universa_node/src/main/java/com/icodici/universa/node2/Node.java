@@ -213,6 +213,7 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(config.isPermanetMode()),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStoragesAndSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.clearExpiredNameRecords(config.getHoldDuration()),config.getExpriedNamesCleanupInterval().getSeconds(),config.getExpriedNamesCleanupInterval().getSeconds(),TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {
@@ -1374,36 +1375,40 @@ public class Node {
 
     public Binder getUBotSession(HashId executableContractId) {
         UBotSessionProcessor sp = ubotSessionProcessors.get(executableContractId);
+        if (sp == null) {
+            sp = loadUBotSessionProcessorFromLedger(executableContractId);
+            ubotSessionProcessors.put(executableContractId, sp);
+        }
         if(sp != null)
             return sp.getSession();
-        else {
-            //todo: query from db
-            return new Binder();
-        }
+        throw new IllegalArgumentException("session processor not found for " + executableContractId);
     }
 
     public Binder updateUBotStorage(HashId executableContractId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
-            if(usp != null) {
+            if (usp == null) {
+                usp = loadUBotSessionProcessorFromLedger(executableContractId);
+                ubotSessionProcessors.put(executableContractId, usp);
+            }
+            if (usp != null) {
                 usp.addStorageUpdateVote(storageName,fromValue,toValue,publicKey,checkFromValue);
                 return Binder.of(storageName,usp.getPendingChanges(storageName));
-            } else {
-                //todo: query from db
-               throw new IllegalArgumentException("session processor not found for " + executableContractId);
             }
-
+            throw new IllegalArgumentException("session processor not found for " + executableContractId);
         });
     }
 
     public Binder closeUBotSession(HashId executableContractId, PublicKey publicKey, boolean finished) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+            if (usp == null) {
+                usp = loadUBotSessionProcessorFromLedger(executableContractId);
+                ubotSessionProcessors.put(executableContractId, usp);
+            }
             if(usp != null) {
                 usp.addSessionCloseVote(publicKey, finished);
                 return usp.getSession();
-            } else {
-                //todo: query from db
             }
             return new Binder();
 
@@ -1414,18 +1419,21 @@ public class Node {
     public Binder getUBotStorage(HashId executableContractId, List<String> storageNames) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
+            if (usp == null) {
+                usp = loadUBotSessionProcessorFromLedger(executableContractId);
+                ubotSessionProcessors.put(executableContractId, usp);
+            }
             if(usp != null) {
                 Binder current = new Binder();
                 Binder pending = new Binder();
+                UBotSessionProcessor uspFinal = usp;
                 storageNames.forEach(name->{
-                    current.put(name,usp.getStorage(name));
-                    pending.put(name,usp.getPendingChanges(name));
+                    current.put(name,uspFinal.getStorage(name));
+                    pending.put(name,uspFinal.getPendingChanges(name));
                 });
                 return Binder.of("current",current,"pending",pending);
-            } else {
-                //todo: query from db
-                return new Binder();
             }
+            throw new IllegalArgumentException("session processor not found for " + executableContractId);
         });
     }
 
@@ -4481,6 +4489,7 @@ public class Node {
         private Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
         private Map<NodeInfo,Boolean> closeVotesNodes = new ConcurrentHashMap<>();
 
+        private ZonedDateTime lastActivityTime = ZonedDateTime.now();
 
         private void abortSession() {
             Node.this.saveUBotStorage(executableContractId,storages);
@@ -4526,6 +4535,9 @@ public class Node {
             this.closeVotesFinished.addAll(compact.closeVotesFinished);
 
             this.myRandom = 0; // not needed for saved state
+        }
+
+        private void initAfterLoadlingFromDB() {
             this.sessionPool = computeSessionPool(sessionId);
             timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
             nodeTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionNode());
@@ -4878,10 +4890,12 @@ public class Node {
         }
 
         public HashId getStorage(String name) {
+            lastActivityTime = ZonedDateTime.now();
             return storages.get(name);
         }
 
         public Map<String, HashId> getPendingChanges(String name) {
+            lastActivityTime = ZonedDateTime.now();
             Map<Integer, HashId> res = storageUpdates.get(name);
             if(res != null) {
                 Map<String,HashId> ret = new HashMap();
@@ -4895,6 +4909,8 @@ public class Node {
         public void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") addStorageUpdateVote from " , ubotsByKey.get(publicKey) , " state " , state , " " , storageName, ": ", fromValue ," -> " , toValue, " "),
                     DatagramAdapter.VerboseLevel.BASE);
+
+            lastActivityTime = ZonedDateTime.now();
 
             if(state != Node.UBotSessionState.OPERATIONAL)
                 throw new IllegalStateException("UBot session for " +executableContractId +" is not established" );
@@ -5019,10 +5035,12 @@ public class Node {
         }
 
         public UBotSessionState getState() {
+            lastActivityTime = ZonedDateTime.now();
             return state;
         }
 
         public String getSessionQuorum() {
+            lastActivityTime = ZonedDateTime.now();
             return "" + quorumSize;
         }
 
@@ -5042,10 +5060,20 @@ public class Node {
         }
     }
 
+    private void unloadInactiveUbotSessionProcessors() {
+        ubotSessionProcessors.forEach((k, usp) -> {
+            if (usp.lastActivityTime.plusSeconds(60).isBefore(ZonedDateTime.now())) {
+                usp.saveToLedger();
+                usp.removeSelf();
+            }
+        });
+    }
+
     private UBotSessionProcessor loadUBotSessionProcessorFromLedger(HashId executableContractId) {
         Ledger.UbotSessionCompact compact = ledger.loadUbotSession(executableContractId);
         UBotSessionProcessor usp = new UBotSessionProcessor(compact);
         usp.initPoolAndQuorum();
+        usp.initAfterLoadlingFromDB();
         return usp;
     }
 

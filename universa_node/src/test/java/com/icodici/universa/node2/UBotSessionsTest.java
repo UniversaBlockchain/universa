@@ -14,12 +14,15 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -352,6 +355,94 @@ public class UBotSessionsTest extends BaseMainTest {
         }
 
         readyEvent4.await();
+
+        ts.shutdown();
+    }
+
+    @Ignore
+    @Test
+    public void unloadSessionFromMem() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        int quorumSize = 1;
+        int poolSize = 1;
+        Contract executableContract = new Contract(TestKeys.privateKey(1));
+        executableContract.getStateData().put("cloud_methods",
+                Binder.of("getRandom",
+                        Binder.of("pool",Binder.of("size",poolSize),
+                                "quorum",Binder.of("size",quorumSize))));
+        executableContract.seal();
+        Contract requestContract = new Contract(TestKeys.privateKey(2));
+        requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+        requestContract.getStateData().put("method_name","getRandom");
+        requestContract.getStateData().put("method_args", Do.listOf(1000));
+        requestContract.seal();
+        requestContract.getTransactionPack().addReferencedItem(executableContract);
+        System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
+
+        Client ubotClient = null;
+
+        while (true) {
+            Thread.sleep(100);
+            Binder res = ts.client.command("ubotGetSession", "executableContractId", executableContract.getId());
+            if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null)
+                continue;
+            if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                List<Integer> sessionPool = res.getBinderOrThrow("session").getListOrThrow("sessionPool");
+                System.out.println("sessionPool: " + sessionPool);
+                ubotClient = new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(sessionPool.get(0)));
+                break;
+            }
+        }
+
+        HashId storageValue = HashId.createRandom();
+        System.out.println("storageValue: " + storageValue);
+        for (int c = 0; c < ubotClient.size(); ++c)
+            ubotClient.getClient(c).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", storageValue);
+
+        while(true) {
+            Thread.sleep(100);
+            Binder res = ubotClient.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+                break;
+            }
+        }
+
+        Field privateField = Node.class.getDeclaredField("ubotSessionProcessors");
+        privateField.setAccessible(true);
+        ConcurrentHashMap<HashId, Node.UBotSessionProcessor> ubotSessionProcessors = (ConcurrentHashMap<HashId, Node.UBotSessionProcessor>) privateField.get(ts.node.node);
+        System.out.println("ubotSessionProcessors count: " + ubotSessionProcessors.size());
+        assertEquals(1, ubotSessionProcessors.size());
+
+        while (true) {
+            Thread.sleep(2000);
+            System.out.println("wait for unload ubot processors... ubotSessionProcessors.size = " + ubotSessionProcessors.size());
+            if (ubotSessionProcessors.size() == 0)
+                break;
+        }
+
+        while(true) {
+            Thread.sleep(100);
+            Binder res = ubotClient.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+                break;
+            }
+        }
+
+        HashId newStorageValue = HashId.createRandom();
+        System.out.println("newStorageValue: " + newStorageValue);
+        for (int c = 0; c < ubotClient.size(); ++c)
+            ubotClient.getClient(c).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","toValue", newStorageValue);
+
+        while(true) {
+            Thread.sleep(100);
+            Binder res = ubotClient.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+            if(res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(newStorageValue) && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
+                break;
+            }
+        }
+
+        assertEquals(1, ubotSessionProcessors.size());
 
         ts.shutdown();
     }
