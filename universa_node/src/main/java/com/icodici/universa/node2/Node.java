@@ -4559,11 +4559,12 @@ public class Node {
         }
 
         private synchronized void startBroadcastMyState() {
+            stopBroadcastMyState();
             broadcaster = executorService.scheduleAtFixedRate(this::broadcastMyState,0,500, TimeUnit.MILLISECONDS);
         }
 
         private synchronized void stopBroadcastMyState() {
-            if(broadcaster != null) {
+            if (broadcaster != null) {
                 broadcaster.cancel(true);
                 broadcaster = null;
             }
@@ -4678,7 +4679,6 @@ public class Node {
                 voteClose(myInfo,true);
                 if (state == UBotSessionState.CLOSING) {
                     timeout = null;
-                    stopBroadcastMyState();
                     startBroadcastMyState();
                 }
             }
