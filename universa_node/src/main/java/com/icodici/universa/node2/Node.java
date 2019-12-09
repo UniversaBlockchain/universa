@@ -5062,7 +5062,7 @@ public class Node {
 
     private void unloadInactiveUbotSessionProcessors() {
         ubotSessionProcessors.forEach((k, usp) -> {
-            if (usp.lastActivityTime.plusSeconds(60).isBefore(ZonedDateTime.now())) {
+            if (usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
                 usp.saveToLedger();
                 usp.removeSelf();
             }

@@ -221,6 +221,7 @@ public class Config {
     private BigDecimal ratioNodesSendFollowerCallbackToComplete = BigDecimal.valueOf(0.3);
     private Duration maxWaitSessionConsensus = Duration.ofSeconds(20);
     private Duration maxWaitSessionNode = Duration.ofSeconds(5);
+    private Duration ubotSessionLifeTime = Duration.ofSeconds(60);
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -567,5 +568,9 @@ public class Config {
 
     public Duration getMaxWaitSessionNode() {
         return maxWaitSessionNode;
+    }
+
+    public Duration getUbotSessionLifeTime() {
+        return ubotSessionLifeTime;
     }
 }
