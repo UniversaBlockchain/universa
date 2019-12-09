@@ -1377,11 +1377,12 @@ public class Node {
         UBotSessionProcessor sp = ubotSessionProcessors.get(executableContractId);
         if (sp == null) {
             sp = loadUBotSessionProcessorFromLedger(executableContractId);
-            ubotSessionProcessors.put(executableContractId, sp);
+            if (sp != null)
+                ubotSessionProcessors.put(executableContractId, sp);
         }
         if(sp != null)
             return sp.getSession();
-        throw new IllegalArgumentException("session processor not found for " + executableContractId);
+        return new Binder();
     }
 
     public Binder updateUBotStorage(HashId executableContractId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) throws Exception {
@@ -1389,7 +1390,8 @@ public class Node {
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
             if (usp == null) {
                 usp = loadUBotSessionProcessorFromLedger(executableContractId);
-                ubotSessionProcessors.put(executableContractId, usp);
+                if (usp != null)
+                    ubotSessionProcessors.put(executableContractId, usp);
             }
             if (usp != null) {
                 usp.addStorageUpdateVote(storageName,fromValue,toValue,publicKey,checkFromValue);
@@ -1404,7 +1406,8 @@ public class Node {
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
             if (usp == null) {
                 usp = loadUBotSessionProcessorFromLedger(executableContractId);
-                ubotSessionProcessors.put(executableContractId, usp);
+                if (usp != null)
+                    ubotSessionProcessors.put(executableContractId, usp);
             }
             if(usp != null) {
                 usp.addSessionCloseVote(publicKey, finished);
@@ -1421,7 +1424,8 @@ public class Node {
             UBotSessionProcessor usp = ubotSessionProcessors.get(executableContractId);
             if (usp == null) {
                 usp = loadUBotSessionProcessorFromLedger(executableContractId);
-                ubotSessionProcessors.put(executableContractId, usp);
+                if (usp != null)
+                    ubotSessionProcessors.put(executableContractId, usp);
             }
             if(usp != null) {
                 Binder current = new Binder();
@@ -5071,10 +5075,13 @@ public class Node {
 
     private UBotSessionProcessor loadUBotSessionProcessorFromLedger(HashId executableContractId) {
         Ledger.UbotSessionCompact compact = ledger.loadUbotSession(executableContractId);
-        UBotSessionProcessor usp = new UBotSessionProcessor(compact);
-        usp.initPoolAndQuorum();
-        usp.initAfterLoadlingFromDB();
-        return usp;
+        if (compact != null) {
+            UBotSessionProcessor usp = new UBotSessionProcessor(compact);
+            usp.initPoolAndQuorum();
+            usp.initAfterLoadlingFromDB();
+            return usp;
+        }
+        return null;
     }
 
     private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {
