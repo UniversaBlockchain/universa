@@ -5,6 +5,8 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.network.BasicHttpClient;
@@ -56,13 +58,16 @@ public class UBotSessionsTest extends BaseMainTest {
                 Binder.of("getRandom",
                         Binder.of("pool",Binder.of("size",poolSize),
                                 "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
-        requestContract.seal();
-        requestContract.getTransactionPack().addReferencedItem(executableContract);
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+            Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
         AtomicReference<List<Integer>> pool = new AtomicReference<>();
         AtomicInteger readyCounter = new AtomicInteger();
@@ -212,8 +217,10 @@ public class UBotSessionsTest extends BaseMainTest {
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
-        requestContract.seal();
-        requestContract.getTransactionPack().addReferencedItem(executableContract);
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+            Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
         AtomicReference<List<Integer>> pool2 = new AtomicReference<>();
         AtomicInteger readyCounter3 = new AtomicInteger();
@@ -464,13 +471,16 @@ public class UBotSessionsTest extends BaseMainTest {
                 Binder.of("getRandom",
                         Binder.of("pool",Binder.of("size",poolSize),
                                 "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
-        requestContract.seal();
-        requestContract.getTransactionPack().addReferencedItem(executableContract);
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+            Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
         AtomicReference<List<Integer>> pool = new AtomicReference<>();
         AtomicInteger readyCounter = new AtomicInteger();
@@ -625,8 +635,10 @@ public class UBotSessionsTest extends BaseMainTest {
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
-        requestContract.seal();
-        requestContract.getTransactionPack().addReferencedItem(executableContract);
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+            Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
         AtomicReference<List<Integer>> pool2 = new AtomicReference<>();
         AtomicInteger readyCounter3 = new AtomicInteger();
@@ -789,6 +801,7 @@ public class UBotSessionsTest extends BaseMainTest {
                 Binder.of("getRandom",
                         Binder.of("pool",Binder.of("size",5),
                                 "quorum",Binder.of("size",4))));
+        executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
         System.out.println("EID = " + executableContract.getId());
 
@@ -798,8 +811,10 @@ public class UBotSessionsTest extends BaseMainTest {
             requestContract.getStateData().put("executable_contract_id",executableContract.getId());
             requestContract.getStateData().put("method_name","getRandom");
             requestContract.getStateData().put("method_args", Do.listOf(1000));
-            requestContract.seal();
-            requestContract.getTransactionPack().addReferencedItem(executableContract);
+
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
             requestContracts.add(requestContract);
         }
         for (int i = 0; i < client.size(); i++) {

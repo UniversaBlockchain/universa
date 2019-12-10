@@ -11,6 +11,7 @@ import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -4510,8 +4511,19 @@ public class Node {
                 this.storages.putAll(storages);
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
-            state = Node.UBotSessionState.VOTING_REQUEST_ID;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
+
+            if (requestContract != null) {
+                try {
+                    checkRequest(requestContract);
+                } catch (IllegalArgumentException ex) {
+                    ex.printStackTrace();
+                    abortSession();
+                    return;
+                }
+            }
+
+            state = Node.UBotSessionState.VOTING_REQUEST_ID;
 
             timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
             nodeTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionNode());
@@ -4536,6 +4548,72 @@ public class Node {
             this.closeVotesFinished.addAll(compact.closeVotesFinished);
 
             this.myRandom = 0; // not needed for saved state
+        }
+
+        private void checkRequest(Contract requestContract) throws IllegalArgumentException {
+            HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
+            if (executableContractId == null)
+                throw new IllegalArgumentException("Error request contract: executable contact ID is not defined");
+
+            // get executable contract
+            Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+            if (executableContract == null)
+                throw new IllegalArgumentException("Error request contract: executable contact is not found in transaction pack");
+
+            // check executable contract constraint
+            Reference executableConstraint = requestContract.getReferences().get("executable_contract_constraint");
+            if (executableConstraint == null)
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint is not defined");
+
+            Binder conditions = executableConstraint.exportConditions();
+            List<Object> condList = conditions.getList(Reference.conditionsModeType.all_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format (expected all_of)");
+
+            if (condList.size() != 1 ||
+                (!condList.get(0).equals("this.state.data.executable_contract_id==ref.id") &&
+                 !condList.get(0).equals("ref.id==this.state.data.executable_contract_id")))
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format");
+
+            // check request contract data
+            String methodName = requestContract.getStateData().getString("method_name", null);
+            if (methodName == null)
+                throw new IllegalArgumentException("Error request contract: starting cloud method name is not defined or not string");
+
+            if (!executableContractId.equals(executableContract.getId()))
+                throw new IllegalArgumentException("Error request contract: executable contact ID not match ID saved in request contract");
+
+            // check executable contract data
+            Binder cloudMethods = executableContract.getStateData().getBinder("cloud_methods", null);
+            if (cloudMethods == null)
+                throw new IllegalArgumentException("Error executable contract: state.data.cloud_methods is not defined");
+
+            Binder cloudMethod = cloudMethods.getBinder(methodName, null);
+            if (cloudMethod == null)
+                throw new IllegalArgumentException("Error executable contract: starting cloud method metadata (in state.data.cloud_methods) is not defined");
+
+            // check launcher role
+            String launcher = cloudMethod.getString("launcher", null);
+            if (launcher != null) {
+                if (executableContract.getRole(launcher) == null)
+                    throw new IllegalArgumentException("Error executable contract: role is not defined");
+
+                // check launcher constraint
+                Reference launcherConstraint = requestContract.getReferences().get("launcher_constraint");
+                if (launcherConstraint == null)
+                    throw new IllegalArgumentException("Error request contract: launcher_constraint is not defined");
+
+                Binder launcherConditions = launcherConstraint.exportConditions();
+                List<Object> launcherCondList = launcherConditions.getList(Reference.conditionsModeType.all_of.name(), null);
+                if (launcherCondList == null)
+                    throw new IllegalArgumentException("Error request contract: launcher_constraint has incorrect format (expected all_of)");
+
+                if (launcherCondList.size() != 1 || !launcherCondList.get(0).equals("this can_perform ref.state.roles." + launcher))
+                    throw new IllegalArgumentException("Error request contract: launcher_constraint has incorrect format");
+            }
+
+            if (executableContract.getStateData().get("js") == null)
+                throw new IllegalArgumentException("Error executable contract: executable contact JS-code is not defined");
         }
 
         private void initAfterLoadlingFromDB() {
@@ -4731,6 +4809,11 @@ public class Node {
                     timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
                     nodeTimeout = null;
                     broadcastMyState();
+
+                    // register request contract
+//                    if (requestContract != null && requestContract.getId().equals(requestId)) {
+//                        //TODO: parallel register requestContract
+//                    }
                 }
 
             } else if (state == Node.UBotSessionState.COLLECTING_RANDOMS) {
