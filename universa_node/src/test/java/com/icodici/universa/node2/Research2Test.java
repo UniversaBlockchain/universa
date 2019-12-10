@@ -11,9 +11,10 @@ import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.TestKeys;
-import com.icodici.universa.node2.network.Client;
-import com.icodici.universa.node2.network.ClientError;
+import com.icodici.universa.node2.network.*;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
+import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.FileTool;
 import net.sergeych.utils.LogPrinter;
@@ -24,8 +25,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -721,5 +721,59 @@ public class Research2Test {
         String newFilename = FileTool.writeFileContentsWithRenaming(System.getProperty("java.io.tmpdir")+"/testFile_2.file", contract.getPackedTransaction());
         System.out.println("write done, new filename=" + newFilename);
     }
+
+//    @Test
+//    public void httpSessionsConcurrency() throws Exception {
+//        PrivateKey serverKey = new PrivateKey(2048);
+//        BufferedLogger logger = new BufferedLogger(100);
+//        BasicHttpServer server = new BasicHttpServer(serverKey, 8887, 64, logger);
+//        server.addSecureEndpoint("testEndpoint", (params, session) -> {
+//            //System.out.println("server: on testEndpoint");
+//            return new Binder("ans", "some_value");
+//        });
+//
+//        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(64);
+//        int CLIENTS = 100;
+//        List<PrivateKey> clientKeys = new CopyOnWriteArrayList<>();
+//        List<BasicHttpClient> clients = new CopyOnWriteArrayList<>();
+//        CountDownLatch latch0 = new CountDownLatch(CLIENTS);
+//        for (int i = 0; i < CLIENTS; ++i) {
+//            pool.execute(() -> {
+//                try {
+//                    //PrivateKey clientKey = new PrivateKey(2048);
+//                    PrivateKey clientKey = TestKeys.privateKey(8);
+//                    clientKeys.add(clientKey);
+//                    BasicHttpClient client = new BasicHttpClient("http://localhost:8887");
+//                    BasicHttpClientSession session = null;
+//                    client.start(clientKey, serverKey.getPublicKey(), null);
+//                    clients.add(client);
+//                    latch0.countDown();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            });
+//        }
+//        latch0.await();
+//        System.out.println("clients.size: " + clients.size());
+//        int N = 1000;
+//        CountDownLatch latch = new CountDownLatch(N);
+//        for (int i = 0; i < N; ++i) {
+//            int fi = i;
+//            pool.execute(() -> {
+//                try {
+//                    BasicHttpClient client = clients.get(fi % CLIENTS);
+//                    client.command("testEndpoint", new Binder("prm", "some_parameter"));
+//                    latch.countDown();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            });
+//        }
+//        while (latch.getCount() > 0) {
+//            Thread.sleep(1000);
+//            System.out.println("latch: " + latch.getCount());
+//        }
+//        latch.await();
+//    }
 
 }

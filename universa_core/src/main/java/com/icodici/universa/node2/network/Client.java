@@ -123,16 +123,18 @@ public class Client {
      * @return connected to node
      */
     public Client getClient(int i) throws IOException {
-        Client c = clients.get(i);
-        if (c == null) {
-            NodeRecord r = nodes.get(i);
-            c = new Client(r.url, clientPrivateKey, r.key, null);
-            if (topology != null) {
-                c.httpClient.nodeNumber = topology.get(i).getIntOrThrow("number");
+        synchronized (clients) {
+            Client c = clients.get(i);
+            if (c == null) {
+                NodeRecord r = nodes.get(i);
+                c = new Client(r.url, clientPrivateKey, r.key, null);
+                if (topology != null) {
+                    c.httpClient.nodeNumber = topology.get(i).getIntOrThrow("number");
+                }
+                clients.set(i, c);
             }
-            clients.set(i, c);
+            return c;
         }
-        return c;
     }
 
     /**
