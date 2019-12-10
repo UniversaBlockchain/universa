@@ -31,6 +31,7 @@ import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Ut;
 import org.bouncycastle.asn1.bc.ObjectDataSequence;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.script.ScriptException;
@@ -1304,6 +1305,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(ISSUER_MUST_CREATE, "issuer.keys");
         }
 
+        Role targetRole = issuer;
+        while(true) {
+            if(isMutableRole(targetRole)) {
+                addError(BAD_VALUE, "issuer","issuer can be modified");
+                break;
+            }
+
+            if(targetRole instanceof RoleLink) {
+                targetRole = ((RoleLink) targetRole).getRole();
+            } else {
+                break;
+            }
+        }
+
+
+
+
+
+
         if (state.revision != 1)
             addError(BAD_VALUE, "state.revision", "must be 1 in a root contract");
         if (state.createdAt == null)
@@ -1317,6 +1337,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(BAD_VALUE, "state.parent", "must be empty in a root contract");
 
         checkRevokePermissions(revokingItems);
+    }
+
+    private boolean isMutableRole(Role role) {
+        if(role.getName().equals("creator")) {
+            return true;
+        } else if(role.getName().equals("owner")) {
+            Collection<Permission> chown = getPermissions().get("change_owner");
+            if(chown != null && chown.size() > 0) {
+                return true;
+            }
+        } else if(!role.getName().equals("issuer")) {
+            Collection<Permission> chrole = getPermissions().get("change_role");
+            if(chrole != null && chrole.stream().anyMatch(p->p.getParams().getString("role_name","").equals(role.getName()))) {
+                return true;
+            }
+        }
+
+        Collection<Permission> mdps = getPermissions().get("modify_data");
+        boolean stateReferencesMutable = mdps != null && mdps.stream().anyMatch(p->p.getParams().getBinder("fields",new Binder()).containsKey("/references"));
+
+        return getReferences().values().stream().anyMatch(r->(r.type == Reference.TYPE_TRANSACTIONAL ||
+                (r.type == Reference.TYPE_EXISTING_STATE && stateReferencesMutable)) && role.containReference(r.name));
+
     }
 
     private void checkRevokePermissions(Set<Contract> revokes) throws Quantiser.QuantiserException {

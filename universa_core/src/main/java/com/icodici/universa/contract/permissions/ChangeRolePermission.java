@@ -48,6 +48,7 @@ public class ChangeRolePermission extends Permission {
     public ChangeRolePermission(Role role, String roleName) {
         super("change_role", role);
         this.roleName = roleName;
+        params = Binder.of("role_name",roleName);
     }
 
     private ChangeRolePermission() {}
