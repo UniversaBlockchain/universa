@@ -215,7 +215,7 @@ public class RoleLink extends Role {
     @Override
     public boolean isValid() {
         //ignore references here
-        final Role role = resolve(false);
+        final Role role = resolve(true);
 
         return (role == null) ? false : role.isValid();
     }
@@ -294,7 +294,7 @@ public class RoleLink extends Role {
     @Override
     public void anonymize() {
         //ignore references here
-        final Role role = resolve(false);
+        final Role role = resolve(true);
         
         if (role != null)
             role.anonymize();
