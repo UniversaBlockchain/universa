@@ -717,7 +717,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
             return Binder.of(
                     "result",
-                    node.registerPaidOperation(new PaidOperation(TransactionPack.unpack(packedU),"ubot_session",Binder.of("packedRequest",packedRequest)))
+                    node.registerPaidOperation(PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU),"ubot_session",Binder.of("packedRequest",packedRequest)).pack()))
             );
 
 
