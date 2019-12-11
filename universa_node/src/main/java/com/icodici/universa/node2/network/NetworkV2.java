@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
@@ -266,6 +267,27 @@ public class NetworkV2 extends Network {
             return parcel;
         } catch (Exception e) {
             report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
+            return null;
+        }
+    }
+
+    @Override
+    public PaidOperation getPaidOperation(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        try {
+            URL url = new URL((myInfo.hasV6() ? nodeInfo.serverUrlStringV6() : nodeInfo.serverUrlString()) + "/paidOperation/" + itemId.toBase64String());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout((int) (maxTimeout.getSeconds()*1000));
+            if (200 != connection.getResponseCode())
+                return null;
+            byte[] data = Do.read(connection.getInputStream());
+            PaidOperation paidOperation = PaidOperation.unpack(data);
+            return paidOperation;
+        } catch (Exception e) {
+            report(getLabel(), "download(getPaidOperation) failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
             return null;
         }
     }
