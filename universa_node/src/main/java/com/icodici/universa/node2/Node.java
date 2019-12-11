@@ -5292,8 +5292,7 @@ public class Node {
         }
 
         public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
-            //TODO: quantasLimit ???
-            quantasLimit = 0;
+            quantasLimit = compact.quantaLimit;
 
             this.executableContractId = compact.executableContractId;
             this.requestId = compact.requestId;
@@ -5914,6 +5913,7 @@ public class Node {
                 compact.storageUpdates = this.storageUpdates;
                 compact.closeVotes = this.closeVotes;
                 compact.closeVotesFinished = this.closeVotesFinished;
+                compact.quantaLimit = this.quantasLimit;
                 ledger.saveUbotSession(compact);
             }
         }

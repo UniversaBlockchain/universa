@@ -1045,6 +1045,7 @@ public class PostgresLedgerTest extends TestCase {
         compact.storageUpdates = storageUpdates;
         compact.closeVotes = closeVotes;
         compact.closeVotesFinished = closeVotesFinished;
+        compact.quantaLimit = 400;
 
         BiConsumer<Ledger.UbotSessionCompact, Ledger.UbotSessionCompact> assertUbotSessionCompactEquals = (expected, loaded) -> {
             assertEquals(expected.executableContractId, loaded.executableContractId);
@@ -1071,6 +1072,7 @@ public class PostgresLedgerTest extends TestCase {
             assertTrue(loaded.closeVotes.containsAll(expected.closeVotes));
             assertEquals(expected.closeVotesFinished.size(), loaded.closeVotesFinished.size());
             assertTrue(loaded.closeVotesFinished.containsAll(expected.closeVotesFinished));
+            assertEquals(expected.quantaLimit, loaded.quantaLimit);
         };
 
         // test creation of new ubot_session in ledger
@@ -1086,6 +1088,7 @@ public class PostgresLedgerTest extends TestCase {
         loaded.closeVotes.add(8);
         loaded.closeVotesFinished.clear();
         loaded.closeVotesFinished.add(42);
+        loaded.quantaLimit = 505;
         ledger.saveUbotSession(loaded);
         Ledger.UbotSessionCompact loaded2 = ledger.loadUbotSession(loaded.executableContractId);
         assertEquals(loaded.id, loaded2.id);

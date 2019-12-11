@@ -191,6 +191,7 @@ public interface Ledger {
         public Map<String, Map<Integer,HashId>> storageUpdates;
         public Set<Integer> closeVotes;
         public Set<Integer> closeVotesFinished;
+        public int quantaLimit;
     };
     void saveUbotSession(UbotSessionCompact sessionCompact);
     UbotSessionCompact loadUbotSession(HashId executableContractId);

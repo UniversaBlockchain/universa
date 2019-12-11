@@ -1,0 +1,1 @@
+alter table ubot_session add column quanta_limit integer;

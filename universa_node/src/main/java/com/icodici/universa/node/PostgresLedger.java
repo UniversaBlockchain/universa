@@ -2878,8 +2878,9 @@ public class PostgresLedger implements Ledger {
                     "storages," +
                     "storage_updates," +
                     "close_votes," +
-                    "close_votes_finished) " +
-                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json) " +
+                    "close_votes_finished," +
+                    "quanta_limit) " +
+                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json,?) " +
                 "on conflict(executable_contract_id) do update set " +
                     "save_timestamp = excluded.save_timestamp," +
                     "request_id = excluded.request_id," +
@@ -2889,7 +2890,8 @@ public class PostgresLedger implements Ledger {
                     "storages = excluded.storages," +
                     "storage_updates = excluded.storage_updates," +
                     "close_votes = excluded.close_votes," +
-                    "close_votes_finished = excluded.close_votes_finished;"
+                    "close_votes_finished = excluded.close_votes_finished," +
+                    "quanta_limit = excluded.quanta_limit;"
             );
             Map<String, String> storages_b64 = new ConcurrentHashMap<>();
             sessionCompact.storages.forEach((k, v) -> storages_b64.put(k, v.toBase64String()));
@@ -2909,6 +2911,7 @@ public class PostgresLedger implements Ledger {
             statement.setString(8, JsonTool.toJsonString(storageUpdates_b64));
             statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotes));
             statement.setString(10, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
+            statement.setInt(11, sessionCompact.quantaLimit);
             db.updateWithStatement(statement);
         } catch (SQLException se) {
             se.printStackTrace();
@@ -2952,6 +2955,7 @@ public class PostgresLedger implements Ledger {
             compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
             List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
             closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
+            compact.quantaLimit = rs.getInt("quanta_limit");
             return compact;
         } catch (SQLException se) {
             se.printStackTrace();
