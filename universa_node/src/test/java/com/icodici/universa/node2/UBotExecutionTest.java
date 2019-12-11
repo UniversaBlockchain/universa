@@ -51,7 +51,7 @@ public class UBotExecutionTest extends BaseMainTest {
         requestContract.getTransactionPack().addReferencedItem(executableContract);
 
         Client client = new Client("universa.pro",null,TestKeys.privateKey(1));
-        System.out.println(client.executeCloudMethod(requestContract,true,0.3f));
+        System.out.println(client.executeCloudMethod(requestContract.getPackedTransaction(),true,0.3f));
 
         requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
@@ -59,7 +59,7 @@ public class UBotExecutionTest extends BaseMainTest {
         requestContract.getStateData().put("method_args", Do.listOf(1000));
         requestContract.seal();
         requestContract.getTransactionPack().addReferencedItem(executableContract);
-        System.out.println(client.executeCloudMethod(requestContract,true,0.3f));
+        System.out.println(client.executeCloudMethod(requestContract.getPackedTransaction(),true,0.3f));
 
     }
 }

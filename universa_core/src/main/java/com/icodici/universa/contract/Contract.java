@@ -3528,7 +3528,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             try {
                 this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
             } catch (Exception e) {
-                e.printStackTrace();
+                //backward compatibility
+                this.data = data.getBinder("data", Binder.EMPTY);
             }
             branchId = data.getString("branch_id", null);
             parent = d.deserialize(data.get("parent"));

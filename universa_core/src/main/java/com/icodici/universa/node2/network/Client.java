@@ -1637,7 +1637,9 @@ public class Client {
 
 
 
-    public Binder executeCloudMethod(Contract requestContract, boolean waitPreviousSession,float trustLevel) throws ClientError {
+    public Binder executeCloudMethod(byte[] packedRequest, boolean waitPreviousSession,float trustLevel) throws IOException {
+
+        Contract requestContract = Contract.fromPackedTransaction(packedRequest);
 
         Binder session = startCloudMethod(requestContract, waitPreviousSession);
 

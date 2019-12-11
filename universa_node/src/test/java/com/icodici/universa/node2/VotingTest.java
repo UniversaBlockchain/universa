@@ -16,6 +16,7 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.FileOutputStream;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
+@Ignore
 public class VotingTest extends BaseMainTest {
 
     @Test

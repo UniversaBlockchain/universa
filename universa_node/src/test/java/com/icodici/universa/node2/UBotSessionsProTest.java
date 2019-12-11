@@ -22,7 +22,7 @@ public class UBotSessionsProTest {
 
     public static final Map<Integer,PrivateKey> ubotKeys = new HashMap<>();
     public static final int N = 30;
-    private static final int ATTEMPTS = 5000;
+    private static final int ATTEMPTS = 2;
 
     static {
         try {
