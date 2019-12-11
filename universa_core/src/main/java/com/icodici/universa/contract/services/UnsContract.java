@@ -313,7 +313,7 @@ public class UnsContract extends NSmartContract {
             storedNames.add(unsName);
         }
 
-        storedRecords = deserializer.deserialize(getStateData().getList(ENTRIES_FIELD_NAME, null));
+        storedRecords = getStateData().getList(ENTRIES_FIELD_NAME, null);
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNameDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
@@ -324,7 +324,7 @@ public class UnsContract extends NSmartContract {
         ArrayList<?> arrayNames = root.getBinder("state").getBinder("data").getArray(NAMES_FIELD_NAME);
         for (Object name: arrayNames) {
             Binder binder;
-            if (name.getClass().getName().endsWith("Binder"))
+            if (name instanceof Binder)
                 binder = (Binder) name;
             else
                 binder = new Binder((Map) name);
@@ -337,7 +337,7 @@ public class UnsContract extends NSmartContract {
         ArrayList<?> arrayRecords = root.getBinder("state").getBinder("data").getArray(ENTRIES_FIELD_NAME);
         for (Object record: arrayRecords) {
             Binder binder;
-            if (record.getClass().getName().endsWith("Binder"))
+            if (record instanceof Binder)
                 binder = (Binder) record;
             else
                 binder = new Binder((Map) record);

@@ -11,10 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ExtendedSignature;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
@@ -693,6 +690,58 @@ public class Client {
         }
     }
 
+    /**
+     * Send the PaidOperation to network and wait for it processing is complete.
+     * @param packed {@ling PaidOperation} binary
+     * @param millisToWait maximum time to wait
+     * @return payment contract state. If here comes APPROVED - that means what operation was completed successfully.
+     *          If not, payment contract will be in DECLINED state.
+     * @throws ClientError
+     */
+    public ItemResult registerPaidOperationWithState(byte[] packed, long millisToWait) throws ClientError {
+        Object result = protect(() -> httpClient.command("approvePaidOperation", "packedItem", packed)
+                .get("result"));
+        if (result instanceof String) {
+            throw new ClientError(Errors.FAILURE, "registerPaidOperationWithState", "approvePaidOperation returns: " + result);
+        } else {
+            if (millisToWait > 0) {
+                Instant end = Instant.now().plusMillis(millisToWait);
+                try {
+                    PaidOperation paidOperation = PaidOperation.unpack(packed);
+                    Thread.sleep(100);
+                    ParcelProcessingState pState = getPaidOperationProcessingState(paidOperation.getId());
+                    int interval = 1000;
+                    // first, PaidOperation should be completed
+                    //System.out.println("pState is: " + pState);
+                    while (Instant.now().isBefore(end) && pState.isProcessing()) {
+                        Thread.sleep(interval);
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
+                        pState = getPaidOperationProcessingState(paidOperation.getId());
+                        //System.out.println("pState is: " + pState);
+                    }
+                    // PaidOperationProcessor commits/rollbacks final payment state after processing of its operation;
+                    // so next, payment state should not be pending
+                    ItemResult lastResult = getState(paidOperation.getPaymentContract().getId());
+                    //System.out.println("test: " + lastResult);
+                    while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                        Thread.sleep(interval);
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
+                        lastResult = getState(paidOperation.getPaymentContract().getId());
+                        //System.out.println("test: " + lastResult);
+                    }
+                    return lastResult;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    throw new ClientError(e);
+                }
+            } else {
+                throw new ClientError(Errors.COMMAND_PENDING, "registerPaidOperationWithState",
+                        "waiting time is up, please update payload state later");
+            }
+        }
+    }
 
     /**
      * Get the state of the contract on the currently connected node.
@@ -918,6 +967,26 @@ public class Client {
         return protect(() -> {
             Binder result = httpClient.command("getParcelProcessingState",
                     "parcelId", parcelId);
+
+            Object ps = result.getOrThrow("processingState");
+            if (ps instanceof ParcelProcessingState)
+                return (ParcelProcessingState) ps;
+
+            return ParcelProcessingState.valueOf(result.getBinder("processingState").getStringOrThrow("state"));
+        });
+    }
+
+    /**
+     * Get the processing state of given PaidOperation.
+     *
+     * @param operationId id of the {@link com.icodici.universa.contract.PaidOperation} to get state of
+     * @return processing state of the operation, from ParcelProcessingState enum
+     * @throws ClientError
+     */
+    public ParcelProcessingState getPaidOperationProcessingState(HashId operationId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getPaidOperationProcessingState",
+                    "operationId", operationId);
 
             Object ps = result.getOrThrow("processingState");
             if (ps instanceof ParcelProcessingState)

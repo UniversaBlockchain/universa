@@ -198,6 +198,7 @@ public class ModifyDataPermissionTest extends TestCase {
     @Test
     public void modifyReferencesWhiteList() throws Exception {
         Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getDefinition().getData().put("type","Good Bank");
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
         Contract referencedContract = new Contract(TestKeys.privateKey(1));
         referencedContract.seal();
@@ -211,7 +212,6 @@ public class ModifyDataPermissionTest extends TestCase {
         ref.name = "bank_certificate";
         ref.type =  Reference.TYPE_EXISTING_STATE;
         ref.setConditions(conditionsForDefinition);
-        ref.addMatchingItem(referencedContract);
 
         modifyDataPermission.addField("/references", Do.listOf(ref));
         contract.addPermission(modifyDataPermission);
@@ -219,6 +219,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         Contract changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();
@@ -235,6 +236,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();
@@ -246,6 +248,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();
@@ -259,6 +262,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();
@@ -273,6 +277,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();
@@ -289,6 +294,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
+        ref.setContract(changed);
         changed.addReference(ref);
         changed.seal();
         changed.check();

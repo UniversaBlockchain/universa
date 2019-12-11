@@ -9,11 +9,8 @@ public class Quantiser {
     private boolean isCalculationFinished_ = false;
     public static int quantaPerU = Config.quantiser_quantaPerU;
 
-
     public Quantiser() {
     }
-
-
 
     public void reset(int newLimit) {
         quantaSum_ = 0;
@@ -21,13 +18,9 @@ public class Quantiser {
         isCalculationFinished_ = false;
     }
 
-
-
     public void resetNoLimit() {
         reset(-1);
     }
-
-
 
     public void addWorkCost(QuantiserProcesses process) throws QuantiserException {
         quantaSum_ += process.getCost();
@@ -39,7 +32,10 @@ public class Quantiser {
             }
     }
 
-
+    public void multipleAddWorkCost(QuantiserProcesses process, int rate) throws QuantiserException {
+        for (int i = 0; i < rate; i++)
+            addWorkCost(process);
+    }
 
     public void addWorkCostFrom(Quantiser quantiser) throws QuantiserException {
         quantaSum_ += quantiser.getQuantaSum();
@@ -51,26 +47,17 @@ public class Quantiser {
             }
     }
 
-
-
     public int getQuantaSum() {
         return quantaSum_;
     }
-
-
 
     public int getQuantaLimit() {
         return quantaLimit_;
     }
 
-
-
     public boolean isCalculationFinished() {return isCalculationFinished_;}
 
-
-
     public void finishCalculation() {isCalculationFinished_ = true;}
-
 
     public enum QuantiserProcesses {
 
@@ -80,7 +67,12 @@ public class Quantiser {
         PRICE_SPLITJOIN_PERM,
         PRICE_REVOKE_VERSION,
         PRICE_REGISTER_VERSION,
-        PRICE_CHECK_REFERENCED_VERSION;
+        PRICE_CHECK_REFERENCED_VERSION,
+        PRICE_CHECK_REFERENCE_DEFINED,
+        PRICE_CHECK_REFERENCE_CONDITION,
+        PRICE_CHECK_REFERENCE_CAN_PLAY,
+        PRICE_CHECK_REFERENCE_IN,
+        PRICE_CHECK_REFERENCE_CAN_PERFORM;
 
         /**
          * Return cost of the process.
@@ -109,11 +101,34 @@ public class Quantiser {
 
                 case PRICE_CHECK_REFERENCED_VERSION:
                     return 1;
+
+                case PRICE_CHECK_REFERENCE_DEFINED:
+                    return 1;
+
+                case PRICE_CHECK_REFERENCE_CONDITION:
+                    return 2;
+
+                case PRICE_CHECK_REFERENCE_CAN_PLAY:
+                    return 4;
+
+                case PRICE_CHECK_REFERENCE_IN:
+                    return 4;
+                case PRICE_CHECK_REFERENCE_CAN_PERFORM:
+                    return 4;
             }
             return 0;
         }
     }
 
-    public class QuantiserException extends IOException {}
+    public static class QuantiserExceptionRuntime extends RuntimeException {
+
+        public QuantiserExceptionRuntime(QuantiserException e) {
+            super(e);
+        }
+    }
+
+    public class QuantiserException extends IOException {
+
+    }
 
 }

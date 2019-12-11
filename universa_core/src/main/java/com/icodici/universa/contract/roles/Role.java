@@ -14,6 +14,7 @@ import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -33,6 +34,8 @@ import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
  */
 @BiType(name = "Role")
 public abstract class Role implements BiSerializable {
+
+    private boolean resolvingRefereces;
 
     public boolean containReference(String name) {
         if(requiredAllReferences.contains(name) || requiredAnyReferences.contains(name) || getSpecialReferences().contains(name))
@@ -159,8 +162,24 @@ public abstract class Role implements BiSerializable {
      * @param keys is set of keys
      * @return true if role is allowed to keys
      */
-    public  boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        return isAllowedForReferences(contract == null ? new HashSet<>() : contract.getValidRoleReferences());
+    @Deprecated
+    public final boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
+        try {
+            return isAllowedForKeysQuantized(keys);
+        } catch (Quantiser.QuantiserException e) {
+            throw new Quantiser.QuantiserExceptionRuntime(e);
+        }
+    }
+
+    /**
+     * Check role is allowed to keys
+     *
+     * @param keys is set of keys
+     * @throws quantiser exception
+     * @return true if role is allowed to keys
+     */
+    public  boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        return isAllowedForReferences();
     }
 
 
@@ -177,13 +196,43 @@ public abstract class Role implements BiSerializable {
         return isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys));
     }
 
-    private boolean isAllowedForReferences(Collection<String> references) {
-        if(requiredAllReferences.stream().anyMatch(ref -> references == null || !references.contains(ref))) {
+    private boolean isAllowedForReferences() throws Quantiser.QuantiserException {
+
+        Set<String> refsUsed = new HashSet<>();
+        refsUsed.addAll(requiredAllReferences);
+        refsUsed.addAll(requiredAnyReferences);
+
+        if(refsUsed.size() == 0) {
+            return true;
+        }
+
+
+        if(!resolvingRefereces && contract != null) {
+            Set<String> refToBeChecked = new HashSet<>();
+            refsUsed.forEach(ru->{
+                Reference r = contract.getReferences().get(ru);
+                if(r != null) {
+                    refToBeChecked.addAll(r.getInternalReferences());
+                }
+            });
+
+            refToBeChecked.addAll(refsUsed);
+            resolvingRefereces = true;
+            contract.checkReferencedItems(refToBeChecked);
+            resolvingRefereces = false;
+        } else {
+            return false;
+        }
+
+        Set<String> references = contract != null ? contract.getValidRoleReferences() : new HashSet<>();
+
+
+        if(requiredAllReferences.stream().anyMatch(ref -> !references.contains(ref))) {
             return false;
         }
 
         return requiredAnyReferences.isEmpty() ||
-                requiredAnyReferences.stream().anyMatch(ref -> references != null && references.contains(ref));
+                requiredAnyReferences.stream().anyMatch(ref -> references.contains(ref));
     }
 
     /**

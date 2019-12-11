@@ -9,10 +9,12 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.TestKeys;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
 
+import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -383,5 +385,56 @@ public class RoleReferencesTest {
         transactionRoot = Contract.fromPackedTransaction(transactionRoot.getPackedTransaction());
         transactionRoot.check();
         assertTrue(transactionRoot.isOk());
+    }
+
+    @Test
+    public void compareRoleLinks() throws Exception {
+        PrivateKey pk = new PrivateKey(2048);
+        PrivateKey rpk = new PrivateKey(2048);
+        Contract c1 = new Contract(pk);
+        Contract c2 = new Contract(pk);
+
+        SimpleRole sr1 = new SimpleRole("sr1", c1, Do.listOf(rpk));
+        SimpleRole sr2 = new SimpleRole("sr2", c2, Do.listOf(rpk));
+        c1.addRole(sr1);
+        c2.addRole(sr2);
+
+        RoleLink lr1 = new RoleLink("lr1", c1, "sr1");
+        RoleLink lr2 = new RoleLink("lr2", c2, "sr2");
+        RoleLink lr3 = new RoleLink("lr3", c2, "sr2");
+        RoleLink lr4 = new RoleLink("lr4", c2, "sr2");
+        lr3.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
+        lr4.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
+        c1.addRole(lr1);
+        c2.addRole(lr2);
+        c2.addRole(lr3);
+        c2.addRole(lr4);
+
+        Reference ref1 = new Reference(c1);
+        ref1.setName("ref1");
+        ref1.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref1.setConditions(Binder.of(all_of.name(), Do.listOf(
+            "this.state.roles.sr1 == ref.state.roles.sr2",
+            "this.state.roles.lr1 == ref.state.roles.lr2",
+            "ref.state.roles.lr3 == ref.state.roles.lr4")));
+        c1.addReference(ref1);
+
+        Reference ref2 = new Reference(c2);
+        ref2.setName("ref2");
+        ref2.type = Reference.TYPE_EXISTING_DEFINITION;
+        c2.addReference(ref2);
+
+        c1.seal();
+        c2.seal();
+
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(c1);
+        tp.addSubItem(c2);
+        tp.addReferencedItem(c2);
+        c2.setTransactionPack(tp);
+
+        c1.check();
+        assert(c1.isOk());
+        assert(c1.getReferences().get("ref1").matchingItems.contains(c2));
     }
 }

@@ -7862,4 +7862,21 @@ public class MainTest {
     }
 
 
+    @Ignore
+    @Test
+    public void testDockerContainers() throws Exception {
+
+        PrivateKey key = PrivateKey.unpackWithPassword(Do.read("../docker/compose/whitelist.private.unikey"),"protect_your_keys");
+
+        Client client = new Client("../docker/compose/universa.local.json",null,key);
+        System.out.println(client.size());
+
+        for(int i = 0; i < client.size();i++) {
+            System.out.println(client.pingNode(client.getClient(i).getNodeNumber(),1000));
+        }
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.seal();
+        assertEquals(client.register(contract.getPackedTransaction(),100000).state,ItemState.APPROVED);
+
+    }
 }

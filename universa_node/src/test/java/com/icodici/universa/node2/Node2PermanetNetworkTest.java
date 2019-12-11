@@ -143,7 +143,7 @@ public class Node2PermanetNetworkTest extends BaseNetworkTest {
             ln.setNodes(nodesMap_s);
 //            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
             Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
-            Node n = new Node(config_s, info, ledger, ln, getNodeKey(i));
+            Node n = new Node(config_s, info, ledger, ln, getNodeKey(i),null);
             nodesMap_s.put(info, n);
             networks_s.add(ln);
 

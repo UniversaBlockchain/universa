@@ -162,7 +162,8 @@ public class Parcel implements BiSerializable {
 
     public static Parcel of(Contract payload, Contract uContract, Collection<PrivateKey> uKeys,int payingAmount) throws BadPayloadException,InsufficientFundsException,OwnerNotResolvedException {
         Parcel p = of(payload,uContract,uKeys,false);
-        p.addPayingAmountV2(payingAmount,uKeys);
+        if(payingAmount > 0)
+            p.addPayingAmountV2(payingAmount,uKeys);
         return p;
     }
 

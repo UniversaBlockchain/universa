@@ -1,0 +1,14 @@
+---
+http_client_port: 2055
+public_http_port: 2055
+http_client_listen:
+- 0.0.0.0
+http_server_port: 2085
+udp_server_port: 2703
+node_number: 4
+public_host: 127.0.0.1
+node_name: node-4-local
+ip:
+- 127.0.0.1
+ipv6:
+- fdf0:e132:efcf:2fae::14

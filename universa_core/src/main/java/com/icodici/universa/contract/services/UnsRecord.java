@@ -91,7 +91,7 @@ public class UnsRecord implements BiSerializable {
         } else {
             ArrayList<?> list = binder.getArray(ADDRESSES_FIELD_NAME);
             for (Object obj: list)
-                if (obj.getClass().getName().endsWith("String")) {
+                if (obj instanceof String) {
                     try {
                         unsAddresses.add(new KeyAddress((String) obj));
                     } catch (Exception e) {

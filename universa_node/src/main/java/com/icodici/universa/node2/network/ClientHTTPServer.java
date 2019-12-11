@@ -15,6 +15,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ExtendedSignature;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.QuorumVoteRole;
@@ -47,6 +48,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
+    private PaidOperationCache paidOperationCache;
     private EnvCache envCache;
     private NetConfig netConfig;
     private Config config;
@@ -121,6 +123,34 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
             if (data != null) {
                 // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
+        on("/paidOperation", (request, response) -> {
+            String encodedString = request.getPath().substring(15);
+
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
+
+            byte[] data = null;
+            if (encodedString.equals("cache_test")) {
+                data = "the cache test data".getBytes();
+            } else {
+                HashId id = HashId.withDigest(encodedString);
+                if (paidOperationCache != null) {
+                    PaidOperation p = (PaidOperation) paidOperationCache.get(id);
+                    if (p != null) {
+                        data = p.pack();
+                    }
+                }
+            }
+            if (data != null) {
+                // paidOperation should be same immutable like contracts: cache forever
                 Binder hh = response.getHeaders();
                 hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
                 hh.put("Cache-Control", "max-age=315360000");
@@ -262,11 +292,13 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
+        addSecureEndpoint("getPaidOperationProcessingState", this::getPaidOperationProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("resyncItem", this::resyncItem);
         addSecureEndpoint("pingNode", this::pingNode);
         addSecureEndpoint("setVerbose", this::setVerbose);
         addSecureEndpoint("approveParcel", this::approveParcel);
+        addSecureEndpoint("approvePaidOperation", this::approvePaidOperation);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
         addSecureEndpoint("storageGetRate", this::storageGetRate);
@@ -608,6 +640,20 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
+    private Binder approvePaidOperation(Binder params, Session session) throws IOException {
+        checkNode(session);
+        try {
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(PaidOperation.unpack(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            System.out.println("approvePaidOperation ERROR: " + e.getMessage());
+            return Binder.of(
+                    "result", itemResultOfError(Errors.COMMAND_FAILED,"approvePaidOperation", e.getMessage()));
+        }
+    }
+
     static AtomicInteger asyncStarts = new AtomicInteger();
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
@@ -931,6 +977,21 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
+    private Binder getPaidOperationProcessingState(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+        try {
+            return Binder.of("processingState",
+                    node.checkPaidOperationProcessingState((HashId) params.get("operationId")));
+        } catch (Exception e) {
+            System.out.println("getPaidOperationProcessingState ERROR: " + e.getMessage());
+            //TODO: return processing state not String
+            return Binder.of(
+                    "processingState",
+                    "getPaidOperationProcessingState ERROR: " + e.getMessage()
+            );
+        }
+    }
+
     private void checkNode(Session session) throws CommandFailedException {
         checkNode(session, false);
     }
@@ -1125,6 +1186,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setParcelCache(ParcelCache cache) {
         this.parcelCache = cache;
+    }
+
+    public void setPaidOperationCache(PaidOperationCache cache) {
+        this.paidOperationCache = cache;
     }
 
     public void setEnvCache(EnvCache cache) {

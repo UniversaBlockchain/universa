@@ -106,7 +106,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
                             offset + 2
                     );
             nc_s.addNode(info);
-            Node n = new Node(config_s, info, ledger, en, getNodeKey(i));
+            Node n = new Node(config_s, info, ledger, en, getNodeKey(i),null);
             nodes_s.add(n);
             en.addNode(info, n);
 

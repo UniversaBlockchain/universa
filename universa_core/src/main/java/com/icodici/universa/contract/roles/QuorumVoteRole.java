@@ -9,6 +9,7 @@ import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -20,20 +21,32 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @BiType(name = "QuorumVoteRole")
 public class QuorumVoteRole extends Role {
 
     private Long votesCount;
 
+
+    public enum QuorumOperators {
+        OPERATOR_ADD,
+        OPERATOR_SUBTRACT
+    }
+
+    public static final Map<Character,QuorumOperators> operatorSymbols  = new HashMap();
+
+    static {
+        operatorSymbols.put('+',QuorumOperators.OPERATOR_ADD);
+        operatorSymbols.put('-',QuorumOperators.OPERATOR_SUBTRACT);
+    }
+
     public QuorumVoteRole() {
 
     }
+
+    private List<String> quorumValues;
+    private List<QuorumOperators> quorumOperators;
 
     public QuorumVoteRole(String name, Contract contract, String source, String quorum) {
         super(name,contract);
@@ -45,6 +58,31 @@ public class QuorumVoteRole extends Role {
         String what = source.substring(idx+1);
 
 
+        extractValuesAndOperators();
+
+    }
+
+    private void extractValuesAndOperators() {
+        quorumValues = new ArrayList<>();
+        quorumOperators = new ArrayList<>();
+
+        int pos = 0;
+        for(int i = 0; i < quorum.length(); i++) {
+            if(operatorSymbols.containsKey(quorum.charAt(i))) {
+                String value = quorum.substring(pos,i);
+                if(value.length() == 0) {
+                    throw new IllegalArgumentException("Invalid quorum format");
+                }
+                quorumValues.add(value);
+                quorumOperators.add(operatorSymbols.get(quorum.charAt(i)));
+                pos = i+1;
+            }
+        }
+        String value = quorum.substring(pos);
+        if(value.length() == 0) {
+            throw new IllegalArgumentException("Invalid quorum format");
+        }
+        quorumValues.add(value);
     }
 
 
@@ -114,6 +152,7 @@ public class QuorumVoteRole extends Role {
 
         this.quorum = data.getStringOrThrow("quorum");
         this.source = data.getStringOrThrow("source");
+        extractValuesAndOperators();
     }
 
     @Override
@@ -131,8 +170,8 @@ public class QuorumVoteRole extends Role {
      * @return true if role is allowed to keys
      */
     @Override
-    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        if(!super.isAllowedForKeys(keys)) {
+    public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+        if(!super.isAllowedForKeysQuantized(keys)) {
             return false;
         }
 
@@ -144,12 +183,7 @@ public class QuorumVoteRole extends Role {
         }
 
 
-        int minValidCount;
-        if(quorum.endsWith("%")) {
-            minValidCount = (int) Math.ceil(new BigDecimal(quorum.substring(0,quorum.length()-1)).doubleValue()*votingAddresses.size()/100.0f);
-        } else {
-            minValidCount = Integer.parseInt(quorum);
-        }
+        long minValidCount = calculateMinValidCount(votingAddresses.size());
 
         if(votesCount != null) {
             return minValidCount <= votesCount;
@@ -167,6 +201,74 @@ public class QuorumVoteRole extends Role {
 
             return minValidCount == 0;
         }
+    }
+
+    private long calculateMinValidCount(long totalVotesCount) {
+        long value = 0;
+        for(int i = 0; i < quorumValues.size();i++) {
+            long curValue;
+            String valueString = quorumValues.get(i);
+            boolean isPercentageBased = valueString.endsWith("%");
+            if(isPercentageBased) {
+                if(totalVotesCount == 0)
+                    throw new IllegalArgumentException("Percentage based quorum requires vote list to be provided at registration");
+                valueString = valueString.substring(0,valueString.length()-1);
+            } else if(valueString.equals("N")) {
+                curValue = totalVotesCount;
+            }
+
+            try {
+                curValue = isPercentageBased ? (long) Math.floor(totalVotesCount * Double.parseDouble(valueString) / 100) : Long.parseLong(valueString);
+            } catch (NumberFormatException ignored) {
+                int idx = valueString.indexOf(".");
+                String from;
+                String what;
+                if(idx == -1) {
+                    from = "this";
+                    what = "state.data."+valueString;
+                } else {
+                    from = valueString.substring(0,idx);
+                    what = valueString.substring(idx+1);
+                }
+
+                if(from.equals("this")) {
+                    valueString = getContract().get(what).toString();
+                } else {
+                    Reference ref = getContract().getReferences().get(from);
+                    if(ref == null) {
+                        throw  new IllegalArgumentException("Reference with name '" + from + "' wasn't found for role " + getName());
+                    }
+
+                    if(ref.matchingItems.size() != 1) {
+                        throw  new IllegalArgumentException("Reference with name '" + from + "' should be matching exactly one contract within transaction to be used in QuorumVoteRole");
+                    }
+
+                    valueString = ((Contract)ref.matchingItems.get(0)).get(what).toString();
+                }
+
+                try {
+                    curValue = isPercentageBased ? (long) Math.floor(totalVotesCount * Double.parseDouble(valueString) / 100) : Long.parseLong(valueString);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException(e);
+                }
+            }
+
+
+            if(i == 0) {
+                value = curValue;
+            } else {
+                switch (quorumOperators.get(i-1)) {
+                    case OPERATOR_SUBTRACT:
+                        value -= curValue;
+                        break;
+                    case OPERATOR_ADD:
+                        value += curValue;
+                        break;
+                }
+            }
+        }
+
+        return value;
     }
 
     public List<KeyAddress> getVotesForKeys(Set<? extends AbstractKey> keys) {
@@ -275,7 +377,7 @@ public class QuorumVoteRole extends Role {
     }
 
     public boolean isQuorumPercentageBased() {
-        return quorum.endsWith("%");
+        return quorumValues.stream().anyMatch(v->v.endsWith("%") || v.equals("N"));
     }
 
     public void setVotesCount(Long votesCount) {

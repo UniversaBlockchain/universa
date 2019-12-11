@@ -4,6 +4,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -73,7 +74,7 @@ public class ChangeNumberPermission extends Permission {
      *
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
+    public void checkChangesQuantized(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         MapDelta<String, Binder, Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
         if (dataChanges == null)
             return;

@@ -11,6 +11,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.diff.Delta;
@@ -47,7 +48,7 @@ public class ChangeOwnerPermission extends Permission {
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
+    public void checkChangesQuantized(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         Object x = stateChanges.get("owner");
         if( x != null ) {
             stateChanges.remove("owner");

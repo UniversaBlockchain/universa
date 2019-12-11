@@ -20,6 +20,7 @@ import com.icodici.universa.node2.network.FollowerCallback;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.Duration;
@@ -32,6 +33,7 @@ import static com.icodici.universa.TestCase.assertAlmostSame;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
+@Ignore
 public class FollowerMainTest extends BaseMainTest {
     @Test
     public void synchronizeFollowerCallbackCompleted() throws Exception {
