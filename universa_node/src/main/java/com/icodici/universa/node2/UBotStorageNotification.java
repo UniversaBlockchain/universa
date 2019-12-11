@@ -28,7 +28,7 @@ public class UBotStorageNotification extends Notification {
      * @return
      */
 
-    private static final int CODE_UBOT_STORAGE_NOTIFICATION = 5;
+    private static final int CODE_UBOT_STORAGE_NOTIFICATION = 6;
     private HashId value;
     private HashId executableContractId;
     private String storageName;

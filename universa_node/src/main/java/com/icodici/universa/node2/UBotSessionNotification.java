@@ -29,7 +29,7 @@ public class UBotSessionNotification extends Notification {
      * @return
      */
 
-    private static final int CODE_UBOT_SESSION_NOTIFICATION = 4;
+    private static final int CODE_UBOT_SESSION_NOTIFICATION = 5;
     private boolean doAnswer;
     private boolean haveRequestContract;
 
