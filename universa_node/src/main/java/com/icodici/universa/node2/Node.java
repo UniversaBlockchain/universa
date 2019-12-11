@@ -1556,7 +1556,9 @@ public class Node {
     }
 
     public Binder createUBotSession(Contract requestContract) {
-        cache.put(requestContract,checkItem(requestContract.getId()));
+        synchronized (cache) {
+            cache.put(requestContract, checkItem(requestContract.getId()));
+        }
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         HashId requestId = requestContract.getId();
 
@@ -5319,8 +5321,11 @@ public class Node {
 
             // get executable contract
             Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
-            if (executableContract == null)
-                throw new IllegalArgumentException("Error request contract: executable contact is not found in transaction pack");
+            if (executableContract == null) {
+                executableContract = requestContract.getTransactionPack().getSubItem(executableContractId);
+                if (executableContract == null)
+                    throw new IllegalArgumentException("Error request contract: executable contact is not found in transaction pack");
+            }
 
             // check executable contract constraint
             Reference executableConstraint = requestContract.getReferences().get("executable_contract_constraint");
@@ -5573,9 +5578,8 @@ public class Node {
                     broadcastMyState();
 
                     // register request contract
-//                    if (requestContract != null && requestContract.getId().equals(requestId)) {
-//                        //TODO: parallel register requestContract
-//                    }
+                    if (requestContract != null && requestContract.getId().equals(requestId))
+                        executorService.schedule(() -> registerItem(requestContract), 0, TimeUnit.SECONDS);
                 }
 
             } else if (state == Node.UBotSessionState.COLLECTING_RANDOMS) {
@@ -5598,6 +5602,22 @@ public class Node {
                     if(sessionIds.values().stream().collect(Collectors.toSet()).size() > 1) {
                         abortSession();
                         return;
+                    }
+
+                    if (requestContract != null && requestContract.getId().equals(requestId)) {
+                        try {
+                            ItemResult ir = waitItem(requestId, config.getMaxWaitSessionConsensus().toMillis());
+                            if (ir.state != ItemState.APPROVED) {
+                                System.out.println("Request contract state is not APPROVED: " + ir.toString());
+                                abortSession();
+                                return;
+                            }
+                        } catch (Exception ex) {
+                            System.out.println("Checking request contract state failed");
+                            ex.printStackTrace();
+                            abortSession();
+                            return;
+                        }
                     }
 
                     if(requestContract == null || !requestContract.getId().equals(requestId)) {

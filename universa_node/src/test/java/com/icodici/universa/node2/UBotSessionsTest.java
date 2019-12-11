@@ -9,6 +9,7 @@ import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
@@ -51,7 +52,7 @@ public class UBotSessionsTest extends BaseMainTest {
     public void createSession() throws Exception {
 
         TestSpace ts = prepareTestSpace();
-        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
         int quorumSize = 4;
         int poolSize = 5;
         Contract executableContract = new Contract(TestKeys.privateKey(1));
@@ -61,6 +62,11 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",quorumSize))));
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
@@ -382,6 +388,11 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",quorumSize))));
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
@@ -452,6 +463,11 @@ public class UBotSessionsTest extends BaseMainTest {
                         Binder.of("pool",Binder.of("size",poolSize),
                                 "quorum",Binder.of("size",quorumSize))));
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
@@ -546,6 +562,11 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",quorumSize))));
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
@@ -876,6 +897,11 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",4))));
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         System.out.println("EID = " + executableContract.getId());
 
         List<Contract> requestContracts = new ArrayList<>();
@@ -933,6 +959,11 @@ public class UBotSessionsTest extends BaseMainTest {
                                 "quorum",Binder.of("size",4))));
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
         System.out.println("EID = " + executableContract.getId());
 
         int COST = 3;

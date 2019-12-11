@@ -45,6 +45,8 @@ public class UBotTools {
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         String methodName = requestContract.getStateData().getString("method_name");
         Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+        if (executableContract == null)
+            executableContract = requestContract.getTransactionPack().getSubItem(executableContractId);
         Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
 
         // get pool size
@@ -56,6 +58,8 @@ public class UBotTools {
         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
         String methodName = requestContract.getStateData().getString("method_name");
         Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+        if (executableContract == null)
+            executableContract = requestContract.getTransactionPack().getSubItem(executableContractId);
         Binder methodBinder = executableContract.getStateData().getBinderOrThrow("cloud_methods").getBinderOrThrow(methodName);
         Binder quorumBinder = methodBinder.getBinderOrThrow("quorum");
 
