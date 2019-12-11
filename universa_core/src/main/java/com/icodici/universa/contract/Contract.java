@@ -2336,6 +2336,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
             }
 
+            if(this.transactional != null && this.transactional.references != null) {
+                this.transactional.references.forEach(r->newRevision.getReferences().remove(r.name));
+            }
+
+            if(transactional != null && transactional.references != null) {
+                transactional.references.forEach(r->newRevision.addReference(r));
+            }
+
+
             return newRevision;
         } catch (Exception e) {
             throw new IllegalStateException("failed to create revision", e);
