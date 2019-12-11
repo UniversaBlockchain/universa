@@ -668,6 +668,9 @@ public class Node {
                     }
                 }
 
+                if(usp == null)
+                    return null;
+
                 if(notification.isHaveRequestContract()) {
                     usp.addRequestContractSource(notification.getFrom());
                 }

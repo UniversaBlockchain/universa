@@ -921,7 +921,84 @@ public class UBotSessionsTest extends BaseMainTest {
         ts.shutdown();
     }
 
+    @Test
+    public void createSessionConcurrentRequestsPaid() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+        Contract executableContract = new Contract(TestKeys.privateKey(1));
+        executableContract.getStateData().put("cloud_methods",
+                Binder.of("getRandom",
+                        Binder.of("pool",Binder.of("size",5),
+                                "quorum",Binder.of("size",4))));
+        executableContract.getStateData().put("js", "simple JS code");
+        executableContract.seal();
+        System.out.println("EID = " + executableContract.getId());
 
+        int COST = 3;
+
+        List<Contract> requestContracts = new ArrayList<>();
+        List<Contract> uContracts = new ArrayList<>();
+        for (int i = 0; i < client.size(); i++) {
+            Contract requestContract = new Contract(TestKeys.privateKey(2));
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+            requestContract.getStateData().put("method_name","getRandom");
+            requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
+            requestContracts.add(requestContract);
+            Contract u = getApprovedUContract(ts);
+            u = u.createRevision(ts.myKey);
+            u.getStateData().put("transaction_units",u.getStateData().getIntOrThrow("transaction_units")-COST);
+            u.seal();
+
+            uContracts.add(u);
+            ts.uContract = null;
+        }
+        for (int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(()-> {
+                System.out.println(client.getClient(finalI).command("ubotCreateSessionPaid", "packedU",uContracts.get(finalI).getPackedTransaction(),"packedRequest", requestContracts.get(finalI).getPackedTransaction()));
+            });
+        }
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AtomicReference<Binder> session = new AtomicReference<>();
+        AsyncEvent readyEvent = new AsyncEvent();
+
+        for (int i = 0; i < client.size(); i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                while (true) {
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
+                    Thread.sleep(200);
+                    if (res.get("session") != null && res.getBinderOrThrow("session").getString("state", "").equals("OPERATIONAL")) {
+                        if (readyCounter.incrementAndGet() == client.size()) {
+                            session.set(res.getBinderOrThrow("session"));
+                            readyEvent.fire();
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+        readyEvent.await();
+        Thread.sleep(3000);
+
+        HashId id = (HashId) session.get().get("requestId");
+        for(int i  = 0; i < client.size();i++) {
+            ItemState expectedState = requestContracts.get(i).getId().equals(id) ? ItemState.APPROVED : ItemState.DECLINED;
+            assertEquals(client.getState(uContracts.get(i).getId()).state,expectedState);
+        }
+
+        ts.shutdown();
+    }
+
+
+    @Ignore
     @Test
     public void createUBotRegistryContract() throws Exception {
 
