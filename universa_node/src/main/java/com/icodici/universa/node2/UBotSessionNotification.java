@@ -30,6 +30,7 @@ public class UBotSessionNotification extends Notification {
      */
 
     private static final int CODE_UBOT_SESSION_NOTIFICATION = 5;
+    private boolean isPaid;
     private boolean doAnswer;
     private boolean haveRequestContract;
 
@@ -52,12 +53,17 @@ public class UBotSessionNotification extends Notification {
         return doAnswer;
     }
 
-    public UBotSessionNotification(NodeInfo from, HashId executableContractId, boolean doAnswer, boolean haveRequestContract, List<Object> payload) {
+    public boolean isPaid() {
+        return isPaid;
+    }
+
+    public UBotSessionNotification(NodeInfo from, HashId executableContractId, boolean doAnswer, boolean haveRequestContract, List<Object> payload, boolean isPaid) {
         super(from);
         this.executableContractId = executableContractId;
         this.payload = payload;
         this.haveRequestContract = haveRequestContract;
         this.doAnswer = doAnswer;
+        this.isPaid = isPaid;
     }
 
     @Override
@@ -70,6 +76,10 @@ public class UBotSessionNotification extends Notification {
         if(doAnswer) {
             flags = flags | 2;
         }
+        if(isPaid) {
+            flags = flags | 4;
+        }
+
         bw.write(flags);
         bw.writeObject(payload);
     }
@@ -80,6 +90,7 @@ public class UBotSessionNotification extends Notification {
         int flags = br.readInt();
         haveRequestContract = (flags & 1) > 0;
         doAnswer = (flags & 2) > 0;
+        isPaid = (flags & 4) > 0;
         payload = br.read();
     }
 

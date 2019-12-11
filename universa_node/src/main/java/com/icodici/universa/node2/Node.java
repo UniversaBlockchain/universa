@@ -642,9 +642,9 @@ public class Node {
 
                 UBotSessionState state = UBotSessionState.byOrdinal((int) notification.getPayload().get(0));
 
-                UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, () -> {
+                UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, notification.isPaid() ? null : () -> {
                     if(state == UBotSessionState.VOTING_REQUEST_ID)
-                        return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null);
+                        return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null,0);
                     return null;
                 });
 
@@ -655,11 +655,14 @@ public class Node {
 
                 if(usp == null) {
                     if(state == UBotSessionState.VOTING_REQUEST_ID) {
-                        usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null);
-                        ubotSessionProcessors.put(executableContractId, usp);
+                        usp = getUBotSessionProcessor(executableContractId, notification.isPaid() ? null : () -> {
+                            if(state == UBotSessionState.VOTING_REQUEST_ID)
+                                return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null,0);
+                            return null;
+                        });
                     } else {
                         if(state == UBotSessionState.CLOSING && notification.isDoAnswer()) {
-                            network.deliver(notification.getFrom(),new UBotSessionNotification(myInfo, notification.getExecutableContractId(), false, false, Do.listOf(UBotSessionState.CLOSING.ordinal())));
+                            network.deliver(notification.getFrom(),new UBotSessionNotification(myInfo, notification.getExecutableContractId(), false, false, Do.listOf(UBotSessionState.CLOSING.ordinal()),true));
                         }
                         return null;
                     }
@@ -1557,7 +1560,7 @@ public class Node {
         try {
             return itemLock.synchronize(executableContractId,lock -> {
                 UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, () -> {
-                    return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract);
+                    return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,0);
                 });
                 if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
                     usp.abortSession();
@@ -1568,7 +1571,7 @@ public class Node {
                 if(usp != null) {
 
                 } else {
-                    usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract);
+                    usp = new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,0);
                     ubotSessionProcessors.put(executableContractId,usp);
                 }
                 return usp.getSession();
@@ -1742,8 +1745,71 @@ public class Node {
         switch (operationType) {
             case "test_operation":
                 return new TestWorkProcessor(onSuccess, onFailure);
+            case "ubot_session":
+                return new UBotSessionProcessorWatchman(onSuccess,onFailure);
             default:
                 return null;
+        }
+    }
+
+    private class UBotSessionProcessorWatchman extends AbstractProcessor {
+
+        public UBotSessionProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure) {
+            super(onSuccess, onFailure);
+        }
+
+        @Override
+        public void start(int quantaLimit, Binder operationData) {
+            byte[] packedRequest = operationData.getBinaryOrThrow("packedRequest");
+            try {
+                Contract requestContract = Contract.fromPackedTransaction(packedRequest);
+                cache.put(requestContract,checkItem(requestContract.getId()));
+                HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
+                HashId requestId = requestContract.getId();
+
+                try {
+                    //TODO: REPLACE CYCLE WITH READYEVENT OF A SESSION PROCESSOR
+                    AtomicBoolean createNew = new AtomicBoolean(true);
+
+                    while(true) {
+
+                        UBotSessionProcessor processor = itemLock.synchronize(executableContractId,lock -> {
+                            UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
+                                return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
+                            } : null);
+
+                            if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                                usp.abortSession();
+                                usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
+                                    return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
+                                } : null);
+                            }
+                            return usp;
+                        });
+
+                        createNew.set(false);
+
+                        if(processor == null) {
+                            onFailure.accept("Unable to establish session");
+                        } else if(processor.requestId != null) {
+                            if(!processor.requestId.equals(requestId)) {
+                                onFailure.accept("Processor already exists for another request: " + requestId);
+                                break;
+                            } else if(processor.sessionId != null) {
+                                onSuccess.run();
+                            }
+                        }
+                        Thread.sleep(500);
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
+
         }
     }
 
@@ -5148,6 +5214,7 @@ public class Node {
 
         private final HashId executableContractId;
         private final Integer myRandom;
+        private final int quantasLimit;
         private HashId requestId;
         private Contract requestContract;
         private Contract ubotRegistry;
@@ -5194,10 +5261,11 @@ public class Node {
             storageUpdateVotes.keySet().forEach(name->stopStorageUpdateVote(name));
             stopBroadcastMyState();
         }
+        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantasLimit) {
 
-        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract) {
             if(storages != null)
                 this.storages.putAll(storages);
+            this.quantasLimit = quantasLimit;
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
@@ -5221,6 +5289,9 @@ public class Node {
         }
 
         public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
+            //TODO: quantasLimit ???
+            quantasLimit = 0;
+
             this.executableContractId = compact.executableContractId;
             this.requestId = compact.requestId;
             try {
@@ -5631,7 +5702,7 @@ public class Node {
 
             if (payload != null) {
                 Notification notification = new UBotSessionNotification(myInfo, executableContractId,  to == null,
-                        requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload);
+                        requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload,quantasLimit > 0);
                 if (to != null) {
                     network.deliver(to, notification);
                 } else {
@@ -5651,6 +5722,7 @@ public class Node {
                 "sessionId", sessionId,
                 "sessionPool", sessionPool,
                 "closeVotes", closeVotes,
+                "quantasLimit", quantasLimit,
                 "closeVotesFinished", closeVotesFinished,
                 "closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()),
                 "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList())

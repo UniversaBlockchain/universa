@@ -9,6 +9,7 @@ import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
@@ -362,6 +363,78 @@ public class UBotSessionsTest extends BaseMainTest {
         }
 
         readyEvent4.await();
+
+        ts.shutdown();
+    }
+
+
+    @Test
+    public void createSessionPaid() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        int quorumSize = 4;
+        int poolSize = 5;
+        Contract executableContract = new Contract(TestKeys.privateKey(1));
+        executableContract.getStateData().put("cloud_methods",
+                Binder.of("getRandom",
+                        Binder.of("pool",Binder.of("size",poolSize),
+                                "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js", "simple JS code");
+        executableContract.seal();
+        Contract requestContract = new Contract(TestKeys.privateKey(2));
+        requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+        requestContract.getStateData().put("method_name","getRandom");
+        requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
+        int COST = 2;
+        Contract u = getApprovedUContract(ts);
+        u = u.createRevision(ts.myKey);
+        u.getStateData().put("transaction_units",u.getStateData().getIntOrThrow("transaction_units")-COST);
+        u.seal();
+
+        System.out.println(ts.client.command("ubotCreateSessionPaid","packedU",u.getPackedTransaction(), "packedRequest",requestContract.getPackedTransaction()));
+
+        AtomicReference<Binder> session = new AtomicReference<>();
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+
+
+        for(int i = 0; i < ts.clients.size();i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                while (true) {
+                    Binder res = ts.clients.get(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    Thread.sleep(500);
+                    if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null) {
+                        continue;
+                    }
+                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                        if (readyCounter.incrementAndGet() == ts.clients.size()) {
+                            session.set(res.getBinderOrThrow("session"));
+                            readyEvent.fire();
+                        }
+                        break;
+                    }
+                }
+            }).failure(new DeferredResult.Handler() {
+                @Override
+                public void handle(Object data) {
+                    System.out.println("ERR: "+data);
+                }
+            });
+        }
+
+        readyEvent.await();
+        Thread.sleep(2000);
+        System.out.println(session);
+
+        assertEquals(ts.client.getState(u.getId()).state, ItemState.APPROVED);
+        assertEquals(ts.client.getState(ts.uContract.getId()).state, ItemState.REVOKED);
+
 
         ts.shutdown();
     }

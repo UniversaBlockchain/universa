@@ -13,11 +13,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ExtendedSignature;
-import com.icodici.universa.contract.PaidOperation;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.Reference;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.QuorumVoteRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
@@ -30,6 +26,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -321,6 +318,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
         addSecureEndpoint("ubotCreateSession", this::ubotCreateSession);
+        addSecureEndpoint("ubotCreateSessionPaid", this::ubotCreateSessionPaid);
         addSecureEndpoint("ubotGetSession", this::ubotGetSession);
         addSecureEndpoint("ubotUpdateStorage", this::ubotUpdateStorage);
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
@@ -709,6 +707,23 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
+        }
+    }
+
+    private Binder ubotCreateSessionPaid(Binder params, Session session) throws CommandFailedException {
+        try {
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            byte[] packedRequest = params.getBinaryOrThrow("packedRequest");
+
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(new PaidOperation(TransactionPack.unpack(packedU),"ubot_session",Binder.of("packedRequest",packedRequest)))
+            );
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"", e.getMessage());
         }
     }
 
