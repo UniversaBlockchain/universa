@@ -4,6 +4,9 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Reference;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -38,7 +41,7 @@ public class UBotSessionsProTest {
     @Test
     public void createSession() throws Exception {
 
-        Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
+        Client client = new Client("universa.pro", null, TestKeys.privateKey(0));
         int quorumSize = 5;
         int poolSize = 8;
         Contract executableContract = new Contract(TestKeys.privateKey(1));
@@ -46,13 +49,20 @@ public class UBotSessionsProTest {
                 Binder.of("getRandom",
                         Binder.of("pool",Binder.of("size",poolSize),
                                 "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js","");
         executableContract.seal();
+
+        assertEquals(client.register(executableContract.getPackedTransaction(),100000).state, ItemState.APPROVED);
+
         for(int x = 0; x < ATTEMPTS; x++) {
             System.out.println("ATTEMPT " + x);
             Contract requestContract = new Contract(TestKeys.privateKey(2));
             requestContract.getStateData().put("executable_contract_id", executableContract.getId());
             requestContract.getStateData().put("method_name", "getRandom");
             requestContract.getStateData().put("method_args", Do.listOf(1000));
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
             requestContract.seal();
             requestContract.getTransactionPack().addReferencedItem(executableContract);
 
@@ -193,13 +203,16 @@ public class UBotSessionsProTest {
 
     @Test
     public void createSessionConcurrentRequests() throws Exception {
-        Client client = new Client("universa.pro", null, TestKeys.privateKey(1));
+        Client client = new Client("universa.pro", null, TestKeys.privateKey(0));
         Contract executableContract = new Contract(TestKeys.privateKey(1));
         executableContract.getStateData().put("cloud_methods",
                 Binder.of("getRandom",
                         Binder.of("pool",Binder.of("size",5),
                                 "quorum",Binder.of("size",4))));
+        executableContract.getStateData().put("js","");
         executableContract.seal();
+        assertEquals(client.register(executableContract.getPackedTransaction(),100000).state, ItemState.APPROVED);
+
         System.out.println("EID = " + executableContract.getId());
 
 
@@ -209,6 +222,9 @@ public class UBotSessionsProTest {
             requestContract.getStateData().put("executable_contract_id",executableContract.getId());
             requestContract.getStateData().put("method_name","getRandom");
             requestContract.getStateData().put("method_args", Do.listOf(1000));
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
             requestContract.seal();
             requestContract.getTransactionPack().addReferencedItem(executableContract);
             requestContracts.add(requestContract);

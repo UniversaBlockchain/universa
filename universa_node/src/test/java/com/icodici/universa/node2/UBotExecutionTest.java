@@ -5,8 +5,11 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -47,16 +50,27 @@ public class UBotExecutionTest extends BaseMainTest {
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         requestContract.seal();
         requestContract.getTransactionPack().addReferencedItem(executableContract);
 
-        Client client = new Client("universa.pro",null,TestKeys.privateKey(1));
+        Client client = new Client("universa.pro",null,TestKeys.privateKey(0));
+
+        assertEquals(client.register(executableContract.getPackedTransaction(),10000).state, ItemState.APPROVED);
+
         System.out.println(client.executeCloudMethod(requestContract.getPackedTransaction(),true,0.3f));
 
         requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","readRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
         requestContract.seal();
         requestContract.getTransactionPack().addReferencedItem(executableContract);
         System.out.println(client.executeCloudMethod(requestContract.getPackedTransaction(),true,0.3f));
