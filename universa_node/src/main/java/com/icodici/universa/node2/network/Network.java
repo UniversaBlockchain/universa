@@ -16,6 +16,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Notification;
+import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -126,4 +127,8 @@ public abstract class Network {
     public abstract int pingNodeUDP(int number, int timeoutMillis);
 
     public abstract int pingNodeTCP(int nodeNumber, int timeoutMillis);
+
+    public abstract void setUbotTopology(List<Binder> ubotTopology);
+
+    public abstract Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException;
 }

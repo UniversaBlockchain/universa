@@ -8,9 +8,11 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
@@ -18,7 +20,9 @@ import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
@@ -347,6 +351,11 @@ public class NetworkV2 extends Network {
         }
     }
 
+    @Override
+    public void setUbotTopology(List<Binder> ubotTopology) {
+        this.ubotTopology = ubotTopology;
+    }
+
     private String exceptionCallback(String message) {
         report(getLabel(), "UDP adapter error: " + message, DatagramAdapter.VerboseLevel.BASE);
         return message;
@@ -435,5 +444,30 @@ public class NetworkV2 extends Network {
             returnMessage.append(m != null ? m.toString() : "null");
         }
         return returnMessage.toString();
+    }
+
+    Map<Integer,BasicHttpClient> ubotClients = new HashMap<>();
+    List<Binder> ubotTopology;
+
+
+    @Override
+    public Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException {
+        if(!ubotClients.containsKey(ubotNumber)) {
+
+            Binder ubot = ubotTopology.stream().filter(b -> b.getIntOrThrow("number") == ubotNumber).findAny().get();
+
+            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)).replace("127.0.0.1","104.248.143.106"));
+
+            try {
+                ubotHttpClient.start(myKey, new PublicKey(Base64u.decodeCompactString(ubot.getStringOrThrow("key"))), null);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw e;
+            }
+            ubotClients.put(ubotNumber, ubotHttpClient);
+
+        }
+
+        return ubotClients.get(ubotNumber).command(command,params);
     }
 }

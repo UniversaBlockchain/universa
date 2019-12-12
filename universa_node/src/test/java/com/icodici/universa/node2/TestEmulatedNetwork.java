@@ -14,11 +14,13 @@ import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.tools.Binder;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
@@ -130,6 +132,15 @@ public class TestEmulatedNetwork extends Network {
     @Override
     public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
         return 0;
+    }
+
+    @Override
+    public void setUbotTopology(List<Binder> ubotTopology) {
+    }
+
+    @Override
+    public Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException {
+        return null;
     }
 
     public Node getNode(NodeInfo info) {

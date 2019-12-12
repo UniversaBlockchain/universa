@@ -729,7 +729,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder ubotGetSession(Binder params, Session session) throws CommandFailedException {
         HashId executableContractId = params.getOrThrow("executableContractId");
-        return Binder.of("session",node.getUBotSession(executableContractId));
+        return Binder.of("session",node.getUBotSession(executableContractId,session.getPublicKey()));
     }
 
     private Binder ubotCloseSession(Binder params, Session session) throws CommandFailedException {

@@ -21,6 +21,7 @@ import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.UDPAdapter;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 
@@ -280,6 +281,16 @@ public class TestLocalNetwork extends Network {
     @Override
     public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
         return 0;
+    }
+
+    @Override
+    public void setUbotTopology(List<Binder> ubotTopology) {
+
+    }
+
+    @Override
+    public Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException {
+        return null;
     }
 
     // redo it to work right in the local network

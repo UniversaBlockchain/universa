@@ -27,9 +27,7 @@ import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.ContractSubscription;
 import com.icodici.universa.contract.services.MutableEnvironment;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node2.network.DatagramAdapter;
-import com.icodici.universa.node2.network.Network;
-import com.icodici.universa.node2.network.NetworkV2;
+import com.icodici.universa.node2.network.*;
 import com.icodici.universa.ubot.UBotTools;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
@@ -190,6 +188,10 @@ public class Node {
                     encryptionError.printStackTrace();
                 }
             });
+
+            List<Binder> ubotTopology = uBotRegistry.getStateData().getListOrThrow("topology");
+            network.setUbotTopology(ubotTopology);
+
         } catch (Exception e) {
             //e.printStackTrace();
         }
@@ -1596,10 +1598,10 @@ public class Node {
         });
     }
 
-    public Binder getUBotSession(HashId executableContractId) {
+    public Binder getUBotSession(HashId executableContractId, PublicKey keyUsed) {
         UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, null);
         if(usp != null)
-            return usp.getSession();
+            return usp.getSession(keyUsed);
         return new Binder();
     }
 
@@ -5235,6 +5237,7 @@ public class Node {
 
         private AsyncEvent requestIdReadyEvent = new AsyncEvent();
         private AsyncEvent sessionReadyEvent = new AsyncEvent();
+        private ScheduledFuture<?> ubotNotifier;
 
         public AsyncEvent getRequestIdReadyEvent() {
             return requestIdReadyEvent;
@@ -5285,6 +5288,13 @@ public class Node {
             ubotSessionProcessors.remove(executableContractId);
             storageUpdateVotes.keySet().forEach(name->stopStorageUpdateVote(name));
             stopBroadcastMyState();
+
+
+            if(ubotNotifier != null) {
+                ubotNotifier.cancel(false);
+                ubotNotifier = null;
+            }
+
         }
         public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantasLimit) {
 
@@ -5678,6 +5688,7 @@ public class Node {
 
                     answered.clear();
                     state = Node.UBotSessionState.OPERATIONAL;
+                    ubotNotifier = executorService.schedule(() -> notifyUBotOnSession(), 20, TimeUnit.SECONDS);
                     sessionReadyEvent.fire();
                     stopBroadcastMyState();
                     expiresAt = quantasLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantasLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
@@ -5685,6 +5696,23 @@ public class Node {
                     saveToLedger();
                 }
             }
+        }
+
+        private void notifyUBotOnSession() {
+            int randomPoolUbotNumber = Do.sample(sessionPool);
+
+
+            try {
+                Binder response = network.executeOnUBot(randomPoolUbotNumber,"executeCloudMethod", "contract", requestContract.getPackedTransaction());
+                if(!response.getStringOrThrow("status").equals("ok")) {
+                    //TODO: ???
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                //TODO: ???
+            }
+
+            ubotNotifier = null;
         }
 
         private Set<Integer> computeSessionPool(HashId sessionId) {
@@ -5764,6 +5792,18 @@ public class Node {
         }
 
         public Binder getSession() {
+            return getSession(null);
+        }
+
+        public Binder getSession(PublicKey keyUsed) {
+            //ubot came for session -> no need to notify it anymore
+            if(ubotNotifier != null && keyUsed != null) {
+                if(sessionPool.contains(ubotsByKey.get(keyUsed))) {
+                    ubotNotifier.cancel(false);
+                    ubotNotifier = null;
+                }
+            }
+
             return Binder.of(
                 "state", state.name(),
                 "requestId", requestId,
