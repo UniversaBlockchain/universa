@@ -42,11 +42,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import com.icodici.universa.contract.services.*;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
@@ -239,7 +237,7 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(config.isPermanetMode()),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStoragesAndSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.clearExpiredNameRecords(config.getHoldDuration()),config.getExpriedNamesCleanupInterval().getSeconds(),config.getExpriedNamesCleanupInterval().getSeconds(),TimeUnit.SECONDS);
-        lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveOrExpiredUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {
@@ -5967,9 +5965,12 @@ public class Node {
         }
     }
 
-    private void unloadInactiveUbotSessionProcessors() {
+    private void unloadInactiveOrExpiredUbotSessionProcessors() {
         ubotSessionProcessors.forEach((k, usp) -> {
-            if (usp.expiresAt.isBefore(ZonedDateTime.now()) || usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
+            if(usp.expiresAt.isBefore(ZonedDateTime.now())) {
+                ledger.deleteUbotSession(usp.executableContractId);
+                usp.removeSelf();
+            } else if (usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
                 usp.removeSelf();
             }
         });
