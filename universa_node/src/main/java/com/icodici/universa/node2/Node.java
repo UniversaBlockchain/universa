@@ -1737,22 +1737,34 @@ public class Node {
     abstract private class AbstractProcessor {
         protected Runnable onSuccess;
         protected Consumer<String> onFailure;
+        protected int quantaLimit;
+        protected Binder operationData;
 
-        public AbstractProcessor(Runnable onSuccess, Consumer<String> onFailure) {
+        public AbstractProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
             this.onSuccess = onSuccess;
             this.onFailure = onFailure;
+            this.quantaLimit = quantaLimit;
+            this.operationData = operationData;
         }
 
-        abstract public void start(int quantaLimit, Binder operationData);
+        abstract public void start();
 
+        /**
+         * This method is called before start processing of payment. If it returns false, payment processing
+         * would not be even started. Use it to cut off unnecessary payment registration if operation could
+         * not be performed.
+         * You can check this.quantaLimit and this.operationData members, they are should be filled from constructor.
+         */
+        abstract public boolean isApplicable();
     }
 
-    public AbstractProcessor createAbstractProcessorForType(String operationType, Runnable onSuccess, Consumer<String> onFailure) {
+    public AbstractProcessor createAbstractProcessorForType(String operationType, Runnable onSuccess,
+                                    Consumer<String> onFailure, int quantaLimit, Binder operationData) {
         switch (operationType) {
             case "test_operation":
-                return new TestWorkProcessor(onSuccess, onFailure);
+                return new TestWorkProcessor(onSuccess, onFailure, quantaLimit, operationData);
             case "ubot_session":
-                return new UBotSessionProcessorWatchman(onSuccess,onFailure);
+                return new UBotSessionProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
             default:
                 return null;
         }
@@ -1760,80 +1772,86 @@ public class Node {
 
     private class UBotSessionProcessorWatchman extends AbstractProcessor {
 
-        public UBotSessionProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure) {
-            super(onSuccess, onFailure);
+        private Contract requestContract;
+        private HashId executableContractId;
+
+        public UBotSessionProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+            super(onSuccess, onFailure, quantaLimit, operationData);
+            byte[] packedRequest = operationData.getBinaryOrThrow("packedRequest");
+            try {
+                this.requestContract = Contract.fromPackedTransaction(packedRequest);
+                this.executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
         @Override
-        public void start(int quantaLimit, Binder operationData) {
-            byte[] packedRequest = operationData.getBinaryOrThrow("packedRequest");
+        public void start() {
+            cache.put(requestContract,checkItem(requestContract.getId()));
+            HashId requestId = requestContract.getId();
+
             try {
-                Contract requestContract = Contract.fromPackedTransaction(packedRequest);
-                cache.put(requestContract,checkItem(requestContract.getId()));
-                HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
-                HashId requestId = requestContract.getId();
+                AtomicBoolean createNew = new AtomicBoolean(true);
 
-                try {
-                    AtomicBoolean createNew = new AtomicBoolean(true);
+                while(true) {
 
-                    while(true) {
+                    UBotSessionProcessor processor = itemLock.synchronize(executableContractId,lock -> {
+                        UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
+                            return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
+                        } : null);
 
-                        UBotSessionProcessor processor = itemLock.synchronize(executableContractId,lock -> {
-                            UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
+                        if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                            usp.abortSession();
+                            usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
                                 return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
                             } : null);
-
-                            if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
-                                usp.abortSession();
-                                usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
-                                    return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
-                                } : null);
-                            }
-                            return usp;
-                        });
-
-                        createNew.set(false);
-
-                        if(processor == null) {
-                            onFailure.accept("Unable to establish session");
                         }
+                        return usp;
+                    });
 
-                        if(processor.requestId == null) {
-                            processor.getRequestIdReadyEvent().await();
-                            continue;
-                        }
+                    createNew.set(false);
 
-                        if(!processor.requestId.equals(requestId)) {
-                            onFailure.accept("Processor already exists for another request: " + requestId);
-                            break;
-                        }
-
-                        if(processor.sessionId == null) {
-                            processor.getSessionReadyEvent().await();
-                            continue;
-                        }
-
-                        onSuccess.run();
+                    if(processor == null) {
+                        onFailure.accept("Unable to establish session");
                     }
 
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    if(processor.requestId == null) {
+                        processor.getRequestIdReadyEvent().await();
+                        continue;
+                    }
+
+                    if(!processor.requestId.equals(requestId)) {
+                        onFailure.accept("Processor already exists for another request: " + requestId);
+                        break;
+                    }
+
+                    if(processor.sessionId == null) {
+                        processor.getSessionReadyEvent().await();
+                        continue;
+                    }
+
+                    onSuccess.run();
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
 
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }
 
+        @Override
+        public boolean isApplicable() {
+            return !ledger.hasUbotSession(this.executableContractId);
         }
     }
 
     private class TestWorkProcessor extends AbstractProcessor {
-        public TestWorkProcessor(Runnable onSuccess, Consumer<String> onFailure) {
-            super(onSuccess, onFailure);
+        public TestWorkProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+            super(onSuccess, onFailure, quantaLimit, operationData);
         }
 
         @Override
-        public void start(int quantaLimit, Binder operationData) {
+        public void start() {
             executorService.submit(()->{
                 try {
                     String field1 = operationData.getStringOrThrow("field1");
@@ -1847,6 +1865,11 @@ public class Node {
                     onFailure.accept(e.toString());
                 }
             });
+        }
+
+        @Override
+        public boolean isApplicable() {
+            return true;
         }
     }
 
@@ -1868,6 +1891,9 @@ public class Node {
 
         private ScheduledFuture<?> downloader;
         private ScheduledFuture<?> processSchedule;
+
+        AsyncEvent<Void> operationProcessor_completeEvent = new AsyncEvent<>();
+        AtomicBoolean operationProcessor_isSuccess = new AtomicBoolean(false);
 
         public PaidOperationProcessor(HashId operationId, PaidOperation paidOperation, Object lock) {
             this.operationId = operationId;
@@ -1939,25 +1965,15 @@ public class Node {
                         report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                                 " :: starting operationProcessor..., state " + processingState,
                                 DatagramAdapter.VerboseLevel.BASE);
-                        AsyncEvent<Void> completeEvent = new AsyncEvent<>();
-                        AtomicBoolean isSuccess = new AtomicBoolean(false);
-                        operationProcessor = createAbstractProcessorForType(paidOperation.getOperationType(), ()->{
-                            // onSuccess
-                            isSuccess.set(true);
-                            paymentProcessor.resume(false);
-                            completeEvent.fire();
-                        }, (errorText)->{
-                            // onError
-                            isSuccess.set(false);
-                            paymentProcessor.resume(true);
-                            completeEvent.fire();
-                        });
+
+                        /////////////////////////
+
                         if (operationProcessor != null) {
-                            operationProcessor.start(paidOperation.getQuantaLimit(), paidOperation.getOperationData());
-                            completeEvent.await();
+                            operationProcessor.start();
+                            operationProcessor_completeEvent.await();
                             processingState = ParcelProcessingState.PAYLOAD_POLLING;
                             report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
-                                    " :: operationProcessor work is finished (isSuccess="+isSuccess+"), state " +
+                                    " :: operationProcessor work is finished (isSuccess="+operationProcessor_isSuccess+"), state " +
                                     processingState, DatagramAdapter.VerboseLevel.BASE);
                         } else {
                             report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
@@ -2066,6 +2082,36 @@ public class Node {
 
             synchronized (mutex) {
 
+                operationProcessor = createAbstractProcessorForType(paidOperation.getOperationType(), ()->{
+                    // onSuccess
+                    operationProcessor_isSuccess.set(true);
+                    paymentProcessor.resume(false);
+                    operationProcessor_completeEvent.fire();
+                }, (errorText)->{
+                    // onError
+                    operationProcessor_isSuccess.set(false);
+                    paymentProcessor.resume(true);
+                    operationProcessor_completeEvent.fire();
+                }, paidOperation.getQuantaLimit(), paidOperation.getOperationData());
+
+                if (operationProcessor == null) {
+                    report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                            " :: unknown operationType ("+paidOperation.getOperationType()+"), finish from state " +
+                            processingState, DatagramAdapter.VerboseLevel.BASE);
+                    processingState = ParcelProcessingState.FINISHED;
+                    removeSelf();
+                    return;
+                }
+
+                if (!operationProcessor.isApplicable()) {
+                    report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
+                            " :: is not applicable ("+paidOperation.getOperationType()+"), finish from state " +
+                            processingState, DatagramAdapter.VerboseLevel.BASE);
+                    processingState = ParcelProcessingState.FINISHED;
+                    removeSelf();
+                    return;
+                }
+
                 Contract payment = paidOperation.getPaymentContract();
                 payment.getQuantiser().reset(config.getPaymentQuantaLimit());
 
@@ -2089,7 +2135,7 @@ public class Node {
                             processingState + ", item state " + paymentResult.state,
                             DatagramAdapter.VerboseLevel.BASE);
 
-                    // if ledger already have approved state for payment it means onw of two:
+                    // if ledger already have approved state for payment it means one of two:
                     // 1. payment was already processed and cannot be used as payment for current parcel
                     // 2. payment having been processing but this node starts too old and consensus already got.
                     // So, in both ways we can answer undefined

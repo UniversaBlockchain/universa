@@ -2971,6 +2971,28 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public boolean hasUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select count(*) from ubot_session where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return false;
+            if (!rs.next())
+                return false;
+            int count = rs.getInt(1);
+            return (count != 0);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("hasUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("hasUbotSession failed: " + e);
+        }
+    }
+
+    @Override
     public void deleteUbotSession(HashId executableContractId) {
         try (PooledDb db = dbPool.db()) {
             db.update("delete from ubot_session where executable_contract_id=?", executableContractId.getDigest());

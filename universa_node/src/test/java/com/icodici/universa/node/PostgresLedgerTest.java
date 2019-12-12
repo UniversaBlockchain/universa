@@ -1111,11 +1111,14 @@ public class PostgresLedgerTest extends TestCase {
         compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
         ledger.saveUbotSession(compact);
         assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertTrue(ledger.hasUbotSession(compact.executableContractId));
         ledger.deleteExpiredUbotSessions();
         assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertTrue(ledger.hasUbotSession(compact.executableContractId));
         System.out.println("wait for session cleanup (~4 sec)...");
         Thread.sleep(4000);
         ledger.deleteExpiredUbotSessions();
         assertEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertFalse(ledger.hasUbotSession(compact.executableContractId));
     }
 }

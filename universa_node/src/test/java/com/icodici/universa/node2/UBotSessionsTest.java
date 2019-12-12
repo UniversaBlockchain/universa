@@ -375,7 +375,7 @@ public class UBotSessionsTest extends BaseMainTest {
     public void createSessionPaid() throws Exception {
 
         TestSpace ts = prepareTestSpace();
-        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
         int quorumSize = 4;
         int poolSize = 5;
         Contract executableContract = new Contract(TestKeys.privateKey(1));
