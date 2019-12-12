@@ -5227,7 +5227,7 @@ public class Node {
 
         private final HashId executableContractId;
         private final Integer myRandom;
-        private final int quantasLimit;
+        private final int quantaLimit;
         private HashId requestId;
         private Contract requestContract;
         private Contract ubotRegistry;
@@ -5296,11 +5296,11 @@ public class Node {
             }
 
         }
-        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantasLimit) {
+        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantaLimit) {
 
             if(storages != null)
                 this.storages.putAll(storages);
-            this.quantasLimit = quantasLimit;
+            this.quantaLimit = quantaLimit;
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
@@ -5324,7 +5324,7 @@ public class Node {
         }
 
         public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
-            quantasLimit = compact.quantaLimit;
+            quantaLimit = compact.quantaLimit;
 
             this.executableContractId = compact.executableContractId;
             this.requestId = compact.requestId;
@@ -5494,7 +5494,7 @@ public class Node {
         private boolean voteStorageUpdate(String storageName, HashId value, NodeInfo nodeInfo, boolean hasConsensus) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteStorageUpdate from " , nodeInfo , " state " , state , " " , storageName, " -> " , value, " ", hasConsensus),
                     DatagramAdapter.VerboseLevel.NOTHING);
-            
+
             if(state != Node.UBotSessionState.OPERATIONAL)
                 return false;
 
@@ -5691,7 +5691,7 @@ public class Node {
                     ubotNotifier = executorService.schedule(() -> notifyUBotOnSession(), 20, TimeUnit.SECONDS);
                     sessionReadyEvent.fire();
                     stopBroadcastMyState();
-                    expiresAt = quantasLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantasLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
+                    expiresAt = quantaLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantaLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
 
                     saveToLedger();
                 }
@@ -5778,7 +5778,7 @@ public class Node {
 
             if (payload != null) {
                 Notification notification = new UBotSessionNotification(myInfo, executableContractId,  to == null,
-                        requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload,quantasLimit > 0);
+                        requestId != null && requestContract != null && requestContract.getId().equals(requestId), payload,quantaLimit > 0);
                 if (to != null) {
                     network.deliver(to, notification);
                 } else {
@@ -5810,7 +5810,7 @@ public class Node {
                 "sessionId", sessionId,
                 "sessionPool", sessionPool,
                 "closeVotes", closeVotes,
-                "quantasLimit", quantasLimit,
+                "quantaLimit", quantaLimit,
                 "closeVotesFinished", closeVotesFinished,
                 "closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()),
                 "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList())
@@ -5999,11 +5999,15 @@ public class Node {
                 compact.storageUpdates = this.storageUpdates;
                 compact.closeVotes = this.closeVotes;
                 compact.closeVotesFinished = this.closeVotesFinished;
-                compact.quantaLimit = this.quantasLimit;
+                compact.quantaLimit = this.quantaLimit;
                 ledger.saveUbotSession(compact);
             }
         }
     }
+
+
+
+
 
     private void unloadInactiveOrExpiredUbotSessionProcessors() {
         ubotSessionProcessors.forEach((k, usp) -> {
