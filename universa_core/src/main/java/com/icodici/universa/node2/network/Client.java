@@ -1600,7 +1600,7 @@ public class Client {
 
             Binder ubot = ubotTopology.stream().filter(b -> b.getIntOrThrow("number") == ubotNumber).findAny().get();
 
-            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)).replace("127.0.0.1","104.248.143.106"));
+            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)));
 
             try {
                 ubotHttpClient.start(clientPrivateKey, new PublicKey(Base64u.decodeCompactString(ubot.getStringOrThrow("key"))), null);
