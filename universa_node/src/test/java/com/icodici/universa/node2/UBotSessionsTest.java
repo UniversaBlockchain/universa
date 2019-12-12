@@ -63,14 +63,11 @@ public class UBotSessionsTest extends BaseMainTest {
         executableContract.getStateData().put("js", "simple JS code");
         executableContract.seal();
 
-        ts.node.node.registerItem(executableContract);
-        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
-        assertEquals(ir.state, ItemState.APPROVED);
-
         Contract requestContract = new Contract(TestKeys.privateKey(2));
         requestContract.getStateData().put("executable_contract_id",executableContract.getId());
         requestContract.getStateData().put("method_name","getRandom");
         requestContract.getStateData().put("method_args", Do.listOf(1000));
+        requestContract.addNewItems(executableContract);
 
         ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
             Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);

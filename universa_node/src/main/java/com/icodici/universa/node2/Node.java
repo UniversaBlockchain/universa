@@ -5262,6 +5262,7 @@ public class Node {
         private Set<Integer> sessionPool;
         ZonedDateTime timeout;
         ZonedDateTime nodeTimeout;
+        private boolean sessionVotingConsensus = false;
 
         private Map<String, HashId> storages = new ConcurrentHashMap<>();
         private Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
@@ -5633,71 +5634,92 @@ public class Node {
                 }
 
             } else if(state == Node.UBotSessionState.VOTING_SESSION_ID) {
-                if (sessionIds.size() >= config.getPositiveConsensus()) {
-                    //all session ids should be equals. So put into set it should have size == 1
-                    if(sessionIds.values().stream().collect(Collectors.toSet()).size() > 1) {
-                        abortSession();
-                        return;
-                    }
-
-                    if (requestContract != null && requestContract.getId().equals(requestId)) {
-                        try {
-                            ItemResult ir = waitItem(requestId, config.getMaxWaitSessionConsensus().toMillis());
-                            if (ir.state != ItemState.APPROVED) {
-                                System.out.println("Request contract state is not APPROVED: " + ir.toString());
-                                abortSession();
-                                return;
-                            }
-                        } catch (Exception ex) {
-                            System.out.println("Checking request contract state failed");
-                            ex.printStackTrace();
-                            abortSession();
-                            return;
-                        }
-                    }
-
-                    if(requestContract == null || !requestContract.getId().equals(requestId)) {
-                        if(!requestContractSources.isEmpty()) {
-                            try {
-                                requestContract = (Contract) network.getItem(requestId,Do.sample(requestContractSources), Duration.ofSeconds(15));
-                                if(requestContract != null) {
-                                    cache.put(requestContract,checkItem(requestContract.getId()));
-                                }
-                            } catch (InterruptedException e) {
-                                executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
-                                return;
-                            }
-                        } else {
-                            executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
-                            return;
-                        }
-                    }
-
-                    if(requestContract == null || !requestContract.getId().equals(requestId)) {
-                        abortSession();
-                        return;
-                    }
-
-                    initPoolAndQuorum();
-
-                    sessionId = sessionIds.get(myInfo);
-
-                    sessionPool = computeSessionPool(sessionId);
-                    if(sessionPool == null) {
-                        abortSession();
-                        return;
-                    }
-
-                    answered.clear();
-                    state = Node.UBotSessionState.OPERATIONAL;
-                    ubotNotifier = executorService.schedule(() -> notifyUBotOnSession(), 20, TimeUnit.SECONDS);
-                    sessionReadyEvent.fire();
-                    stopBroadcastMyState();
-                    expiresAt = quantaLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantaLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
-
-                    saveToLedger();
+                if (sessionIds.size() >= config.getPositiveConsensus() && !sessionVotingConsensus) {
+                    sessionVotingConsensus = true;
+                    executorService.schedule(this::doOperationalMode, 0, TimeUnit.SECONDS);
                 }
             }
+        }
+
+        private void doOperationalMode() {
+            //all session ids should be equals. So put into set it should have size == 1
+            if(sessionIds.values().stream().collect(Collectors.toSet()).size() > 1) {
+                abortSession();
+                return;
+            }
+
+            try {
+                long timeout = config.getMaxWaitSessionConsensus().toMillis();
+                while (true) {
+                    if (timeout <= 0)
+                        throw new TimeoutException("Session max timeout reached");
+
+                    ItemResult ir = waitItem(requestId, timeout);
+
+                    if (ir.state == ItemState.UNDEFINED) {
+                        timeout -= 100;
+                        Thread.sleep(100);
+                    } else if (ir.state == ItemState.APPROVED)
+                        break;
+                    else {
+                        report(getLabel(), () -> concatReportMessage( "(",executableContractId,") Request contract state is not APPROVED: ", ir.toString()),
+                                DatagramAdapter.VerboseLevel.BASE);
+                        abortSession();
+                        return;
+                    }
+                }
+
+            } catch (Exception ex) {
+                report(getLabel(), () -> concatReportMessage( "(",executableContractId,") Checking request contract state failed"),
+                        DatagramAdapter.VerboseLevel.BASE);
+                ex.printStackTrace();
+                abortSession();
+                return;
+            }
+
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") Request contract is APPROVED"),
+                    DatagramAdapter.VerboseLevel.BASE);
+
+            if(requestContract == null || !requestContract.getId().equals(requestId)) {
+                if(!requestContractSources.isEmpty()) {
+                    try {
+                        requestContract = (Contract) network.getItem(requestId,Do.sample(requestContractSources), Duration.ofSeconds(15));
+                        if(requestContract != null) {
+                            cache.put(requestContract,checkItem(requestContract.getId()));
+                        }
+                    } catch (InterruptedException e) {
+                        executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
+                        return;
+                    }
+                } else {
+                    executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
+                    return;
+                }
+            }
+
+            if(requestContract == null || !requestContract.getId().equals(requestId)) {
+                abortSession();
+                return;
+            }
+
+            initPoolAndQuorum();
+
+            sessionId = sessionIds.get(myInfo);
+
+            sessionPool = computeSessionPool(sessionId);
+            if(sessionPool == null) {
+                abortSession();
+                return;
+            }
+
+            answered.clear();
+            state = Node.UBotSessionState.OPERATIONAL;
+            ubotNotifier = executorService.schedule(() -> notifyUBotOnSession(), 20, TimeUnit.SECONDS);
+            sessionReadyEvent.fire();
+            stopBroadcastMyState();
+            expiresAt = quantaLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantaLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
+
+            saveToLedger();
         }
 
         private void notifyUBotOnSession() {
