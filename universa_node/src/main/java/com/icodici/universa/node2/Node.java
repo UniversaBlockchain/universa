@@ -1773,7 +1773,6 @@ public class Node {
                 HashId requestId = requestContract.getId();
 
                 try {
-                    //TODO: REPLACE CYCLE WITH READYEVENT OF A SESSION PROCESSOR
                     AtomicBoolean createNew = new AtomicBoolean(true);
 
                     while(true) {
@@ -1796,15 +1795,24 @@ public class Node {
 
                         if(processor == null) {
                             onFailure.accept("Unable to establish session");
-                        } else if(processor.requestId != null) {
-                            if(!processor.requestId.equals(requestId)) {
-                                onFailure.accept("Processor already exists for another request: " + requestId);
-                                break;
-                            } else if(processor.sessionId != null) {
-                                onSuccess.run();
-                            }
                         }
-                        Thread.sleep(500);
+
+                        if(processor.requestId == null) {
+                            processor.getRequestIdReadyEvent().await();
+                            continue;
+                        }
+
+                        if(!processor.requestId.equals(requestId)) {
+                            onFailure.accept("Processor already exists for another request: " + requestId);
+                            break;
+                        }
+
+                        if(processor.sessionId == null) {
+                            processor.getSessionReadyEvent().await();
+                            continue;
+                        }
+
+                        onSuccess.run();
                     }
 
                 } catch (Exception e) {
@@ -5225,6 +5233,18 @@ public class Node {
         private Contract ubotRegistry;
         private int quorumSize;
         private int poolSize;
+        private ZonedDateTime expiresAt;
+
+        private AsyncEvent requestIdReadyEvent = new AsyncEvent();
+        private AsyncEvent sessionReadyEvent = new AsyncEvent();
+
+        public AsyncEvent getRequestIdReadyEvent() {
+            return requestIdReadyEvent;
+        }
+
+        public AsyncEvent getSessionReadyEvent() {
+            return sessionReadyEvent;
+        }
 
         private Set<NodeInfo> requestContractSources = new HashSet<>();
         private Set<NodeInfo> answered = new HashSet<>();
@@ -5259,6 +5279,8 @@ public class Node {
             state = Node.UBotSessionState.CLOSED;
             removeSelf();
             ledger.deleteUbotSession(executableContractId);
+            requestIdReadyEvent.fire();
+            sessionReadyEvent.fire();
         }
 
         private void removeSelf() {
@@ -5312,6 +5334,9 @@ public class Node {
             this.closeVotesFinished.addAll(compact.closeVotesFinished);
 
             this.myRandom = 0; // not needed for saved state
+
+            requestIdReadyEvent.fire();
+            sessionReadyEvent.fire();
         }
 
         private void checkRequest(Contract requestContract) throws IllegalArgumentException {
@@ -5569,6 +5594,7 @@ public class Node {
                         }
                     }
 
+                    requestIdReadyEvent.fire();
                     answered.clear();
                     state = Node.UBotSessionState.COLLECTING_RANDOMS;
 
@@ -5654,7 +5680,9 @@ public class Node {
 
                     answered.clear();
                     state = Node.UBotSessionState.OPERATIONAL;
+                    sessionReadyEvent.fire();
                     stopBroadcastMyState();
+                    expiresAt = quantasLimit > 0 ? ZonedDateTime.now().plus(Duration.ofSeconds((60*quantasLimit)/(10*poolSize))).plus(Duration.ofMinutes(30)) : ZonedDateTime.now().plusDays(1);
 
                     saveToLedger();
                 }
@@ -5941,7 +5969,7 @@ public class Node {
 
     private void unloadInactiveUbotSessionProcessors() {
         ubotSessionProcessors.forEach((k, usp) -> {
-            if (usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
+            if (usp.expiresAt.isBefore(ZonedDateTime.now()) || usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
                 usp.removeSelf();
             }
         });
