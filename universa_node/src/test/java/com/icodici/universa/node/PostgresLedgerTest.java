@@ -1046,6 +1046,7 @@ public class PostgresLedgerTest extends TestCase {
         compact.closeVotes = closeVotes;
         compact.closeVotesFinished = closeVotesFinished;
         compact.quantaLimit = 400;
+        compact.expiresAt = ZonedDateTime.now();
 
         BiConsumer<Ledger.UbotSessionCompact, Ledger.UbotSessionCompact> assertUbotSessionCompactEquals = (expected, loaded) -> {
             assertEquals(expected.executableContractId, loaded.executableContractId);
@@ -1073,6 +1074,7 @@ public class PostgresLedgerTest extends TestCase {
             assertEquals(expected.closeVotesFinished.size(), loaded.closeVotesFinished.size());
             assertTrue(loaded.closeVotesFinished.containsAll(expected.closeVotesFinished));
             assertEquals(expected.quantaLimit, loaded.quantaLimit);
+            assertTrue(Duration.between(expected.expiresAt, loaded.expiresAt).getSeconds() <= 1);
         };
 
         // test creation of new ubot_session in ledger
@@ -1089,9 +1091,31 @@ public class PostgresLedgerTest extends TestCase {
         loaded.closeVotesFinished.clear();
         loaded.closeVotesFinished.add(42);
         loaded.quantaLimit = 505;
+        loaded.expiresAt = ZonedDateTime.now().plusSeconds(600);
         ledger.saveUbotSession(loaded);
         Ledger.UbotSessionCompact loaded2 = ledger.loadUbotSession(loaded.executableContractId);
         assertEquals(loaded.id, loaded2.id);
         assertUbotSessionCompactEquals.accept(loaded, loaded2);
+    }
+
+    @Test
+    public void ubotSessionCleanup() throws Exception {
+        Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
+        compact.storages = new ConcurrentHashMap<>();
+        compact.storageUpdates = new ConcurrentHashMap<>();
+        compact.executableContractId = HashId.createRandom();
+        compact.expiresAt = ZonedDateTime.now().plusSeconds(2);
+        compact.requestId = HashId.createRandom();
+        compact.sessionId = HashId.createRandom();
+        compact.closeVotes = ConcurrentHashMap.newKeySet();
+        compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
+        ledger.saveUbotSession(compact);
+        assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        ledger.deleteExpiredUbotSessions();
+        assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        System.out.println("wait for session cleanup (~4 sec)...");
+        Thread.sleep(4000);
+        ledger.deleteExpiredUbotSessions();
+        assertEquals(null, ledger.loadUbotSession(compact.executableContractId));
     }
 }

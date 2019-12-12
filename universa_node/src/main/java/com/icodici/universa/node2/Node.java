@@ -240,6 +240,7 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStoragesAndSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.clearExpiredNameRecords(config.getHoldDuration()),config.getExpriedNamesCleanupInterval().getSeconds(),config.getExpriedNamesCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveOrExpiredUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotSessions(), 1, 120, TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {
@@ -5325,6 +5326,7 @@ public class Node {
 
         public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
             quantaLimit = compact.quantaLimit;
+            expiresAt = compact.expiresAt;
 
             this.executableContractId = compact.executableContractId;
             this.requestId = compact.requestId;
@@ -6000,6 +6002,7 @@ public class Node {
                 compact.closeVotes = this.closeVotes;
                 compact.closeVotesFinished = this.closeVotesFinished;
                 compact.quantaLimit = this.quantaLimit;
+                compact.expiresAt = this.expiresAt;
                 ledger.saveUbotSession(compact);
             }
         }

@@ -2879,8 +2879,9 @@ public class PostgresLedger implements Ledger {
                     "storage_updates," +
                     "close_votes," +
                     "close_votes_finished," +
-                    "quanta_limit) " +
-                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json,?) " +
+                    "quanta_limit," +
+                    "expires_at) " +
+                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json,?,?) " +
                 "on conflict(executable_contract_id) do update set " +
                     "save_timestamp = excluded.save_timestamp," +
                     "request_id = excluded.request_id," +
@@ -2891,7 +2892,8 @@ public class PostgresLedger implements Ledger {
                     "storage_updates = excluded.storage_updates," +
                     "close_votes = excluded.close_votes," +
                     "close_votes_finished = excluded.close_votes_finished," +
-                    "quanta_limit = excluded.quanta_limit;"
+                    "quanta_limit = excluded.quanta_limit," +
+                    "expires_at = excluded.expires_at;"
             );
             Map<String, String> storages_b64 = new ConcurrentHashMap<>();
             sessionCompact.storages.forEach((k, v) -> storages_b64.put(k, v.toBase64String()));
@@ -2912,6 +2914,7 @@ public class PostgresLedger implements Ledger {
             statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotes));
             statement.setString(10, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
             statement.setInt(11, sessionCompact.quantaLimit);
+            statement.setLong(12, Ut.unixTime(sessionCompact.expiresAt));
             db.updateWithStatement(statement);
         } catch (SQLException se) {
             se.printStackTrace();
@@ -2956,6 +2959,7 @@ public class PostgresLedger implements Ledger {
             List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
             closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
             compact.quantaLimit = rs.getInt("quanta_limit");
+            compact.expiresAt = Ut.getTime(rs.getLong("expires_at"));
             return compact;
         } catch (SQLException se) {
             se.printStackTrace();
@@ -2970,6 +2974,19 @@ public class PostgresLedger implements Ledger {
     public void deleteUbotSession(HashId executableContractId) {
         try (PooledDb db = dbPool.db()) {
             db.update("delete from ubot_session where executable_contract_id=?", executableContractId.getDigest());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void deleteExpiredUbotSessions() {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_session where expires_at<? or expires_at is null", Instant.now().getEpochSecond());
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("deleteUbotSession failed, sql error:" + se);

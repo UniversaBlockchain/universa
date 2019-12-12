@@ -192,10 +192,12 @@ public interface Ledger {
         public Set<Integer> closeVotes;
         public Set<Integer> closeVotesFinished;
         public int quantaLimit;
+        public ZonedDateTime expiresAt;
     };
     void saveUbotSession(UbotSessionCompact sessionCompact);
     UbotSessionCompact loadUbotSession(HashId executableContractId);
     void deleteUbotSession(HashId executableContractId);
+    void deleteExpiredUbotSessions();
 
 
     public static class Rollback extends Db.RollbackException {
