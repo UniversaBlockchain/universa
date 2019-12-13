@@ -272,7 +272,13 @@ public class QuorumVoteRole extends Role {
     }
 
     public List<KeyAddress> getVotesForKeys(Set<? extends AbstractKey> keys) {
-        List<KeyAddress> votingAddresses = getVotingAddresses();
+        List<KeyAddress> votingAddresses = null;
+        try {
+            votingAddresses = getVotingAddresses();
+        } catch (Quantiser.QuantiserException e) {
+            e.printStackTrace();
+            //TODO: not gonna happen
+        }
 
         List<KeyAddress> result = new ArrayList<>();
         for(KeyAddress va : votingAddresses) {
@@ -283,7 +289,7 @@ public class QuorumVoteRole extends Role {
         return result;
     }
 
-    public List<KeyAddress> getVotingAddresses() {
+    public List<KeyAddress> getVotingAddresses() throws Quantiser.QuantiserException {
         int idx = source.indexOf(".");
         String from = source.substring(0,idx);
         String what = source.substring(idx+1);
@@ -296,6 +302,7 @@ public class QuorumVoteRole extends Role {
                 throw  new IllegalArgumentException("Reference with name '" + from + "' wasn't found for role " + getName());
             }
 
+            getContract().checkReferencedItems(new HashSet<>(Do.listOf(ref.name)));
             ref.matchingItems.forEach(a -> fromContracts.add((Contract) a));
         }
 

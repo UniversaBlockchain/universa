@@ -4,6 +4,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.node2.Quantiser;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.HashSet;
@@ -70,7 +71,12 @@ public class RoleExtractor {
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyAddresses(r)));
             return result;
         } else if(role instanceof QuorumVoteRole) {
-            return new HashSet(((QuorumVoteRole) role).getVotingAddresses());
+            try {
+                return new HashSet(((QuorumVoteRole) role).getVotingAddresses());
+            } catch (Quantiser.QuantiserException e) {
+                return new HashSet<>();
+                //TODO:?
+            }
         }
         return null;
     }
