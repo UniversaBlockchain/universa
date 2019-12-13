@@ -1514,39 +1514,48 @@ public class Client {
         return protect(() -> {
             Binder session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
 
-            if(session == null) {
+            if(session == null || session.get("state") == null) {
                 throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
             }
 
-
-            // wait session requestId
-            while (session.getString("state").equals("VOTING_REQUEST_ID")) {
-                Thread.sleep(100);
-                session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
-            }
-
-            if (waitPreviousSession) {
-                while (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
-                    if(session.getString("state").equals("CLOSING") || session.getString("state").equals("CLOSED")) {
-                        Thread.sleep(100);
-                    } else  {
-                        Thread.sleep(1000);
-                    }
-
-                    session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
-
-                    if(session == null) {
-                        throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
-                    }
+            do {
+                // wait session requestId
+                while (session.getString("state").equals("VOTING_REQUEST_ID")) {
+                    Thread.sleep(100);
+                    session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
                 }
 
-            } else if (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
-                return null;
-            }
+                if(session == null || session.get("state") == null) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","Can`t establish session. Session is null");
+                }
+
+                if (waitPreviousSession) {
+                    while (session.get("requestId") != null && !session.get("requestId").equals(requestContract.getId())) {
+                        if(session.getString("state").equals("CLOSING") || session.getString("state").equals("CLOSED")) {
+                            Thread.sleep(100);
+                        } else  {
+                            Thread.sleep(1000);
+                        }
+
+                        session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
+
+                        if(session == null) {
+                            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
+                        }
+                    }
+
+                } else if (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
+                    return null;
+                }
+            } while (session.get("requestId") == null);
 
             while (session.get("sessionId") == null || !session.get("state").equals("OPERATIONAL")) {
                 Thread.sleep(100);
                 session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
+
+                if(session == null || session.get("state") == null) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","Can`t establish session. Session is null");
+                }
             }
 
             return session;

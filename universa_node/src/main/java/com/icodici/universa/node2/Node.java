@@ -5399,6 +5399,8 @@ public class Node {
 
         }
         public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantaLimit) {
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") new UBot session processor"),
+                    DatagramAdapter.VerboseLevel.BASE);
 
             if(storages != null)
                 this.storages.putAll(storages);
@@ -5908,7 +5910,7 @@ public class Node {
                 } else {
                     network.eachNode(node -> {
                         if (!node.equals(myInfo) && !answered.contains(node) &&
-                                (state == UBotSessionState.VOTING_REQUEST_ID || requestIds.containsKey(node)))
+                                (state == UBotSessionState.VOTING_REQUEST_ID || requestId != null || requestIds.containsKey(node)))
                             network.deliver(node, notification);
                     });
                 }
