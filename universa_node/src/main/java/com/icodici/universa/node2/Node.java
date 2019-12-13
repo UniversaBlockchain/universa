@@ -41,6 +41,8 @@ import com.icodici.universa.contract.services.*;
 
 import java.io.File;
 import java.io.IOException;
+//import java.lang.management.ManagementFactory;
+//import java.lang.management.ThreadMXBean;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,6 +68,7 @@ public class Node {
 
     private static final int MAX_SANITATING_RECORDS = 64;
     private final File serviceContractsDir;
+//    private ScheduledFuture<?> heartbeat;
 
     NodeStats nodeStats = new NodeStats();
 
@@ -233,6 +236,52 @@ public class Node {
         callbackService = new NCallbackService(this, config, myInfo, ledger, network, nodeKey, lowPrioExecutorService);
 
         pulseStartCleanup();
+
+/*
+        Map<Long,Float> threadStats = new HashMap();
+        ThreadMXBean tmxb = ManagementFactory.getThreadMXBean();
+
+        int HB_PERIOD = 60;
+
+        heartbeat = executorService.scheduleAtFixedRate(new Runnable() {
+
+            @Override
+            public void run() {
+
+
+                Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+                Set<Long> threadIds = threadSet.stream().map(t->t.getId()).collect(Collectors.toSet());
+
+                Set<Long> toRemove = threadStats.keySet().stream().filter(id -> !threadIds.contains(id)).collect(Collectors.toSet());
+                toRemove.forEach(id -> threadStats.remove(id));
+
+
+                for (Thread t : threadSet) {
+                    long nano = tmxb.getThreadCpuTime(t.getId());
+                    if(nano == -1) {
+                        System.out.println("getThreadCpuTime returned -1");
+                        heartbeat.cancel(false);
+                        heartbeat = null;
+                        break;
+                    }
+                    float cpuTime = nano / 1000000000.0f;
+                    if (threadStats.containsKey(t.getId())) {
+                        float oldCpuTime = threadStats.get(t.getId());
+                        if (cpuTime - oldCpuTime > HB_PERIOD*0.01f) {
+                            System.out.println("T " + t.getName() + " " +  100*(cpuTime - oldCpuTime)/HB_PERIOD);
+                        }
+                    }
+                    threadStats.put(t.getId(), cpuTime);
+
+                }
+                System.out.println("hb I");
+                processors.values().stream().collect(Collectors.groupingBy(p -> p.processingState, Collectors.counting()))
+                        .forEach((state,count)->System.out.println(state+"\t"+count));
+                System.out.println("hb U");
+                ubotSessionProcessors.values().stream().collect(Collectors.groupingBy(p -> p.state, Collectors.counting()))
+                        .forEach((state,count)->System.out.println(state+"\t"+count));
+            }
+        }, 0, HB_PERIOD, TimeUnit.SECONDS);*/
     }
 
     private void pulseStartCleanup() {
@@ -1370,6 +1419,8 @@ public class Node {
                 e.printStackTrace();
             }
         }
+//        heartbeat.cancel(true);
+//        heartbeat = null;
         System.out.println(toString() + "please wait, executorService is shutting down");
         executorService.shutdown();
         lowPrioExecutorService.shutdown();
@@ -5324,7 +5375,10 @@ public class Node {
 
         private void abortSession() {
             Node.this.saveUBotStorage(executableContractId,storages);
-            System.out.println(myInfo + "("+executableContractId+") abortSession ");
+
+            report(getLabel(), () -> concatReportMessage( "(",executableContractId,") abortSession"),
+                    DatagramAdapter.VerboseLevel.BASE);
+
             state = Node.UBotSessionState.CLOSED;
             removeSelf();
             ledger.deleteUbotSession(executableContractId);
@@ -5542,7 +5596,7 @@ public class Node {
 
         private boolean voteStorageUpdate(String storageName, HashId value, NodeInfo nodeInfo, boolean hasConsensus) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") voteStorageUpdate from " , nodeInfo , " state " , state , " " , storageName, " -> " , value, " ", hasConsensus),
-                    DatagramAdapter.VerboseLevel.NOTHING);
+                    DatagramAdapter.VerboseLevel.BASE);
 
             if(state != Node.UBotSessionState.OPERATIONAL)
                 return false;
@@ -5769,7 +5823,7 @@ public class Node {
         }
 
         private void notifyUBotOnSession() {
-            int randomPoolUbotNumber = Do.sample(sessionPool);
+            /*int randomPoolUbotNumber = Do.sample(sessionPool);
 
 
             try {
@@ -5780,7 +5834,7 @@ public class Node {
             } catch (IOException e) {
                 e.printStackTrace();
                 //TODO: ???
-            }
+            }*/
 
             ubotNotifier = null;
         }
