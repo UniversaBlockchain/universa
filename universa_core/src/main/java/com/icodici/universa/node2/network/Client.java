@@ -1544,7 +1544,7 @@ public class Client {
                 return null;
             }
 
-            while (session.get("sessionId") == null) {
+            while (session.get("sessionId") == null || !session.get("state").equals("OPERATIONAL")) {
                 Thread.sleep(100);
                 session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
             }
