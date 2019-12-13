@@ -2936,31 +2936,8 @@ public class PostgresLedger implements Ledger {
                 return null;
             if (!rs.next())
                 return null;
-            UbotSessionCompact compact = new UbotSessionCompact();
-            compact.executableContractId = HashId.withDigest(rs.getBytes("executable_contract_id"));
-            compact.requestId = HashId.withDigest(rs.getBytes("request_id"));
-            compact.requestContract = rs.getBytes("request_contract");
-            compact.state = rs.getInt("state");
-            compact.sessionId = HashId.withDigest(rs.getBytes("session_id"));
-            compact.storages = new ConcurrentHashMap<>();
-            Map<String,String> storages_b64 = JsonTool.fromJson(rs.getString("storages"));
-            storages_b64.forEach((k, v) -> compact.storages.put(k, HashId.withDigest(v)));
-            compact.storageUpdates = new ConcurrentHashMap<>();
-            Map<String, Map<String,String>> storageUpdates_b64 = JsonTool.fromJson(rs.getString("storage_updates"));
-            storageUpdates_b64.forEach((k, v) -> {
-                Map<Integer,HashId> map = new ConcurrentHashMap<>();
-                v.forEach((k0, v0) -> map.put(Integer.parseInt(k0), HashId.withDigest(v0)));
-                compact.storageUpdates.put(k, map);
-            });
-            compact.closeVotes = ConcurrentHashMap.newKeySet();
-            List<Long> closeVotes = JsonTool.fromJson(rs.getString("close_votes"));
-            closeVotes.forEach(v -> compact.closeVotes.add(v.intValue()));
-            compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
-            List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
-            closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
-            compact.quantaLimit = rs.getInt("quanta_limit");
-            compact.expiresAt = Ut.getTime(rs.getLong("expires_at"));
-            return compact;
+
+            return sessionCompaсtFromResultSet(rs);
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("loadUbotSession failed, sql error: " + se);
@@ -2968,6 +2945,56 @@ public class PostgresLedger implements Ledger {
             e.printStackTrace();
             throw new Failure("loadUbotSession failed: " + e);
         }
+    }
+
+
+    @Override
+    public UbotSessionCompact loadUbotSessionById(HashId sessionId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where session_id=?;");
+            statement.setBytes(1, sessionId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return sessionCompaсtFromResultSet(rs);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    private static UbotSessionCompact sessionCompaсtFromResultSet(ResultSet rs) throws SQLException {
+        UbotSessionCompact compact = new UbotSessionCompact();
+        compact.executableContractId = HashId.withDigest(rs.getBytes("executable_contract_id"));
+        compact.requestId = HashId.withDigest(rs.getBytes("request_id"));
+        compact.requestContract = rs.getBytes("request_contract");
+        compact.state = rs.getInt("state");
+        compact.sessionId = HashId.withDigest(rs.getBytes("session_id"));
+        compact.storages = new ConcurrentHashMap<>();
+        Map<String,String> storages_b64 = JsonTool.fromJson(rs.getString("storages"));
+        storages_b64.forEach((k, v) -> compact.storages.put(k, HashId.withDigest(v)));
+        compact.storageUpdates = new ConcurrentHashMap<>();
+        Map<String, Map<String,String>> storageUpdates_b64 = JsonTool.fromJson(rs.getString("storage_updates"));
+        storageUpdates_b64.forEach((k, v) -> {
+            Map<Integer,HashId> map = new ConcurrentHashMap<>();
+            v.forEach((k0, v0) -> map.put(Integer.parseInt(k0), HashId.withDigest(v0)));
+            compact.storageUpdates.put(k, map);
+        });
+        compact.closeVotes = ConcurrentHashMap.newKeySet();
+        List<Long> closeVotes = JsonTool.fromJson(rs.getString("close_votes"));
+        closeVotes.forEach(v -> compact.closeVotes.add(v.intValue()));
+        compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
+        List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
+        closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
+        compact.quantaLimit = rs.getInt("quanta_limit");
+        compact.expiresAt = Ut.getTime(rs.getLong("expires_at"));
+        return compact;
     }
 
     @Override

@@ -17,6 +17,7 @@ import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
 
+import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -196,6 +197,7 @@ public interface Ledger {
     };
     void saveUbotSession(UbotSessionCompact sessionCompact);
     UbotSessionCompact loadUbotSession(HashId executableContractId);
+    UbotSessionCompact loadUbotSessionById(HashId sessionId);
     boolean hasUbotSession(HashId executableContractId);
     void deleteUbotSession(HashId executableContractId);
     void deleteExpiredUbotSessions();

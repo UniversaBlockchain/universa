@@ -6156,6 +6156,17 @@ public class Node {
         return null;
     }
 
+    private UBotSessionProcessor loadUBotSessionProcessorFromLedgerBySessionId(HashId sessionId) {
+        Ledger.UbotSessionCompact compact = ledger.loadUbotSessionById(sessionId);
+        if (compact != null) {
+            UBotSessionProcessor usp = new UBotSessionProcessor(compact);
+            usp.initPoolAndQuorum();
+            usp.initAfterLoadlingFromDB();
+            return usp;
+        }
+        return null;
+    }
+
     private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {
         ubotStorage.putIfAbsent(executableContractId,new ConcurrentHashMap<>());
         ubotStorage.get(executableContractId).putAll(storages);
@@ -6163,15 +6174,22 @@ public class Node {
 
 
     public boolean isSessionUbot(PublicKey key, HashId sessionId) {
-        Optional<UBotSessionProcessor> usp = ubotSessionProcessors.values().stream().filter(sp-> {
+        Optional<UBotSessionProcessor> uspO = ubotSessionProcessors.values().stream().filter(sp-> {
             HashId id = (HashId) sp.getSession().get("sessionId");
             return  id != null && id.equals(sessionId);
         }).findAny();
 
-        if(!usp.isPresent())
-            return false;
+        UBotSessionProcessor usp;
 
-        if(ubotsByKey.containsKey(key) && usp.get().sessionPool.contains(ubotsByKey.get(key))) {
+        if(!uspO.isPresent()) {
+            usp = loadUBotSessionProcessorFromLedgerBySessionId(sessionId);
+            if(usp == null)
+                return false;
+        } else {
+            usp = uspO.get();
+        }
+
+        if(ubotsByKey.containsKey(key) && usp.sessionPool.contains(ubotsByKey.get(key))) {
             return true;
         } else {
             return false;
