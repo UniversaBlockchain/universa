@@ -3796,7 +3796,7 @@ public class Node {
                     rollbackRequired = false;
                 }
                 if (rollbackRequired) {
-                    rollbackChanges(ItemState.DECLINED);
+                    rollbackChanges(ItemState.UNDEFINED);
                     return;
                 }
             }
