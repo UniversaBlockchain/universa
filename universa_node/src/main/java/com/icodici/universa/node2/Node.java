@@ -1883,6 +1883,7 @@ public class Node {
                     }
 
                     onSuccess.run();
+                    break;
                 }
 
             } catch (Exception e) {
