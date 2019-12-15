@@ -715,9 +715,12 @@ public class ClientHTTPServer extends BasicHttpServer {
             byte[] packedU = params.getBinaryOrThrow("packedU");
             byte[] packedRequest = params.getBinaryOrThrow("packedRequest");
 
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "ubot_session", Binder.of("packedRequest", packedRequest)).pack());
             return Binder.of(
                     "result",
-                    node.registerPaidOperation(PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU),"ubot_session",Binder.of("packedRequest",packedRequest)).pack()))
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
             );
 
 
