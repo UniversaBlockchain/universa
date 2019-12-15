@@ -1877,7 +1877,7 @@ public class Node {
                         break;
                     }
 
-                    if(processor.sessionId == null) {
+                    if(processor.state != UBotSessionState.OPERATIONAL) {
                         processor.getSessionReadyEvent().await();
                         continue;
                     }
