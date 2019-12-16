@@ -1865,6 +1865,7 @@ public class Node {
 
                     if(processor == null) {
                         onFailure.accept("Unable to establish session");
+                        break;
                     }
 
                     if(processor.requestId == null) {
