@@ -28,3 +28,5 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	CREATE DATABASE node4db;
 	GRANT ALL PRIVILEGES ON DATABASE node4db TO node4user;
 EOSQL
+
+touch /var/tmp/db_init_completed.lock

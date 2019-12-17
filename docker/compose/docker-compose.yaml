@@ -8,8 +8,8 @@ services:
       POSTGRES_PASSWORD: universa-pass
       POSTGRES_USER: root
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 2s
+      test: ["CMD","cat", "/var/tmp/db_init_completed.lock"]
+      interval: 1s
       retries: 10
       timeout: 10s
     volumes:
