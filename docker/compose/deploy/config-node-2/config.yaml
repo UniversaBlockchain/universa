@@ -5,7 +5,7 @@ http_client_listen:
 - 0.0.0.0
 http_server_port: 2083
 udp_server_port: 2701
-database: jdbc:postgresql://db:5432/node2db?user=node2user&password=uniPass
+database: jdbc:postgresql://10.6.0.10:5432/node2db?user=node2user&password=uniPass
 node_number: 2
 public_host: 127.0.0.1
 node_name: node-2-local
