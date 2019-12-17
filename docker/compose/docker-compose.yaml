@@ -2,8 +2,8 @@ version: '2.1'
 services:
   db:
     image: postgres:latest
-    ports:
-      - 5432:5432
+#    ports:
+#      - 5432:5432
     environment:
       POSTGRES_PASSWORD: universa-pass
       POSTGRES_USER: root
