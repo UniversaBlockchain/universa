@@ -1510,80 +1510,72 @@ public class Client {
         });
     }
 
-    public Binder createSession(Contract requestContract, boolean waitPreviousSession) throws ClientError {
+    public Binder createSession(Contract requestContract, byte[] packedU, boolean waitPreviousSession) throws ClientError {
         return protect(() -> {
-            Binder session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
-
-            if(session == null || session.get("state") == null) {
-                throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
-            }
+            HashId uId = Contract.fromPackedTransaction(packedU).getId();
 
             do {
-                // wait session requestId
-                while (session.getString("state").equals("VOTING_REQUEST_ID")) {
+                Binder answer = (Binder) command("ubotCreateSessionPaid", "packedRequest", requestContract.getPackedTransaction(),"packedU",packedU);
+
+                HashId paidOperationId = (HashId) answer.get("paidOperationId");
+                while(getPaidOperationProcessingState(paidOperationId).isProcessing()) {
                     Thread.sleep(100);
-                    session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
                 }
 
-                if(session == null || session.get("state") == null) {
-                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","Can`t establish session. Session is null");
+                if(getState(uId).state == ItemState.UNDEFINED) {
+                    continue;
+                }
+                ItemResult ir = getState(uId);
+                if(ir.state == ItemState.DECLINED) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","U declined: " + ir.errors);
                 }
 
-                if (waitPreviousSession) {
-                    while (session.get("requestId") != null && !session.get("requestId").equals(requestContract.getId())) {
-                        if(session.getString("state").equals("CLOSING") || session.getString("state").equals("CLOSED")) {
-                            Thread.sleep(100);
-                        } else  {
-                            Thread.sleep(1000);
-                        }
-
-                        session = (Binder) command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()).get("session");
-
-                        if(session == null) {
-                            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is null");
-                        }
-                    }
-
-                } else if (session.get("requestId") == null || !session.get("requestId").equals(requestContract.getId())) {
-                    return null;
+                if(ir.state != ItemState.APPROVED) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","U is not approved: " + ir.state);
                 }
-            } while (session.get("requestId") == null);
 
-            while (session.get("sessionId") == null || !session.get("state").equals("OPERATIONAL")) {
-                Thread.sleep(100);
-                session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
+                Binder session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
 
-                if(session == null || session.get("state") == null) {
-                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","Can`t establish session. Session is null");
+                if(session == null || session.get("state") == null || !session.get("state").equals("OPERATIONAL")) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is not operational :" +  session.get("state"));
                 }
-            }
 
-            return session;
+                return session;
+
+            } while (waitPreviousSession);
+
+            return null;
         });
     }
 
-    public Binder startCloudMethod(Contract requestContract, boolean waitPreviousSession) throws ClientError {
-        Instant now = Instant.now();
-        Binder session = createSession(requestContract, waitPreviousSession);
-        System.out.println("Session created in: " + (Instant.now().toEpochMilli()-now.toEpochMilli()) + "ms");
+    public Binder startCloudMethod(Contract requestContract,byte[] packedU, boolean waitPreviousSession) throws ClientError {
+        Binder session = createSession(requestContract, packedU, waitPreviousSession);
         if(session == null) {
             return null;
         }
         List<Integer> ubots = session.getListOrThrow("sessionPool");
 
-        int randomPoolUbotNumber = Do.sample(ubots);
+        Map<Integer,Binder> errors = new HashMap<>();
+        for(int i = 0; i < 3; i++) {
+            int randomPoolUbotNumber = Do.sample(ubots);
 
-        BasicHttpClient ubotHttpClient = connectToUbot(randomPoolUbotNumber);
+            BasicHttpClient ubotHttpClient = connectToUbot(randomPoolUbotNumber);
 
-        Binder response;
-        try {
-            response = ubotHttpClient.command("executeCloudMethod", "contract", requestContract.getPackedTransaction());
-        } catch (IOException e) {
-            throw new ClientError(e);
+            Binder response;
+            try {
+                response = ubotHttpClient.command("executeCloudMethod", "contract", requestContract.getPackedTransaction());
+            } catch (IOException e) {
+                continue;
+            }
+
+            if (!response.getString("status", "error").equals("ok")) {
+                errors.put(randomPoolUbotNumber,response);
+            } else {
+                break;
+            }
         }
-
-        if(!response.getStringOrThrow("status").equals("ok")) {
-            throw new ClientError(Errors.COMMAND_FAILED,"executeCloudMethod",response.toString());
+        if(!errors.isEmpty()) {
+            session.put("ubot_errors",errors);
         }
 
         return session;
@@ -1646,11 +1638,14 @@ public class Client {
 
 
 
-    public Binder executeCloudMethod(byte[] packedRequest, boolean waitPreviousSession,float trustLevel) throws IOException {
+    public Binder executeCloudMethod(byte[] packedRequest, byte[] packedU, boolean waitPreviousSession,float trustLevel) throws IOException {
 
         Contract requestContract = Contract.fromPackedTransaction(packedRequest);
 
-        Binder session = startCloudMethod(requestContract, waitPreviousSession);
+        Binder session = startCloudMethod(requestContract,packedU, waitPreviousSession);
+        if(session.containsKey("ubot_errors")) {
+            return session;
+        }
 
         byte[] ubotRegistryBytes = getServiceContracts().getBinaryOrThrow("ubot_registry_contract");
         if(ubotRegistryBytes == null) {
@@ -1676,10 +1671,11 @@ public class Client {
                 try {
                     while(true) {
                         Binder response = getCloudMethodState(requestContract.getId(),ubotNumber);
-                        if(!PoolState.valueOf(response.getStringOrThrow("state")).isRunning()) {
+                        if(response.containsKey("state") && !PoolState.valueOf(response.getStringOrThrow("state")).isRunning()) {
                             answers.put(ubotNumber,response);
                             break;
                         }
+                        Thread.sleep(100);
                     }
                 } catch (Exception e) {
                     answers.put(ubotNumber,Binder.of("state", PoolState.FAILED.name(),"exception",e));
