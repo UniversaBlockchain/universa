@@ -1072,5 +1072,42 @@ public class UBotSessionsTest extends BaseMainTest {
 
     }
 
+    @Ignore
+    @Test
+    public void createUBotRegistryContractAndSave() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(1));
 
+        List<Binder> topology = new ArrayList<>();
+        ListRole listRole = new ListRole("ubots",contract);
+        listRole.setMode(ListRole.Mode.ALL);
+
+
+        for(int i = 0;i < N;i++) {
+            int number = i;
+            PublicKey publicKey = new PublicKey(Do.read("./src/ubot_config/ubot0/config/keys/ubot_"+i+".public.unikey"));
+            listRole.addRole(new SimpleRole("ubot"+number,contract,Do.listOf(publicKey.getLongAddress())));
+            topology.add(Binder.of(
+                    "number",number,
+                    "key", Base64u.encodeString(publicKey.pack()),
+                    "domain_urls",Do.listOf("https://localhost:"+(17000+i)),
+                    "direct_urls",Do.listOf("http://127.0.0.1:"+(17000+i))
+            ));
+        }
+
+
+        contract.addRole(listRole);
+        contract.getStateData().put("topology",topology);
+        contract.seal();
+
+        new FileOutputStream("ubot_registry_contract.unicon").write(contract.getLastSealedBinary());
+
+    }
+
+    @Ignore
+    @Test
+    public void registerUBotRegistryContract() throws Exception {
+        Client client = new Client("universa.local",null,TestKeys.privateKey(0));
+        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
+        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
+    }
 }
