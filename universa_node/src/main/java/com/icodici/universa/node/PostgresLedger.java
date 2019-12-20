@@ -2949,6 +2949,27 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
+    public UbotSessionCompact loadUbotSessionByRequestId(HashId requestId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where request_id=?;");
+            statement.setBytes(1, requestId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return sessionCompaсtFromResultSet(rs);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    @Override
     public UbotSessionCompact loadUbotSessionById(HashId sessionId) {
         try (PooledDb db = dbPool.db()) {
             PreparedStatement statement = db.statement("select * from ubot_session where session_id=?;");

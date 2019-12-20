@@ -1523,6 +1523,7 @@ public class Client {
                 }
 
                 if(getState(uId).state == ItemState.UNDEFINED) {
+                    Thread.sleep(500);
                     continue;
                 }
                 ItemResult ir = getState(uId);
@@ -1534,10 +1535,10 @@ public class Client {
                     throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","U is not approved: " + ir.state);
                 }
 
-                Binder session = command("ubotGetSession", "executableContractId", requestContract.getStateData().get("executable_contract_id")).getBinderOrThrow("session");
+                Binder session = command("ubotGetSession", "requestId", requestContract.getId()).getBinderOrThrow("session");
 
                 if(session == null || session.get("state") == null || !session.get("state").equals("OPERATIONAL")) {
-                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is not operational :" +  session.get("state"));
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is not operational :" +  session.get("errors"));
                 }
 
                 return session;
@@ -1571,7 +1572,7 @@ public class Client {
             if (!response.getString("status", "error").equals("ok")) {
                 errors.put(randomPoolUbotNumber,response);
             } else {
-                break;
+                return session;
             }
         }
         if(!errors.isEmpty()) {
@@ -1657,7 +1658,6 @@ public class Client {
         } catch (IOException e) {
             throw new ClientError(e);
         }
-
 
         int quorum = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
         int minAnswersRequired = (int) Math.max(Math.ceil(quorum*trustLevel),1);

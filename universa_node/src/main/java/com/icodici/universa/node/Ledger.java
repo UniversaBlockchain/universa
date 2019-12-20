@@ -198,6 +198,7 @@ public interface Ledger {
     void saveUbotSession(UbotSessionCompact sessionCompact);
     UbotSessionCompact loadUbotSession(HashId executableContractId);
     UbotSessionCompact loadUbotSessionById(HashId sessionId);
+    UbotSessionCompact loadUbotSessionByRequestId(HashId sessionId);
     boolean hasUbotSession(HashId executableContractId);
     void deleteUbotSession(HashId executableContractId);
     void deleteExpiredUbotSessions();
