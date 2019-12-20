@@ -21,7 +21,7 @@ services:
         ipv4_address: 10.6.0.10
         ipv6_address: fdf0:e132:efcf:2fae::10
   node-1-local:
-    image: universa/node:unstable
+    image: universa/node:latest
     command: --config /deploy/
     links:
      - db
@@ -35,7 +35,6 @@ services:
     volumes:
      - ./deploy/config-node-1/config.yaml:/deploy/config/config.yaml
      - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
-     - ./deploy/config/ubot_registry_contract.unicon:/deploy/config/contracts/ubot_registry_contract.unicon
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-1:/deploy/tmp
@@ -48,7 +47,7 @@ services:
         ipv4_address: 10.6.0.11
         ipv6_address: fdf0:e132:efcf:2fae::11
   node-2-local:
-    image: universa/node:unstable
+    image: universa/node:latest
     command: --config /deploy/
     links:
      - db
@@ -62,7 +61,6 @@ services:
     volumes:
      - ./deploy/config-node-2/config.yaml:/deploy/config/config.yaml
      - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
-     - ./deploy/config/ubot_registry_contract.unicon:/deploy/config/contracts/ubot_registry_contract.unicon
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-2:/deploy/tmp
@@ -75,7 +73,7 @@ services:
         ipv4_address: 10.6.0.12
         ipv6_address: fdf0:e132:efcf:2fae::12
   node-3-local:
-    image: universa/node:unstable
+    image: universa/node:latest
     command: --config /deploy/
     links:
      - db
@@ -89,7 +87,6 @@ services:
     volumes:
      - ./deploy/config-node-3/config.yaml:/deploy/config/config.yaml
      - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
-     - ./deploy/config/ubot_registry_contract.unicon:/deploy/config/contracts/ubot_registry_contract.unicon
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-3:/deploy/tmp
@@ -102,7 +99,7 @@ services:
         ipv4_address: 10.6.0.13
         ipv6_address: fdf0:e132:efcf:2fae::13
   node-4-local:
-    image: universa/node:unstable
+    image: universa/node:latest
     command: --config /deploy/
     links:
      - db
@@ -116,7 +113,6 @@ services:
     volumes:
      - ./deploy/config-node-4/config.yaml:/deploy/config/config.yaml
      - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
-     - ./deploy/config/ubot_registry_contract.unicon:/deploy/config/contracts/ubot_registry_contract.unicon
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-4:/deploy/tmp
