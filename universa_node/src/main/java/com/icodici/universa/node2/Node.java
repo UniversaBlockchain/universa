@@ -5454,15 +5454,6 @@ public class Node {
             this.requestContract = requestContract;
             myRandom = Do.randomInt(Integer.MAX_VALUE);
 
-            if (requestContract != null) {
-                try {
-                    checkRequest(requestContract);
-                } catch (IllegalArgumentException ex) {
-                    ex.printStackTrace();
-                    abortSession();
-                    return;
-                }
-            }
 
             state = Node.UBotSessionState.VOTING_REQUEST_ID;
 
@@ -5844,10 +5835,17 @@ public class Node {
                     executorService.schedule(()->checkVote(),1,TimeUnit.SECONDS);
                     return;
                 }
+                if(requestContract == null || !requestContract.getId().equals(requestId)) {
+                    abortSession();
+                    return;
+                }
             }
 
-            if(requestContract == null || !requestContract.getId().equals(requestId)) {
-                abortSession();
+            try {
+                checkRequest(requestContract);
+            } catch (IllegalArgumentException ex) {
+                addUBotSessionError(requestId,Errors.FAILURE,"requestContract", ex.getMessage());
+                abortSession(true);
                 return;
             }
             try {
