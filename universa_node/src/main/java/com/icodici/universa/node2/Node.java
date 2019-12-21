@@ -6097,26 +6097,22 @@ public class Node {
                 throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + executableContractId);
 
             int size = -1;
+            int sizeFinished = -1;
             synchronized (closeVotes) {
                 if (!closeVotes.contains(ubotNumber)) {
                     closeVotes.add(ubotNumber);
+
+                    if (finished)
+                        closeVotesFinished.add(ubotNumber);
+
                     saveToLedger();
                     size = closeVotes.size();
+                    sizeFinished = closeVotesFinished.size();
                 }
             }
 
             if (size == -1)
                 return;
-
-            int sizeFinished;
-            synchronized (closeVotesFinished) {
-                if (finished && !closeVotesFinished.contains(ubotNumber)) {
-                    closeVotesFinished.add(ubotNumber);
-                    saveToLedger();
-                }
-
-                sizeFinished = closeVotesFinished.size();
-            }
 
             if (sizeFinished == quorumSize ||
                 (size >= quorumSize && poolSize - size + sizeFinished == quorumSize - 1) ||
