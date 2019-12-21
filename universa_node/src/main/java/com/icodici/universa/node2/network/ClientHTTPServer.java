@@ -743,16 +743,21 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder ubotCloseSession(Binder params, Session session) throws CommandFailedException {
-
         try {
-            HashId executableContractId = params.getOrThrow("executableContractId");
             boolean finished = params.getBooleanOrThrow("finished");
-            return Binder.of("session", node.closeUBotSession(executableContractId, session.getPublicKey(), finished));
+            if (params.containsKey("executableContractId")) {
+                HashId executableContractId = params.getOrThrow("executableContractId");
+                return Binder.of("session", node.closeUBotSession(executableContractId, session.getPublicKey(), finished));
+            } else if (params.containsKey("requestId")) {
+                HashId requestId = params.getOrThrow("requestId");
+                return Binder.of("session", node.closeUBotSessionByRequestId(requestId, session.getPublicKey(), finished));
+            } else {
+                throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotCloseSession", "Either executableContractId or requestId should present");
+            }
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
         }
-
     }
 
 

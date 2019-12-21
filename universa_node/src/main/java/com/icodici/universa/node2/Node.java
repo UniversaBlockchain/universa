@@ -1716,10 +1716,19 @@ public class Node {
                 return usp.getSession();
             }
             return new Binder();
-
         });
     }
 
+    public Binder closeUBotSessionByRequestId(HashId requestId, PublicKey publicKey, boolean finished) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessorByRequestId(requestId);
+            if(usp != null) {
+                usp.addSessionCloseVote(publicKey, finished);
+                return usp.getSession();
+            }
+            return new Binder();
+        });
+    }
 
     public Binder getUBotStorage(HashId executableContractId, List<String> storageNames) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
