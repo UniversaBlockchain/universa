@@ -188,7 +188,6 @@ public interface Ledger {
         public byte[] requestContract;
         public int state;
         public HashId sessionId;
-        public Map<String, HashId> storages;
         public Map<String, Map<Integer,HashId>> storageUpdates;
         public Set<Integer> closeVotes;
         public Set<Integer> closeVotesFinished;
@@ -202,6 +201,9 @@ public interface Ledger {
     boolean hasUbotSession(HashId executableContractId);
     void deleteUbotSession(HashId executableContractId);
     void deleteExpiredUbotSessions();
+    void saveUbotStorageValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value);
+    HashId getUbotStorageValue(HashId executableContractId, String storageName);
+    void deleteExpiredUbotStorages();
 
 
     public static class Rollback extends Db.RollbackException {

@@ -75,7 +75,7 @@ public class Node {
     private ScheduledFuture<?> sanitator;
     private ScheduledFuture<?> statsCollector;
     private Map<PublicKey, Integer> ubotsByKey = new HashMap();
-    private Map<HashId,Map<String,HashId>> ubotStorage = new ConcurrentHashMap<>();
+    private UbotStorage ubotStorage = new UbotStorage();
 
     public boolean isSanitating() {
         return !recordsToSanitate.isEmpty();
@@ -293,6 +293,7 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.clearExpiredNameRecords(config.getHoldDuration()),config.getExpriedNamesCleanupInterval().getSeconds(),config.getExpriedNamesCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveOrExpiredUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotSessions(), 1, 120, TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotStorages(), 1, 120, TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {
@@ -697,7 +698,7 @@ public class Node {
 
                 UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, notification.isPaid() ? null : () -> {
                     if(state == UBotSessionState.VOTING_REQUEST_ID)
-                        return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null,0);
+                        return new UBotSessionProcessor(executableContractId, (HashId) notification.getPayload().get(1), null,0);
                     return null;
                 });
 
@@ -710,7 +711,7 @@ public class Node {
                     if(state == UBotSessionState.VOTING_REQUEST_ID) {
                         usp = getUBotSessionProcessor(executableContractId, notification.isPaid() ? null : () -> {
                             if(state == UBotSessionState.VOTING_REQUEST_ID)
-                                return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), (HashId) notification.getPayload().get(1), null,0);
+                                return new UBotSessionProcessor(executableContractId, (HashId) notification.getPayload().get(1), null,0);
                             return null;
                         });
                     } else {
@@ -1620,7 +1621,7 @@ public class Node {
         try {
             return itemLock.synchronize(executableContractId,lock -> {
                 Supplier<UBotSessionProcessor> creationBlock = () -> {
-                    return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId), requestId, requestContract, 0);
+                    return new UBotSessionProcessor(executableContractId, requestId, requestContract, 0);
                 };
 
                 UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, creationBlock);
@@ -1751,7 +1752,7 @@ public class Node {
                 Binder pending = new Binder();
                 UBotSessionProcessor uspFinal = usp;
                 storageNames.forEach(name->{
-                    current.put(name,uspFinal.getStorage(name));
+                    current.put(name,ubotStorage.getValue(uspFinal.executableContractId, name));
                     pending.put(name,uspFinal.getPendingChanges(name));
                 });
                 return Binder.of("current",current,"pending",pending);
@@ -1768,7 +1769,7 @@ public class Node {
                 Binder pending = new Binder();
                 UBotSessionProcessor uspFinal = usp;
                 storageNames.forEach(name->{
-                    current.put(name,uspFinal.getStorage(name));
+                    current.put(name,ubotStorage.getValue(uspFinal.executableContractId, name));
                     pending.put(name,uspFinal.getPendingChanges(name));
                 });
                 return Binder.of("current",current,"pending",pending);
@@ -1928,13 +1929,13 @@ public class Node {
 
                     UBotSessionProcessor processor = itemLock.synchronize(executableContractId,lock -> {
                         UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
-                            return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
+                            return new UBotSessionProcessor(executableContractId, requestId,requestContract,quantaLimit);
                         } : null);
 
                         if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
                             usp.abortSession();
                             usp = getUBotSessionProcessor(executableContractId,createNew.get() ? () -> {
-                                return new UBotSessionProcessor(executableContractId, ubotStorage.get(executableContractId),requestId,requestContract,quantaLimit);
+                                return new UBotSessionProcessor(executableContractId, requestId,requestContract,quantaLimit);
                             } : null);
                         }
                         return usp;
@@ -5440,7 +5441,6 @@ public class Node {
         ZonedDateTime nodeTimeout;
         private boolean sessionVotingConsensus = false;
 
-        private Map<String, HashId> storages = new ConcurrentHashMap<>();
         private Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
 
         private Map<String, Map<NodeInfo,List>> storageUpdateVotes = new ConcurrentHashMap<>();
@@ -5456,8 +5456,6 @@ public class Node {
             abortSession(false);
         }
         private void abortSession(boolean withUserError) {
-            Node.this.saveUBotStorage(executableContractId,storages);
-
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") abortSession"),
                     DatagramAdapter.VerboseLevel.BASE);
 
@@ -5482,12 +5480,10 @@ public class Node {
             }
 
         }
-        public UBotSessionProcessor( HashId executableContractId, Map<String,HashId> storages, HashId requestId, Contract requestContract, int quantaLimit) {
+        public UBotSessionProcessor( HashId executableContractId, HashId requestId, Contract requestContract, int quantaLimit) {
             report(getLabel(), () -> concatReportMessage( "(",executableContractId,") new UBot session processor"),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            if(storages != null)
-                this.storages.putAll(storages);
             this.quantaLimit = quantaLimit;
             this.executableContractId = executableContractId;
             this.requestContract = requestContract;
@@ -5516,7 +5512,6 @@ public class Node {
             }
             this.state = UBotSessionState.byOrdinal(compact.state);
             this.sessionId = compact.sessionId;
-            this.storages.putAll(compact.storages);
             compact.storageUpdates.forEach((k, v) -> this.storageUpdates.put(k, new ConcurrentHashMap<>(v)));
             this.closeVotes.addAll(compact.closeVotes);
             this.closeVotesFinished.addAll(compact.closeVotesFinished);
@@ -5688,7 +5683,7 @@ public class Node {
                 Set<HashId> variants = map.values().stream().map(l -> (HashId) l.get(0)).collect(Collectors.toSet());
                 long max = 0;
                 HashId maxAt = null;
-                HashId existing = getStorage(storageName);
+                HashId existing = ubotStorage.getValue(executableContractId, storageName);
                 for (HashId variant : variants) {
                     if(existing != null && existing.equals(variant)) {
                         continue;
@@ -5701,7 +5696,7 @@ public class Node {
                 }
 
                 if (max >= config.getPositiveConsensus()) {
-                    storages.put(storageName, maxAt);
+                    ubotStorage.putValue(executableContractId, expiresAt, storageName, maxAt);
                     saveToLedger();
                     Map<Integer, HashId> m = storageUpdates.get(storageName);
                     voteStorageUpdate(storageName,maxAt,myInfo,true);
@@ -6038,15 +6033,6 @@ public class Node {
             }
         }
 
-        public Map<String,HashId> getStorages() {
-            return storages;
-        }
-
-        public HashId getStorage(String name) {
-            lastActivityTime = ZonedDateTime.now();
-            return storages.get(name);
-        }
-
         public Map<String, HashId> getPendingChanges(String name) {
             lastActivityTime = ZonedDateTime.now();
             Map<Integer, HashId> res = storageUpdates.get(name);
@@ -6068,7 +6054,7 @@ public class Node {
             if(state != Node.UBotSessionState.OPERATIONAL)
                 throw new IllegalStateException("UBot session for " +executableContractId +" is not established" );
 
-            HashId existing = getStorage(storageName);
+            HashId existing = ubotStorage.getValue(executableContractId, storageName);
             if(existing != null && existing.equals(toValue)) {
                 //already updated
             } else if(!checkFromValue || (existing == null && fromValue == null || existing != null && fromValue != null && existing.equals(fromValue))) {
@@ -6206,7 +6192,6 @@ public class Node {
                 compact.requestContract = this.requestContract.getPackedTransaction();
                 compact.state = this.state.ordinal();
                 compact.sessionId = this.sessionId;
-                compact.storages = this.storages;
                 compact.storageUpdates = this.storageUpdates;
                 compact.closeVotes = this.closeVotes;
                 compact.closeVotesFinished = this.closeVotesFinished;
@@ -6265,12 +6250,6 @@ public class Node {
         return null;
     }
 
-    private void saveUBotStorage(HashId executableContractId, Map<String, HashId> storages) {
-        ubotStorage.putIfAbsent(executableContractId,new ConcurrentHashMap<>());
-        ubotStorage.get(executableContractId).putAll(storages);
-    }
-
-
     public boolean isSessionUbot(PublicKey key, HashId sessionId) {
         Optional<UBotSessionProcessor> uspO = ubotSessionProcessors.values().stream().filter(sp-> {
             HashId id = (HashId) sp.getSession().get("sessionId");
@@ -6307,5 +6286,20 @@ public class Node {
         return usp.get().getSessionQuorum();
 
     }
+
+    class UbotStorage {
+        public void putValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value) {
+            if (executableContractId == null)
+                throw new RuntimeException("UbotStorage.putValue error: executableContractId is null");
+            ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, value);
+        }
+
+        public HashId getValue(HashId executableContractId, String storageName) {
+            if (executableContractId == null)
+                throw new RuntimeException("UbotStorage.getValue error: executableContractId is null");
+            return ledger.getUbotStorageValue(executableContractId, storageName);
+        }
+
+    };
 
 }

@@ -2875,28 +2875,24 @@ public class PostgresLedger implements Ledger {
                     "request_contract," +
                     "state," +
                     "session_id," +
-                    "storages," +
                     "storage_updates," +
                     "close_votes," +
                     "close_votes_finished," +
                     "quanta_limit," +
                     "expires_at) " +
-                "values(?,?,?,?,?,?,?::json,?::json,?::json,?::json,?,?) " +
+                "values(?,?,?,?,?,?,?::json,?::json,?::json,?,?) " +
                 "on conflict(executable_contract_id) do update set " +
                     "save_timestamp = excluded.save_timestamp," +
                     "request_id = excluded.request_id," +
                     "request_contract = excluded.request_contract," +
                     "state = excluded.state," +
                     "session_id = excluded.session_id," +
-                    "storages = excluded.storages," +
                     "storage_updates = excluded.storage_updates," +
                     "close_votes = excluded.close_votes," +
                     "close_votes_finished = excluded.close_votes_finished," +
                     "quanta_limit = excluded.quanta_limit," +
                     "expires_at = excluded.expires_at;"
             );
-            Map<String, String> storages_b64 = new ConcurrentHashMap<>();
-            sessionCompact.storages.forEach((k, v) -> storages_b64.put(k, v.toBase64String()));
             Map<String, Map<Integer,String>> storageUpdates_b64 = new ConcurrentHashMap<>();
             sessionCompact.storageUpdates.forEach((k, v) -> {
                 Map<Integer,String> innerMap = new ConcurrentHashMap<>();
@@ -2909,12 +2905,11 @@ public class PostgresLedger implements Ledger {
             statement.setBytes(4, sessionCompact.requestContract);
             statement.setInt(5, sessionCompact.state);
             statement.setBytes(6, sessionCompact.sessionId.getDigest());
-            statement.setString(7, JsonTool.toJsonString(storages_b64));
-            statement.setString(8, JsonTool.toJsonString(storageUpdates_b64));
-            statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotes));
-            statement.setString(10, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
-            statement.setInt(11, sessionCompact.quantaLimit);
-            statement.setLong(12, Ut.unixTime(sessionCompact.expiresAt));
+            statement.setString(7, JsonTool.toJsonString(storageUpdates_b64));
+            statement.setString(8, JsonTool.toJsonString(sessionCompact.closeVotes));
+            statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
+            statement.setInt(10, sessionCompact.quantaLimit);
+            statement.setLong(11, Ut.unixTime(sessionCompact.expiresAt));
             db.updateWithStatement(statement);
         } catch (SQLException se) {
             se.printStackTrace();
@@ -2922,6 +2917,75 @@ public class PostgresLedger implements Ledger {
         } catch (Exception e) {
             e.printStackTrace();
             throw new Failure("saveUbotSession failed:" + e);
+        }
+    }
+
+    public void saveUbotStorages(HashId executableContractId, ZonedDateTime expiresAt, Map<String, HashId> storages) {
+        try (PooledDb db = dbPool.db()) {
+            List<String> queryPartsList = new ArrayList<>();
+            for (int i = 0; i < storages.size(); ++i)
+                queryPartsList.add("(?,?,?,?,?)");
+            String queryPart = String.join(",", queryPartsList);
+            PreparedStatement statement = db.statement(
+        "insert into ubot_storage(" +
+                    "executable_contract_id," +
+                    "storage_name," +
+                    "storage_data," +
+                    "save_timestamp," +
+                    "expires_at" +
+                ") " +
+                "values " + queryPart + " " +
+                "on conflict(executable_contract_id,storage_name) do update set " +
+                    "executable_contract_id = excluded.executable_contract_id," +
+                    "storage_name = excluded.storage_name," +
+                    "storage_data = excluded.storage_data," +
+                    "save_timestamp = excluded.save_timestamp," +
+                    "expires_at = excluded.expires_at;"
+            );
+            int n = 0;
+            for (Map.Entry<String,HashId> en : storages.entrySet()) {
+                statement.setBytes(++n, executableContractId.getDigest());
+                statement.setString(++n, en.getKey());
+                statement.setBytes(++n, en.getValue().getDigest());
+                statement.setLong(++n, System.currentTimeMillis());
+                statement.setLong(++n, Ut.unixTime(expiresAt));
+            }
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotStorageData failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotStorageData failed:" + e);
+        }
+    }
+
+    @Override
+    public void saveUbotStorageValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value) {
+        Map<String, HashId> entry = new HashMap<>();
+        entry.put(storageName, value);
+        saveUbotStorages(executableContractId, expiresAt, entry);
+    }
+
+    @Override
+    public HashId getUbotStorageValue(HashId executableContractId, String storageName) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select storage_data from ubot_storage where executable_contract_id=? and storage_name=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, storageName);
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return HashId.withDigest(rs.getBytes("storage_data"));
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
         }
     }
 
@@ -2997,9 +3061,6 @@ public class PostgresLedger implements Ledger {
         compact.requestContract = rs.getBytes("request_contract");
         compact.state = rs.getInt("state");
         compact.sessionId = HashId.withDigest(rs.getBytes("session_id"));
-        compact.storages = new ConcurrentHashMap<>();
-        Map<String,String> storages_b64 = JsonTool.fromJson(rs.getString("storages"));
-        storages_b64.forEach((k, v) -> compact.storages.put(k, HashId.withDigest(v)));
         compact.storageUpdates = new ConcurrentHashMap<>();
         Map<String, Map<String,String>> storageUpdates_b64 = JsonTool.fromJson(rs.getString("storage_updates"));
         storageUpdates_b64.forEach((k, v) -> {
@@ -3057,6 +3118,19 @@ public class PostgresLedger implements Ledger {
     public void deleteExpiredUbotSessions() {
         try (PooledDb db = dbPool.db()) {
             db.update("delete from ubot_session where expires_at<? or expires_at is null", Instant.now().getEpochSecond());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void deleteExpiredUbotStorages() {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_storage where expires_at<?;", Instant.now().getEpochSecond());
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("deleteUbotSession failed, sql error:" + se);

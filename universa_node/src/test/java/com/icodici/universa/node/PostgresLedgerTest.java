@@ -1014,10 +1014,6 @@ public class PostgresLedgerTest extends TestCase {
 
     @Test
     public void ubotSessionTest() throws Exception {
-        Map<String, HashId> storages = new ConcurrentHashMap<>();
-        storages.put("s1", HashId.createRandom());
-        storages.put("s2", HashId.createRandom());
-        storages.put("s3", HashId.createRandom());
         Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
         storageUpdates.put("s1", new ConcurrentHashMap<>());
         storageUpdates.get("s1").put(1, HashId.createRandom());
@@ -1041,7 +1037,6 @@ public class PostgresLedgerTest extends TestCase {
         compact.requestContract = Do.randomBytes(1024);
         compact.state = 33;
         compact.sessionId = HashId.createRandom();
-        compact.storages = storages;
         compact.storageUpdates = storageUpdates;
         compact.closeVotes = closeVotes;
         compact.closeVotesFinished = closeVotesFinished;
@@ -1054,11 +1049,6 @@ public class PostgresLedgerTest extends TestCase {
             assertArrayEquals(expected.requestContract, loaded.requestContract);
             assertEquals(expected.state, loaded.state);
             assertEquals(expected.sessionId, loaded.sessionId);
-            assertEquals(expected.storages.size(), loaded.storages.size());
-            expected.storages.forEach((k, v) -> {
-                assertTrue(loaded.storages.containsKey(k));
-                assertEquals(v, loaded.storages.get(k));
-            });
             assertEquals(expected.storageUpdates.size(), loaded.storageUpdates.size());
             expected.storageUpdates.forEach((k, v) -> {
                 assertTrue(loaded.storageUpdates.containsKey(k));
@@ -1085,7 +1075,6 @@ public class PostgresLedgerTest extends TestCase {
         // test update of existing ubot_session
         loaded.state = 44;
         loaded.requestId = HashId.createRandom();
-        loaded.storages.put("s4", HashId.createRandom());
         loaded.storageUpdates.get("s1").clear();
         loaded.closeVotes.add(8);
         loaded.closeVotesFinished.clear();
@@ -1101,7 +1090,6 @@ public class PostgresLedgerTest extends TestCase {
     @Test
     public void ubotSessionCleanup() throws Exception {
         Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
-        compact.storages = new ConcurrentHashMap<>();
         compact.storageUpdates = new ConcurrentHashMap<>();
         compact.executableContractId = HashId.createRandom();
         compact.expiresAt = ZonedDateTime.now().plusSeconds(2);
@@ -1121,4 +1109,35 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(null, ledger.loadUbotSession(compact.executableContractId));
         assertFalse(ledger.hasUbotSession(compact.executableContractId));
     }
+
+    @Test
+    public void ubotStorageTest() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storageName = "s1";
+        HashId val1 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val1);
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        HashId val2 = HashId.createRandom();
+        assertNotEquals(val1, val2);
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val2);
+        assertEquals(val2, ledger.getUbotStorageValue(executableContractId, storageName));
+    }
+
+    @Test
+    public void ubotStorageCleanup() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storageName = "s1";
+        HashId val1 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val1);
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        ledger.deleteExpiredUbotSessions();
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        System.out.println("wait for storage cleanup (~4 sec)...");
+        Thread.sleep(4000);
+        ledger.deleteExpiredUbotStorages();
+        assertEquals(null, ledger.getUbotStorageValue(executableContractId, storageName));
+    }
+
 }
