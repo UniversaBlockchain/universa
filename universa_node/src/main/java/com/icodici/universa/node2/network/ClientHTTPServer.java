@@ -805,29 +805,60 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
     private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
-        HashId executableContractId = params.getOrThrow("executableContractId");
-        String storageName = params.getStringOrThrow("storageName");
-        HashId fromValue = (HashId) params.get("fromValue");
-        HashId toValue = params.getOrThrow("toValue");
+        if(params.containsKey("executableContractId")) {
+            HashId executableContractId = params.getOrThrow("executableContractId");
+            String storageName = params.getStringOrThrow("storageName");
+            HashId fromValue = (HashId) params.get("fromValue");
+            HashId toValue = params.getOrThrow("toValue");
 
-        try {
-            return node.updateUBotStorage(executableContractId,storageName,fromValue,toValue,session.getPublicKey(),params.containsKey("fromValue"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new CommandFailedException(Errors.FAILURE,"ubotUpdateStorage",e.getMessage());
+            try {
+                return node.updateUBotStorage(executableContractId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotUpdateStorage", e.getMessage());
+            }
+        } else if(params.containsKey("requestId")) {
+            HashId requestId = params.getOrThrow("requestId");
+            String storageName = params.getStringOrThrow("storageName");
+            HashId fromValue = (HashId) params.get("fromValue");
+            HashId toValue = params.getOrThrow("toValue");
+
+            try {
+                return node.updateUBotStorageByRequestId(requestId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotUpdateStorage", e.getMessage());
+            }
+        } else {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotUpdateStorage","Either executableContractId or requestId should present");
         }
 
     }
 
     private Binder ubotGetStorage(Binder params, Session session) throws CommandFailedException {
-        HashId executableContractId = params.getOrThrow("executableContractId");
-        List<String> storageNames = params.getListOrThrow("storageNames");
+        if(params.containsKey("executableContractId")) {
 
-        try {
-            return node.getUBotStorage(executableContractId,storageNames);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new CommandFailedException(Errors.FAILURE,"ubotGetStorage",e.getMessage());
+            HashId executableContractId = params.getOrThrow("executableContractId");
+            List<String> storageNames = params.getListOrThrow("storageNames");
+
+            try {
+                return node.getUBotStorage(executableContractId, storageNames);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
+            }
+        } else  if(params.containsKey("requestId")) {
+            HashId requestId = params.getOrThrow("requestId");
+            List<String> storageNames = params.getListOrThrow("storageNames");
+
+            try {
+                return node.getUBotStorageByRequestId(requestId, storageNames);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
+            }
+        } else {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetStorage","Either executableContractId or requestId should present");
         }
     }
 

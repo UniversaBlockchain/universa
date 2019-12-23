@@ -1697,6 +1697,19 @@ public class Node {
         return res;
     }
 
+    public Binder updateUBotStorageByRequestId(HashId requestId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessorByRequestId(requestId);
+            if (usp != null) {
+                usp.addStorageUpdateVote(storageName,fromValue,toValue,publicKey,checkFromValue);
+                return Binder.of(storageName,usp.getPendingChanges(storageName));
+            }
+            throw new IllegalArgumentException("session processor not found for " + requestId);
+        });
+    }
+
+
+
     public Binder updateUBotStorage(HashId executableContractId, String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, null);
@@ -1744,6 +1757,23 @@ public class Node {
                 return Binder.of("current",current,"pending",pending);
             }
             throw new IllegalArgumentException("session processor not found for " + executableContractId);
+        });
+    }
+
+    public Binder getUBotStorageByRequestId(HashId requestId, List<String> storageNames) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessorByRequestId(requestId);
+            if(usp != null) {
+                Binder current = new Binder();
+                Binder pending = new Binder();
+                UBotSessionProcessor uspFinal = usp;
+                storageNames.forEach(name->{
+                    current.put(name,uspFinal.getStorage(name));
+                    pending.put(name,uspFinal.getPendingChanges(name));
+                });
+                return Binder.of("current",current,"pending",pending);
+            }
+            throw new IllegalArgumentException("session processor not found for " + requestId);
         });
     }
 
