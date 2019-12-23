@@ -2990,6 +2990,26 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public void getUbotStorages(HashId executableContractId, Map<String, HashId> dest) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select storage_name, storage_data from ubot_storage where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return;
+            while (rs.next())
+                dest.put(rs.getString("storage_name"), HashId.withDigest(rs.getBytes("storage_data")));
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    @Override
     public UbotSessionCompact loadUbotSession(HashId executableContractId) {
         try (PooledDb db = dbPool.db()) {
             PreparedStatement statement = db.statement("select * from ubot_session where executable_contract_id=?;");

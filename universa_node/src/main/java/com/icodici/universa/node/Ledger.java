@@ -203,6 +203,7 @@ public interface Ledger {
     void deleteExpiredUbotSessions();
     void saveUbotStorageValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value);
     HashId getUbotStorageValue(HashId executableContractId, String storageName);
+    void getUbotStorages(HashId executableContractId, Map<String, HashId> dest);
     void deleteExpiredUbotStorages();
 
 

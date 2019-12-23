@@ -6300,6 +6300,11 @@ public class Node {
             return ledger.getUbotStorageValue(executableContractId, storageName);
         }
 
+        public Map<String, HashId> getStorages(HashId executableContractId) {
+            Map<String, HashId> storages = new ConcurrentHashMap<>();
+            ledger.getUbotStorages(executableContractId, storages);
+            return storages;
+        }
     };
 
 }

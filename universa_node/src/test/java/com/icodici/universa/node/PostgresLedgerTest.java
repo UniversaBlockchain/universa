@@ -1125,6 +1125,23 @@ public class PostgresLedgerTest extends TestCase {
     }
 
     @Test
+    public void ubotGetStorages() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storage1Name = "s1";
+        String storage2Name = "s2";
+        HashId val1 = HashId.createRandom();
+        HashId val2 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storage1Name, val1);
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storage2Name, val2);
+        Map<String, HashId> storages = new ConcurrentHashMap<>();
+        ledger.getUbotStorages(executableContractId, storages);
+        assertEquals(2, storages.size());
+        assertEquals(val1, storages.get(storage1Name));
+        assertEquals(val2, storages.get(storage2Name));
+    }
+
+    @Test
     public void ubotStorageCleanup() throws Exception {
         HashId executableContractId = HashId.createRandom();
         ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
