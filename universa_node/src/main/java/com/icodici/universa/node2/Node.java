@@ -1746,18 +1746,12 @@ public class Node {
 
     public Binder getUBotStorage(HashId executableContractId, List<String> storageNames) throws Exception {
         return itemLock.synchronize(executableContractId, lock ->{
-            UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, null);
-            if(usp != null) {
-                Binder current = new Binder();
-                Binder pending = new Binder();
-                UBotSessionProcessor uspFinal = usp;
-                storageNames.forEach(name->{
-                    current.put(name,ubotStorage.getValue(uspFinal.executableContractId, name));
-                    pending.put(name,uspFinal.getPendingChanges(name));
-                });
-                return Binder.of("current",current,"pending",pending);
-            }
-            throw new IllegalArgumentException("session processor not found for " + executableContractId);
+            Map<String, HashId> storages = ubotStorage.getStorages(executableContractId);
+            Binder current = new Binder();
+            storageNames.forEach(name->{
+                current.put(name,storages.get(name));
+            });
+            return Binder.of("current",current);
         });
     }
 
@@ -1976,7 +1970,13 @@ public class Node {
 
         @Override
         public boolean isApplicable() {
-            return !ledger.hasUbotSession(this.executableContractId);
+            UBotSessionProcessor usp = getUBotSessionProcessor(executableContractId, null);
+
+            if(usp == null || usp.getState() == UBotSessionState.CLOSING) {
+                return true;
+            }
+
+            return false;
         }
     }
 
