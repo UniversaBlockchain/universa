@@ -701,7 +701,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder ubotCreateSession(Binder params, Session session) throws CommandFailedException {
         checkNode(session, false);
-        if(node.checkKeyLimitUbot(session.getPublicKey())) {
+        if(!node.checkKeyLimitUbot(session.getPublicKey())) {
             throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of UBot requests for key per minute, please call again after a while");
         }
 
