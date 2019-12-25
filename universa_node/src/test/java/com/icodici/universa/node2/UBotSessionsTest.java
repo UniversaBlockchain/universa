@@ -1,5 +1,6 @@
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
@@ -53,63 +54,69 @@ public class UBotSessionsTest extends BaseMainTest {
     public void createSession() throws Exception {
 
         TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
         int quorumSize = 4;
         int poolSize = 5;
-        Contract executableContract = new Contract(TestKeys.privateKey(1));
-        executableContract.getStateData().put("cloud_methods",
-                Binder.of("getRandom",
-                        Binder.of("pool",Binder.of("size",poolSize),
-                                "quorum",Binder.of("size",quorumSize))));
-        executableContract.getStateData().put("js", "simple JS code");
-        executableContract.seal();
 
-        Contract requestContract = new Contract(TestKeys.privateKey(2));
-        requestContract.getStateData().put("executable_contract_id",executableContract.getId());
-        requestContract.getStateData().put("method_name","getRandom");
-        requestContract.getStateData().put("method_args", Do.listOf(1000));
-        requestContract.addNewItems(executableContract);
+        for(int k = 0; k < 14; k++) {
+            if(k % 3 == 0 && k != 0)
+                Thread.sleep(60*1000);
 
-        ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
-            Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+            Contract executableContract = new Contract(TestKeys.privateKey(1));
+            executableContract.getStateData().put("cloud_methods",
+                    Binder.of("getRandom",
+                            Binder.of("pool", Binder.of("size", poolSize),
+                                    "quorum", Binder.of("size", quorumSize))));
+            executableContract.getStateData().put("js", "simple JS code");
+            executableContract.seal();
 
-        System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
-        AtomicReference<List<Integer>> pool = new AtomicReference<>();
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
+            Contract requestContract = new Contract(TestKeys.privateKey(2));
+            requestContract.getStateData().put("executable_contract_id", executableContract.getId());
+            requestContract.getStateData().put("method_name", "getRandom");
+            requestContract.getStateData().put("method_args", Do.listOf(1000));
+            requestContract.addNewItems(executableContract);
 
-        Contract finalRequestContract = requestContract;
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
 
-        for(int i = 0; i < ts.clients.size();i++) {
-            int finalI = i;
-            Do.inParallel(()->{
-                while (true) {
-                    Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId", finalRequestContract.getId());
-                    Thread.sleep(500);
-                    if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null) {
-                        continue;
-                    }
-                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
-                        pool.set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
-                        if (readyCounter.incrementAndGet() == ts.clients.size()) {
-                            readyEvent.fire();
+            System.out.println(ts.client.command("ubotCreateSession", "packedRequest", requestContract.getPackedTransaction()));
+            AtomicReference<List<Integer>> pool = new AtomicReference<>();
+            AtomicInteger readyCounter = new AtomicInteger();
+            AsyncEvent readyEvent = new AsyncEvent();
+
+            Contract finalRequestContract = requestContract;
+
+            for (int i = 0; i < ts.clients.size(); i++) {
+                int finalI = i;
+                Do.inParallel(() -> {
+                    while (true) {
+                        Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId", finalRequestContract.getId());
+                        Thread.sleep(500);
+                        if (res.get("session") != null && res.getBinderOrThrow("session").get("state") == null) {
+                            continue;
                         }
-                        break;
+                        if (res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                            pool.set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
+                            if (readyCounter.incrementAndGet() == ts.clients.size()) {
+                                readyEvent.fire();
+                            }
+                            break;
+                        }
                     }
-                }
-            }).failure(new DeferredResult.Handler() {
-                @Override
-                public void handle(Object data) {
-                    System.out.println("ERR: "+data);
-                }
-            });
+                }).failure(new DeferredResult.Handler() {
+                    @Override
+                    public void handle(Object data) {
+                        System.out.println("ERR: " + data);
+                    }
+                });
+            }
+
+            readyEvent.await();
+
+            System.out.println(pool);
         }
 
-        readyEvent.await();
-
-        System.out.println(pool);
-
-        Set<Integer> poolQuorum = new HashSet<>();
+        /*Set<Integer> poolQuorum = new HashSet<>();
         while(poolQuorum.size() < quorumSize) {
             poolQuorum.add(Do.sample(pool.get()));
         }
@@ -369,7 +376,7 @@ public class UBotSessionsTest extends BaseMainTest {
             });
         }
 
-        readyEvent4.await();
+        readyEvent4.await();*/
 
         ts.shutdown();
     }
@@ -1115,8 +1122,19 @@ public class UBotSessionsTest extends BaseMainTest {
     @Ignore
     @Test
     public void registerUBotRegistryContract() throws Exception {
-        Client client = new Client("universa.local",null,TestKeys.privateKey(0));
-        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
-        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
+        KeyAddress ka = new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s");
+        //for(int i = 0; i < TestKeys.binaryKeys.length;i++) {
+        //    if(TestKeys.publicKey(i).isMatchingKeyAddress(ka)) {
+        //        System.out.println(i);
+        //    }
+        //}
+
+        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+        System.out.println(key.getPublicKey().isMatchingKeyAddress(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s")));
+
+
+//        Client client = new Client("universa.local",null,TestKeys.privateKey(0));
+//        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
+//        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
     }
 }

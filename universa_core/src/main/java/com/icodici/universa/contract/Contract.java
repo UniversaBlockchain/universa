@@ -1542,8 +1542,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean isSignedBy(Role role) throws Quantiser.QuantiserException {
         if (role == null)
             return false;
-
-        role = role.resolve();
+        if(role instanceof RoleLink)
+            role = ((RoleLink)role).resolve(false);
 
         if (role == null)
             return false;

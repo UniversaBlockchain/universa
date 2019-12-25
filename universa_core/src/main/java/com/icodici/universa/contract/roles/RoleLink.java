@@ -110,7 +110,7 @@ public class RoleLink extends Role {
      */
     @Override
     public <T extends Role> T resolve() {
-        return resolve(false);
+        return resolve(true);
     }
 
     public <T extends Role> T resolve(boolean ignoreRefs) {
@@ -201,7 +201,8 @@ public class RoleLink extends Role {
             return false;
 
         //resolve possible further links
-        role =  role.resolve();
+        if(role instanceof RoleLink)
+            role =  ((RoleLink)role).resolve(false);
 
         //check allowance with keys
         return (role == null) ? false : role.isAllowedForKeysQuantized(keys);

@@ -516,7 +516,7 @@ public class Reference implements BiSerializable {
         if (item instanceof RoleLink && doResolve &&
                 ((RoleLink) item).getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
                 ((RoleLink) item).getReferences(Role.RequiredMode.ANY_OF).isEmpty())
-            return ((RoleLink) item).resolve();
+            return ((RoleLink) item).resolve(false);
         else if (item instanceof String) {
             try {
                 String roleString = ((String) item).replaceAll("\\s+", "");       // for key in quotes
@@ -1092,7 +1092,7 @@ public class Reference implements BiSerializable {
                         else
                             keys = leftOperandContract.getSealedByKeys();
 
-                        Role roleToBePlayed = ((Role) right).resolve();
+                        Role roleToBePlayed = right instanceof RoleLink ? ((RoleLink) right).resolve(false) : (Role) right;
 
                         ret = roleToBePlayed.getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
                                 roleToBePlayed.getReferences(Role.RequiredMode.ANY_OF).isEmpty() &&

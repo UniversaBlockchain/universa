@@ -310,7 +310,10 @@ public class QuorumVoteRole extends Role {
         for(Contract fromContract :  fromContracts) {
             Object o = fromContract.get(what);
             if (o instanceof Role) {
-                o = ((Role) o).resolve();
+
+                if(o instanceof RoleLink)
+                    o = ((RoleLink) o).resolve(false);
+
                 if (!(o instanceof ListRole)) {
                     throw  new IllegalArgumentException("Path '" + what + "' is pointing to a role '" + ((Role) o).getName() + "' that is not ListRole");
                 } else {
