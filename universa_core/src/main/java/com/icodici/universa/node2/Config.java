@@ -41,8 +41,6 @@ public class Config {
             uIssuerKeys.add(new KeyAddress("J3uaVvHE7JqhvVb1c26RyDhfJw9eP2KR1KRhm2VdmYx7NwHpzdHTyEPjcmKpgkJAtzWLSPUw"));
             addressesWhiteList.add(new KeyAddress("JguevMekFzsM8Co2bqrswrVim9c9WsNxG9thLeCcNxncBcHVsnziRjhzEbhwDnL3wj2hha6H"));
 
-            uIssuerKeys.add(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-
             //U-bank
             addressesWhiteList.add(new KeyAddress("YuY8XgTD9mwuucSku9myWyZbbJ1CY43D2KXD8obuxp73eoK5EU"));
             addressesWhiteList.add(new KeyAddress("JuDQ9auvkvLEXaudcSEYabMzSnEu6drQ3UHV3gDFuYBxusSXHSLj2DgDNCL69zw2XkzdrDmr"));
