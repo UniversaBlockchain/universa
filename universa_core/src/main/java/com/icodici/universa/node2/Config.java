@@ -199,6 +199,7 @@ public class Config {
     private int positiveConsensus;
     private int resyncBreakConsensus;
     private int limitRequestsForKeyPerMinute = 600;
+    private int limitUbotRequestsForKeyPerMinute = 3;
     private int rateLimitDisablingPayment = 5;
     private Duration unlimitPeriod = Duration.ofMinutes(5);
     private Duration maxElectionsTime = Duration.ofMinutes(15);
@@ -355,6 +356,7 @@ public class Config {
     }
 
     public int getLimitRequestsForKeyPerMinute() { return limitRequestsForKeyPerMinute; }
+    public int getLimitUbotRequestsForKeyPerMinute() { return limitUbotRequestsForKeyPerMinute; }
 
     public int getRateLimitDisablingPayment() { return rateLimitDisablingPayment; }
 

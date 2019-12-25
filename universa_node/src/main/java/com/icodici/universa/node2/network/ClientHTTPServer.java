@@ -325,8 +325,8 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
         addSecureEndpoint("ubotApprove", this::ubotApprove);
 
-        addSecureEndpoint("initiateVoting",this::initiateVoting);
-        addSecureEndpoint("voteForContract",this::voteForContract);
+//        addSecureEndpoint("initiateVoting",this::initiateVoting);
+//        addSecureEndpoint("voteForContract",this::voteForContract);
 
 
         addSecureEndpoint("addKeyToContract",this::addKeyToContract);
@@ -700,6 +700,11 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
     private Binder ubotCreateSession(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, false);
+        if(node.checkKeyLimitUbot(session.getPublicKey())) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of UBot requests for key per minute, please call again after a while");
+        }
+
         try {
             Contract request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
             Binder res = node.createUBotSession(request);

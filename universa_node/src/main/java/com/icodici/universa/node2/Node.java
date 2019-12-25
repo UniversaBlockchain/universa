@@ -133,6 +133,10 @@ public class Node {
     private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
     private Long epochMinute = new Long(0);
 
+
+    private ConcurrentHashMap<PublicKey, Integer> keyRequestsUbot = new ConcurrentHashMap();
+
+
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
         private final ThreadGroup threadGroup = new ThreadGroup("node-workers");
@@ -1594,6 +1598,33 @@ public class Node {
                 return false;
 
             keyRequests.put(key, requests + 1);
+        }
+
+        return true;
+    }
+
+
+    public boolean checkKeyLimitUbot(PublicKey key) {
+
+        if ((config == null) ||
+                config.getNetworkAdminKeyAddress().isMatchingKey(key) ||
+                getNodeKey().equals(key) ||
+                config.getKeysWhiteList().contains(key) ||
+                config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(key)))
+            return true;
+
+        synchronized (epochMinute) {
+            long currentEpochMinute = ZonedDateTime.now().toEpochSecond() / 60;
+            if (epochMinute != currentEpochMinute) {
+                keyRequestsUbot.clear();
+                epochMinute = currentEpochMinute;
+            }
+
+            int requests = keyRequestsUbot.getOrDefault(key, 0);
+            if (requests >= config.getLimitUbotRequestsForKeyPerMinute())
+                return false;
+
+            keyRequestsUbot.put(key, requests + 1);
         }
 
         return true;
