@@ -5534,20 +5534,6 @@ public class Node {
                     throw new IllegalArgumentException("Error request contract: executable contact is not found in transaction pack");
             }
 
-            // check executable contract constraint
-            Reference executableConstraint = requestContract.getReferences().get("executable_contract_constraint");
-            if (executableConstraint == null)
-                throw new IllegalArgumentException("Error request contract: executable_contract_constraint is not defined");
-
-            Binder conditions = executableConstraint.exportConditions();
-            List<Object> condList = conditions.getList(Reference.conditionsModeType.all_of.name(), null);
-            if (condList == null)
-                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format (expected all_of)");
-
-            if (condList.size() != 1 ||
-                (!condList.get(0).equals("this.state.data.executable_contract_id==ref.id") &&
-                 !condList.get(0).equals("ref.id==this.state.data.executable_contract_id")))
-                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format");
 
             // check request contract data
             String methodName = requestContract.getStateData().getString("method_name", null);
@@ -5566,25 +5552,39 @@ public class Node {
             if (cloudMethod == null)
                 throw new IllegalArgumentException("Error executable contract: starting cloud method metadata (in state.data.cloud_methods) is not defined");
 
+
+
+            // check executable contract constraint
+            Reference executableConstraint = requestContract.getReferences().get("executable_contract_constraint");
+            if (executableConstraint == null)
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint is not defined");
+
+            Binder conditions = executableConstraint.exportConditions();
+            List<Object> condList = conditions.getList(Reference.conditionsModeType.all_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format (expected all_of)");
+
+            if (condList.size() < 1 ||
+                    (!condList.get(0).equals("this.state.data.executable_contract_id==ref.id") &&
+                            !condList.get(0).equals("ref.id==this.state.data.executable_contract_id")))
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format");
+
+
             // check launcher role
             String launcher = cloudMethod.getString("launcher", null);
             if (launcher != null) {
                 if (executableContract.getRole(launcher) == null)
                     throw new IllegalArgumentException("Error executable contract: role is not defined");
 
-                // check launcher constraint
-                Reference launcherConstraint = requestContract.getReferences().get("launcher_constraint");
-                if (launcherConstraint == null)
-                    throw new IllegalArgumentException("Error request contract: launcher_constraint is not defined");
-
-                Binder launcherConditions = launcherConstraint.exportConditions();
-                List<Object> launcherCondList = launcherConditions.getList(Reference.conditionsModeType.all_of.name(), null);
-                if (launcherCondList == null)
-                    throw new IllegalArgumentException("Error request contract: launcher_constraint has incorrect format (expected all_of)");
-
-                if (launcherCondList.size() != 1 || !launcherCondList.get(0).equals("this can_perform ref.state.roles." + launcher))
-                    throw new IllegalArgumentException("Error request contract: launcher_constraint has incorrect format");
+                if (condList.size() != 2 || !condList.get(1).equals("this can_perform ref.state.roles." + launcher))
+                    throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format");
+            } else {
+                if (condList.size() != 1)
+                    throw new IllegalArgumentException("Error request contract: executable_contract_constraint has incorrect format");
             }
+
+
+
 
             if (executableContract.getStateData().get("js") == null)
                 throw new IllegalArgumentException("Error executable contract: executable contact JS-code is not defined");
@@ -6020,7 +6020,7 @@ public class Node {
                 "sessionId", sessionId,
                 "sessionPool", sessionPool,
                 "closeVotes", closeVotes,
-                "quantaLimit", quantaLimit,
+                "quantaLimit", quantaLimit == 0 && sessionPool != null && sessionPool.size() < 17? sessionPool.size()*200 : quantaLimit,
                 "closeVotesFinished", closeVotesFinished,
                 "closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()),
                 "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList())
