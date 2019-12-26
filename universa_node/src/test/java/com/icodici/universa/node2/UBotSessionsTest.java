@@ -5,9 +5,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Reference;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
@@ -19,6 +17,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -1134,4 +1133,47 @@ public class UBotSessionsTest extends BaseMainTest {
 //        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
 //        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
     }
+
+    @Test
+    public void paidOperationErrors() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(0);
+
+        Client client = new Client(myKey, main.myInfo, null);
+        //System.out.println("\n\n\n\n\n\n\n\n === start ===\n");
+
+        // create and register U contract
+        mm.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        Contract uContract = InnerContractsService.createFreshU(9000, new HashSet<>(Arrays.asList(myKey.getPublicKey())));
+        uContract.seal();
+        ItemResult itemResult = client.register(uContract.getPackedTransaction(), 5000);
+        System.out.println("register uContract: " + itemResult);
+        Assert.assertEquals(ItemState.APPROVED, itemResult.state);
+        mm.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
+        Contract payment = uContract.createRevision(myKey);
+        payment.getStateData().set("transaction_units", uContract.getStateData().getIntOrThrow("transaction_units")-100);
+        payment.seal();
+
+        PaidOperation paidOperation = new PaidOperation(payment.getTransactionPack(), "test_operation", new Binder("field1", "value1"));
+        System.out.println("\nregister... paymentId="+paidOperation.getPaymentContract().getId() + ", operationId=" + paidOperation.getId());
+        ItemResult operationResult = client.registerPaidOperationWithState(paidOperation.pack(), 10000);
+        System.out.println("operationResult: " + operationResult);
+        ParcelProcessingState paidOperationState = client.getPaidOperationProcessingState(paidOperation.getId());
+        System.out.println("operationState: " + paidOperationState);
+
+        System.out.println("payment state: " + client.getState(payment.getId()));
+        System.out.println("uContract state: " + client.getState(uContract.getId()));
+
+        assertEquals(ItemState.APPROVED, client.getState(uContract.getId()).state);
+        assertEquals(ItemState.UNDEFINED, client.getState(payment.getId()).state);
+        assertEquals(ParcelProcessingState.FINISHED, paidOperationState);
+
+        //System.out.println("\n === done ===\n\n\n\n\n\n\n\n\n");
+        mm.forEach(x -> x.shutdown());
+    }
+
 }

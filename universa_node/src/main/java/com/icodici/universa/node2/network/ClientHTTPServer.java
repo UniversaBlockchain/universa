@@ -140,9 +140,9 @@ public class ClientHTTPServer extends BasicHttpServer {
             } else {
                 HashId id = HashId.withDigest(encodedString);
                 if (paidOperationCache != null) {
-                    PaidOperation p = (PaidOperation) paidOperationCache.get(id);
-                    if (p != null) {
-                        data = p.pack();
+                    PaidOperationCacheItem p = paidOperationCache.get(id);
+                    if (p != null && p.paidOperation != null) {
+                        data = p.paidOperation.pack();
                     }
                 }
             }
@@ -1042,8 +1042,13 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder getPaidOperationProcessingState(Binder params, Session session) throws CommandFailedException {
         checkNode(session, true);
         try {
-            return Binder.of("processingState",
-                    node.checkPaidOperationProcessingState((HashId) params.get("operationId")));
+            HashId operationId = (HashId) params.get("operationId");
+            Binder res = Binder.of("processingState",
+                    node.checkPaidOperationProcessingState(operationId));
+            List<ErrorRecord> errors = node.getPaidOperationErrors(operationId);
+            if (errors != null)
+                res.set("errors", errors);
+            return res;
         } catch (Exception e) {
             System.out.println("getPaidOperationProcessingState ERROR: " + e.getMessage());
             //TODO: return processing state not String

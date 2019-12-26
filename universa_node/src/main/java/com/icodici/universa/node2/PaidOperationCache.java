@@ -41,14 +41,14 @@ public class PaidOperationCache {
         cleanerTimer.purge();
     }
 
-    public @Nullable PaidOperation get(HashId itemId) {
+    public @Nullable PaidOperationCacheItem get(HashId itemId) {
         Record i = records.get(itemId);
         if( i != null && i.paidOperation == null )
             throw new RuntimeException("cache: record with empty paidOperation");
         return i != null ? i.paidOperation : null;
     }
 
-    public void put(PaidOperation paidOperation) {
+    public void put(PaidOperationCacheItem paidOperation) {
         // this will plainly override current if any
         new Record(paidOperation);
     }
@@ -70,9 +70,9 @@ public class PaidOperationCache {
 
     private class Record {
         private Instant expiresAt;
-        private PaidOperation paidOperation;
+        private PaidOperationCacheItem paidOperation;
 
-        private Record(PaidOperation paidOperation) {
+        private Record(PaidOperationCacheItem paidOperation) {
             expiresAt = Instant.now().plus(maxAge);
             this.paidOperation = paidOperation;
             records.put(paidOperation.getId(), this);

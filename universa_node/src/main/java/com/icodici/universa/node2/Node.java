@@ -580,9 +580,62 @@ public class Node {
                 operationId + " was not found",
                 DatagramAdapter.VerboseLevel.BASE);
 
+        synchronized (paidOperationCache) {
+            PaidOperationCacheItem cached = paidOperationCache.get(operationId);
+            if (cached != null)
+                return cached.processingState;
+        }
+
         return ParcelProcessingState.NOT_EXIST;
     }
 
+    private void updatePaidOperationCachedProcessingState(HashId operationId, ParcelProcessingState newState) {
+        synchronized (paidOperationCache) {
+            PaidOperationCacheItem cached = paidOperationCache.get(operationId);
+            if (cached != null) {
+                cached.processingState = newState;
+            }
+        }
+    }
+
+    private void appendPaidOperationError(HashId operationId, String errorText) {
+        appendPaidOperationError(operationId, new ErrorRecord(Errors.FAILURE,"",errorText));
+    }
+
+    private void appendPaidOperationError(HashId operationId, ErrorRecord errorRecord) {
+        PaidOperationCacheItem cached = null;
+        synchronized (paidOperationCache) {
+            cached = paidOperationCache.get(operationId);
+        }
+        if (cached != null) {
+            cached.errors.add(errorRecord);
+        }
+    }
+
+    public List<ErrorRecord> getPaidOperationErrors(HashId operationId) {
+        PaidOperationCacheItem cached = null;
+        synchronized (paidOperationCache) {
+            cached = paidOperationCache.get(operationId);
+        }
+        if (cached != null) {
+            return cached.errors;
+        }
+        return null;
+    }
+
+    private void savePaidOperationInCache(HashId operationId, PaidOperation operation) {
+        synchronized (paidOperationCache) {
+            PaidOperationCacheItem cached = paidOperationCache.get(operationId);
+            if (cached != null) {
+                cached.paidOperation = operation;
+            } else {
+                PaidOperationCacheItem item = new PaidOperationCacheItem();
+                item.paidOperationId = operationId;
+                item.paidOperation = operation;
+                paidOperationCache.put(item);
+            }
+        }
+    }
 
     @Deprecated
     public @NonNull Binder extendedCheckItem(HashId itemId) {
@@ -1284,11 +1337,7 @@ public class Node {
 
                 // if nothing found and need to create new - create it
                 if (autoStart) {
-                    if (paidOperation != null) {
-                        synchronized (paidOperationCache) {
-                            paidOperationCache.put(paidOperation);
-                        }
-                    }
+                    savePaidOperationInCache(paidOperationId, paidOperation);
                     processor = new PaidOperationProcessor(paidOperationId, paidOperation, lock);
                     paidOperationProcessors.put(paidOperationId, processor);
                     return processor;
@@ -1372,7 +1421,10 @@ public class Node {
      */
     public PaidOperation getPaidOperation(HashId operationId) {
         synchronized (paidOperationCache) {
-            @Nullable PaidOperation i = paidOperationCache.get(operationId);
+            @Nullable PaidOperation i = null;
+            PaidOperationCacheItem item = paidOperationCache.get(operationId);
+            if (item != null)
+                i = item.paidOperation;
             return i;
         }
     }
@@ -1918,12 +1970,14 @@ public class Node {
         protected Consumer<String> onFailure;
         protected int quantaLimit;
         protected Binder operationData;
+        protected HashId operationId;
 
-        public AbstractProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+        public AbstractProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
             this.onSuccess = onSuccess;
             this.onFailure = onFailure;
             this.quantaLimit = quantaLimit;
             this.operationData = operationData;
+            this.operationId = operationId;
         }
 
         abstract public void start();
@@ -1938,24 +1992,24 @@ public class Node {
     }
 
     public AbstractProcessor createAbstractProcessorForType(String operationType, Runnable onSuccess,
-                                    Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+                                    Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
         switch (operationType) {
             case "test_operation":
-                return new TestWorkProcessor(onSuccess, onFailure, quantaLimit, operationData);
+                return new TestWorkProcessor(onSuccess, onFailure, quantaLimit, operationData, operationId);
             case "ubot_session":
-                return new UBotSessionProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
+                return new UBotSessionProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData, operationId);
             case "initiate_vote":
-                return new InitiateVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
+                return new InitiateVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData, operationId);
             case "do_vote":
-                return new DoVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
+                return new DoVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData, operationId);
             default:
                 return null;
         }
     }
 
     private class InitiateVoteProcessorWatchman extends AbstractProcessor {
-        public InitiateVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
-            super(onSuccess,onFailure,quantaLimit,operationData);
+        public InitiateVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
+            super(onSuccess,onFailure,quantaLimit,operationData,operationId);
         }
 
         @Override
@@ -1975,8 +2029,8 @@ public class Node {
     }
 
     private class DoVoteProcessorWatchman extends AbstractProcessor {
-        public DoVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
-            super(onSuccess,onFailure,quantaLimit,operationData);
+        public DoVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
+            super(onSuccess,onFailure,quantaLimit,operationData,operationId);
         }
 
         @Override
@@ -2006,8 +2060,8 @@ public class Node {
         private Contract requestContract;
         private HashId executableContractId;
 
-        public UBotSessionProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
-            super(onSuccess, onFailure, quantaLimit, operationData);
+        public UBotSessionProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
+            super(onSuccess, onFailure, quantaLimit, operationData, operationId);
             byte[] packedRequest = operationData.getBinaryOrThrow("packedRequest");
             try {
                 this.requestContract = Contract.fromPackedTransaction(packedRequest);
@@ -2087,8 +2141,8 @@ public class Node {
     }
 
     private class TestWorkProcessor extends AbstractProcessor {
-        public TestWorkProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
-            super(onSuccess, onFailure, quantaLimit, operationData);
+        public TestWorkProcessor(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData, HashId operationId) {
+            super(onSuccess, onFailure, quantaLimit, operationData, operationId);
         }
 
         @Override
@@ -2110,7 +2164,10 @@ public class Node {
 
         @Override
         public boolean isApplicable() {
-            return true;
+            if (quantaLimit >= 1000*Config.quantiser_quantaPerU)
+                return true;
+            appendPaidOperationError(operationId, "operation is not applicable, not enough quanta");
+            return false;
         }
     }
 
@@ -2173,6 +2230,7 @@ public class Node {
             if(processingState.canContinue()) {
 
                 processingState = ParcelProcessingState.PREPARING;
+                updatePaidOperationCachedProcessingState(operationId, processingState);
                 try {
                     report(getLabel(), () -> "PaidOperationProcessor for: " +
                             operationId + " :: check payment, state " + processingState,
@@ -2180,6 +2238,7 @@ public class Node {
                     // wait payment
                     if (paymentResult == null) {
                         processingState = ParcelProcessingState.PAYMENT_CHECKING;
+                        updatePaidOperationCachedProcessingState(operationId, processingState);
 
                         for (NodeInfo ni : paymentDelayedVotes.keySet())
                             paymentProcessor.vote(ni, paymentDelayedVotes.get(ni));
@@ -2203,6 +2262,7 @@ public class Node {
                                 DatagramAdapter.VerboseLevel.BASE);
 
                         processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+                        updatePaidOperationCachedProcessingState(operationId, processingState);
                         report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                                 " :: starting operationProcessor..., state " + processingState,
                                 DatagramAdapter.VerboseLevel.BASE);
@@ -2213,10 +2273,12 @@ public class Node {
                             operationProcessor.start();
                             operationProcessor_completeEvent.await();
                             processingState = ParcelProcessingState.PAYLOAD_POLLING;
+                            updatePaidOperationCachedProcessingState(operationId, processingState);
                             report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                                     " :: operationProcessor work is finished (isSuccess="+operationProcessor_isSuccess+"), state " +
                                     processingState, DatagramAdapter.VerboseLevel.BASE);
                         } else {
+                            appendPaidOperationError(operationId, "unknown operationType ("+paidOperation.getOperationType()+")");
                             report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                                     " :: unknown operationType ("+paidOperation.getOperationType()+"), rolling back, state " +
                                     processingState, DatagramAdapter.VerboseLevel.BASE);
@@ -2224,6 +2286,7 @@ public class Node {
 
                         // wait for resumed payment
                         processingState = ParcelProcessingState.PAYMENT_POLLING;
+                        updatePaidOperationCachedProcessingState(operationId, processingState);
                         if(!paymentProcessor.isDone()) {
                             paymentProcessor.doneEvent.await();
                         }
@@ -2231,10 +2294,12 @@ public class Node {
 
                         // finish
                         processingState = ParcelProcessingState.FINISHED;
+                        updatePaidOperationCachedProcessingState(operationId, processingState);
                         report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                                 " :: all done, state " + processingState, DatagramAdapter.VerboseLevel.BASE);
 
                     } else {
+                        appendPaidOperationError(operationId, "payment was not approved");
                         report(getLabel(), () -> "PaidOperationProcessor for: " +
                                 operationId + " :: payment was not approved: " + paymentResult.state +
                                 ", state " + processingState,
@@ -2243,6 +2308,7 @@ public class Node {
 
                     // we got payment and payload result, can fire done event for waiters
                     processingState = ParcelProcessingState.FINISHED;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
 
                     report(getLabel(), () -> "PaidOperationProcessor for: " +
                             operationId + " :: processing finished, state " + processingState,
@@ -2257,10 +2323,14 @@ public class Node {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     processingState = ParcelProcessingState.FINISHED;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
+                    appendPaidOperationError(operationId, "interrupted: " + e.toString());
                     //doneEvent.fire();
                 } catch (Exception e) {
                     e.printStackTrace();
                     processingState = ParcelProcessingState.FINISHED;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
+                    appendPaidOperationError(operationId, "exception: " + e.toString());
                     //doneEvent.fire();
                 }
 
@@ -2273,6 +2343,7 @@ public class Node {
 
                 if (!processingState.isProcessedToConsensus()) {
                     processingState = ParcelProcessingState.DOWNLOADING;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
 
                     synchronized (mutex) {
                         if (paidOperation == null && (downloader == null || downloader.isDone())) {
@@ -2323,6 +2394,8 @@ public class Node {
 
             synchronized (mutex) {
 
+                savePaidOperationInCache(operationId, paidOperation);
+
                 operationProcessor = createAbstractProcessorForType(paidOperation.getOperationType(), ()->{
                     // onSuccess
                     operationProcessor_isSuccess.set(true);
@@ -2333,13 +2406,15 @@ public class Node {
                     operationProcessor_isSuccess.set(false);
                     paymentProcessor.resume(true);
                     operationProcessor_completeEvent.fire();
-                }, paidOperation.getQuantaLimit(), paidOperation.getOperationData());
+                }, paidOperation.getQuantaLimit(), paidOperation.getOperationData(), operationId);
 
                 if (operationProcessor == null) {
                     report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                             " :: unknown operationType ("+paidOperation.getOperationType()+"), finish from state " +
                             processingState, DatagramAdapter.VerboseLevel.BASE);
                     processingState = ParcelProcessingState.FINISHED;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
+                    appendPaidOperationError(operationId, "unknown operationType: " + paidOperation.getOperationType());
                     removeSelf();
                     return;
                 }
@@ -2348,7 +2423,9 @@ public class Node {
                     report(getLabel(), () -> "PaidOperationProcessor for: " + operationId +
                             " :: is not applicable ("+paidOperation.getOperationType()+"), finish from state " +
                             processingState, DatagramAdapter.VerboseLevel.BASE);
+                    appendPaidOperationError(operationId, "operation is not applicable, finish from state " + processingState);
                     processingState = ParcelProcessingState.FINISHED;
+                    updatePaidOperationCachedProcessingState(operationId, processingState);
                     removeSelf();
                     return;
                 }
