@@ -206,25 +206,22 @@ public abstract class Role implements BiSerializable {
             return true;
         }
 
-
-        if(!resolvingRefereces && contract != null) {
-            Set<String> refToBeChecked = new HashSet<>();
-            refsUsed.forEach(ru->{
-                Reference r = contract.getReferences().get(ru);
-                if(r != null) {
-                    refToBeChecked.addAll(r.getInternalReferences());
-                }
-            });
-
-            refToBeChecked.addAll(refsUsed);
-            resolvingRefereces = true;
-            contract.checkReferencedItems(refToBeChecked);
-            resolvingRefereces = false;
-        } else {
+        if(resolvingRefereces || contract == null) {
             return false;
         }
 
-        Set<String> references = contract != null ? contract.getValidRoleReferences() : new HashSet<>();
+        Set<String> refToBeChecked = new HashSet<>();
+        refsUsed.forEach(ru->{
+            Reference r = contract.getReferences().get(ru);
+            if(r != null) {
+                refToBeChecked.addAll(r.getInternalReferences());
+            }
+        });
+
+        refToBeChecked.addAll(refsUsed);
+        resolvingRefereces = true;
+        Set<String> references = contract.checkReferencedItems(refToBeChecked);
+        resolvingRefereces = false;
 
 
         if(requiredAllReferences.stream().anyMatch(ref -> !references.contains(ref))) {

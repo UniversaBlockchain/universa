@@ -65,16 +65,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         this.votedByKeys = votedByKeys;
     }
 
-    public void matchReferences() {
+    public void prepareForReferenceMatching() throws Quantiser.QuantiserException {
+        verifySealedKeys(true);
         getQuantiser().resetNoLimit();
-        HashMap contractsTree = new HashMap(getTransactionPack().getSubItems());
+        Map<HashId,Contract> contractsTree = new HashMap(getTransactionPack().getSubItems());
         contractsTree.putAll(getTransactionPack().getReferencedItems());
         contractsTree.put(getId(),this);
-        try {
-            checkReferencedItems();
-        } catch (Quantiser.QuantiserException e) {
-            e.printStackTrace();
-        }
+        contractsTree.forEach((id,c)->c.setNeighbourContracts(contractsTree));
+        setEffectiveKeys(null);
+        setReferenceContextKeys(getEffectiveKeys());
     }
 
     private Map<HashId, Contract> neighbourContracts;
@@ -698,7 +697,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @param isQuantise if needed quantisation verifying signatures
      * @throws Quantiser.QuantiserException when quantas limit was reached during check
      */
-    private void verifySealedKeys(boolean isQuantise) throws Quantiser.QuantiserException {
+    public void verifySealedKeys(boolean isQuantise) throws Quantiser.QuantiserException {
 
         if (sealedBinary == null)
             return;
@@ -715,6 +714,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Binder data = Boss.unpack(sealedBinary);
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
+
+        List signatures = (List) data.getOrThrow("signatures");
+        if(signatures.size() == 0)
+            return;
 
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
@@ -756,7 +759,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         state.roles.values().forEach(extractKeys);
 
         // verify signatures
-        for (Object signature : (List) data.getOrThrow("signatures")) {
+        for (Object signature : signatures) {
             byte[] s = ((Bytes) signature).toArray();
 
             PublicKey key = ExtendedSignature.extractPublicKey(s);
@@ -917,16 +920,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     }
 
-    private boolean checkReferencedItems() throws Quantiser.QuantiserException {
-        return checkReferencedItems(null);
+    private void checkReferencedItems() throws Quantiser.QuantiserException {
+        checkReferencedItems(null);
     }
 
 
-    public boolean checkReferencedItems(Set<String> roleRefsToResolve) throws Quantiser.QuantiserException {
+    public Set<String> checkReferencedItems(Set<String> roleRefsToResolve) throws Quantiser.QuantiserException {
 
+        Set<String> result = new HashSet<>();
         if (getReferences().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
-            return true;
+            return result;
         }
 
         Collection<Contract> neighbours = neighbourContracts == null ? new HashSet<>() : neighbourContracts.values();
@@ -936,14 +940,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             r.quantize(getQuantiser(), neighbours.size());
 
         // check each reference, all must be ok
-        boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
 
             if(roleRefsToResolve != null) {
                 if (!roleRefsToResolve.contains(rm.name))
                     continue;
-                if (validRoleReferences.contains(rm.name))
+                if (validRoleReferences.contains(rm.name)) {
+                    result.add(rm.name);
                     continue;
+                }
             } else {
                 boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || state.roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
                 if (roleReference)
@@ -976,16 +981,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             if (rm_check == false) {
                 if(roleRefsToResolve == null) {
-                    allRefs_check = false;
                     addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId=" + getId().toString() + "): false");
                 }
             } else {
-                if(roleRefsToResolve != null)
+                if(roleRefsToResolve != null) {
                     validRoleReferences.add(rm.name);
+                }
+                result.add(rm.name);
             }
         }
 
-        return allRefs_check;
+        return result;
     }
 
     private boolean checkOneReference(final Reference rm, final Contract refContract) throws Quantiser.QuantiserException {

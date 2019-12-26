@@ -71,12 +71,7 @@ public class RoleExtractor {
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyAddresses(r)));
             return result;
         } else if(role instanceof QuorumVoteRole) {
-            try {
-                return new HashSet(((QuorumVoteRole) role).getVotingAddresses());
-            } catch (Quantiser.QuantiserException e) {
-                return new HashSet<>();
-                //TODO:?
-            }
+            return new HashSet<>();
         }
         return null;
     }

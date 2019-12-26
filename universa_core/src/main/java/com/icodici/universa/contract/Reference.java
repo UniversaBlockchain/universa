@@ -1107,7 +1107,47 @@ public class Reference implements BiSerializable {
                         if (!(right instanceof Role))
                             throw new IllegalArgumentException("Expected role in condition in right operand: " + rightOperand);
 
-                        ret = ((Role) right).isAllowedForKeysQuantized(leftOperandContract.getReferenceContextKeys());
+                        Set<PublicKey> savedContext = null;
+
+                        //if left operand is "this" we keep using context set before
+                        if (leftOperand.equals("this"))
+                            keys = leftOperandContract.getReferenceContextKeys();
+                        else {
+                            //otherwise context should be updated with effective keys of currently checked contract
+                            //those are:
+
+                            if(leftOperandContract.getTransactionPack().getReferencedItems().containsKey(leftOperandContract.getId())) {
+                                //contract signatures for referenced items of transaction
+
+                                //these signatures aren't verified by default so we do it here if necessary
+                                //no signatures verified means one of two situations happening:
+                                // - signatures weren't verified yet -> verify!
+                                // - signatures were verified but just non existent ->
+                                //      -> verify! (it will cost no additional quanta because there is nothing to quantize
+                                if(leftOperandContract.getSealedByKeys().size() == 0)
+                                    leftOperandContract.verifySealedKeys(true);
+
+
+                                keys = leftOperandContract.getSealedByKeys();
+                            } else {
+                                //contract effective keys for subitems of transaction
+
+                                keys = leftOperandContract.getEffectiveKeys();
+                            }
+
+                            //so we save existing context
+                            savedContext = leftOperandContract.getReferenceContextKeys();
+                            //and set new one for checking the role
+                            getContract().getTransactionPack().setReferenceContextKeys(keys);
+                        }
+
+
+                        ret = ((Role) right).isAllowedForKeysQuantized(keys);
+
+                        //after check is performed we bring back saved context
+                        if(savedContext != null) {
+                            getContract().getTransactionPack().setReferenceContextKeys(savedContext);
+                        }
 
                         break;
                     case IN:

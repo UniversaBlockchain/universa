@@ -1809,7 +1809,7 @@ public class Node {
     }
 
 
-    public ZonedDateTime voteForContract(HashId votingItem, HashId candidateId, byte[] signature, List<Bytes> referencedItems) throws Exception {
+    public ZonedDateTime voteForContract(HashId votingItem, HashId candidateId, byte[] signature, List<Bytes> referencedItems, int quantaLimit) throws Exception {
 
         return voteLock.synchronize(votingItem,lock -> {
             VoteInfo votingInfo = ledger.getVotingInfo(votingItem);
@@ -1871,7 +1871,14 @@ public class Node {
                 }
             });
 
-            votingContract.matchReferences();
+            votingContract.getQuantiser().reset(quantaLimit);
+
+
+            try {
+                votingContract.prepareForReferenceMatching();
+            } catch (Quantiser.QuantiserException e) {
+                throw new Quantiser.QuantiserExceptionRuntime(e);
+            }
 
 
             Set<PublicKey> keys = new HashSet<PublicKey>();
@@ -1980,7 +1987,7 @@ public class Node {
                 byte[] signature =  operationData.getBinaryOrThrow("signature");
                 HashId votingId = (HashId) operationData.getOrThrow("votingId");
                 List<Bytes> referencedItems = operationData.getList("referencedItems", null);
-                voteForContract(votingId,candidateId,signature,referencedItems);
+                voteForContract(votingId,candidateId,signature,referencedItems, quantaLimit);
             } catch (Exception e) {
 
             }

@@ -36,6 +36,146 @@ import static junit.framework.TestCase.assertTrue;
 
 public class VotingTest extends BaseMainTest {
 
+
+    @Test
+    public void persistentVoting() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"this.state.data.list","90%");
+        contract.addRole(quorumVoteRole);
+
+        List<KeyAddress> addresses = new ArrayList<>();
+        for(int i = 0; i < 20; i++) {
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
+        }
+        contract.getStateData().put("list",addresses);
+
+        contract.seal();
+
+
+
+        Contract u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
+
+        HashId opId = client.initiateVote(u.getPackedTransaction(),contract,"creator",Do.listOf(contract.getId()));
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
+        }
+
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
+
+
+
+
+        ts.shutdown();
+        ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+
+
+
+        for(int j = 0; j < 19; j++) {
+            Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(j));
+            u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
+            opId = keyClient.voteForContract(u.getPackedTransaction(),contract.getId(),contract.getId());
+            while(keyClient.getPaidOperationProcessingState(opId).isProcessing()) {
+                Thread.sleep(100);
+            }
+
+            if(keyClient.getState(u.getId()).state == ItemState.APPROVED) {
+                synchronized (ts.uContractLock) {
+                    ts.uContract = u;
+                }
+            } else {
+                throw new IllegalArgumentException("wrong u");
+            }
+        }
+
+
+        assertEquals(client.register(contract.getPackedTransaction(),100000).state, ItemState.APPROVED);
+
+        ts.shutdown();
+    }
+
+
+    @Test
+    public void persistentVotingFailed() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"this.state.data.list","99%");
+        contract.addRole(quorumVoteRole);
+
+        List<KeyAddress> addresses = new ArrayList<>();
+        for(int i = 0; i < 20; i++) {
+            addresses.add(TestKeys.publicKey(i).getLongAddress());
+        }
+        contract.getStateData().put("list",addresses);
+
+        contract.seal();
+
+
+
+        Contract u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
+
+        HashId opId = client.initiateVote(u.getPackedTransaction(),contract,"creator",Do.listOf(contract.getId()));
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
+        }
+
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
+
+
+
+
+        ts.shutdown();
+        ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+
+
+
+        for(int j = 0; j < 18; j++) {
+            Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(j));
+            u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
+            opId = keyClient.voteForContract(u.getPackedTransaction(),contract.getId(),contract.getId());
+            while(keyClient.getPaidOperationProcessingState(opId).isProcessing()) {
+                Thread.sleep(100);
+            }
+
+            if(keyClient.getState(u.getId()).state == ItemState.APPROVED) {
+                synchronized (ts.uContractLock) {
+                    ts.uContract = u;
+                }
+            } else {
+                throw new IllegalArgumentException("wrong u");
+            }
+        }
+
+
+        assertEquals(client.register(contract.getPackedTransaction(),100000).state, ItemState.DECLINED);
+
+        ts.shutdown();
+    }
+
     @Test
     public void persistentVotingChangeOwnerReferenced() throws Exception {
 
@@ -224,7 +364,92 @@ public class VotingTest extends BaseMainTest {
         ts.shutdown();
     }
 
-    /*
+
+    @Test
+    public void detachedContractsVoting() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+        int N = 3;
+        int M = 5;
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"refSupplied.state.data.list",""+(N*M));
+        contract.addRole(quorumVoteRole);
+
+        SimpleRole dummy = new SimpleRole("dummy",contract);
+        dummy.addRequiredReference("refSupplied", Role.RequiredMode.ALL_OF);
+        contract.addRole(dummy);
+
+
+        Reference refSupplied = new Reference(contract);
+        refSupplied.name = "refSupplied";
+        refSupplied.type = Reference.TYPE_EXISTING_DEFINITION;
+        refSupplied.setConditions(Binder.of("all_of",Do.listOf("ref.issuer==this.definition.data.issuer")));
+        contract.addReference(refSupplied);
+        contract.getDefinition().getData().set("issuer",TestKeys.publicKey(2).getLongAddress().toString());
+        contract.seal();
+
+
+        Contract u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
+
+        HashId opId = client.initiateVote(u.getPackedTransaction(),contract,"creator",Do.listOf(contract.getId()));
+
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
+        }
+
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
+
+
+
+        for(int i = 0; i < M; i++) {
+
+            Contract supplied = new Contract(TestKeys.privateKey(2));
+            supplied.setIssuerKeys(TestKeys.publicKey(2).getLongAddress());
+            List<KeyAddress> kas = new ArrayList<>();
+            for(int j = 0; j < N;j++) {
+                kas.add(TestKeys.publicKey(i*N+j).getLongAddress());
+            }
+            supplied.getStateData().put("list",kas);
+            supplied.seal();
+
+            for(int j = 0; j < N; j++) {
+                Client c = new Client("test_node_config_v2", null, TestKeys.privateKey(i*N+j));
+                u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
+
+                opId = c.voteForContract(u.getPackedTransaction(),contract.getId(),contract.getId(), Do.listOf(supplied.getLastSealedBinary()));
+                while(c.getPaidOperationProcessingState(opId).isProcessing()) {
+                    Thread.sleep(100);
+                }
+
+                if(c.getState(u.getId()).state == ItemState.APPROVED) {
+                    synchronized (ts.uContractLock) {
+                        ts.uContract = u;
+                    }
+                } else {
+                    throw new IllegalArgumentException("wrong u");
+                }
+            }
+        }
+
+
+        ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
+        System.out.println(ir);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        ts.shutdown();
+
+    }
 
     @Test
     public void detachedContractsVotingAuthorityLevels() throws Exception {
@@ -322,29 +547,25 @@ public class VotingTest extends BaseMainTest {
         readyEvent0.await();
 
 
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
 
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId()));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
+        Contract u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
 
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
+        HashId opId = client.initiateVote(u.getPackedTransaction(),contract,"creator",Do.listOf(contract.getId()));
 
-        readyEvent.await();
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
+        }
+
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
 
 
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
+
 
         for(int i = 0; i < K; i++) {
             for(int j = 0; j < M; j++) {
@@ -362,26 +583,26 @@ public class VotingTest extends BaseMainTest {
 
                 for (int k = 0; k < N; k++) {
                     Client c = new Client("test_node_config_v2", null, TestKeys.privateKey((i*K + j) * M + k));
-                    for (int l = 0; l < client.size(); l++) {
-                        int finalK = l;
-                        int finalI = i;
-                        Do.inParallel(() -> {
-                            try {
-                                c.getClient(finalK).voteForContract(contract.getId(),contract.getId(), Do.listOf(rootAuthorityContract.getLastSealedBinary(), scndLvlAuthContracts.get(finalI).getLastSealedBinary(), supplied.getLastSealedBinary()));
-                                if (readyCounter2.incrementAndGet() == client.size() * M * N * K) {
-                                    readyEvent2.fire();
-                                }
+                    u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
+                    opId = c.voteForContract(u.getPackedTransaction(), contract.getId(),contract.getId(), Do.listOf(rootAuthorityContract.getLastSealedBinary(), scndLvlAuthContracts.get(i).getLastSealedBinary(), supplied.getLastSealedBinary()));
 
-                            } catch (ClientError clientError) {
-                                clientError.printStackTrace();
-                            }
-                        });
+                    while(c.getPaidOperationProcessingState(opId).isProcessing()) {
+                        Thread.sleep(100);
                     }
+
+                    if(c.getState(u.getId()).state == ItemState.APPROVED) {
+                        synchronized (ts.uContractLock) {
+                            ts.uContract = u;
+                        }
+                    } else {
+                        throw new IllegalArgumentException("wrong u");
+                    }
+
+                    System.out.println("VOTE " +((i*K + j) * M + k));
                 }
             }
         }
 
-        readyEvent2.await();
         ir = client.register(contract.getPackedTransaction(), 100000);
         System.out.println(ir);
         assertEquals(ir.state, ItemState.APPROVED);
@@ -389,315 +610,4 @@ public class VotingTest extends BaseMainTest {
         ts.shutdown();
 
     }
-
-    @Test
-    public void detachedContractsVoting() throws Exception {
-
-        TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
-
-        int N = 3;
-        int M = 5;
-
-        Contract contract = new Contract(TestKeys.privateKey(1));
-        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"refSupplied.state.data.list",""+(N*M));
-        contract.addRole(quorumVoteRole);
-
-        SimpleRole dummy = new SimpleRole("dummy",contract);
-        dummy.addRequiredReference("refSupplied", Role.RequiredMode.ALL_OF);
-        contract.addRole(dummy);
-
-
-        Reference refSupplied = new Reference(contract);
-        refSupplied.name = "refSupplied";
-        refSupplied.type = Reference.TYPE_EXISTING_DEFINITION;
-        refSupplied.setConditions(Binder.of("all_of",Do.listOf("ref.issuer==this.definition.data.issuer")));
-        contract.addReference(refSupplied);
-        contract.getDefinition().getData().set("issuer",TestKeys.publicKey(2).getLongAddress().toString());
-        contract.seal();
-
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
-
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId()));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
-
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
-
-        readyEvent.await();
-
-
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
-        for(int i = 0; i < M; i++) {
-
-            Contract supplied = new Contract(TestKeys.privateKey(2));
-            supplied.setIssuerKeys(TestKeys.publicKey(2).getLongAddress());
-            List<KeyAddress> kas = new ArrayList<>();
-            for(int j = 0; j < N;j++) {
-                kas.add(TestKeys.publicKey(i*N+j).getLongAddress());
-            }
-            supplied.getStateData().put("list",kas);
-            supplied.seal();
-
-            for(int j = 0; j < N; j++) {
-                Client c = new Client("test_node_config_v2", null, TestKeys.privateKey(i*N+j));
-                for (int k = 0; k < client.size(); k++) {
-                    int finalK = k;
-                    Do.inParallel(() -> {
-                        try {
-                            c.getClient(finalK).voteForContract(contract.getId(),contract.getId(), Do.listOf(supplied.getLastSealedBinary()));
-                            if (readyCounter2.incrementAndGet() == client.size() * M * N) {
-                                readyEvent2.fire();
-                            }
-
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
-                }
-            }
-        }
-
-        readyEvent2.await();
-        ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
-        System.out.println(ir);
-        assertEquals(ir.state, ItemState.APPROVED);
-
-        ts.shutdown();
-
-    }
-
-    @Test
-    public void persistentVoting() throws Exception {
-
-        TestSpace ts = prepareTestSpace();
-        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
-
-
-        Contract contract = new Contract(TestKeys.privateKey(1));
-        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"this.state.data.list","90%");
-        contract.addRole(quorumVoteRole);
-
-        List<KeyAddress> addresses = new ArrayList<>();
-        for(int i = 0; i < 20; i++) {
-            addresses.add(TestKeys.publicKey(i).getLongAddress());
-        }
-        contract.getStateData().put("list",addresses);
-
-        contract.seal();
-
-        Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
-
-
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId())));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
-
-        readyEvent.await();
-
-        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
-
-
-        ts.shutdown();
-        ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
-
-        for(int j = 0; j < 19; j++) {
-            int finalJ = j;
-            Do.inParallel(() -> {
-                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
-                for (int i = 0; i < keyClient.size(); i++) {
-                    int finalI = i;
-                    Do.inParallel(() -> {
-                        try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
-
-                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
-                                readyEvent2.fire();
-                            }
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
-                }
-            });
-        }
-        readyEvent2.await();
-
-
-        assertEquals(client.register(contract.getPackedTransaction(),100000).state, ItemState.APPROVED);
-
-        ts.shutdown();
-    }
-
-
-    @Test
-    public void persistentVotingFailed() throws Exception {
-
-        TestSpace ts = prepareTestSpace();
-        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
-
-        Contract contract = new Contract(TestKeys.privateKey(1));
-        QuorumVoteRole quorumVoteRole = new QuorumVoteRole("issuer",contract,"this.state.data.list","99%");
-        contract.addRole(quorumVoteRole);
-
-        List<KeyAddress> addresses = new ArrayList<>();
-        for(int i = 0; i < 20; i++) {
-            addresses.add(TestKeys.publicKey(i).getLongAddress());
-        }
-        contract.getStateData().put("list",addresses);
-
-        contract.seal();
-
-        Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
-
-
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"creator",Do.listOf(contract.getId())));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
-
-        readyEvent.await();
-
-        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
-
-
-        ts.shutdown();
-        ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
-
-        for(int j = 0; j < 19; j++) {
-            int finalJ = j;
-            Do.inParallel(() -> {
-                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
-                for (int i = 0; i < keyClient.size(); i++) {
-                    int finalI = i;
-                    Do.inParallel(() -> {
-                        try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),contract.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
-
-                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
-                                readyEvent2.fire();
-                            }
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
-                }
-            });
-        }
-        readyEvent2.await();
-
-
-        ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
-        System.out.println(ir);
-        assertEquals(ir.state, ItemState.DECLINED);
-
-        ts.shutdown();
-    }
-
-    @Test
-    public void temporaryVoting() throws Exception {
-        TestSpace ts = prepareTestSpace();
-        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
-
-        Contract contract = new Contract(TestKeys.privateKey(1));
-        ListRole issuer = new ListRole("issuer",contract);
-        issuer.setMode(ListRole.Mode.ALL);
-        for(int i = 0; i < 10; i++) {
-            issuer.addRole(new SimpleRole("@"+i,contract,Do.listOf(TestKeys.publicKey(i).getShortAddress())));
-        }
-
-        contract.addRole(issuer);
-        contract.seal();
-
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
-
-        for(int j = 0; j < 10; j++) {
-            int finalJ = j;
-            Do.inParallel(() -> {
-                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
-                for (int i = 0; i < keyClient.size(); i++) {
-                    int finalI = i;
-                    Do.inParallel(() -> {
-                        try {
-                            assertTrue(keyClient.getClient(finalI).signContractBySessionKey(contract.getId()).isBefore(ZonedDateTime.now().plusHours(2)));
-
-                            if(readyCounter2.incrementAndGet() == 10*keyClient.size()) {
-                                readyEvent2.fire();
-                            }
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
-                }
-            });
-        }
-        readyEvent2.await();
-
-        Binder b = client.getContractKeys(contract.getId());
-        System.out.println(b);
-
-        ItemResult ir = client.register(contract.getPackedTransaction(), 100000);
-        System.out.println(ir);
-        assertEquals(ir.state, ItemState.APPROVED);
-
-
-
-
-        ts.shutdown();
-
-    }*/
 }

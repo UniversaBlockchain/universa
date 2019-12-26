@@ -13,8 +13,10 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.TestKeys;
+import com.icodici.universa.contract.Reference;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -107,6 +109,24 @@ public class RoleReferencesTest {
         Set<PublicKey> keySet = new HashSet<>();
         keySet.add(key);
         Contract contract = new Contract();
+
+        Reference ref1 = new Reference(contract);
+        ref1.name = "ref1";
+        ref1.setConditions(Binder.of("all_of", Do.listOf("ref.state.data.field==1")));
+        contract.addReference(ref1);
+        Reference ref2 = new Reference(contract);
+        ref2.name = "ref2";
+        ref2.setConditions(Binder.of("all_of", Do.listOf("ref.state.data.field==1")));
+        contract.addReference(ref2);
+        Reference ref3 = new Reference(contract);
+        ref3.name = "ref3";
+        ref3.setConditions(Binder.of("all_of", Do.listOf("ref.state.data.field==1")));
+        contract.addReference(ref3);
+        Reference ref4 = new Reference(contract);
+        ref4.name = "ref4";
+        ref4.setConditions(Binder.of("all_of", Do.listOf("ref.state.data.field==1")));
+        contract.addReference(ref4);
+
 
         SimpleRole sr = new SimpleRole("tr1");
         sr.addKeyRecord(new KeyRecord(key));
