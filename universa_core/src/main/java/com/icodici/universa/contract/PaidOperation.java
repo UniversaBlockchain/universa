@@ -90,14 +90,14 @@ public class PaidOperation implements BiSerializable {
     public synchronized Binder serialize(BiSerializer s) {
         return Binder.of(
                 "payment", payment.pack(),
-                "operation", operation
+                "operation", s.serialize(operation)
         );
     }
 
     @Override
     public synchronized void deserialize(Binder data, BiDeserializer ds) throws IOException {
         payment = TransactionPack.unpack(data.getBinary("payment"));
-        operation = data.getBinder("operation");
+        operation = ds.deserialize(data.getBinder("operation"));
 
         prepareForNode();
     }

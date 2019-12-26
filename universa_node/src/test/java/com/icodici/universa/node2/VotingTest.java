@@ -5,6 +5,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.roles.*;
@@ -33,7 +34,6 @@ import java.util.stream.Collectors;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
-@Ignore
 public class VotingTest extends BaseMainTest {
 
     @Test
@@ -91,28 +91,24 @@ public class VotingTest extends BaseMainTest {
         revision2.getTransactionPack().addReferencedItem(referenced);
 
 
-        Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
 
 
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(referenced,"change_owner",Do.listOf(revision1.getId(),revision2.getId())));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
+        Contract u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
 
-        readyEvent.await();
+        HashId opId = client.initiateVote(u.getPackedTransaction(),referenced, "change_owner", Do.listOf(revision1.getId(), revision2.getId()));
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
+        }
 
-        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
+
+
 
 
         ts.shutdown();
@@ -120,31 +116,27 @@ public class VotingTest extends BaseMainTest {
         ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
 
 
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
 
         for(int j = 0; j < 19; j++) {
-            int finalJ = j;
-            Do.inParallel(() -> {
-                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
-                for (int i = 0; i < keyClient.size(); i++) {
-                    int finalI = i;
-                    Do.inParallel(() -> {
-                        try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(referenced.getId(),revision2.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
+            Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(j));
+            u = Parcel.createPayment(getApprovedUContract(ts),Do.listOf(ts.myKey),1,false);
 
-                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
-                                readyEvent2.fire();
-                            }
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
+            opId = keyClient.voteForContract(u.getPackedTransaction(),referenced.getId(),revision2.getId());
+            while(keyClient.getPaidOperationProcessingState(opId).isProcessing()) {
+                Thread.sleep(100);
+            }
+            ItemResult ir = client.getState(u.getId());
+            System.out.println(opId + " " + ir);
+            if(ir.state == ItemState.APPROVED) {
+                synchronized (ts.uContractLock) {
+                    ts.uContract = u;
                 }
-            });
+            } else {
+                throw new IllegalArgumentException("wrong u");
+            }
+
+
         }
-        readyEvent2.await();
 
 
         assertEquals(client.register(revision1.getPackedTransaction(),100000).state, ItemState.DECLINED);
@@ -192,57 +184,38 @@ public class VotingTest extends BaseMainTest {
         Map<Integer,ZonedDateTime> expires = new ConcurrentHashMap<>();
 
 
-        AtomicInteger readyCounter = new AtomicInteger();
-        AsyncEvent readyEvent = new AsyncEvent();
-        for(int i = 0; i < client.size(); i++) {
-            int finalI = i;
-            Do.inParallel(() -> {
-                try {
-                    expires.put(client.getClient(finalI).getNodeNumber(), client.getClient(finalI).initiateVote(contract,"change_owner",Do.listOf(revision1.getId(),revision2.getId())));
-                    if(readyCounter.incrementAndGet() == client.size()) {
-                        readyEvent.fire();
-                    }
-                } catch (ClientError clientError) {
-                    clientError.printStackTrace();
-                }
-            });
-        };
+        Contract u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
 
-        readyEvent.await();
-
-        assertEquals(expires.values().stream().filter(zdt -> zdt.isAfter(ZonedDateTime.now().plusDays(4))).count(),client.size());
-
-
-        ts.shutdown();
-        ts = prepareTestSpace();
-        ts.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-
-        AtomicInteger readyCounter2 = new AtomicInteger();
-        AsyncEvent readyEvent2 = new AsyncEvent();
-
-
-        for(int j = 0; j < 19; j++) {
-            int finalJ = j;
-            Do.inParallel(() -> {
-                Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(finalJ));
-                for (int i = 0; i < keyClient.size(); i++) {
-                    int finalI = i;
-                    Do.inParallel(() -> {
-                        try {
-                            assertEquals(keyClient.getClient(finalI).voteForContract(contract.getId(),revision2.getId()), expires.get(keyClient.getClient(finalI).getNodeNumber()));
-
-                            if(readyCounter2.incrementAndGet() == 19*keyClient.size()) {
-                                readyEvent2.fire();
-                            }
-                        } catch (ClientError clientError) {
-                            clientError.printStackTrace();
-                        }
-                    });
-                }
-            });
+        HashId opId = client.initiateVote(u.getPackedTransaction(), contract,"change_owner",Do.listOf(revision1.getId(),revision2.getId()));
+        while(client.getPaidOperationProcessingState(opId).isProcessing()) {
+            Thread.sleep(100);
         }
-        readyEvent2.await();
+
+        if(client.getState(u.getId()).state == ItemState.APPROVED) {
+            synchronized (ts.uContractLock) {
+                ts.uContract = u;
+            }
+        } else {
+            throw new IllegalArgumentException("wrong u");
+        }
+        for(int j = 0; j < 19; j++) {
+            u = Parcel.createPayment(getApprovedUContract(ts), Do.listOf(ts.myKey), 1, false);
+
+            Client keyClient = new Client("test_node_config_v2", null, TestKeys.privateKey(j));
+            opId = keyClient.voteForContract(u.getPackedTransaction(),contract.getId(),revision2.getId());
+            while(keyClient.getPaidOperationProcessingState(opId).isProcessing()) {
+                Thread.sleep(100);
+            }
+
+            if(keyClient.getState(u.getId()).state == ItemState.APPROVED) {
+                synchronized (ts.uContractLock) {
+                    ts.uContract = u;
+                }
+            } else {
+                throw new IllegalArgumentException("wrong u");
+            }
+        }
+
 
 
         assertEquals(client.register(revision1.getPackedTransaction(),100000).state, ItemState.DECLINED);
@@ -251,6 +224,7 @@ public class VotingTest extends BaseMainTest {
         ts.shutdown();
     }
 
+    /*
 
     @Test
     public void detachedContractsVotingAuthorityLevels() throws Exception {
@@ -725,5 +699,5 @@ public class VotingTest extends BaseMainTest {
 
         ts.shutdown();
 
-    }
+    }*/
 }

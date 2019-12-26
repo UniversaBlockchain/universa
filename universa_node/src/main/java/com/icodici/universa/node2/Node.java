@@ -9,11 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.PaidOperation;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.Reference;
-import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -39,6 +35,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import com.icodici.universa.contract.services.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 //import java.lang.management.ManagementFactory;
@@ -1812,7 +1809,7 @@ public class Node {
     }
 
 
-    public ZonedDateTime voteForContract(HashId votingItem, HashId candidateId, PublicKey publicKey, List<Bytes> referencedItems) throws Exception {
+    public ZonedDateTime voteForContract(HashId votingItem, HashId candidateId, byte[] signature, List<Bytes> referencedItems) throws Exception {
 
         return voteLock.synchronize(votingItem,lock -> {
             VoteInfo votingInfo = ledger.getVotingInfo(votingItem);
@@ -1823,6 +1820,25 @@ public class Node {
             if(!votingInfo.candidateIds.containsKey(candidateId)) {
                 throw new IllegalArgumentException("Candidate '" + candidateId + "' wasn't found in candidate list of voting " + votingItem);
             }
+
+
+            PublicKey publicKey = ExtendedSignature.extractPublicKey(signature);
+            if(publicKey == null)
+                throw new IllegalArgumentException("Signature doesn't contain public key");
+
+            try {
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+                outputStream.write( votingItem.getDigest() );
+                outputStream.write( candidateId.getDigest() );
+                byte[] data = outputStream.toByteArray();
+
+                if(ExtendedSignature.verify(publicKey,signature,data) == null) {
+                    throw new IllegalArgumentException("Signature invalid");
+                }
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            }
+
 
             Contract votingContract = votingInfo.contract;
             String roleName = votingInfo.roleName;
@@ -1921,8 +1937,60 @@ public class Node {
                 return new TestWorkProcessor(onSuccess, onFailure, quantaLimit, operationData);
             case "ubot_session":
                 return new UBotSessionProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
+            case "initiate_vote":
+                return new InitiateVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
+            case "do_vote":
+                return new DoVoteProcessorWatchman(onSuccess, onFailure, quantaLimit, operationData);
             default:
                 return null;
+        }
+    }
+
+    private class InitiateVoteProcessorWatchman extends AbstractProcessor {
+        public InitiateVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+            super(onSuccess,onFailure,quantaLimit,operationData);
+        }
+
+        @Override
+        public void start() {
+            try {
+                initiateVoting(Contract.fromPackedTransaction(operationData.getBinaryOrThrow("packedItem")),operationData.getStringOrThrow("role"),new HashSet(operationData.getListOrThrow("candidates")));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            onSuccess.run();
+        }
+
+        @Override
+        public boolean isApplicable() {
+            return true;
+        }
+    }
+
+    private class DoVoteProcessorWatchman extends AbstractProcessor {
+        public DoVoteProcessorWatchman(Runnable onSuccess, Consumer<String> onFailure, int quantaLimit, Binder operationData) {
+            super(onSuccess,onFailure,quantaLimit,operationData);
+        }
+
+        @Override
+        public void start() {
+
+            try {
+                HashId candidateId = (HashId) operationData.getOrThrow("candidateId");
+                byte[] signature =  operationData.getBinaryOrThrow("signature");
+                HashId votingId = (HashId) operationData.getOrThrow("votingId");
+                List<Bytes> referencedItems = operationData.getList("referencedItems", null);
+                voteForContract(votingId,candidateId,signature,referencedItems);
+            } catch (Exception e) {
+
+            }
+
+            onSuccess.run();
+        }
+
+        @Override
+        public boolean isApplicable() {
+            return true;
         }
     }
 
@@ -6337,5 +6405,7 @@ public class Node {
             return storages;
         }
     };
+
+
 
 }

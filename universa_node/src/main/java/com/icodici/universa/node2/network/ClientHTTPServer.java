@@ -325,8 +325,8 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
         addSecureEndpoint("ubotApprove", this::ubotApprove);
 
-//        addSecureEndpoint("initiateVoting",this::initiateVoting);
-//        addSecureEndpoint("voteForContract",this::voteForContract);
+        addSecureEndpoint("initiateVoting",this::initiateVoting);
+        addSecureEndpoint("voteForContract",this::voteForContract);
 
 
         addSecureEndpoint("addKeyToContract",this::addKeyToContract);
@@ -761,17 +761,48 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder initiateVoting(Binder params, Session session) throws CommandFailedException {
         try {
-            Contract c = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            byte[] packedRequest = params.getBinaryOrThrow("packedItem");
             String roleName = params.getString("role","creator");
             List<HashId> candidates = params.getListOrThrow("candidates");
 
-            return Binder.of("expiresAt",
-                    node.initiateVoting(c,roleName,new HashSet(candidates)));
+
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "initiate_vote", Binder.of("packedItem", packedRequest,"role",roleName,"candidates",candidates)).pack());
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
+            );
+
 
         } catch (Exception e) {
+            e.printStackTrace();
             throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateVoting",e.getMessage());
         }
     }
+
+    private Binder voteForContract(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+        try {
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            HashId candidateId = (HashId) params.getOrThrow("candidateId");
+            byte[] signature =  params.getBinaryOrThrow("signature");
+            HashId votingId = (HashId) params.getOrThrow("votingId");
+            List<Object> referencedItems = params.getList("referencedItems", null);
+
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "do_vote", Binder.of("candidateId", candidateId,"signature",signature,"votingId",votingId,"referencedItems",referencedItems)).pack());
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
+            );
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
+        }
+    }
+
 
     private Binder addKeyToContract(Binder params, Session session) throws CommandFailedException {
         return Binder.of("expiresAt",
@@ -788,17 +819,6 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
-    private Binder voteForContract(Binder params, Session session) throws CommandFailedException {
-        checkNode(session, true);
-        try {
-            HashId candidateId = (HashId) params.getOrThrow("candidateId");
-            HashId votingId = (HashId) params.getOrThrow("votingId");
-            return Binder.of("expiresAt",
-                    node.voteForContract(votingId, candidateId, session.getPublicKey(), params.getList("referencedItems", null)));
-        } catch (Exception e) {
-            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
-        }
-    }
 
 
 

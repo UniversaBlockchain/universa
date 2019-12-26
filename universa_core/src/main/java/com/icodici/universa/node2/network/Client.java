@@ -176,27 +176,29 @@ public class Client {
         });
     }
 
-    public ZonedDateTime initiateVote(Contract votingContract, String votingRole, Collection<HashId> candidates) throws ClientError {
+    public HashId initiateVote(byte[] packedU, Contract votingContract, String votingRole, Collection<HashId> candidates) throws ClientError {
 
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("initiateVoting","packedItem",votingContract.getPackedTransaction(),"role",votingRole,"candidates",candidates).get("expiresAt");
+            return (HashId)httpClient.command("initiateVoting","packedU",packedU,"packedItem",votingContract.getPackedTransaction(),"role",votingRole,"candidates",candidates).get("paidOperationId");
         });
 
     }
 
 
-    public ZonedDateTime voteForContract(HashId voteId, HashId candidateId, List<byte[]> referencedItems) throws ClientError {
+    public HashId voteForContract(byte[] packedU, HashId votingId, HashId candidateId, List<byte[]> referencedItems) throws ClientError {
         return protect(() -> {
-            return (ZonedDateTime)httpClient.command("voteForContract","votingId",voteId,"candidateId",candidateId, "referencedItems",referencedItems).get("expiresAt");
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+            outputStream.write( votingId.getDigest() );
+            outputStream.write( candidateId.getDigest() );
+            byte[] data = outputStream.toByteArray();
+
+            return (HashId)httpClient.command("voteForContract","packedU",packedU,"votingId",votingId,"candidateId",candidateId, "referencedItems",referencedItems,"signature",ExtendedSignature.sign(clientPrivateKey,data)).get("paidOperationId");
         });
 
     }
 
-    public ZonedDateTime voteForContract(HashId voteId, HashId candidateId) throws ClientError {
-        return protect(() -> {
-            return (ZonedDateTime)httpClient.command("voteForContract","votingId",voteId,"candidateId",candidateId).get("expiresAt");
-        });
-
+    public HashId voteForContract(byte[] packedU, HashId votingId, HashId candidateId) throws ClientError {
+        return voteForContract(packedU,votingId,candidateId,null);
     }
 
     public ZonedDateTime signContractBySessionKey(HashId itemId) throws ClientError {

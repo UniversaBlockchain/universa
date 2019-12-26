@@ -91,7 +91,7 @@ public class Parcel implements BiSerializable {
         }
     }
 
-    private static Contract createPayment(Contract uContract, Collection<PrivateKey> uKeys, int amount, boolean withTestPayment) throws InsufficientFundsException,OwnerNotResolvedException {
+    public static Contract createPayment(Contract uContract, Collection<PrivateKey> uKeys, int amount, boolean withTestPayment) throws InsufficientFundsException,OwnerNotResolvedException {
         Contract payment = uContract.createRevision(uKeys);
         String fieldName = withTestPayment ? "test_transaction_units" : "transaction_units";
         payment.getStateData().set(fieldName, uContract.getStateData().getIntOrThrow(fieldName) - amount);
