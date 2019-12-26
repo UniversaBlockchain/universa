@@ -7824,7 +7824,7 @@ public class MainTest {
         assertEquals(ir.state,ItemState.DECLINED);
         assertEquals(ir.errors.size(),contract.getErrors().size());
 
-
+        ts.shutdown();
     }
 
 

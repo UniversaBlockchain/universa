@@ -13,6 +13,7 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -38,7 +39,7 @@ public class UBotSessionsProTest {
         }
     }
 
-
+    @Ignore
     @Test
     public void createSession() throws Exception {
 
@@ -73,11 +74,13 @@ public class UBotSessionsProTest {
             AsyncEvent readyEvent = new AsyncEvent();
             AtomicReference<List<Integer>> pool = new AtomicReference<>();
 
+            HashId finalRequestId = requestContract.getId();
+
             for (int i = 0; i < client.size(); i++) {
                 int finalI = i;
                 Do.inParallel(() -> {
                     while (true) {
-                        Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                        Binder res = client.getClient(finalI).command("ubotGetSession", "requestId", finalRequestId);
                         System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                         Thread.sleep(500);
                         if (res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
@@ -118,7 +121,7 @@ public class UBotSessionsProTest {
                     Do.inParallel(() -> {
                         try {
                             //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",null,"toValue", storageValue);
-                            c.getClient(finalI).command("ubotUpdateStorage", "executableContractId", executableContract.getId(), "storageName", "default", "toValue", storageValue);
+                            c.getClient(finalI).command("ubotUpdateStorage", "requestId", finalRequestId, "storageName", "default", "toValue", storageValue);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -127,7 +130,7 @@ public class UBotSessionsProTest {
             });
 
             while (true) {
-                Binder res = client.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+                Binder res = client.command("ubotGetStorage", "requestId", finalRequestId, "storageNames", Do.listOf("default"));
                 System.out.println(res);
                 if (res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(storageValue) && res.getBinderOrThrow("pending").get("default") != null && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
                     break;
@@ -135,7 +138,6 @@ public class UBotSessionsProTest {
                 Thread.sleep(10);
             }
 
-            HashId oldStorageValue = storageValue;
             HashId newStorageValue = HashId.createRandom();
 
             quorumClients.forEach(c -> {
@@ -144,7 +146,7 @@ public class UBotSessionsProTest {
                     Do.inParallel(() -> {
                         try {
                             //c.getClient(finalI).command("ubotUpdateStorage","executableContractId", executableContract.getId(),"storageName","default","fromValue",oldStorageValue,"toValue", newStorageValue);
-                            c.getClient(finalI).command("ubotUpdateStorage", "executableContractId", executableContract.getId(), "storageName", "default", "toValue", newStorageValue);
+                            c.getClient(finalI).command("ubotUpdateStorage", "requestId", finalRequestId, "storageName", "default", "toValue", newStorageValue);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -153,7 +155,7 @@ public class UBotSessionsProTest {
             });
 
             while (true) {
-                Binder res = client.command("ubotGetStorage", "executableContractId", executableContract.getId(), "storageNames", Do.listOf("default"));
+                Binder res = client.command("ubotGetStorage", "requestId", finalRequestId, "storageNames", Do.listOf("default"));
                 System.out.println(res);
                 if (res.getBinderOrThrow("current").get("default") != null && res.getBinderOrThrow("current").get("default").equals(newStorageValue) && res.getBinderOrThrow("pending").get("default") != null && res.getBinderOrThrow("pending").getBinder("default").size() == 0) {
                     break;
@@ -166,7 +168,7 @@ public class UBotSessionsProTest {
                     int finalI = i;
                     Do.inParallel(() -> {
                         try {
-                            c.getClient(finalI).command("ubotCloseSession", "executableContractId", executableContract.getId(), "finished", true);
+                            c.getClient(finalI).command("ubotCloseSession", "requestId", finalRequestId, "finished", true);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -181,7 +183,7 @@ public class UBotSessionsProTest {
                 int finalI = i;
                 Do.inParallel(() -> {
                     while (true) {
-                        Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                        Binder res = client.getClient(finalI).command("ubotGetSession", "requestId", finalRequestId);
                         System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                         Thread.sleep(500);
                         if (res.getBinder("session").isEmpty()) {
@@ -247,11 +249,13 @@ public class UBotSessionsProTest {
         AsyncEvent readyEvent = new AsyncEvent();
         AtomicReference<List<Integer>> pool = new AtomicReference<>();
 
+        HashId finalRequestId = requestContract.getId();
+
         for (int i = 0; i < client.size(); i++) {
             int finalI = i;
             Do.inParallel(() -> {
                 while (true) {
-                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "requestId", finalRequestId);
                     System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                     Thread.sleep(500);
                     if (res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
