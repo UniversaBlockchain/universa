@@ -4,6 +4,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.TestCase;
 import com.icodici.universa.TestKeys;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
@@ -216,6 +217,9 @@ public class ModifyDataPermissionTest extends TestCase {
         modifyDataPermission.addField("/references", Do.listOf(ref));
         contract.addPermission(modifyDataPermission);
         contract.seal();
+
+
+        ref = Boss.load(Boss.dump(ref));
 
         Contract changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));

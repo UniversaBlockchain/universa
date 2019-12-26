@@ -184,8 +184,14 @@ public class BiMapper {
         BiAdapter adapter = adapters.get(canonicalName);
         if (adapter == null) {
             if (x instanceof Map) {
-                ((Map) x).replaceAll((k, v) -> serialize(v, serializer));
-                return (T) x;
+
+                Binder serialized = new Binder();
+                ((Map)x).forEach((k,v) -> serialized.put(serialize(k),serialize(v)));
+                return (T)serialized;
+
+//                ((Map) x).replaceAll((k, v) -> serialize(v, serializer));
+//                return (T) x;
+
             }
             // just leave it as it is
             return (T) x;

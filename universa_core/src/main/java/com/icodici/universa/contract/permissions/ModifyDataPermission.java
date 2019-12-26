@@ -8,10 +8,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node2.Quantiser;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.biserializer.BiType;
-import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.*;
 import net.sergeych.diff.*;
 import net.sergeych.tools.Binder;
 
@@ -105,7 +102,9 @@ public class ModifyDataPermission extends Permission {
 
         for (String rootField : rootFields) {
             boolean containsField = this.fields.containsKey("/" + rootField);
-            List<String> foundField = this.fields.get("/" + rootField);
+
+            List<String> foundField = BossBiMapper.getInstance().serialize(this.fields.get("/" + rootField));
+            //List<String> foundField = this.fields.get("/" + rootField);
 
             Delta rootFieldChanges = stateChanges.get(rootField);
             if (rootFieldChanges != null) {
