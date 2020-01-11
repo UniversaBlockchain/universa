@@ -736,14 +736,11 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder ubotGetSession(Binder params, Session session) throws CommandFailedException {
-        if(params.containsKey("executableContractId")) {
-            HashId executableContractId = params.getOrThrow("executableContractId");
-            return Binder.of("session", node.getUBotSession(executableContractId, session.getPublicKey()));
-        } else if(params.containsKey("requestId")) {
+        if(params.containsKey("requestId")) {
             HashId requestId = params.getOrThrow("requestId");
-            return Binder.of("session", node.getUBotSessionByRequestId(requestId, session.getPublicKey()));
+            return Binder.of("session", node.getUBotSession(requestId, session.getPublicKey()));
         } else {
-            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetSession","Either executableContractId or requestId should present");
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetSession","requestId must present");
         }
     }
 
@@ -751,7 +748,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             boolean finished = params.getBooleanOrThrow("finished");
             HashId requestId = params.getOrThrow("requestId");
-            return Binder.of("session", node.closeUBotSessionByRequestId(requestId, session.getPublicKey(), finished));
+            return Binder.of("session", node.closeUBotSession(requestId, session.getPublicKey(), finished));
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
@@ -829,7 +826,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         HashId toValue = params.getOrThrow("toValue");
 
         try {
-            return node.updateUBotStorageByRequestId(requestId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
+            return node.updateUBotStorage(requestId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotUpdateStorage", e.getMessage());
@@ -853,7 +850,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             List<String> storageNames = params.getListOrThrow("storageNames");
 
             try {
-                return node.getUBotStorageByRequestId(requestId, storageNames);
+                return node.getUBotStorage(requestId, storageNames);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());

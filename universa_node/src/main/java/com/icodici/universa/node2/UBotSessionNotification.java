@@ -35,6 +35,7 @@ public class UBotSessionNotification extends Notification {
     private boolean haveRequestContract;
 
     private HashId executableContractId;
+    private HashId requestId;
     private List<Object> payload;
 
     public List<Object> getPayload() {
@@ -43,6 +44,10 @@ public class UBotSessionNotification extends Notification {
 
     public HashId getExecutableContractId() {
         return executableContractId;
+    }
+
+    public HashId getRequestId() {
+        return requestId;
     }
 
     public boolean isHaveRequestContract() {
@@ -57,9 +62,10 @@ public class UBotSessionNotification extends Notification {
         return isPaid;
     }
 
-    public UBotSessionNotification(NodeInfo from, HashId executableContractId, boolean doAnswer, boolean haveRequestContract, List<Object> payload, boolean isPaid) {
+    public UBotSessionNotification(NodeInfo from, HashId executableContractId, HashId requestId, boolean doAnswer, boolean haveRequestContract, List<Object> payload, boolean isPaid) {
         super(from);
         this.executableContractId = executableContractId;
+        this.requestId = requestId;
         this.payload = payload;
         this.haveRequestContract = haveRequestContract;
         this.doAnswer = doAnswer;
@@ -69,6 +75,7 @@ public class UBotSessionNotification extends Notification {
     @Override
     protected void writeTo(Boss.Writer bw) throws IOException {
         bw.writeObject(executableContractId.getDigest());
+        bw.writeObject(requestId.getDigest());
         int flags = 0;
         if(haveRequestContract) {
             flags = flags | 1;
@@ -87,6 +94,7 @@ public class UBotSessionNotification extends Notification {
     @Override
     protected void readFrom(Boss.Reader br) throws IOException {
         executableContractId = HashId.withDigest(br.readBinary());
+        requestId = HashId.withDigest(br.readBinary());
         int flags = br.readInt();
         haveRequestContract = (flags & 1) > 0;
         doAnswer = (flags & 2) > 0;
@@ -114,8 +122,12 @@ public class UBotSessionNotification extends Notification {
         UBotSessionNotification that = (UBotSessionNotification) o;
 
         NodeInfo from = getFrom();
-        if (executableContractId.equals(that.executableContractId)) return false;
-        if (!payload.equals(that.payload)) return false;
+        if (executableContractId.equals(that.executableContractId))
+            return false;
+        if (requestId.equals(that.requestId))
+            return false;
+        if (!payload.equals(that.payload))
+            return false;
         return true;
     }
 
@@ -127,6 +139,7 @@ public class UBotSessionNotification extends Notification {
     public String toString() {
         return "[UBotSessionNotification from " + getFrom()
                 + " for item: " + executableContractId
+                + " for request: " + requestId
                 + " flags: " + haveRequestContract + " " + doAnswer
                 + ", item payload: " + payload
                 + "]";

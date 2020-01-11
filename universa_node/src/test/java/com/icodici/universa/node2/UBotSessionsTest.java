@@ -486,7 +486,7 @@ public class UBotSessionsTest extends BaseMainTest {
 
         while (true) {
             Thread.sleep(100);
-            Binder res = ts.client.command("ubotGetSession", "executableContractId", executableContract.getId());
+            Binder res = ts.client.command("ubotGetSession", "requestId", requestContract.getId());
             if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null)
                 continue;
             if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
@@ -740,7 +740,7 @@ public class UBotSessionsTest extends BaseMainTest {
         ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
             Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
 
-        System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
+        System.out.println(ts.client.command("ubotCreateSession","packedRequest", requestContract.getPackedTransaction()));
         AtomicReference<List<Integer>> pool2 = new AtomicReference<>();
         AtomicInteger readyCounter3 = new AtomicInteger();
         AsyncEvent readyEvent3 = new AsyncEvent();
@@ -939,7 +939,7 @@ public class UBotSessionsTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(()->{
                 while (true) {
-                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "requestId", requestContracts.get(finalI).getId());
                     System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                     Thread.sleep(200);
                     if (res.get("session") != null && res.getBinderOrThrow("session").getString("state", "").equals("OPERATIONAL")) {
@@ -1012,7 +1012,7 @@ public class UBotSessionsTest extends BaseMainTest {
             int finalI = i;
             Do.inParallel(()->{
                 while (true) {
-                    Binder res = client.getClient(finalI).command("ubotGetSession", "executableContractId", executableContract.getId());
+                    Binder res = client.getClient(finalI).command("ubotGetSession", "requestId", requestContracts.get(finalI).getId());
                     System.out.println(client.getClient(finalI).getNodeNumber() + " " + res);
                     Thread.sleep(200);
                     if (res.get("session") != null && res.getBinderOrThrow("session").getString("state", "").equals("OPERATIONAL")) {
@@ -1029,10 +1029,8 @@ public class UBotSessionsTest extends BaseMainTest {
         Thread.sleep(3000);
 
         HashId id = (HashId) session.get().get("requestId");
-        for(int i  = 0; i < client.size();i++) {
-            ItemState expectedState = requestContracts.get(i).getId().equals(id) ? ItemState.APPROVED : ItemState.UNDEFINED;
-            assertEquals(client.getState(uContracts.get(i).getId()).state,expectedState);
-        }
+        for(int i  = 0; i < client.size(); i++)
+            assertEquals(client.getState(uContracts.get(i).getId()).state, ItemState.APPROVED);
 
         ts.shutdown();
     }
@@ -1118,20 +1116,19 @@ public class UBotSessionsTest extends BaseMainTest {
     @Ignore
     @Test
     public void registerUBotRegistryContract() throws Exception {
-        KeyAddress ka = new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s");
-        //for(int i = 0; i < TestKeys.binaryKeys.length;i++) {
-        //    if(TestKeys.publicKey(i).isMatchingKeyAddress(ka)) {
-        //        System.out.println(i);
-        //    }
-        //}
+//        KeyAddress ka = new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s");
+//        //for(int i = 0; i < TestKeys.binaryKeys.length;i++) {
+//        //    if(TestKeys.publicKey(i).isMatchingKeyAddress(ka)) {
+//        //        System.out.println(i);
+//        //    }
+//        //}
+//
+//        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+//        System.out.println(key.getPublicKey().isMatchingKeyAddress(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s")));
 
-        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
-        System.out.println(key.getPublicKey().isMatchingKeyAddress(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s")));
-
-
-//        Client client = new Client("universa.local",null,TestKeys.privateKey(0));
-//        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
-//        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
+        Client client = new Client("universa.local",null,TestKeys.privateKey(0));
+        Contract ubotRegistry =  Contract.fromPackedTransaction(client.getServiceContracts().getBinaryOrThrow("ubot_registry_contract"));
+        System.out.println(client.register(ubotRegistry.getPackedTransaction(),10000));
     }
 
     @Test
