@@ -328,11 +328,11 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("initiateVoting",this::initiateVoting);
         addSecureEndpoint("voteForContract",this::voteForContract);
 
-
         addSecureEndpoint("addKeyToContract",this::addKeyToContract);
         addSecureEndpoint("getContractKeys",this::getContractKeys);
 
-
+        addSecureEndpoint("ubotStartTransaction", this::ubotStartTransaction);
+        addSecureEndpoint("ubotFinishTransaction", this::ubotFinishTransaction);
     }
 
     @Override
@@ -857,6 +857,30 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
         } else {
             throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetStorage","Either executableContractId or requestId should present");
+        }
+    }
+
+    private Binder ubotStartTransaction(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+
+        try {
+            return node.ubotStartTransaction(requestId, transactionName, session.getPublicKey());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotStartTransaction", e.getMessage());
+        }
+    }
+
+    private Binder ubotFinishTransaction(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+
+        try {
+            return node.ubotFinishTransaction(requestId, transactionName, session.getPublicKey());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotFinishTransaction", e.getMessage());
         }
     }
 

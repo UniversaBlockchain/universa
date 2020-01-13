@@ -119,7 +119,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, UBotSessionProcessor> ubotSessionProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, List<ErrorRecord>> ubotSessionErrors = new ConcurrentHashMap();
-
+    private ConcurrentHashMap<HashId, ConcurrentHashMap<String, HashId>> ubotTransactions = new ConcurrentHashMap();
 
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
@@ -1846,6 +1846,28 @@ public class Node {
                 return Binder.of("current",current,"pending",pending);
             }
             throw new IllegalArgumentException("session processor not found for " + requestId);
+        });
+    }
+
+    public Binder ubotStartTransaction(HashId requestId, String transactionName, PublicKey publicKey) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
+            if (usp != null) {
+                usp.addStartTransactionVote(transactionName, publicKey);
+                return Binder.of(transactionName, usp.getPendingTransactions(transactionName));
+            }
+            throw new IllegalArgumentException("session processor not found for " + requestId);
+        });
+    }
+
+    public Binder ubotFinishTransaction(HashId requestId, String transactionName, PublicKey publicKey) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
+            if(usp != null) {
+                usp.addFinishTransactionVote(transactionName, publicKey);
+                return usp.getSession();
+            }
+            return new Binder();
         });
     }
 
@@ -6344,6 +6366,18 @@ public class Node {
         public String getSessionQuorum() {
             lastActivityTime = ZonedDateTime.now();
             return "" + quorumSize;
+        }
+
+        public void addStartTransactionVote(String transactionName, PublicKey publicKey) {
+
+        }
+
+        public void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
+
+        }
+
+        public Binder getPendingTransactions(String transactionName) {
+            return null;
         }
 
         public void saveToLedger() {
