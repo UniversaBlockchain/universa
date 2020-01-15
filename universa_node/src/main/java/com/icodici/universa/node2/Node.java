@@ -119,7 +119,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, UBotSessionProcessor> ubotSessionProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, List<ErrorRecord>> ubotSessionErrors = new ConcurrentHashMap();
-    private ConcurrentHashMap<HashId, ConcurrentHashMap<String, HashId>> ubotTransactions = new ConcurrentHashMap();
+    private ConcurrentHashMap<HashId, ConcurrentHashMap<String, UBotTransaction>> ubotTransactions = new ConcurrentHashMap();
 
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
@@ -1854,7 +1854,7 @@ public class Node {
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if (usp != null) {
                 usp.addStartTransactionVote(transactionName, publicKey);
-                return Binder.of(transactionName, usp.getPendingTransactions(transactionName));
+                return usp.getTransactionState(transactionName);
             }
             throw new IllegalArgumentException("session processor not found for " + requestId);
         });
@@ -1865,7 +1865,7 @@ public class Node {
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if(usp != null) {
                 usp.addFinishTransactionVote(transactionName, publicKey);
-                return usp.getSession();
+                return usp.getTransactionState(transactionName);
             }
             return new Binder();
         });
@@ -5649,6 +5649,9 @@ public class Node {
         private Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
         private Map<NodeInfo,Boolean> closeVotesNodes = new ConcurrentHashMap<>();
 
+        private Map<String, Set<Integer>> transactionEntrances = new ConcurrentHashMap<>();
+        private Map<String, Set<Integer>> transactionFinishes = new ConcurrentHashMap<>();
+
         private ZonedDateTime lastActivityTime = ZonedDateTime.now();
 
         private void abortSession() {
@@ -5930,52 +5933,6 @@ public class Node {
         }
 
         private void checkVote() {
-//            if (state == Node.UBotSessionState.VOTING_REQUEST_ID) {
-//                if (requestIds.size() == network.allNodes().size() ||
-//                    (requestIds.size() >= config.getPositiveConsensus() && ZonedDateTime.now().isAfter(nodeTimeout))) {
-//
-//                    Set<HashId> variants = new HashSet<>(requestIds.values());
-//                    if (variants.size() == 1) {
-//                        requestId = variants.iterator().next();
-//                    } else {
-//                        long max = 0;
-//                        Map<HashId, Long> counts = new ConcurrentHashMap<>();
-//                        for (HashId variant: variants) {
-//                            long count = requestIds.values().stream().filter(x -> x.equals(variant)).count();
-//                            counts.put(variant, count);
-//                            if (count > max)
-//                                max = count;
-//                        }
-//
-//                        Set<HashId> maxAt = new HashSet<>();
-//                        final long top = max + requestIds.size() - network.allNodes().size();
-//                        counts.forEach((hash, count) -> {
-//                            if (count >= top)
-//                                maxAt.add(hash);
-//                        });
-//
-//                        if (maxAt.size() == 1) {
-//                            requestId = maxAt.iterator().next();
-//                        } else {
-//                            requestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
-//                        }
-//                    }
-//
-//                    ubotSessionProcessorsByRequestId.put(requestId,this);
-//                    answered.clear();
-//                    state = Node.UBotSessionState.COLLECTING_RANDOMS;
-//
-//                    voteRandom(myInfo, myRandom);
-//                    timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
-//                    nodeTimeout = null;
-//                    broadcastMyState();
-//
-//                    // register request contract
-//                    if (requestContract != null && requestContract.getId().equals(requestId))
-//                        executorService.schedule(() -> registerItem(requestContract), 0, TimeUnit.SECONDS);
-//                }
-//
-//            } else
             if (state == Node.UBotSessionState.COLLECTING_RANDOMS) {
                 if (randomNumbers.size() == network.allNodes().size() ||
                     (randomNumbers.size() >= config.getPositiveConsensus() && ZonedDateTime.now().isAfter(nodeTimeout))) {
@@ -6211,13 +6168,13 @@ public class Node {
             );
         }
 
-        public void addRequestContractSource(NodeInfo from) {
+        private void addRequestContractSource(NodeInfo from) {
             synchronized (requestContractSources) {
                 requestContractSources.add(from);
             }
         }
 
-        public Map<String, HashId> getPendingChanges(String name) {
+        private Map<String, HashId> getPendingChanges(String name) {
             lastActivityTime = ZonedDateTime.now();
             Map<Integer, HashId> res = storageUpdates.get(name);
             if(res != null) {
@@ -6229,7 +6186,7 @@ public class Node {
             }
         }
 
-        public void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) {
+        private void addStorageUpdateVote(String storageName, HashId fromValue, HashId toValue, PublicKey publicKey, boolean checkFromValue) {
             report(getLabel(), () -> concatReportMessage( "(",requestId,") addStorageUpdateVote from " , ubotsByKey.get(publicKey) , " state " , state , " " , storageName, ": ", fromValue ," -> " , toValue, " "),
                     DatagramAdapter.VerboseLevel.BASE);
 
@@ -6286,7 +6243,7 @@ public class Node {
 
         }
 
-        public void addSessionCloseVote(PublicKey publicKey, boolean finished) {
+        private void addSessionCloseVote(PublicKey publicKey, boolean finished) {
             report(getLabel(), () -> concatReportMessage( "(",requestId,") addSessionCloseVote from " , ubotsByKey.get(publicKey)),
                     DatagramAdapter.VerboseLevel.BASE);
 
@@ -6363,24 +6320,85 @@ public class Node {
             return state;
         }
 
-        public String getSessionQuorum() {
+        private String getSessionQuorum() {
             lastActivityTime = ZonedDateTime.now();
             return "" + quorumSize;
         }
 
-        public void addStartTransactionVote(String transactionName, PublicKey publicKey) {
+        private void addStartTransactionVote(String transactionName, PublicKey publicKey) {
+            report(getLabel(), () -> concatReportMessage( "(", requestId, ") addStartTransactionVote from ",
+                    ubotsByKey.get(publicKey) , " state " , state , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
+            lastActivityTime = ZonedDateTime.now();
+
+            if (state != Node.UBotSessionState.OPERATIONAL)
+                throw new IllegalStateException("UBot session for " + requestId + " is not established");
+
+            Integer ubotNumber = ubotsByKey.get(publicKey);
+            if (ubotNumber == null)
+                throw new IllegalArgumentException("Unknown UBot with key " + publicKey);
+
+            if (!sessionPool.contains(ubotNumber))
+                throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
+
+            transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
+            Set<Integer> ubots = transactionEntrances.get(transactionName);
+            ubots.add(ubotNumber);
+
+            if (ubots.size() >= quorumSize)
+                if (!getUBotTransaction(executableContractId, transactionName).voteEntrance(myInfo, requestId))
+                    ubots.clear();
+
+            saveToLedger();
         }
 
-        public void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
+        private void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
+            report(getLabel(), () -> concatReportMessage( "(", requestId, ") addFinishTransactionVote from " ,
+                    ubotsByKey.get(publicKey)), DatagramAdapter.VerboseLevel.BASE);
 
+            if (state != Node.UBotSessionState.OPERATIONAL) {
+                if (state == UBotSessionState.CLOSING)
+                    return;
+
+                throw new IllegalStateException("UBot session for " + requestId + " is not established");
+            }
+
+            Integer ubotNumber = ubotsByKey.get(publicKey);
+            if (ubotNumber == null)
+                throw new IllegalArgumentException("Unknown UBot with key " + publicKey);
+
+            if (!sessionPool.contains(ubotNumber))
+                throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
+
+            transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
+            Set<Integer> ubots = transactionFinishes.get(transactionName);
+            ubots.add(ubotNumber);
+
+//            if (ubots.size() >= quorumSize) {
+//                if (voteTransactionFinish(transactionName, myInfo, requestId)) {
+//                    if (transactionFinishBroadcasters.containsKey(transactionName))
+//                        transactionFinishBroadcasters.remove(transactionName).cancel(true);
+//
+//                    if (transactionFinishVoteExpirators.containsKey(transactionName))
+//                        transactionFinishVoteExpirators.remove(transactionName).cancel(true);
+//
+//                    ScheduledFuture<?> bcaster = executorService.scheduleAtFixedRate(() -> notifyTransactionFinishVote(transactionName), 0, 2, TimeUnit.SECONDS);
+//                    ScheduledFuture<?> canceler = executorService.schedule(() -> stopTransactionFinishVote(transactionName), 30, TimeUnit.SECONDS);
+//
+//                    transactionFinishBroadcasters.put(transactionName, bcaster);
+//                    transactionFinishVoteExpirators.put(transactionName, canceler);
+//                } else
+//                    ubots.clear();
+//            }
+//
+//            saveToLedger();
         }
 
-        public Binder getPendingTransactions(String transactionName) {
+        private Binder getTransactionState(String transactionName) {
             return null;
         }
 
-        public void saveToLedger() {
+        private void saveToLedger() {
             if (this.state == UBotSessionState.OPERATIONAL || this.state == UBotSessionState.CLOSING) {
                 Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
                 compact.id = 0; // will be generated automatically if needed
@@ -6502,8 +6520,184 @@ public class Node {
             ledger.getUbotStorages(executableContractId, storages);
             return storages;
         }
-    };
+    }
 
+    public UBotTransaction getUBotTransaction(HashId executableContractId, String transactionName) {
+        ubotTransactions.putIfAbsent(executableContractId, new ConcurrentHashMap<>());
+        ConcurrentHashMap<String, UBotTransaction> map = ubotTransactions.get(executableContractId);
 
+        map.putIfAbsent(transactionName, new UBotTransaction(executableContractId, transactionName));
+        return map.get(transactionName);
+    }
+
+    class UBotTransaction {
+
+        private HashId executableContractId;
+        private String name;
+        private HashId current = null;
+        private ConcurrentHashMap<NodeInfo, HashId> pending = new ConcurrentHashMap<>();
+        private Set<NodeInfo> finished = ConcurrentHashMap.newKeySet();
+
+        private ScheduledFuture<?> entranceBroadcaster = null;
+        private ScheduledFuture<?> entranceVoteExpirator = null;
+        private ScheduledFuture<?> finishBroadcaster = null;
+        private ScheduledFuture<?> finishVoteExpirator = null;
+
+        UBotTransaction(HashId executableContractId, String name) {
+            this.executableContractId = executableContractId;
+            this.name = name;
+        }
+
+        private boolean voteEntrance(NodeInfo nodeInfo, HashId voteRequestId) {
+            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                ") transaction: ", name, " voteEntrance from " , nodeInfo , " vote request: " + voteRequestId),
+                DatagramAdapter.VerboseLevel.BASE);
+
+            if (current != null)                    // critical section is busy already
+                return false;
+
+            if (pending.get(nodeInfo) != null)      // entrance to critical section is pending
+                return false;
+
+            pending.put(nodeInfo, voteRequestId);
+
+            if (pending.size() >= config.getPositiveConsensus()) {
+                Set<HashId> variants = new HashSet<>(pending.values());
+                HashId resultRequestId;
+                if (variants.size() == 1)
+                    resultRequestId = variants.iterator().next();
+                else {
+                    long max = 0;
+                    Map<HashId, Long> counts = new ConcurrentHashMap<>();
+                    for (HashId variant: variants) {
+                        long count = pending.values().stream().filter(x -> x.equals(variant)).count();
+                        counts.put(variant, count);
+                        if (count > max)
+                            max = count;
+                    }
+
+                    Set<HashId> maxAt = new HashSet<>();
+                    final long top = max + pending.size() - network.allNodes().size();
+                    counts.forEach((hash, count) -> {
+                        if (count >= top)
+                            maxAt.add(hash);
+                    });
+
+                    if (maxAt.size() == 1) {
+                        resultRequestId = maxAt.iterator().next();
+                    } else {
+                        resultRequestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                    }
+                }
+
+                current = resultRequestId;
+                pending.clear();
+
+                //TODO: save
+                //saveToLedger();
+            }
+
+            if (nodeInfo.equals(myInfo)) {
+                if (entranceBroadcaster != null) {
+                    entranceBroadcaster.cancel(true);
+                    entranceBroadcaster = null;
+                }
+
+                if (entranceVoteExpirator != null) {
+                    entranceVoteExpirator.cancel(true);
+                    entranceVoteExpirator = null;
+                }
+
+                entranceBroadcaster = executorService.scheduleAtFixedRate(() -> notifyEntranceVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
+                entranceVoteExpirator = executorService.schedule(this::stopEntranceVote, 30, TimeUnit.SECONDS);
+            }
+
+            return true;
+        }
+
+        private void stopEntranceVote() {
+            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") stopEntranceVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
+
+            if (entranceBroadcaster != null) {
+                entranceBroadcaster.cancel(true);
+                entranceBroadcaster = null;
+            }
+
+            if (entranceVoteExpirator != null) {
+                entranceVoteExpirator.cancel(true);
+                entranceVoteExpirator = null;
+            }
+
+            pending.clear();
+
+            //TODO: save
+            //saveToLedger();
+        }
+
+        private void notifyEntranceVote(HashId voteRequestId) {
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name));
+        }
+
+        private boolean voteFinish(NodeInfo nodeInfo, HashId voteRequestId) {
+            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") transaction: ", name, " voteFinish from " , nodeInfo , " vote request: " + voteRequestId),
+                    DatagramAdapter.VerboseLevel.BASE);
+
+            if (current == null || !current.equals(voteRequestId))      // critical section is empty or busy other request
+                return false;
+
+            finished.add(nodeInfo);
+
+            if (finished.size() >= config.getPositiveConsensus()) {
+                current = null;
+                finished.clear();
+
+                //TODO: save
+                //saveToLedger();
+            }
+
+            if (nodeInfo.equals(myInfo)) {
+                if (finishBroadcaster != null) {
+                    finishBroadcaster.cancel(true);
+                    finishBroadcaster = null;
+                }
+
+                if (finishVoteExpirator != null) {
+                    finishVoteExpirator.cancel(true);
+                    finishVoteExpirator = null;
+                }
+
+                finishBroadcaster = executorService.scheduleAtFixedRate(() -> notifyFinishVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
+                finishVoteExpirator = executorService.schedule(this::stopFinishVote, 30, TimeUnit.SECONDS);
+            }
+
+            return true;
+        }
+
+        private void stopFinishVote() {
+            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") stopFinishVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
+
+            if (finishBroadcaster != null) {
+                finishBroadcaster.cancel(true);
+                finishBroadcaster = null;
+            }
+
+            if (finishVoteExpirator != null) {
+                finishVoteExpirator.cancel(true);
+                finishVoteExpirator = null;
+            }
+
+            finished.clear();
+
+            //TODO: save
+            //saveToLedger();
+        }
+
+        private void notifyFinishVote(HashId voteRequestId) {
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name));
+        }
+    }
 
 }
