@@ -1173,4 +1173,97 @@ public class UBotSessionsTest extends BaseMainTest {
         mm.forEach(x -> x.shutdown());
     }
 
+    @Ignore
+    @Test
+    public void createTransaction() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Client client = new Client("test_node_config_v2", null, TestKeys.privateKey(1));
+
+        int quorumSize = 4;
+        int poolSize = 5;
+
+        Contract executableContract = new Contract(TestKeys.privateKey(1));
+        executableContract.getStateData().put("cloud_methods",
+                Binder.of("getRandom",
+                        Binder.of("pool",Binder.of("size",poolSize),
+                                "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js", "simple JS code");
+        executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        int COST = 3;
+        int n = 3;
+
+        List<Contract> requestContracts = new ArrayList<>();
+        List<Contract> uContracts = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            Contract requestContract = new Contract(TestKeys.privateKey(2));
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+            requestContract.getStateData().put("method_name","getRandom");
+            requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
+            requestContracts.add(requestContract);
+            Contract u = getApprovedUContract(ts);
+            u = u.createRevision(ts.myKey);
+            u.getStateData().put("transaction_units",u.getStateData().getIntOrThrow("transaction_units")-COST);
+            u.seal();
+
+            uContracts.add(u);
+            ts.uContract = null;
+        }
+
+        for (int i = 0; i < n; i++) {
+            int finalI = i;
+            Do.inParallel(()-> {
+                System.out.println(client.getClient(finalI).command("ubotCreateSessionPaid", "packedU",uContracts.get(finalI).getPackedTransaction(),"packedRequest", requestContracts.get(finalI).getPackedTransaction()));
+            });
+        }
+
+
+        /*AtomicReference<Binder> session = new AtomicReference<>();
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+
+
+        for(int i = 0; i < ts.clients.size();i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                while (true) {
+                    Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId", requestContract.getId());
+                    Thread.sleep(500);
+                    if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null) {
+                        continue;
+                    }
+                    if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                        if (readyCounter.incrementAndGet() == ts.clients.size()) {
+                            session.set(res.getBinderOrThrow("session"));
+                            readyEvent.fire();
+                        }
+                        break;
+                    }
+                }
+            }).failure(new DeferredResult.Handler() {
+                @Override
+                public void handle(Object data) {
+                    System.out.println("ERR: "+data);
+                }
+            });
+        }
+
+        readyEvent.await();
+        Thread.sleep(2000);
+        System.out.println(session);
+
+        assertEquals(ts.client.getState(u.getId()).state, ItemState.APPROVED);
+        assertEquals(ts.client.getState(ts.uContract.getId()).state, ItemState.REVOKED);
+
+        ts.shutdown();*/
+    }
+
 }
