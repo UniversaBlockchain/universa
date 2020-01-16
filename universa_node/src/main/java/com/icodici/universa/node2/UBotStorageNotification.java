@@ -83,13 +83,13 @@ public class UBotStorageNotification extends Notification {
         UBotStorageNotification that = (UBotStorageNotification) o;
 
         NodeInfo from = getFrom();
-        if (executableContractId.equals(that.executableContractId))
+        if (!executableContractId.equals(that.executableContractId))
             return false;
-        if (requestId.equals(that.requestId))
+        if (!requestId.equals(that.requestId))
             return false;
-        if (storageName.equals(that.storageName))
+        if (!storageName.equals(that.storageName))
             return false;
-        if (value.equals(that.value))
+        if (!value.equals(that.value))
             return false;
 
         return true;

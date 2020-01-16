@@ -739,6 +739,8 @@ public class Node {
             obtainUBotSessionNotification((UBotSessionNotification) notification);
         } else if (notification instanceof  UBotStorageNotification) {
             obtainUBotStorageNotification((UBotStorageNotification) notification);
+        } else if (notification instanceof  UBotTransactionNotification) {
+            obtainUBotTransactionNotification((UBotTransactionNotification) notification);
         }
     }
 
@@ -832,6 +834,25 @@ public class Node {
         }
     }
 
+    private void obtainUBotTransactionNotification(UBotTransactionNotification notification) {
+        try {
+            HashId executableContractId = notification.getExecutableContractId();
+            String transactionName = notification.getTransactionName();
+            UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
+
+            itemLock.synchronize(executableContractId, lock -> {
+                if (notification.isStart())
+                    transaction.voteEntrance(myInfo, notification.getRequestId());
+                else
+                    transaction.voteFinish(myInfo, notification.getRequestId());
+
+                return null;
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            //SystemdJournalWriter.writeException(e);
+        }
+    }
 
     /**
      * Obtained resync notification: looking for requested item and answer with it's status.
@@ -6374,24 +6395,11 @@ public class Node {
             Set<Integer> ubots = transactionFinishes.get(transactionName);
             ubots.add(ubotNumber);
 
-//            if (ubots.size() >= quorumSize) {
-//                if (voteTransactionFinish(transactionName, myInfo, requestId)) {
-//                    if (transactionFinishBroadcasters.containsKey(transactionName))
-//                        transactionFinishBroadcasters.remove(transactionName).cancel(true);
-//
-//                    if (transactionFinishVoteExpirators.containsKey(transactionName))
-//                        transactionFinishVoteExpirators.remove(transactionName).cancel(true);
-//
-//                    ScheduledFuture<?> bcaster = executorService.scheduleAtFixedRate(() -> notifyTransactionFinishVote(transactionName), 0, 2, TimeUnit.SECONDS);
-//                    ScheduledFuture<?> canceler = executorService.schedule(() -> stopTransactionFinishVote(transactionName), 30, TimeUnit.SECONDS);
-//
-//                    transactionFinishBroadcasters.put(transactionName, bcaster);
-//                    transactionFinishVoteExpirators.put(transactionName, canceler);
-//                } else
-//                    ubots.clear();
-//            }
-//
-//            saveToLedger();
+            if (ubots.size() >= quorumSize)
+                if (!getUBotTransaction(executableContractId, transactionName).voteFinish(myInfo, requestId))
+                    ubots.clear();
+
+            saveToLedger();
         }
 
         private Binder getTransactionState(String transactionName) {
@@ -6636,7 +6644,7 @@ public class Node {
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true));
         }
 
         private boolean voteFinish(NodeInfo nodeInfo, HashId voteRequestId) {
@@ -6696,7 +6704,7 @@ public class Node {
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false));
         }
     }
 
