@@ -333,6 +333,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         addSecureEndpoint("ubotStartTransaction", this::ubotStartTransaction);
         addSecureEndpoint("ubotFinishTransaction", this::ubotFinishTransaction);
+        addSecureEndpoint("ubotGetTransactionState", this::ubotGetTransactionState);
     }
 
     @Override
@@ -881,6 +882,18 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotFinishTransaction", e.getMessage());
+        }
+    }
+
+    private Binder ubotGetTransactionState(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+
+        try {
+            return node.ubotGetTransactionState(requestId, transactionName);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotGetTransactionState", e.getMessage());
         }
     }
 

@@ -842,9 +842,9 @@ public class Node {
 
             itemLock.synchronize(executableContractId, lock -> {
                 if (notification.isStart())
-                    transaction.voteEntrance(myInfo, notification.getRequestId());
+                    transaction.voteEntrance(notification.getFrom(), notification.getRequestId());
                 else
-                    transaction.voteFinish(myInfo, notification.getRequestId());
+                    transaction.voteFinish(notification.getFrom(), notification.getRequestId());
 
                 return null;
             });
@@ -1888,6 +1888,16 @@ public class Node {
                 usp.addFinishTransactionVote(transactionName, publicKey);
                 return usp.getTransactionState(transactionName);
             }
+            return new Binder();
+        });
+    }
+
+    public Binder ubotGetTransactionState(HashId requestId, String transactionName) throws Exception {
+        return itemLock.synchronize(requestId, lock ->{
+            UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
+            if(usp != null)
+                return usp.getTransactionState(transactionName);
+
             return new Binder();
         });
     }
@@ -6348,7 +6358,7 @@ public class Node {
 
         private void addStartTransactionVote(String transactionName, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addStartTransactionVote from ",
-                    ubotsByKey.get(publicKey) , " state " , state , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
+                    ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
             lastActivityTime = ZonedDateTime.now();
 
@@ -6375,7 +6385,7 @@ public class Node {
 
         private void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addFinishTransactionVote from " ,
-                    ubotsByKey.get(publicKey)), DatagramAdapter.VerboseLevel.BASE);
+                    ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
             if (state != Node.UBotSessionState.OPERATIONAL) {
                 if (state == UBotSessionState.CLOSING)
@@ -6403,7 +6413,7 @@ public class Node {
         }
 
         private Binder getTransactionState(String transactionName) {
-            return null;
+            return getUBotTransaction(executableContractId, transactionName).getState();
         }
 
         private void saveToLedger() {
@@ -6599,13 +6609,19 @@ public class Node {
                 }
 
                 current = resultRequestId;
+
+                report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
+                    DatagramAdapter.VerboseLevel.BASE);
+
                 pending.clear();
+
+                stopEntranceVote();
 
                 //TODO: save
                 //saveToLedger();
-            }
 
-            if (nodeInfo.equals(myInfo)) {
+            } else if (nodeInfo.equals(myInfo)) {
                 if (entranceBroadcaster != null) {
                     entranceBroadcaster.cancel(true);
                     entranceBroadcaster = null;
@@ -6644,6 +6660,7 @@ public class Node {
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
+            // TODO: to answer mode
             network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true));
         }
 
@@ -6661,11 +6678,15 @@ public class Node {
                 current = null;
                 finished.clear();
 
+                report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
+
+                stopFinishVote();
+
                 //TODO: save
                 //saveToLedger();
-            }
 
-            if (nodeInfo.equals(myInfo)) {
+            } else if (nodeInfo.equals(myInfo)) {
                 if (finishBroadcaster != null) {
                     finishBroadcaster.cancel(true);
                     finishBroadcaster = null;
@@ -6704,7 +6725,15 @@ public class Node {
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
+            // TODO: to answer mode
             network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false));
+        }
+
+        private Binder getState() {
+            return Binder.of(
+                "current", current,
+                "pending", pending.values(),
+                "finished", finished);
         }
     }
 
