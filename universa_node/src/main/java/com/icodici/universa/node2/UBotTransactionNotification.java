@@ -13,13 +13,15 @@ public class UBotTransactionNotification extends Notification {
     private HashId requestId;
     private String transactionName;
     private boolean start;
+    private boolean needAnswer;
 
-    public UBotTransactionNotification(NodeInfo from, HashId executableContractId, HashId requestId, String transactionName, boolean isStart) {
+    public UBotTransactionNotification(NodeInfo from, HashId executableContractId, HashId requestId, String transactionName, boolean isStart, boolean needAnswer) {
         super(from);
         this.executableContractId = executableContractId;
         this.requestId = requestId;
         this.transactionName = transactionName;
         this.start = isStart;
+        this.needAnswer = needAnswer;
     }
 
     @Override
@@ -27,7 +29,12 @@ public class UBotTransactionNotification extends Notification {
         bw.writeObject(executableContractId.getDigest());
         bw.writeObject(requestId.getDigest());
         bw.writeObject(transactionName.getBytes());
-        bw.writeObject(start ? 1 : 0);
+        int flags = 0;
+        if (start)
+            flags = flags | 1;
+        if (needAnswer)
+            flags = flags | 2;
+        bw.write(flags);
     }
 
     @Override
@@ -35,7 +42,9 @@ public class UBotTransactionNotification extends Notification {
         executableContractId = HashId.withDigest(br.readBinary());
         requestId = HashId.withDigest(br.readBinary());
         transactionName = new String(br.readBinary());
-        start = br.readInt() == 1;
+        int flags = br.readInt();
+        start = (flags & 1) > 0;
+        needAnswer = (flags & 2) > 0;
     }
 
     protected UBotTransactionNotification(NodeInfo from) throws IOException {
@@ -64,6 +73,8 @@ public class UBotTransactionNotification extends Notification {
             return false;
         if (!transactionName.equals(that.transactionName))
             return false;
+        if (needAnswer != that.needAnswer)
+            return false;
         return start == that.start;
     }
 
@@ -77,7 +88,7 @@ public class UBotTransactionNotification extends Notification {
                 + " for item: " + executableContractId
                 + " for request: " + requestId
                 + ", transactionName: " + transactionName
-                + ", isStart: " + start
+                + ", flags: " + start + " " + needAnswer
                 + "]";
     }
 
@@ -99,5 +110,9 @@ public class UBotTransactionNotification extends Notification {
 
     public boolean isStart() {
         return start;
+    }
+
+    public boolean isNeedAnswer() {
+        return needAnswer;
     }
 }

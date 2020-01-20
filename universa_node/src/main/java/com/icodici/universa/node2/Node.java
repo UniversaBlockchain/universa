@@ -840,11 +840,24 @@ public class Node {
             String transactionName = notification.getTransactionName();
             UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
 
+            //new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, true)
+
             itemLock.synchronize(executableContractId, lock -> {
                 if (notification.isStart())
                     transaction.voteEntrance(notification.getFrom(), notification.getRequestId());
                 else
                     transaction.voteFinish(notification.getFrom(), notification.getRequestId());
+
+                if (notification.isNeedAnswer()) {
+                    if (notification.isStart() && transaction.getEntranceVote() != null)
+                        network.deliver(notification.getFrom(),
+                            new UBotTransactionNotification(myInfo, executableContractId, transaction.getEntranceVote(),
+                                transactionName, notification.isStart(), false));
+                    else if (!notification.isStart() && transaction.getFinishVote() != null)
+                        network.deliver(notification.getFrom(),
+                            new UBotTransactionNotification(myInfo, executableContractId, transaction.getFinishVote(),
+                                transactionName, notification.isStart(), false));
+                }
 
                 return null;
             });
@@ -6556,6 +6569,8 @@ public class Node {
         private ConcurrentHashMap<NodeInfo, HashId> pending = new ConcurrentHashMap<>();
         private Set<NodeInfo> finished = ConcurrentHashMap.newKeySet();
 
+        private ZonedDateTime transactionTimeout;
+
         private ScheduledFuture<?> entranceBroadcaster = null;
         private ScheduledFuture<?> entranceVoteExpirator = null;
         private ScheduledFuture<?> finishBroadcaster = null;
@@ -6579,7 +6594,25 @@ public class Node {
 
             pending.put(nodeInfo, voteRequestId);
 
-            if (pending.size() >= config.getPositiveConsensus()) {
+            if (nodeInfo.equals(myInfo)) {
+                if (entranceBroadcaster != null) {
+                    entranceBroadcaster.cancel(true);
+                    entranceBroadcaster = null;
+                }
+
+                if (entranceVoteExpirator != null) {
+                    entranceVoteExpirator.cancel(true);
+                    entranceVoteExpirator = null;
+                }
+
+                entranceBroadcaster = executorService.scheduleAtFixedRate(() -> notifyEntranceVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
+                entranceVoteExpirator = executorService.schedule(this::stopEntranceVote, 30, TimeUnit.SECONDS);
+                transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+            }
+
+            if (pending.size() == network.getNodesCount() || (pending.size() >= config.getPositiveConsensus() &&
+                    transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
+
                 Set<HashId> variants = new HashSet<>(pending.values());
                 HashId resultRequestId;
                 if (variants.size() == 1)
@@ -6608,32 +6641,18 @@ public class Node {
                     }
                 }
 
+                transactionTimeout = null;
                 current = resultRequestId;
 
                 report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
                     ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
                     DatagramAdapter.VerboseLevel.BASE);
 
-                pending.clear();
-
+                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, false));
                 stopEntranceVote();
 
                 //TODO: save
                 //saveToLedger();
-
-            } else if (nodeInfo.equals(myInfo)) {
-                if (entranceBroadcaster != null) {
-                    entranceBroadcaster.cancel(true);
-                    entranceBroadcaster = null;
-                }
-
-                if (entranceVoteExpirator != null) {
-                    entranceVoteExpirator.cancel(true);
-                    entranceVoteExpirator = null;
-                }
-
-                entranceBroadcaster = executorService.scheduleAtFixedRate(() -> notifyEntranceVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
-                entranceVoteExpirator = executorService.schedule(this::stopEntranceVote, 30, TimeUnit.SECONDS);
             }
 
             return true;
@@ -6660,8 +6679,7 @@ public class Node {
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
-            // TODO: to answer mode
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, true));
         }
 
         private boolean voteFinish(NodeInfo nodeInfo, HashId voteRequestId) {
@@ -6674,19 +6692,7 @@ public class Node {
 
             finished.add(nodeInfo);
 
-            if (finished.size() >= config.getPositiveConsensus()) {
-                current = null;
-                finished.clear();
-
-                report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
-
-                stopFinishVote();
-
-                //TODO: save
-                //saveToLedger();
-
-            } else if (nodeInfo.equals(myInfo)) {
+            if (nodeInfo.equals(myInfo)) {
                 if (finishBroadcaster != null) {
                     finishBroadcaster.cancel(true);
                     finishBroadcaster = null;
@@ -6699,6 +6705,23 @@ public class Node {
 
                 finishBroadcaster = executorService.scheduleAtFixedRate(() -> notifyFinishVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
                 finishVoteExpirator = executorService.schedule(this::stopFinishVote, 30, TimeUnit.SECONDS);
+                transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+            }
+
+            if (finished.size() == network.getNodesCount() || (finished.size() >= config.getPositiveConsensus() &&
+                    transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
+
+                transactionTimeout = null;
+                current = null;
+
+                report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
+                    ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
+
+                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, false));
+                stopFinishVote();
+
+                //TODO: save
+                //saveToLedger();
             }
 
             return true;
@@ -6725,15 +6748,31 @@ public class Node {
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
-            // TODO: to answer mode
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, true));
         }
 
         private Binder getState() {
+            Map<Integer, HashId> formattedPending = new HashMap<>();
+            Set<Integer> formattedFinished = new HashSet<>();
+
+            pending.forEach((k, v) -> formattedPending.put(k.getNumber(), v));
+            finished.forEach(n -> formattedFinished.add(n.getNumber()));
+
             return Binder.of(
                 "current", current,
-                "pending", pending.values(),
-                "finished", finished);
+                "pending", formattedPending,
+                "finished", formattedFinished);
+        }
+
+        private HashId getEntranceVote() {
+            return pending.get(myInfo);
+        }
+
+        private HashId getFinishVote() {
+            if (finished.contains(myInfo))
+                return current;
+            else
+                return null;
         }
     }
 

@@ -1194,7 +1194,7 @@ public class UBotSessionsTest extends BaseMainTest {
         assertEquals(ir.state, ItemState.APPROVED);
 
         int COST = 3;
-        int n = 1;
+        int n = 3;
 
         List<Contract> requestContracts = new ArrayList<>();
         List<Contract> uContracts = new ArrayList<>();
@@ -1257,6 +1257,7 @@ public class UBotSessionsTest extends BaseMainTest {
 
         readyEvent.await();
 
+        ConcurrentHashMap<Integer, Client> allClients = new ConcurrentHashMap<>();
         ArrayList<Set<Client>> allQuorumClients = new ArrayList<>();
 
         for (int i = 0; i < n; i++) {
@@ -1269,7 +1270,11 @@ public class UBotSessionsTest extends BaseMainTest {
             Set<Client> quorumClients = new HashSet<>();
             poolQuorum.forEach(p -> {
                 try {
-                    quorumClients.add(new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(p)));
+                    Client c = allClients.get(p);
+                    if (c == null)
+                        c = new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(p));
+                    allClients.put(p, c);
+                    quorumClients.add(c);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
