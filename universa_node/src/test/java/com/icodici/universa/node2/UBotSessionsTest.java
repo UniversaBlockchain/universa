@@ -1172,7 +1172,6 @@ public class UBotSessionsTest extends BaseMainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Ignore
     @Test
     public void concurrentTransactions() throws Exception {
         TestSpace ts = prepareTestSpace();
@@ -1324,9 +1323,6 @@ public class UBotSessionsTest extends BaseMainTest {
         }
 
         readyEvent2.await();
-
-//        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-//        Thread.sleep(1000000);
 
         ts.shutdown();
     }

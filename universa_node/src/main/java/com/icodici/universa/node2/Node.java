@@ -6557,17 +6557,21 @@ public class Node {
         ubotTransactions.putIfAbsent(executableContractId, new ConcurrentHashMap<>());
         ConcurrentHashMap<String, UBotTransaction> map = ubotTransactions.get(executableContractId);
 
-        map.putIfAbsent(transactionName, new UBotTransaction(executableContractId, transactionName));
-        return map.get(transactionName);
+        return map.computeIfAbsent(transactionName, key -> {
+            UBotTransaction transaction = new UBotTransaction(executableContractId, transactionName);
+            transaction.load();
+
+            return transaction;
+        });
     }
 
-    class UBotTransaction {
+    public class UBotTransaction {
 
         private HashId executableContractId;
         private String name;
         private HashId current = null;
-        private ConcurrentHashMap<NodeInfo, HashId> pending = new ConcurrentHashMap<>();
-        private Set<NodeInfo> finished = ConcurrentHashMap.newKeySet();
+        private ConcurrentHashMap<Integer, HashId> pending = new ConcurrentHashMap<>();
+        private Set<Integer> finished = ConcurrentHashMap.newKeySet();
 
         private ZonedDateTime transactionTimeout;
 
@@ -6589,10 +6593,10 @@ public class Node {
             if (current != null)                    // critical section is busy already
                 return false;
 
-            if (pending.get(nodeInfo) != null)      // entrance to critical section is pending
+            if (pending.get(nodeInfo.getNumber()) != null)      // entrance to critical section is pending
                 return false;
 
-            pending.put(nodeInfo, voteRequestId);
+            pending.put(nodeInfo.getNumber(), voteRequestId);
 
             if (nodeInfo.equals(myInfo)) {
                 if (entranceBroadcaster != null) {
@@ -6651,8 +6655,7 @@ public class Node {
                 network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, false));
                 stopEntranceVote();
 
-                //TODO: save
-                //saveToLedger();
+                save();
             }
 
             return true;
@@ -6674,8 +6677,7 @@ public class Node {
 
             pending.clear();
 
-            //TODO: save
-            //saveToLedger();
+            save();
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
@@ -6690,7 +6692,7 @@ public class Node {
             if (current == null || !current.equals(voteRequestId))      // critical section is empty or busy other request
                 return false;
 
-            finished.add(nodeInfo);
+            finished.add(nodeInfo.getNumber());
 
             if (nodeInfo.equals(myInfo)) {
                 if (finishBroadcaster != null) {
@@ -6720,8 +6722,7 @@ public class Node {
                 network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, false));
                 stopFinishVote();
 
-                //TODO: save
-                //saveToLedger();
+                save();
             }
 
             return true;
@@ -6743,8 +6744,7 @@ public class Node {
 
             finished.clear();
 
-            //TODO: save
-            //saveToLedger();
+            save();
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
@@ -6752,27 +6752,46 @@ public class Node {
         }
 
         private Binder getState() {
-            Map<Integer, HashId> formattedPending = new HashMap<>();
-            Set<Integer> formattedFinished = new HashSet<>();
-
-            pending.forEach((k, v) -> formattedPending.put(k.getNumber(), v));
-            finished.forEach(n -> formattedFinished.add(n.getNumber()));
+//            Map<Integer, HashId> formattedPending = new HashMap<>();
+//            Set<Integer> formattedFinished = new HashSet<>();
+//            pending.forEach((k, v) -> formattedPending.put(k, v));
+//            finished.forEach(n -> formattedFinished.add(n));
 
             return Binder.of(
                 "current", current,
-                "pending", formattedPending,
-                "finished", formattedFinished);
+                "pending", pending,
+                "finished", finished);
         }
 
         private HashId getEntranceVote() {
-            return pending.get(myInfo);
+            return pending.get(myInfo.getNumber());
         }
 
         private HashId getFinishVote() {
-            if (finished.contains(myInfo))
+            if (finished.contains(myInfo.getNumber()))
                 return current;
             else
                 return null;
+        }
+
+        private void save() {
+            ledger.saveUbotTransaction(executableContractId, name, getState());
+        }
+
+        private void load() {
+            Binder data = ledger.loadUbotTransaction(executableContractId, name);
+            if (data == null)
+                return;
+
+            current = (HashId) data.get("current");
+
+            Map<Long, String> pendingData = (Map<Long, String>) data.get("pending");
+            List<Long> finishedData = (List<Long>) data.get("finished");
+
+            pending.clear();
+            finished.clear();
+            pendingData.forEach((k, v) -> pending.put(k.intValue(), HashId.withDigest(v)));
+            finishedData.forEach(k -> finished.add(k.intValue()));
         }
     }
 
