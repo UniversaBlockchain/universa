@@ -292,7 +292,7 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(config.isPermanetMode()),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStoragesAndSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.clearExpiredNameRecords(config.getHoldDuration()),config.getExpriedNamesCleanupInterval().getSeconds(),config.getExpriedNamesCleanupInterval().getSeconds(),TimeUnit.SECONDS);
-        lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveOrExpiredUbotSessionProcessors(), 1, 30, TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> unloadInactiveOrExpiredUbotSessionProcessorsAndTransactions(), 1, 30, TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotSessions(), 1, 120, TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotStorages(), 1, 120, TimeUnit.SECONDS);
     }
@@ -6448,11 +6448,7 @@ public class Node {
         }
     }
 
-
-
-
-
-    private void unloadInactiveOrExpiredUbotSessionProcessors() {
+    private void unloadInactiveOrExpiredUbotSessionProcessorsAndTransactions() {
         ubotSessionProcessors.forEach((k, usp) -> {
             if(usp.expiresAt.isBefore(ZonedDateTime.now())) {
                 ledger.deleteUbotSession(usp.executableContractId);
@@ -6460,6 +6456,19 @@ public class Node {
             } else if (usp.lastActivityTime.plusSeconds(config.getUbotSessionLifeTime().getSeconds()).isBefore(ZonedDateTime.now())) {
                 usp.removeSelf();
             }
+        });
+
+        ubotTransactions.forEach((executableId, transactions) -> {
+            Set<String> toRemove = new HashSet<>();
+            transactions.forEach((transactionName, transaction) -> {
+                Binder b = transaction.getState();
+                if (b.get("current") == null &&
+                    ((Map<Integer, HashId>) b.get("pending")).isEmpty() &&
+                    ((Set<Integer>) b.get("finished")).isEmpty())
+                    toRemove.add(transactionName);
+            });
+
+            toRemove.forEach(transactions::remove);
         });
     }
 
@@ -6652,11 +6661,11 @@ public class Node {
                     ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
                     DatagramAdapter.VerboseLevel.BASE);
 
-                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, false));
+                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, pending.get(myInfo.getNumber()), name, true, false));
                 stopEntranceVote();
-
-                save();
             }
+
+            save();
 
             return true;
         }
@@ -6721,9 +6730,9 @@ public class Node {
 
                 network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, false));
                 stopFinishVote();
-
-                save();
             }
+
+            save();
 
             return true;
         }
@@ -6785,12 +6794,12 @@ public class Node {
 
             current = (HashId) data.get("current");
 
-            Map<Long, String> pendingData = (Map<Long, String>) data.get("pending");
+            Map<String, String> pendingData = (Map<String, String>) data.get("pending");
             List<Long> finishedData = (List<Long>) data.get("finished");
 
             pending.clear();
             finished.clear();
-            pendingData.forEach((k, v) -> pending.put(k.intValue(), HashId.withDigest(v)));
+            pendingData.forEach((k, v) -> pending.put(Integer.parseInt(k), HashId.withDigest(v)));
             finishedData.forEach(k -> finished.add(k.intValue()));
         }
     }

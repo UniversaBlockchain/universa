@@ -27,13 +27,15 @@ import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.icodici.universa.node2.network.VerboseLevel.BASE;
-import static com.icodici.universa.node2.network.VerboseLevel.NOTHING;
+import static com.icodici.universa.node2.network.VerboseLevel.*;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class UBotSessionsTest extends BaseMainTest {
 
@@ -1175,7 +1177,8 @@ public class UBotSessionsTest extends BaseMainTest {
     @Test
     public void concurrentTransactions() throws Exception {
         TestSpace ts = prepareTestSpace();
-        ts.nodes.forEach(m->m.node.setVerboseLevel(BASE));
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(DETAILED));
+        //ts.nodes.forEach(m->m.node.setNeworkVerboseLevel(DETAILED));
 
         int quorumSize = 4;
         int poolSize = 5;
@@ -1315,6 +1318,9 @@ public class UBotSessionsTest extends BaseMainTest {
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                readyEvent2.fire();
                             }
                         }
                     });
@@ -1322,7 +1328,43 @@ public class UBotSessionsTest extends BaseMainTest {
             });
         }
 
-        readyEvent2.await();
+        Client checker = new Client("./src/test_node_config_v2/test_node_config_v2.json",null, TestKeys.privateKey(3));
+
+        // check transaction status and wait transaction requests
+        int wrongs = 0;
+        while (!readyEvent2.isFired()) {
+            if (wrongs == 0)
+                Thread.sleep(500);
+
+            HashId transactionRequest = null;
+            boolean wrong = false;
+            for (int x = 0; x < checker.size(); x++) {
+                Binder status = checker.getClient(x).command("ubotGetTransactionState",
+                        "requestId", requestContracts.get(0).getId(),
+                        "transactionName", "transaction");
+
+                System.out.println("Checker: " + checker.getClient(x).getNodeNumber() + " " + status);
+
+                if (status.get("current") != null) {
+                    if (transactionRequest == null)
+                        transactionRequest = (HashId) status.get("current");
+                    else if (!transactionRequest.equals(status.get("current"))) {
+                        System.err.println("Wrong: " + transactionRequest + " != " + status.get("current"));
+                        wrong = true;
+                        break;
+                    }
+                }
+            }
+
+            if (wrong)
+                wrongs++;
+            else
+                wrongs = 0;
+
+            assertTrue(wrongs < 3);
+        }
+
+        assertTrue(readyCounter2.incrementAndGet() >= n * quorumSize * checker.size());
 
         ts.shutdown();
     }
