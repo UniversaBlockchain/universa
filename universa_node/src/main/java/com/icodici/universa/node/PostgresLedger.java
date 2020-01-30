@@ -3160,4 +3160,70 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public void saveUbotTransaction(HashId executableContractId, String transactionName, Binder state) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement(
+                "insert into ubot_transaction(" +
+                            "executable_contract_id," +
+                            "transaction_name," +
+                            "current_session," +
+                            "pending," +
+                            "finished) " +
+                        "values(?,?,?,?::json,?::json) " +
+                        "on conflict(executable_contract_id, transaction_name) do update set " +
+                            "current_session = excluded.current_session," +
+                            "pending = excluded.pending," +
+                            "finished = excluded.finished;"
+            );
+            Map<Integer, String> pending_b64 = new ConcurrentHashMap<>();
+            ((Map<Integer, HashId>) state.get("pending")).forEach((k, v) -> pending_b64.put(k, v.toBase64String()));
+            HashId current = (HashId) state.get("current");
+
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, transactionName);
+            if (current != null)
+                statement.setBytes(3, current.getDigest());
+            else
+                statement.setNull(3, Types.VARBINARY);
+            statement.setString(4, JsonTool.toJsonString(pending_b64));
+            statement.setString(5, JsonTool.toJsonString(state.get("finished")));
+
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotTransaction failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotTransaction failed:" + e);
+        }
+    }
+
+    @Override
+    public Binder loadUbotTransaction(HashId executableContractId, String transactionName) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_transaction where executable_contract_id=? AND transaction_name=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, transactionName);
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null || !rs.next())
+                return null;
+
+            Binder res = new Binder();
+            byte[] hash = rs.getBytes("current_session");
+            res.set("current", rs.wasNull() ? null : HashId.withDigest(hash));
+            res.set("pending", JsonTool.fromJson(rs.getString("pending")));
+            res.set("finished", JsonTool.fromJson(rs.getString("finished")));
+
+            return res;
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotTransaction failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotTransaction failed: " + e);
+        }
+    }
 }

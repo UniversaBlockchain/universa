@@ -10,6 +10,7 @@ import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeStats;
 import com.icodici.universa.node2.VoteInfo;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Ut;
@@ -1157,4 +1158,27 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(null, ledger.getUbotStorageValue(executableContractId, storageName));
     }
 
+    @Test
+    public void ubotTransactionTest() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        String transactionName = "trans";
+        HashId current = HashId.createRandom();
+        HashId pend1 = HashId.createRandom();
+        HashId pend4 = HashId.createRandom();
+        Map<Integer, HashId> pending = new ConcurrentHashMap<>();
+        Set<Integer> finished = ConcurrentHashMap.newKeySet();
+        pending.put(1, pend1);
+        pending.put(4, pend4);
+        Binder state = Binder.of("current", current, "pending", pending, "finished", finished);
+
+        ledger.saveUbotTransaction(executableContractId, transactionName, state);
+
+        Binder loaded = ledger.loadUbotTransaction(executableContractId, transactionName);
+
+        assertEquals(loaded.get("current"), current);
+        assertEquals(((Map)loaded.get("pending")).get("1"), pend1.toBase64String());
+        assertEquals(((Map)loaded.get("pending")).get("4"), pend4.toBase64String());
+        assertEquals(((Map)loaded.get("pending")).size(), 2);
+        assertEquals(((List)loaded.get("finished")).size(), 0);
+    }
 }

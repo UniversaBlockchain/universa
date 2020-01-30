@@ -31,14 +31,16 @@ public class UBotStorageNotification extends Notification {
     private static final int CODE_UBOT_STORAGE_NOTIFICATION = 6;
     private HashId value;
     private HashId executableContractId;
+    private HashId requestId;
     private String storageName;
     private boolean hasConsensus;
 
 
-    public UBotStorageNotification(NodeInfo from, HashId executableContractId, String storageName, HashId toValue, boolean hasConsensus) {
+    public UBotStorageNotification(NodeInfo from, HashId executableContractId, HashId requestId, String storageName, HashId toValue, boolean hasConsensus) {
         super(from);
         this.hasConsensus = hasConsensus;
         this.executableContractId = executableContractId;
+        this.requestId = requestId;
         this.storageName = storageName;
         this.value = toValue;
     }
@@ -46,6 +48,7 @@ public class UBotStorageNotification extends Notification {
     @Override
     protected void writeTo(Boss.Writer bw) throws IOException {
         bw.writeObject(executableContractId.getDigest());
+        bw.writeObject(requestId.getDigest());
         bw.writeObject(storageName.getBytes());
         bw.writeObject(value.getDigest());
         bw.writeObject(hasConsensus ? 1 : 0);
@@ -54,6 +57,7 @@ public class UBotStorageNotification extends Notification {
     @Override
     protected void readFrom(Boss.Reader br) throws IOException {
         executableContractId = HashId.withDigest(br.readBinary());
+        requestId = HashId.withDigest(br.readBinary());
         storageName = new String(br.readBinary());
         value = HashId.withDigest(br.readBinary());
         hasConsensus = br.readInt() == 1;
@@ -79,9 +83,14 @@ public class UBotStorageNotification extends Notification {
         UBotStorageNotification that = (UBotStorageNotification) o;
 
         NodeInfo from = getFrom();
-        if (executableContractId.equals(that.executableContractId)) return false;
-        if (storageName.equals(that.storageName)) return false;
-        if (value.equals(that.value)) return false;
+        if (!executableContractId.equals(that.executableContractId))
+            return false;
+        if (!requestId.equals(that.requestId))
+            return false;
+        if (!storageName.equals(that.storageName))
+            return false;
+        if (!value.equals(that.value))
+            return false;
 
         return true;
     }
@@ -94,6 +103,7 @@ public class UBotStorageNotification extends Notification {
     public String toString() {
         return "[UBotStorageNotification from " + getFrom()
                 + " for item: " + executableContractId
+                + " for request: " + requestId
                 + ", storageName: " + storageName
                 + ", value: " + value
                 + "]";
@@ -105,6 +115,10 @@ public class UBotStorageNotification extends Notification {
 
     public HashId getExecutableContractId() {
         return executableContractId;
+    }
+
+    public HashId getRequestId() {
+        return requestId;
     }
 
     public String getStorageName() {

@@ -193,6 +193,14 @@ public class NetworkV2 extends Network {
                         " SN ",
                         ((UBotSessionNotification)notification).toString()),
                         DatagramAdapter.VerboseLevel.DETAILED);
+            } else if(notification instanceof UBotTransactionNotification) {
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " TN ",
+                        ((UBotTransactionNotification)notification).toString()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else {
                 report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
             }

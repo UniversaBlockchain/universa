@@ -28,7 +28,7 @@ public class ConnectivityNotification extends Notification {
      * @return
      */
 
-    private static final int CODE_CONNECTIVITY_NOTIFICATION = 7;
+    private static final int CODE_CONNECTIVITY_NOTIFICATION = 8;
     private Set<Integer> unreachableNodes;
 
 

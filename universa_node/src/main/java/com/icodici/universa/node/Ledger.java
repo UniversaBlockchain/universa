@@ -297,4 +297,7 @@ public interface Ledger {
     void clearExpiredNameRecords(Duration holdDuration);
 
     void cleanup(boolean isPermanetMode);
+
+    void saveUbotTransaction(HashId executableContractId, String transactionName, Binder state);
+    Binder loadUbotTransaction(HashId executableContractId, String transactionName);
 }
