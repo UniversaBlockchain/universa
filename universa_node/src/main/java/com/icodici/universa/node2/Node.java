@@ -6428,7 +6428,8 @@ public class Node {
                         transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
                         Set<Integer> ubots = transactionEntrances.get(transactionName);
 
-                        if (getUBotTransaction(executableContractId, transactionName).getState().get("current") == null) {
+                        UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
+                        if (transaction.getState().get("current") == null && !requestId.equals(transaction.getPending(myInfo.getNumber()))) {
                             ubots.add(ubotNumber);
 
                             if (ubots.size() >= quorumSize) {
@@ -6469,8 +6470,9 @@ public class Node {
                         transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
                         Set<Integer> ubots = transactionFinishes.get(transactionName);
 
-                        HashId current = (HashId) getUBotTransaction(executableContractId, transactionName).getState().get("current");
-                        if (current != null && current.equals(requestId)) {
+                        UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
+                        HashId current = (HashId) transaction.getState().get("current");
+                        if (requestId.equals(current) && !transaction.getFinished(myInfo.getNumber())) {
                             ubots.add(ubotNumber);
 
                             if (ubots.size() >= quorumSize) {
@@ -6857,6 +6859,14 @@ public class Node {
                 "pending", pending,
                 "finished", finished,
                 "gotConsensus", gotConsensus);
+        }
+
+        private HashId getPending(int nodeNumber) {
+            return pending.get(nodeNumber);
+        }
+
+        private boolean getFinished(int nodeNumber) {
+            return finished.contains(nodeNumber);
         }
 
         private void save() {

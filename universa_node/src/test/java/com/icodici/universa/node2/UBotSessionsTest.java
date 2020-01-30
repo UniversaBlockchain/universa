@@ -1370,6 +1370,7 @@ public class UBotSessionsTest extends BaseMainTest {
         ts.shutdown();
     }
 
+    @Ignore
     @Test
     public void QuickConcurrentTransactions() throws Exception {
         TestSpace ts = prepareTestSpace();
@@ -1569,7 +1570,7 @@ public class UBotSessionsTest extends BaseMainTest {
             assertTrue(wrongs < 3);
         }
 
-        assertTrue(readyCounter2.incrementAndGet() >= n * quorumSize * checker.size());
+        assertTrue(readyCounter2.get() >= n * quorumSize * checker.size());
 
         ts.shutdown();
     }
