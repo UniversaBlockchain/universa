@@ -13,15 +13,15 @@ public class UBotTransactionNotification extends Notification {
     private HashId requestId;
     private String transactionName;
     private boolean start;
-    private boolean needAnswer;
+    private boolean hasConsensus;
 
-    public UBotTransactionNotification(NodeInfo from, HashId executableContractId, HashId requestId, String transactionName, boolean isStart, boolean needAnswer) {
+    public UBotTransactionNotification(NodeInfo from, HashId executableContractId, HashId requestId, String transactionName, boolean isStart, boolean hasConsensus) {
         super(from);
         this.executableContractId = executableContractId;
         this.requestId = requestId;
         this.transactionName = transactionName;
         this.start = isStart;
-        this.needAnswer = needAnswer;
+        this.hasConsensus = hasConsensus;
     }
 
     @Override
@@ -32,7 +32,7 @@ public class UBotTransactionNotification extends Notification {
         int flags = 0;
         if (start)
             flags = flags | 1;
-        if (needAnswer)
+        if (hasConsensus)
             flags = flags | 2;
         bw.write(flags);
     }
@@ -44,7 +44,7 @@ public class UBotTransactionNotification extends Notification {
         transactionName = new String(br.readBinary());
         int flags = br.readInt();
         start = (flags & 1) > 0;
-        needAnswer = (flags & 2) > 0;
+        hasConsensus = (flags & 2) > 0;
     }
 
     protected UBotTransactionNotification(NodeInfo from) throws IOException {
@@ -73,7 +73,7 @@ public class UBotTransactionNotification extends Notification {
             return false;
         if (!transactionName.equals(that.transactionName))
             return false;
-        if (needAnswer != that.needAnswer)
+        if (hasConsensus != that.hasConsensus)
             return false;
         return start == that.start;
     }
@@ -88,7 +88,7 @@ public class UBotTransactionNotification extends Notification {
                 + " for item: " + executableContractId
                 + " for request: " + requestId
                 + ", transactionName: " + transactionName
-                + ", flags: " + start + " " + needAnswer
+                + ", flags: " + start + " " + hasConsensus
                 + "]";
     }
 
@@ -112,7 +112,7 @@ public class UBotTransactionNotification extends Notification {
         return start;
     }
 
-    public boolean isNeedAnswer() {
-        return needAnswer;
+    public boolean hasConsensus() {
+        return hasConsensus;
     }
 }

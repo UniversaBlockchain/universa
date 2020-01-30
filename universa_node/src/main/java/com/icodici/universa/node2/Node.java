@@ -889,23 +889,12 @@ public class Node {
             String transactionName = notification.getTransactionName();
             UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
 
-            //new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, true)
-
             itemLock.synchronize(executableContractId, lock -> {
-                if (notification.isStart())
-                    transaction.voteEntrance(notification.getFrom(), notification.getRequestId());
-                else
-                    transaction.voteFinish(notification.getFrom(), notification.getRequestId());
-
-                if (notification.isNeedAnswer()) {
-                    if (notification.isStart() && transaction.getEntranceVote() != null)
-                        network.deliver(notification.getFrom(),
-                                new UBotTransactionNotification(myInfo, executableContractId, transaction.getEntranceVote(),
-                                        transactionName, notification.isStart(), false));
-                    else if (!notification.isStart() && transaction.getFinishVote() != null)
-                        network.deliver(notification.getFrom(),
-                                new UBotTransactionNotification(myInfo, executableContractId, transaction.getFinishVote(),
-                                        transactionName, notification.isStart(), false));
+                synchronized (ubotTransactions) {
+                    if (notification.isStart())
+                        transaction.voteEntrance(notification.getFrom(), notification.getRequestId(), notification.hasConsensus());
+                    else
+                        transaction.voteFinish(notification.getFrom(), notification.getRequestId(), notification.hasConsensus());
                 }
 
                 return null;
@@ -6433,15 +6422,27 @@ public class Node {
             if (!sessionPool.contains(ubotNumber))
                 throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
 
-            transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
-            Set<Integer> ubots = transactionEntrances.get(transactionName);
-            ubots.add(ubotNumber);
+            try {
+                ubotLock.synchronize(requestId, lock -> {
+                    synchronized (ubotTransactions) {
+                        transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
+                        Set<Integer> ubots = transactionEntrances.get(transactionName);
 
-            if (ubots.size() >= quorumSize)
-                if (!getUBotTransaction(executableContractId, transactionName).voteEntrance(myInfo, requestId))
-                    ubots.clear();
+                        if (getUBotTransaction(executableContractId, transactionName).getState().get("current") == null) {
+                            ubots.add(ubotNumber);
 
-            saveToLedger();
+                            if (ubots.size() >= quorumSize) {
+                                getUBotTransaction(executableContractId, transactionName).voteEntrance(myInfo, requestId, false);
+                                ubots.clear();
+                            }
+                        }
+                    }
+
+                    return null;
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         private void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
@@ -6462,15 +6463,28 @@ public class Node {
             if (!sessionPool.contains(ubotNumber))
                 throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
 
-            transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
-            Set<Integer> ubots = transactionFinishes.get(transactionName);
-            ubots.add(ubotNumber);
+            try {
+                ubotLock.synchronize(requestId, lock -> {
+                    synchronized (ubotTransactions) {
+                        transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
+                        Set<Integer> ubots = transactionFinishes.get(transactionName);
 
-            if (ubots.size() >= quorumSize)
-                if (!getUBotTransaction(executableContractId, transactionName).voteFinish(myInfo, requestId))
-                    ubots.clear();
+                        HashId current = (HashId) getUBotTransaction(executableContractId, transactionName).getState().get("current");
+                        if (current != null && current.equals(requestId)) {
+                            ubots.add(ubotNumber);
 
-            saveToLedger();
+                            if (ubots.size() >= quorumSize) {
+                                getUBotTransaction(executableContractId, transactionName).voteFinish(myInfo, requestId, false);
+                                ubots.clear();
+                            }
+                        }
+                    }
+
+                    return null;
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         private Binder getTransactionState(String transactionName) {
@@ -6506,18 +6520,20 @@ public class Node {
             }
         });
 
-        ubotTransactions.forEach((executableId, transactions) -> {
-            Set<String> toRemove = new HashSet<>();
-            transactions.forEach((transactionName, transaction) -> {
-                Binder b = transaction.getState();
-                if (b.get("current") == null &&
-                    ((Map<Integer, HashId>) b.get("pending")).isEmpty() &&
-                    ((Set<Integer>) b.get("finished")).isEmpty())
-                    toRemove.add(transactionName);
-            });
+        synchronized (ubotTransactions) {
+            ubotTransactions.forEach((executableId, transactions) -> {
+                Set<String> toRemove = new HashSet<>();
+                transactions.forEach((transactionName, transaction) -> {
+                    Binder b = transaction.getState();
+                    if (b.get("current") == null &&
+                            ((Map<Integer, HashId>) b.get("pending")).isEmpty() &&
+                            ((Set<Integer>) b.get("finished")).isEmpty())
+                        toRemove.add(transactionName);
+                });
 
-            toRemove.forEach(transactions::remove);
-        });
+                toRemove.forEach(transactions::remove);
+            });
+        }
     }
 
     private UBotSessionProcessor loadUBotSessionProcessorFromLedger(HashId executableContractId) {
@@ -6629,6 +6645,7 @@ public class Node {
         private HashId current = null;
         private ConcurrentHashMap<Integer, HashId> pending = new ConcurrentHashMap<>();
         private Set<Integer> finished = ConcurrentHashMap.newKeySet();
+        private Set<Integer> gotConsensus = ConcurrentHashMap.newKeySet();
 
         private ZonedDateTime transactionTimeout;
 
@@ -6642,80 +6659,91 @@ public class Node {
             this.name = name;
         }
 
-        private boolean voteEntrance(NodeInfo nodeInfo, HashId voteRequestId) {
-            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                ") transaction: ", name, " voteEntrance from " , nodeInfo , " vote request: " + voteRequestId),
-                DatagramAdapter.VerboseLevel.BASE);
+        private void voteEntrance(NodeInfo nodeInfo, HashId voteRequestId, boolean hasConsensus) {
+            synchronized (this) {
+                report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                        ") transaction: ", name, " voteEntrance from ", nodeInfo, " vote request: " + voteRequestId),
+                        DatagramAdapter.VerboseLevel.BASE);
 
-            if (current != null)                    // critical section is busy already
-                return false;
+                if (current != null)                    // critical section is busy already
+                    return;
 
-            if (pending.get(nodeInfo.getNumber()) != null)      // entrance to critical section is pending
-                return false;
+                if (pending.get(nodeInfo.getNumber()) != null && !pending.get(nodeInfo.getNumber()).equals(voteRequestId))      // entrance to critical section is pending
+                    return;
 
-            pending.put(nodeInfo.getNumber(), voteRequestId);
+                pending.put(nodeInfo.getNumber(), voteRequestId);
+                if (hasConsensus)
+                    gotConsensus.add(nodeInfo.getNumber());
 
-            if (nodeInfo.equals(myInfo)) {
-                if (entranceBroadcaster != null) {
-                    entranceBroadcaster.cancel(true);
-                    entranceBroadcaster = null;
-                }
-
-                if (entranceVoteExpirator != null) {
-                    entranceVoteExpirator.cancel(true);
-                    entranceVoteExpirator = null;
-                }
-
-                entranceBroadcaster = executorService.scheduleAtFixedRate(() -> notifyEntranceVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
-                entranceVoteExpirator = executorService.schedule(this::stopEntranceVote, 30, TimeUnit.SECONDS);
-                transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
-            }
-
-            if (pending.size() == network.getNodesCount() || (pending.size() >= config.getPositiveConsensus() &&
-                    transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
-
-                Set<HashId> variants = new HashSet<>(pending.values());
-                HashId resultRequestId;
-                if (variants.size() == 1)
-                    resultRequestId = variants.iterator().next();
-                else {
-                    long max = 0;
-                    Map<HashId, Long> counts = new ConcurrentHashMap<>();
-                    for (HashId variant: variants) {
-                        long count = pending.values().stream().filter(x -> x.equals(variant)).count();
-                        counts.put(variant, count);
-                        if (count > max)
-                            max = count;
+                if (nodeInfo.equals(myInfo)) {
+                    if (entranceBroadcaster != null) {
+                        entranceBroadcaster.cancel(true);
+                        entranceBroadcaster = null;
                     }
 
-                    Set<HashId> maxAt = new HashSet<>();
-                    final long top = max + pending.size() - network.allNodes().size();
-                    counts.forEach((hash, count) -> {
-                        if (count >= top)
-                            maxAt.add(hash);
-                    });
-
-                    if (maxAt.size() == 1) {
-                        resultRequestId = maxAt.iterator().next();
-                    } else {
-                        resultRequestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                    if (entranceVoteExpirator != null) {
+                        entranceVoteExpirator.cancel(true);
+                        entranceVoteExpirator = null;
                     }
+
+                    entranceBroadcaster = executorService.scheduleAtFixedRate(() -> notifyEntranceVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
+                    entranceVoteExpirator = executorService.schedule(this::stopEntranceVote, 30, TimeUnit.SECONDS);
+                    transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
                 }
 
-                transactionTimeout = null;
-                current = resultRequestId;
+                if (pending.size() == network.getNodesCount() || (pending.size() >= config.getPositiveConsensus() &&
+                        transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
 
-                report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
-                    DatagramAdapter.VerboseLevel.BASE);
+                    // if all pending got consensus
+                    if (gotConsensus.containsAll(pending.keySet())) {
+                        Set<HashId> variants = new HashSet<>(pending.values());
+                        HashId resultRequestId;
+                        if (variants.size() == 1)
+                            resultRequestId = variants.iterator().next();
+                        else {
+                            long max = 0;
+                            Map<HashId, Long> counts = new ConcurrentHashMap<>();
+                            for (HashId variant : variants) {
+                                long count = pending.values().stream().filter(x -> x.equals(variant)).count();
+                                counts.put(variant, count);
+                                if (count > max)
+                                    max = count;
+                            }
 
-                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, pending.get(myInfo.getNumber()), name, true, false));
-                stopEntranceVote();
+                            Set<HashId> maxAt = new HashSet<>();
+                            final long top = max + pending.size() - network.allNodes().size();
+                            counts.forEach((hash, count) -> {
+                                if (count >= top)
+                                    maxAt.add(hash);
+                            });
+
+                            if (maxAt.size() == 1) {
+                                resultRequestId = maxAt.iterator().next();
+                            } else {
+                                resultRequestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                            }
+                        }
+
+                        transactionTimeout = null;
+                        current = resultRequestId;
+
+                        report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                                ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
+                                DatagramAdapter.VerboseLevel.BASE);
+
+                        network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
+                                pending.get(myInfo.getNumber()), name, true, true));
+
+                        stopEntranceVote();
+
+                    } else
+                        gotConsensus.add(myInfo.getNumber());
+
+                } else if (pending.size() >= config.getPositiveConsensus() && transactionTimeout != null)
+                    transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+
+                save();
             }
-
-            save();
-
-            return true;
         }
 
         private void stopEntranceVote() {
@@ -6733,56 +6761,69 @@ public class Node {
             }
 
             pending.clear();
+            gotConsensus.clear();
 
             save();
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, true, true));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name,
+                    true, gotConsensus.contains(myInfo.getNumber())));
         }
 
-        private boolean voteFinish(NodeInfo nodeInfo, HashId voteRequestId) {
-            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") transaction: ", name, " voteFinish from " , nodeInfo , " vote request: " + voteRequestId),
-                    DatagramAdapter.VerboseLevel.BASE);
-
-            if (current == null || !current.equals(voteRequestId))      // critical section is empty or busy other request
-                return false;
-
-            finished.add(nodeInfo.getNumber());
-
-            if (nodeInfo.equals(myInfo)) {
-                if (finishBroadcaster != null) {
-                    finishBroadcaster.cancel(true);
-                    finishBroadcaster = null;
-                }
-
-                if (finishVoteExpirator != null) {
-                    finishVoteExpirator.cancel(true);
-                    finishVoteExpirator = null;
-                }
-
-                finishBroadcaster = executorService.scheduleAtFixedRate(() -> notifyFinishVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
-                finishVoteExpirator = executorService.schedule(this::stopFinishVote, 30, TimeUnit.SECONDS);
-                transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
-            }
-
-            if (finished.size() == network.getNodesCount() || (finished.size() >= config.getPositiveConsensus() &&
-                    transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
-
-                transactionTimeout = null;
-                current = null;
-
+        private void voteFinish(NodeInfo nodeInfo, HashId voteRequestId, boolean hasConsensus) {
+            synchronized (this) {
                 report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
+                        ") transaction: ", name, " voteFinish from " , nodeInfo , " vote request: " + voteRequestId),
+                        DatagramAdapter.VerboseLevel.BASE);
 
-                network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, false));
-                stopFinishVote();
+                if (current == null || !current.equals(voteRequestId))      // critical section is empty or busy other request
+                    return;
+
+                finished.add(nodeInfo.getNumber());
+                if (hasConsensus)
+                    gotConsensus.add(nodeInfo.getNumber());
+
+                if (nodeInfo.equals(myInfo)) {
+                    if (finishBroadcaster != null) {
+                        finishBroadcaster.cancel(true);
+                        finishBroadcaster = null;
+                    }
+
+                    if (finishVoteExpirator != null) {
+                        finishVoteExpirator.cancel(true);
+                        finishVoteExpirator = null;
+                    }
+
+                    finishBroadcaster = executorService.scheduleAtFixedRate(() -> notifyFinishVote(voteRequestId), 0, 2, TimeUnit.SECONDS);
+                    finishVoteExpirator = executorService.schedule(this::stopFinishVote, 30, TimeUnit.SECONDS);
+                    transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+                }
+
+                if (finished.size() == network.getNodesCount() || (finished.size() >= config.getPositiveConsensus() &&
+                        transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
+
+                    // if all finished got consensus
+                    if (gotConsensus.containsAll(pending.keySet())) {
+                        transactionTimeout = null;
+                        current = null;
+
+                        report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                                ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
+
+                        network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
+                                voteRequestId, name, false, true));
+
+                        stopFinishVote();
+
+                    } else
+                        gotConsensus.add(myInfo.getNumber());
+
+                } else if (finished.size() >= config.getPositiveConsensus() && transactionTimeout != null)
+                    transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
+
+                save();
             }
-
-            save();
-
-            return true;
         }
 
         private void stopFinishVote() {
@@ -6800,35 +6841,22 @@ public class Node {
             }
 
             finished.clear();
+            gotConsensus.clear();
 
             save();
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
-            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name, false, true));
+            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId, voteRequestId, name,
+                    false, gotConsensus.contains(myInfo.getNumber())));
         }
 
         private Binder getState() {
-//            Map<Integer, HashId> formattedPending = new HashMap<>();
-//            Set<Integer> formattedFinished = new HashSet<>();
-//            pending.forEach((k, v) -> formattedPending.put(k, v));
-//            finished.forEach(n -> formattedFinished.add(n));
-
             return Binder.of(
                 "current", current,
                 "pending", pending,
-                "finished", finished);
-        }
-
-        private HashId getEntranceVote() {
-            return pending.get(myInfo.getNumber());
-        }
-
-        private HashId getFinishVote() {
-            if (finished.contains(myInfo.getNumber()))
-                return current;
-            else
-                return null;
+                "finished", finished,
+                "gotConsensus", gotConsensus);
         }
 
         private void save() {
