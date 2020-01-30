@@ -45,6 +45,7 @@ public class NetworkV2 extends Network {
     private static LogPrinter log = new LogPrinter("TLN");
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
+    private Map<NodeInfo, Set<NodeInfo>> unreachableNodes;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
@@ -229,7 +230,6 @@ public class NetworkV2 extends Network {
             return tp.getContract();
         } catch (Exception e) {
             report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e, DatagramAdapter.VerboseLevel.BASE);
-            e.printStackTrace();
             return null;
         }
     }
@@ -469,5 +469,10 @@ public class NetworkV2 extends Network {
         }
 
         return ubotClients.get(ubotNumber).command(command,params);
+    }
+
+    public void setUnreachableNodes(Map<NodeInfo, Set<NodeInfo>> unreachableNodes) {
+        this.unreachableNodes = unreachableNodes;
+        this.adapter.setUnreachableNodes(unreachableNodes);
     }
 }

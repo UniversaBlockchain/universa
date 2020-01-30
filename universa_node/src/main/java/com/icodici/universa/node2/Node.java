@@ -52,6 +52,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -134,6 +135,8 @@ public class Node {
     private ConcurrentHashMap<PublicKey, Integer> keyRequestsUbot = new ConcurrentHashMap();
 
 
+    Map<NodeInfo,Set<NodeInfo>> unreachableNodes = new ConcurrentHashMap();
+
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
         private final ThreadGroup threadGroup = new ThreadGroup("node-workers");
@@ -209,6 +212,7 @@ public class Node {
         this.myInfo = myInfo;
         this.ledger = ledger;
         this.network = network;
+        ((NetworkV2)network).setUnreachableNodes(unreachableNodes);
         cache = new ItemCache(config.getMaxCacheAge());
         voteCache = new VoteCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
@@ -240,6 +244,7 @@ public class Node {
         callbackService = new NCallbackService(this, config, myInfo, ledger, network, nodeKey, lowPrioExecutorService);
 
         pulseStartCleanup();
+        pulseStartSelfDiagostics();
 
 /*
         Map<Long,Float> threadStats = new HashMap();
@@ -296,6 +301,43 @@ public class Node {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotSessions(), 1, 120, TimeUnit.SECONDS);
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.deleteExpiredUbotStorages(), 1, 120, TimeUnit.SECONDS);
     }
+
+    private void pulseStartSelfDiagostics() {
+        executorService.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                List<NodeInfo> nodes = network.allNodes();
+                AtomicInteger checked = new AtomicInteger(0);
+                Set<NodeInfo> unreachable = ConcurrentHashMap.newKeySet();
+                AsyncEvent ready = new AsyncEvent();
+
+                for(NodeInfo ni : nodes) {
+                    Do.inParallel(() -> {
+                        if(network.pingNodeUDP(ni.getNumber(), 1000) < 0) {
+                            unreachable.add(ni);
+                        }
+                        if(checked.incrementAndGet() == nodes.size()) {
+                            ready.fire();
+                        }
+                    });
+                }
+
+                try {
+                    ready.await();
+                    ConnectivityNotification n = new ConnectivityNotification(myInfo,unreachable);
+                    obtainConnectivityNotification(n);
+                    network.broadcast(myInfo,n);
+
+
+                } catch (InterruptedException ignored) {
+
+                }
+                report(getLabel(), () -> concatReportMessage("connectivity diagnostics: ", unreachableNodes),
+                        DatagramAdapter.VerboseLevel.BASE);
+            }
+        },5,5,TimeUnit.SECONDS);
+    }
+
 
     private void dbSanitationFinished() {
 
@@ -739,6 +781,8 @@ public class Node {
             obtainUBotSessionNotification((UBotSessionNotification) notification);
         } else if (notification instanceof  UBotStorageNotification) {
             obtainUBotStorageNotification((UBotStorageNotification) notification);
+        }  else if (notification instanceof  ConnectivityNotification) {
+            obtainConnectivityNotification((ConnectivityNotification) notification);
         }
     }
 
@@ -834,6 +878,9 @@ public class Node {
         }
     }
 
+    private void obtainConnectivityNotification(ConnectivityNotification notification) {
+        unreachableNodes.put(notification.getFrom(),notification.getUnreachableNodes().stream().map(ni->network.getInfo(ni)).collect(Collectors.toSet()));
+    }
 
     /**
      * Obtained resync notification: looking for requested item and answer with it's status.

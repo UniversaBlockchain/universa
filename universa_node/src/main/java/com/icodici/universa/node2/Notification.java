@@ -158,6 +158,7 @@ abstract public class Notification {
         CallbackNotification.init();
         UBotSessionNotification.init();
         UBotStorageNotification.init();
+        ConnectivityNotification.init();
     }
 
 }
