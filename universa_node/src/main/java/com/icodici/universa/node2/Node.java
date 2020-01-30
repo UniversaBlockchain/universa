@@ -212,7 +212,8 @@ public class Node {
         this.myInfo = myInfo;
         this.ledger = ledger;
         this.network = network;
-        ((NetworkV2)network).setUnreachableNodes(unreachableNodes);
+        if(network instanceof  NetworkV2)
+            ((NetworkV2)network).setUnreachableNodes(unreachableNodes);
         cache = new ItemCache(config.getMaxCacheAge());
         voteCache = new VoteCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());

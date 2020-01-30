@@ -115,7 +115,7 @@ public class UDPAdapter extends DatagramAdapter {
      * @param packet data to send. It's {@link Packet#makeByteArray()} should returns data with size less than {@link DatagramAdapter#MAX_PACKET_SIZE}
      */
     private void sendPacket(NodeInfo destination, Packet packet) {
-        Set<NodeInfo> unreachableByMe = unreachableNodes.getOrDefault(myNodeInfo,new HashSet<>());
+        Set<NodeInfo> unreachableByMe = unreachableNodes != null ? unreachableNodes.getOrDefault(myNodeInfo,new HashSet<>()) : new HashSet<>();
 
         //check if not ECHO packed and is being sent to an unreachable node
         if(packet.type != PacketTypes.ECHO && unreachableByMe.contains(destination)) {
