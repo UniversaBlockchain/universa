@@ -1574,4 +1574,224 @@ public class UBotSessionsTest extends BaseMainTest {
 
         ts.shutdown();
     }
+
+    @Ignore
+    @Test
+    public void QuickConcurrentSequenceTransactions() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        //ts.nodes.forEach(m->m.node.setVerboseLevel(DETAILED));
+        //ts.nodes.forEach(m->m.node.setNeworkVerboseLevel(DETAILED));
+
+        int quorumSize = 4;
+        int poolSize = 5;
+
+        Contract executableContract = new Contract(TestKeys.privateKey(1));
+        executableContract.getStateData().put("cloud_methods",
+                Binder.of("simple",
+                        Binder.of("pool",Binder.of("size",poolSize),
+                                "quorum",Binder.of("size",quorumSize))));
+        executableContract.getStateData().put("js", "simple JS code");
+        executableContract.seal();
+
+        ts.node.node.registerItem(executableContract);
+        ItemResult ir = ts.node.node.waitItem(executableContract.getId(), 10000);
+        assertEquals(ir.state, ItemState.APPROVED);
+
+        int COST = 3;
+        int n = 20;
+
+        List<Contract> requestContracts = new ArrayList<>();
+        List<Contract> uContracts = new ArrayList<>();
+        List<Client> clients = new ArrayList<>();
+
+        for (int i = 0; i < n; i++) {
+            Client client = new Client("test_node_config_v2", null, new PrivateKey(2048));
+            clients.add(client);
+
+            Contract requestContract = new Contract(TestKeys.privateKey(2));
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+            requestContract.getStateData().put("method_name","simple");
+
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
+            requestContracts.add(requestContract);
+            Contract u = getApprovedUContract(ts);
+            u = u.createRevision(ts.myKey);
+            u.getStateData().put("transaction_units",u.getStateData().getIntOrThrow("transaction_units") - COST);
+            u.seal();
+
+            uContracts.add(u);
+            ts.uContract = null;
+        }
+
+        // start sessions
+
+        for (int i = 0; i < n; i++) {
+            int finalI = i;
+            Do.inParallel(()-> {
+                System.out.println(clients.get(finalI).command("ubotCreateSessionPaid",
+                        "packedU", uContracts.get(finalI).getPackedTransaction(),
+                        "packedRequest", requestContracts.get(finalI).getPackedTransaction()));
+            });
+        }
+
+        AtomicInteger readyCounter = new AtomicInteger();
+        AsyncEvent readyEvent = new AsyncEvent();
+        ArrayList<AtomicReference<List<Integer>>> pools = new ArrayList<>();
+        for (int i = 0; i < n; i++)
+            pools.add(new AtomicReference<>());
+
+        for (int i = 0; i < n; i++) {
+            int finalI = i;
+            Do.inParallel(()->{
+                int attempts = 0;
+                while (true) {
+                    Binder res = clients.get(finalI).command("ubotGetSession", "requestId", requestContracts.get(finalI).getId());
+                    System.out.println("Client #" + finalI + ": " + clients.get(finalI).getNodeNumber() + " " + res);
+
+                    if (res.isEmpty())
+                        attempts++;
+                    else
+                        attempts = 0;
+                    if (attempts > 3)
+                        readyEvent.fire(false);
+
+                    Thread.sleep(200);
+                    if (res.get("session") != null && res.getBinderOrThrow("session").getString("state", "").equals("OPERATIONAL")) {
+                        pools.get(finalI).set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
+                        if (readyCounter.incrementAndGet() == n)
+                            readyEvent.fire(true);
+                        break;
+                    }
+                }
+            });
+        }
+
+        assertTrue((boolean) readyEvent.await());
+
+        ConcurrentHashMap<Integer, Client> allClients = new ConcurrentHashMap<>();
+        ArrayList<Set<Client>> allQuorumClients = new ArrayList<>();
+
+        for (int i = 0; i < n; i++) {
+            System.out.println(pools.get(i));
+
+            Set<Integer> poolQuorum = new HashSet<>();
+            while (poolQuorum.size() < quorumSize)
+                poolQuorum.add(Do.sample(pools.get(i).get()));
+
+            Set<Client> quorumClients = new HashSet<>();
+            poolQuorum.forEach(p -> {
+                try {
+                    Client c = allClients.get(p);
+                    if (c == null)
+                        c = new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(p));
+                    allClients.put(p, c);
+                    quorumClients.add(c);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            assertEquals(quorumClients.size(), poolQuorum.size());
+
+            allQuorumClients.add(quorumClients);
+        }
+
+        AsyncEvent readyEvent2 = new AsyncEvent();
+        AtomicInteger readyCounter2 = new AtomicInteger();
+
+        // start transactions
+
+        for (int i = 0; i < n; i++) {
+            int finalI = i;
+            allQuorumClients.get(finalI).forEach(c->{
+                for(int ic = 0; ic < c.size(); ic++) {
+                    int finalIC = ic;
+                    Do.inParallel(()->{
+                        int counter = 0;
+                        boolean inTrans = false;
+                        while (true) {
+                            try {
+                                if (!inTrans) {
+                                    Binder res = c.getClient(finalIC).command("ubotStartTransaction",
+                                            "requestId", requestContracts.get(finalI).getId(),
+                                            "transactionName", "transaction");
+
+                                    System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
+                                    Thread.sleep(10);
+                                    if (res.get("current") != null && res.get("current").equals(requestContracts.get(finalI).getId()))
+                                        inTrans = true;
+                                } else {
+                                    Binder res = c.getClient(finalIC).command("ubotFinishTransaction",
+                                            "requestId", requestContracts.get(finalI).getId(),
+                                            "transactionName", "transaction");
+
+                                    System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
+                                    Thread.sleep(10);
+                                    if (res.get("current") == null) {
+                                        inTrans = false;
+                                        counter++;
+
+                                        if (counter > 20) {
+                                            if (readyCounter2.incrementAndGet() == n * quorumSize * c.size())
+                                                readyEvent2.fire();
+                                            break;
+                                        }
+                                    }
+                                }
+
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                readyEvent2.fire();
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        Client checker = new Client("./src/test_node_config_v2/test_node_config_v2.json",null, TestKeys.privateKey(3));
+
+        // check transaction status and wait transaction requests
+        int wrongs = 0;
+        while (!readyEvent2.isFired()) {
+            if (wrongs == 0)
+                Thread.sleep(500);
+
+            HashId transactionRequest = null;
+            boolean wrong = false;
+            for (int x = 0; x < checker.size(); x++) {
+                Binder status = checker.getClient(x).command("ubotGetTransactionState",
+                        "requestId", requestContracts.get(0).getId(),
+                        "transactionName", "transaction");
+
+                System.out.println("Checker: " + checker.getClient(x).getNodeNumber() + " " + status);
+                assertTrue(!status.isEmpty());
+
+                if (status.get("current") != null) {
+                    if (transactionRequest == null)
+                        transactionRequest = (HashId) status.get("current");
+                    else if (!transactionRequest.equals(status.get("current"))) {
+                        System.err.println("Wrong: " + transactionRequest + " != " + status.get("current"));
+                        wrong = true;
+                        break;
+                    }
+                }
+            }
+
+            if (wrong)
+                wrongs++;
+            else
+                wrongs = 0;
+
+            assertTrue(wrongs < 3);
+        }
+
+        assertTrue(readyCounter2.get() >= n * quorumSize * checker.size());
+
+        ts.shutdown();
+    }
 }

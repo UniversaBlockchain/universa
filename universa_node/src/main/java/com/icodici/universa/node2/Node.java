@@ -6425,6 +6425,8 @@ public class Node {
             try {
                 ubotLock.synchronize(requestId, lock -> {
                     synchronized (ubotTransactions) {
+                        lastActivityTime = ZonedDateTime.now();
+
                         transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
                         Set<Integer> ubots = transactionEntrances.get(transactionName);
 
@@ -6450,6 +6452,8 @@ public class Node {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addFinishTransactionVote from " ,
                     ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
+            lastActivityTime = ZonedDateTime.now();
+
             if (state != Node.UBotSessionState.OPERATIONAL) {
                 if (state == UBotSessionState.CLOSING)
                     return;
@@ -6467,6 +6471,8 @@ public class Node {
             try {
                 ubotLock.synchronize(requestId, lock -> {
                     synchronized (ubotTransactions) {
+                        lastActivityTime = ZonedDateTime.now();
+
                         transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
                         Set<Integer> ubots = transactionFinishes.get(transactionName);
 
@@ -6490,6 +6496,8 @@ public class Node {
         }
 
         private Binder getTransactionState(String transactionName) {
+            lastActivityTime = ZonedDateTime.now();
+
             return getUBotTransaction(executableContractId, transactionName).getState();
         }
 
@@ -6629,15 +6637,17 @@ public class Node {
     }
 
     public UBotTransaction getUBotTransaction(HashId executableContractId, String transactionName) {
-        ubotTransactions.putIfAbsent(executableContractId, new ConcurrentHashMap<>());
-        ConcurrentHashMap<String, UBotTransaction> map = ubotTransactions.get(executableContractId);
+        synchronized (ubotTransactions) {
+            ubotTransactions.putIfAbsent(executableContractId, new ConcurrentHashMap<>());
+            ConcurrentHashMap<String, UBotTransaction> map = ubotTransactions.get(executableContractId);
 
-        return map.computeIfAbsent(transactionName, key -> {
-            UBotTransaction transaction = new UBotTransaction(executableContractId, transactionName);
-            transaction.load();
+            return map.computeIfAbsent(transactionName, key -> {
+                UBotTransaction transaction = new UBotTransaction(executableContractId, transactionName);
+                transaction.load();
 
-            return transaction;
-        });
+                return transaction;
+            });
+        }
     }
 
     public class UBotTransaction {
