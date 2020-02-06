@@ -40,6 +40,7 @@ public class Db implements Cloneable, AutoCloseable {
     private boolean isInTransaction = false;
 
     private Connection connection;
+    private long prevResetTime = System.currentTimeMillis() - 9000;
 
     public Properties getProperties() {
         return properties;
@@ -157,6 +158,32 @@ public class Db implements Cloneable, AutoCloseable {
             setupDatabase(migrationsResource);
 
 //        connection.setAutoCommit(false);
+    }
+
+    public boolean reset() {
+        if (System.currentTimeMillis() - prevResetTime < 2000)
+            return false;
+        prevResetTime = System.currentTimeMillis();
+        try {
+            if (this.properties != null)
+                this.connection = DriverManager.getConnection(connectionString, properties);
+            else
+                this.connection = DriverManager.getConnection(connectionString);
+            connection.setAutoCommit(true);
+            if (connectionString.contains("sqlite")) {
+                sqlite = true;
+                queryOne("PRAGMA journal_mode=WAL");
+                update("PRAGMA synchronous=OFF");
+                try {
+                    update("PRAGMA mmap_size=268435456");
+                } catch (java.sql.SQLException e) {
+                    queryOne("PRAGMA mmap_size=268435456");
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     public Db clone() {
@@ -310,16 +337,21 @@ public class Db implements Cloneable, AutoCloseable {
     }
 
     public ResultSet queryRow(String sqlText, Object... args) throws SQLException {
-        PreparedStatement s = statement(sqlText, args);
-        s.closeOnCompletion();
-        ResultSet rs = s.executeQuery();
+        try {
+            PreparedStatement s = statement(sqlText, args);
+            s.closeOnCompletion();
+            ResultSet rs = s.executeQuery();
 //        if(!isInTransaction) connection.commit();
-        if (rs.next()) {
-            return rs;
-        } else {
-            if (sqlite)
-                s.close();
-            return null;
+            if (rs.next()) {
+                return rs;
+            } else {
+                if (sqlite)
+                    s.close();
+                return null;
+            }
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
     }
 
