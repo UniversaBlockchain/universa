@@ -1254,13 +1254,22 @@ public class PostgresLedgerTest extends TestCase {
             reqCounter.incrementAndGet();
             pool.submit(() -> {
 
+                StateRecord sr = null;
                 HashId newHashId = HashId.createRandom();
-                StateRecord sr = ledger.createOutputLockRecord(sr0.getRecordId(), newHashId);
-                if (sr != null)
-                    ansCounter.incrementAndGet();
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    sr = ledger.createOutputLockRecord(sr0.getRecordId(), newHashId);
+                    if (sr == null) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    } else {
+                        doRepeat = false;
+                    }
+                }
+                ansCounter.incrementAndGet();
 
-                //System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter + ", sr = " + sr);
-                //try{Thread.sleep(1000);}catch (InterruptedException ie){}
+//                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter + ", sr = " + sr);
+//                try{Thread.sleep(1000);}catch (InterruptedException ie){}
             });
             if (reqCounter.get() - ansCounter.get() > 1000)
                 Thread.sleep(10);

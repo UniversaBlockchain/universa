@@ -303,37 +303,47 @@ public class Db implements Cloneable, AutoCloseable {
     private HashMap<String, PreparedStatement> cachedStatements = new HashMap<>();
 
     public PreparedStatement statement(String sqlText, Object... args) throws SQLException {
+        try {
 //        log.d("statement: |" + sqlText + "|  " + Arrays.toString(args));
 //        System.out.println("statement: |" + sqlText + "|  " + Arrays.toString(args));
 //        PreparedStatement statement = cachedStatements.get(sqlText);
-        PreparedStatement statement = null;
+            PreparedStatement statement = null;
 //        if (statement == null) {
-        synchronized (connection) {
-            statement = connection.prepareStatement(sqlText);
-        }
+            synchronized (connection) {
+                statement = connection.prepareStatement(sqlText);
+            }
 //            cachedStatements.put(sqlText, statement);
 //        } else {
 //            statement.clearParameters();
 //        }
-        int index = 1;
-        for (Object arg : args) {
-            statement.setObject(index, arg);
-            index++;
+            int index = 1;
+            for (Object arg : args) {
+                statement.setObject(index, arg);
+                index++;
+            }
+            return statement;
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
-        return statement;
     }
 
     public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
-        PreparedStatement statement = null;
-        synchronized (connection) {
-            statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+        try {
+            PreparedStatement statement = null;
+            synchronized (connection) {
+                statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+            }
+            int index = 1;
+            for (Object arg : args) {
+                statement.setObject(index, arg);
+                index++;
+            }
+            return statement;
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
-        int index = 1;
-        for (Object arg : args) {
-            statement.setObject(index, arg);
-            index++;
-        }
-        return statement;
     }
 
     public ResultSet queryRow(String sqlText, Object... args) throws SQLException {
@@ -407,6 +417,9 @@ public class Db implements Cloneable, AutoCloseable {
         try {
             statement.executeUpdate();
 //            if(!isInTransaction) connection.commit();
+        } catch (SQLException se) {
+            reset();
+            throw se;
         } catch (Exception e) {
 //            log.e("Exception in update statement: %s", e);
             e.printStackTrace();
