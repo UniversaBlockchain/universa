@@ -864,9 +864,10 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder ubotStartTransaction(Binder params, Session session) throws CommandFailedException {
         HashId requestId = params.getOrThrow("requestId");
         String transactionName = params.getStringOrThrow("transactionName");
+        int transactionNumber = params.getIntOrThrow("transactionNumber");
 
         try {
-            return node.ubotStartTransaction(requestId, transactionName, session.getPublicKey());
+            return node.ubotStartTransaction(requestId, transactionName, transactionNumber, session.getPublicKey());
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotStartTransaction", e.getMessage());
@@ -876,9 +877,10 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder ubotFinishTransaction(Binder params, Session session) throws CommandFailedException {
         HashId requestId = params.getOrThrow("requestId");
         String transactionName = params.getStringOrThrow("transactionName");
+        int transactionNumber = params.getIntOrThrow("transactionNumber");
 
         try {
-            return node.ubotFinishTransaction(requestId, transactionName, session.getPublicKey());
+            return node.ubotFinishTransaction(requestId, transactionName, transactionNumber, session.getPublicKey());
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotFinishTransaction", e.getMessage());

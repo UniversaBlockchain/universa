@@ -1920,22 +1920,22 @@ public class Node {
         });
     }
 
-    public Binder ubotStartTransaction(HashId requestId, String transactionName, PublicKey publicKey) throws Exception {
+    public Binder ubotStartTransaction(HashId requestId, String transactionName, int transactionNumber, PublicKey publicKey) throws Exception {
         return itemLock.synchronize(requestId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if (usp != null) {
-                usp.addStartTransactionVote(transactionName, publicKey);
+                usp.addStartTransactionVote(transactionName, transactionNumber, publicKey);
                 return usp.getTransactionState(transactionName);
             }
             throw new IllegalArgumentException("session processor not found for " + requestId);
         });
     }
 
-    public Binder ubotFinishTransaction(HashId requestId, String transactionName, PublicKey publicKey) throws Exception {
+    public Binder ubotFinishTransaction(HashId requestId, String transactionName, int transactionNumber, PublicKey publicKey) throws Exception {
         return itemLock.synchronize(requestId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if(usp != null) {
-                usp.addFinishTransactionVote(transactionName, publicKey);
+                usp.addFinishTransactionVote(transactionName, transactionNumber, publicKey);
                 return usp.getTransactionState(transactionName);
             }
             return new Binder();
@@ -5730,8 +5730,8 @@ public class Node {
         private Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
         private Map<NodeInfo,Boolean> closeVotesNodes = new ConcurrentHashMap<>();
 
-        private Map<String, Set<Integer>> transactionEntrances = new ConcurrentHashMap<>();
-        private Map<String, Set<Integer>> transactionFinishes = new ConcurrentHashMap<>();
+        private Map<String, ArrayList<Set<Integer>>> transactionEntrances = new ConcurrentHashMap<>();
+        private Map<String, ArrayList<Set<Integer>>> transactionFinishes = new ConcurrentHashMap<>();
 
         private ZonedDateTime lastActivityTime = ZonedDateTime.now();
 
@@ -6406,7 +6406,7 @@ public class Node {
             return "" + quorumSize;
         }
 
-        private void addStartTransactionVote(String transactionName, PublicKey publicKey) {
+        private void addStartTransactionVote(String transactionName, int transactionNumber, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addStartTransactionVote from ",
                     ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
@@ -6427,8 +6427,12 @@ public class Node {
                     synchronized (ubotTransactions) {
                         lastActivityTime = ZonedDateTime.now();
 
-                        transactionEntrances.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
-                        Set<Integer> ubots = transactionEntrances.get(transactionName);
+                        transactionEntrances.putIfAbsent(transactionName, new ArrayList<>());
+                        ArrayList<Set<Integer>> transactionArray = transactionEntrances.get(transactionName);
+                        while (transactionArray.size() < transactionNumber + 1)
+                            transactionArray.add(new ConcurrentSkipListSet<>());
+
+                        Set<Integer> ubots = transactionArray.get(transactionNumber);
 
                         UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
                         if (transaction.getState().get("current") == null && !requestId.equals(transaction.getPending(myInfo.getNumber()))) {
@@ -6448,7 +6452,7 @@ public class Node {
             }
         }
 
-        private void addFinishTransactionVote(String transactionName, PublicKey publicKey) {
+        private void addFinishTransactionVote(String transactionName, int transactionNumber, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addFinishTransactionVote from " ,
                     ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
@@ -6473,8 +6477,12 @@ public class Node {
                     synchronized (ubotTransactions) {
                         lastActivityTime = ZonedDateTime.now();
 
-                        transactionFinishes.putIfAbsent(transactionName, new ConcurrentSkipListSet<>());
-                        Set<Integer> ubots = transactionFinishes.get(transactionName);
+                        transactionFinishes.putIfAbsent(transactionName, new ArrayList<>());
+                        ArrayList<Set<Integer>> transactionArray = transactionFinishes.get(transactionName);
+                        while (transactionArray.size() < transactionNumber + 1)
+                            transactionArray.add(new ConcurrentSkipListSet<>());
+
+                        Set<Integer> ubots = transactionArray.get(transactionNumber);
 
                         UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
                         HashId current = (HashId) transaction.getState().get("current");

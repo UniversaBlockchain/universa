@@ -1302,7 +1302,8 @@ public class UBotSessionsTest extends BaseMainTest {
                             try {
                                 Binder res = c.getClient(finalIC).command("ubotStartTransaction",
                                     "requestId", requestContracts.get(finalI).getId(),
-                                    "transactionName", "transaction");
+                                    "transactionName", "transaction",
+                                    "transactionNumber", 0);
 
                                 System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
                                 Thread.sleep(200);
@@ -1310,7 +1311,8 @@ public class UBotSessionsTest extends BaseMainTest {
                                     Thread.sleep(500);
                                     c.getClient(finalIC).command("ubotFinishTransaction",
                                         "requestId", requestContracts.get(finalI).getId(),
-                                        "transactionName", "transaction");
+                                        "transactionName", "transaction",
+                                        "transactionNumber", 0);
 
                                     if (readyCounter2.incrementAndGet() == n * quorumSize * c.size())
                                         readyEvent2.fire();
@@ -1508,14 +1510,16 @@ public class UBotSessionsTest extends BaseMainTest {
                             try {
                                 Binder res = c.getClient(finalIC).command("ubotStartTransaction",
                                         "requestId", requestContracts.get(finalI).getId(),
-                                        "transactionName", "transaction");
+                                        "transactionName", "transaction",
+                                        "transactionNumber", 0);
 
                                 System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
                                 Thread.sleep(10);
                                 if (res.get("current") != null && res.get("current").equals(requestContracts.get(finalI).getId())) {
                                     c.getClient(finalIC).command("ubotFinishTransaction",
                                             "requestId", requestContracts.get(finalI).getId(),
-                                            "transactionName", "transaction");
+                                            "transactionName", "transaction",
+                                            "transactionNumber", 0);
 
                                     if (readyCounter2.incrementAndGet() == n * quorumSize * c.size())
                                         readyEvent2.fire();
@@ -1716,7 +1720,8 @@ public class UBotSessionsTest extends BaseMainTest {
                                 if (!inTrans) {
                                     Binder res = c.getClient(finalIC).command("ubotStartTransaction",
                                             "requestId", requestContracts.get(finalI).getId(),
-                                            "transactionName", "transaction");
+                                            "transactionName", "transaction",
+                                            "transactionNumber", counter);
 
                                     System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
                                     Thread.sleep(10);
@@ -1725,7 +1730,8 @@ public class UBotSessionsTest extends BaseMainTest {
                                 } else {
                                     Binder res = c.getClient(finalIC).command("ubotFinishTransaction",
                                             "requestId", requestContracts.get(finalI).getId(),
-                                            "transactionName", "transaction");
+                                            "transactionName", "transaction",
+                                            "transactionNumber", counter);
 
                                     System.out.println("Client #" + finalI + ": " + c.getClient(finalIC).getNodeNumber() + " " + res);
                                     Thread.sleep(10);
