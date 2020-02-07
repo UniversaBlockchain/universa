@@ -1925,7 +1925,7 @@ public class Node {
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if (usp != null) {
                 usp.addStartTransactionVote(transactionName, transactionNumber, publicKey);
-                return usp.getTransactionState(transactionName);
+                return usp.getTransactionState(transactionName, false);
             }
             throw new IllegalArgumentException("session processor not found for " + requestId);
         });
@@ -1936,17 +1936,17 @@ public class Node {
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if(usp != null) {
                 usp.addFinishTransactionVote(transactionName, transactionNumber, publicKey);
-                return usp.getTransactionState(transactionName);
+                return usp.getTransactionState(transactionName, false);
             }
             return new Binder();
         });
     }
 
-    public Binder ubotGetTransactionState(HashId requestId, String transactionName) throws Exception {
+    public Binder ubotGetTransactionState(HashId requestId, String transactionName, boolean withDetails) throws Exception {
         return itemLock.synchronize(requestId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if(usp != null)
-                return usp.getTransactionState(transactionName);
+                return usp.getTransactionState(transactionName, withDetails);
 
             return new Binder();
         });
@@ -6435,7 +6435,7 @@ public class Node {
                         Set<Integer> ubots = transactionArray.get(transactionNumber);
 
                         UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
-                        if (transaction.getState().get("current") == null && !requestId.equals(transaction.getPending(myInfo.getNumber()))) {
+                        if (transaction.getState(false).get("current") == null && !requestId.equals(transaction.getPending(myInfo.getNumber()))) {
                             ubots.add(ubotNumber);
 
                             if (ubots.size() >= quorumSize) {
@@ -6485,7 +6485,7 @@ public class Node {
                         Set<Integer> ubots = transactionArray.get(transactionNumber);
 
                         UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
-                        HashId current = (HashId) transaction.getState().get("current");
+                        HashId current = (HashId) transaction.getState(false).get("current");
                         if (requestId.equals(current) && !transaction.getFinished(myInfo.getNumber())) {
                             ubots.add(ubotNumber);
 
@@ -6503,10 +6503,19 @@ public class Node {
             }
         }
 
-        private Binder getTransactionState(String transactionName) {
+        private Binder getTransactionState(String transactionName, boolean withDetails) {
             lastActivityTime = ZonedDateTime.now();
 
-            return getUBotTransaction(executableContractId, transactionName).getState();
+            Binder res = getUBotTransaction(executableContractId, transactionName).getState(withDetails);
+
+            if (withDetails) {
+                Map<Integer, HashId> pending = (Map<Integer, HashId>) res.get("pending");
+                Binder bpending = new Binder();
+                pending.forEach((n, hash) -> bpending.set(n.toString(), hash));
+                res.set("pending", bpending);
+            }
+
+            return res;
         }
 
         private void saveToLedger() {
@@ -6542,7 +6551,7 @@ public class Node {
             ubotTransactions.forEach((executableId, transactions) -> {
                 Set<String> toRemove = new HashSet<>();
                 transactions.forEach((transactionName, transaction) -> {
-                    Binder b = transaction.getState();
+                    Binder b = transaction.getState(true);
                     if (b.get("current") == null &&
                             ((Map<Integer, HashId>) b.get("pending")).isEmpty() &&
                             ((Set<Integer>) b.get("finished")).isEmpty())
@@ -6731,7 +6740,7 @@ public class Node {
                             }
 
                             Set<HashId> maxAt = new HashSet<>();
-                            final long top = max + pending.size() - network.allNodes().size();
+                            final long top = max + pending.size() - network.getNodesCount();
                             counts.forEach((hash, count) -> {
                                 if (count >= top)
                                     maxAt.add(hash);
@@ -6767,23 +6776,25 @@ public class Node {
         }
 
         private void stopEntranceVote() {
-            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") stopEntranceVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
+            synchronized (this) {
+                report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                        ") stopEntranceVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
 
-            if (entranceBroadcaster != null) {
-                entranceBroadcaster.cancel(true);
-                entranceBroadcaster = null;
+                if (entranceBroadcaster != null) {
+                    entranceBroadcaster.cancel(true);
+                    entranceBroadcaster = null;
+                }
+
+                if (entranceVoteExpirator != null) {
+                    entranceVoteExpirator.cancel(true);
+                    entranceVoteExpirator = null;
+                }
+
+                pending.clear();
+                gotConsensus.clear();
+
+                save();
             }
-
-            if (entranceVoteExpirator != null) {
-                entranceVoteExpirator.cancel(true);
-                entranceVoteExpirator = null;
-            }
-
-            pending.clear();
-            gotConsensus.clear();
-
-            save();
         }
 
         private void notifyEntranceVote(HashId voteRequestId) {
@@ -6847,23 +6858,25 @@ public class Node {
         }
 
         private void stopFinishVote() {
-            report(getLabel(), () -> concatReportMessage( "(ExecutableContractId: ", executableContractId,
-                    ") stopFinishVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
+            synchronized (this) {
+                report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                        ") stopFinishVote transaction: ", name), DatagramAdapter.VerboseLevel.BASE);
 
-            if (finishBroadcaster != null) {
-                finishBroadcaster.cancel(true);
-                finishBroadcaster = null;
+                if (finishBroadcaster != null) {
+                    finishBroadcaster.cancel(true);
+                    finishBroadcaster = null;
+                }
+
+                if (finishVoteExpirator != null) {
+                    finishVoteExpirator.cancel(true);
+                    finishVoteExpirator = null;
+                }
+
+                finished.clear();
+                gotConsensus.clear();
+
+                save();
             }
-
-            if (finishVoteExpirator != null) {
-                finishVoteExpirator.cancel(true);
-                finishVoteExpirator = null;
-            }
-
-            finished.clear();
-            gotConsensus.clear();
-
-            save();
         }
 
         private void notifyFinishVote(HashId voteRequestId) {
@@ -6871,12 +6884,15 @@ public class Node {
                     false, gotConsensus.contains(myInfo.getNumber())));
         }
 
-        private Binder getState() {
-            return Binder.of(
-                "current", current,
-                "pending", pending,
-                "finished", finished,
-                "gotConsensus", gotConsensus);
+        private Binder getState(boolean withDetails) {
+            if (withDetails) {
+                return Binder.of(
+                    "current", current,
+                    "pending", pending,
+                    "finished", finished,
+                    "gotConsensus", gotConsensus);
+            } else
+                return Binder.of("current", current);
         }
 
         private HashId getPending(int nodeNumber) {
@@ -6888,7 +6904,7 @@ public class Node {
         }
 
         private void save() {
-            ledger.saveUbotTransaction(executableContractId, name, getState());
+            ledger.saveUbotTransaction(executableContractId, name, getState(true));
         }
 
         private void load() {

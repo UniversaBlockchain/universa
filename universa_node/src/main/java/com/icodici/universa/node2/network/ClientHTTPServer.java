@@ -890,9 +890,10 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder ubotGetTransactionState(Binder params, Session session) throws CommandFailedException {
         HashId requestId = params.getOrThrow("requestId");
         String transactionName = params.getStringOrThrow("transactionName");
+        boolean withDetails = params.getBoolean("withDetails", false);
 
         try {
-            return node.ubotGetTransactionState(requestId, transactionName);
+            return node.ubotGetTransactionState(requestId, transactionName, withDetails);
         } catch (Exception e) {
             e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotGetTransactionState", e.getMessage());
