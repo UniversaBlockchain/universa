@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -1306,22 +1307,27 @@ public class PostgresLedgerTest extends TestCase {
             reqCounter.incrementAndGet();
             pool.submit(() -> {
 
-                try {
-                    Db db = ledger.getDb();
-                    db.transaction(() -> {
-                        ResultSet rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
-                        int iValue = rs.getInt(1);
-                        iValue += 1;
-                        db.queryRow("UPDATE ledger SET state=? WHERE hash=? RETURNING id;", iValue, someHashId.getDigest());
-                        Thread.sleep(10);
-                        rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
-                        int iValue2 = rs.getInt(1);
-                        if (iValue2 == iValue)
-                            ansCounter.incrementAndGet();
-                        return null;
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
+                AtomicBoolean doRepeat = new AtomicBoolean(true);
+                while (doRepeat.get()) {
+                    try {
+                        Db db = ledger.getDb();
+                        db.transaction(() -> {
+                            ResultSet rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
+                            int iValue = rs.getInt(1);
+                            iValue += 1;
+                            db.queryRow("UPDATE ledger SET state=? WHERE hash=? RETURNING id;", iValue, someHashId.getDigest());
+                            Thread.sleep(10);
+                            rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
+                            int iValue2 = rs.getInt(1);
+                            if (iValue2 == iValue)
+                                ansCounter.incrementAndGet();
+                            doRepeat.set(false);
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
                 }
 
                 System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter);

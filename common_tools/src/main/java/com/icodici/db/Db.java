@@ -211,24 +211,29 @@ public class Db implements Cloneable, AutoCloseable {
 
     public <T> T transaction(Callable<T> worker) throws Exception {
         synchronized (connection) {
-            connection.setAutoCommit(false);
-            isInTransaction = true;
             try {
-                T result = worker.call();
-                connection.commit();
-                return result;
-            } catch (RollbackException e) {
-                e.printStackTrace();
-                connection.rollback();
-            } catch (Exception e) {
-                log.e("Exception in transaction: %s", e);
-                e.printStackTrace();
-                connection.rollback();
-                throw (e);
-            } finally {
-                connection.setAutoCommit(true);
-//            connection.commit();
-                isInTransaction = false;
+                connection.setAutoCommit(false);
+                isInTransaction = true;
+                try {
+                    T result = worker.call();
+                    connection.commit();
+                    return result;
+                } catch (RollbackException e) {
+                    e.printStackTrace();
+                    connection.rollback();
+                } catch (Exception e) {
+                    log.e("Exception in transaction: %s", e);
+                    e.printStackTrace();
+                    connection.rollback();
+                    throw (e);
+                } finally {
+                    connection.setAutoCommit(true);
+    //            connection.commit();
+                    isInTransaction = false;
+                }
+            } catch (SQLException se) {
+                reset();
+                throw se;
             }
             return null;
         }
