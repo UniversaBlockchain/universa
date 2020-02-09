@@ -410,6 +410,10 @@ public class Db implements Cloneable, AutoCloseable {
         try (PreparedStatement s = statement(sqlText, args)) {
             s.executeUpdate();
 //            if(!isInTransaction) connection.commit();
+        } catch (SQLException se) {
+            se.printStackTrace();
+            reset();
+            throw se;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
@@ -423,6 +427,7 @@ public class Db implements Cloneable, AutoCloseable {
             statement.executeUpdate();
 //            if(!isInTransaction) connection.commit();
         } catch (SQLException se) {
+            se.printStackTrace();
             reset();
             throw se;
         } catch (Exception e) {
