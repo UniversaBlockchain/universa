@@ -1186,6 +1186,7 @@ public class PostgresLedgerTest extends TestCase {
 
     @Ignore
     @Test
+    // db.queryRow
     public void reconnectAfterPostgresRestart_queryType1() throws Exception {
         final long TEST_DURATION_SECONDS = 30;
         System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
@@ -1239,6 +1240,7 @@ public class PostgresLedgerTest extends TestCase {
 
     @Ignore
     @Test
+    // db.updateWithStatement
     public void reconnectAfterPostgresRestart_queryType2() throws Exception {
         final long TEST_DURATION_SECONDS = 30;
         System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
@@ -1291,6 +1293,7 @@ public class PostgresLedgerTest extends TestCase {
 
     @Ignore
     @Test
+    // db.transaction
     public void reconnectAfterPostgresRestart_queryType3_transaction() throws Exception {
         final long TEST_DURATION_SECONDS = 30;
         System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
@@ -1352,6 +1355,7 @@ public class PostgresLedgerTest extends TestCase {
 
     @Ignore
     @Test
+    // db.update
     public void reconnectAfterPostgresRestart_queryType4() throws Exception {
         final long TEST_DURATION_SECONDS = 30;
         System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
@@ -1402,6 +1406,60 @@ public class PostgresLedgerTest extends TestCase {
         int finalState = ledger.getDb().queryOne("SELECT state FROM ledger WHERE hash=? LIMIT 1;", someHashId.getDigest());
         assertEquals(ansCounter.get() + ItemState.LOCKED_FOR_CREATION.ordinal(), finalState);
         System.out.println("SUCCESS, finalState=" + finalState);
+    }
+
+    @Ignore
+    @Test
+    // db.queryOne
+    public void reconnectAfterPostgresRestart_queryType5() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                Integer srState = -1;
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    try {
+                        srState = ledger.getDb().queryOne("SELECT state FROM ledger WHERE hash=? LIMIT 1;", someHashId.getDigest());
+                        doRepeat = false;
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
+                }
+
+                if (srState != null && srState == sr0.getState().ordinal())
+                    ansCounter.incrementAndGet();
+
+//                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter);
+//                try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 1000)
+                Thread.sleep(10);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        System.out.println("SUCCESS");
     }
 
 }

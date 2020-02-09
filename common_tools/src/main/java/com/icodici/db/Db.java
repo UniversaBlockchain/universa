@@ -389,6 +389,10 @@ public class Db implements Cloneable, AutoCloseable {
             if (rs.next()) {
                 return (T) rs.getObject(1);
             }
+        } catch (SQLException se) {
+            reset();
+            se.printStackTrace();
+            throw se;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
