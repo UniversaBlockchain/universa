@@ -1920,23 +1920,33 @@ public class Node {
         });
     }
 
-    public Binder ubotStartTransaction(HashId requestId, String transactionName, int transactionNumber, PublicKey publicKey) throws Exception {
+    public Binder ubotStartTransaction(HashId requestId, String transactionName, int transactionNumber, boolean withDetails, PublicKey publicKey) throws Exception {
         return itemLock.synchronize(requestId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if (usp != null) {
-                usp.addStartTransactionVote(transactionName, transactionNumber, publicKey);
-                return usp.getTransactionState(transactionName, false);
+                Binder entrances = usp.addStartTransactionVote(transactionName, transactionNumber, withDetails, publicKey);
+                Binder res = usp.getTransactionState(transactionName, withDetails);
+
+                if (withDetails)
+                    res.set("entrances", entrances);
+
+                return res;
             }
             throw new IllegalArgumentException("session processor not found for " + requestId);
         });
     }
 
-    public Binder ubotFinishTransaction(HashId requestId, String transactionName, int transactionNumber, PublicKey publicKey) throws Exception {
+    public Binder ubotFinishTransaction(HashId requestId, String transactionName, int transactionNumber, boolean withDetails, PublicKey publicKey) throws Exception {
         return itemLock.synchronize(requestId, lock ->{
             UBotSessionProcessor usp = getUBotSessionProcessor(requestId, null);
             if(usp != null) {
-                usp.addFinishTransactionVote(transactionName, transactionNumber, publicKey);
-                return usp.getTransactionState(transactionName, false);
+                Binder finishes = usp.addFinishTransactionVote(transactionName, transactionNumber, withDetails, publicKey);
+                Binder res = usp.getTransactionState(transactionName, withDetails);
+
+                if (withDetails)
+                    res.set("finishes", finishes);
+
+                return res;
             }
             return new Binder();
         });
@@ -6406,7 +6416,7 @@ public class Node {
             return "" + quorumSize;
         }
 
-        private void addStartTransactionVote(String transactionName, int transactionNumber, PublicKey publicKey) {
+        private Binder addStartTransactionVote(String transactionName, int transactionNumber, boolean withDetails, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addStartTransactionVote from ",
                     ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
@@ -6423,7 +6433,9 @@ public class Node {
                 throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
 
             try {
-                ubotLock.synchronize(requestId, lock -> {
+                return ubotLock.synchronize(requestId, lock -> {
+                    Binder answer = new Binder();
+
                     synchronized (ubotTransactions) {
                         lastActivityTime = ZonedDateTime.now();
 
@@ -6435,7 +6447,7 @@ public class Node {
                         Set<Integer> ubots = transactionArray.get(transactionNumber);
 
                         UBotTransaction transaction = getUBotTransaction(executableContractId, transactionName);
-                        if (transaction.getState(false).get("current") == null && !requestId.equals(transaction.getPending(myInfo.getNumber()))) {
+                        if (transaction.getState(false).get("current") == null && transaction.getPending(myInfo.getNumber()) == null) {
                             ubots.add(ubotNumber);
 
                             if (ubots.size() >= quorumSize) {
@@ -6443,16 +6455,21 @@ public class Node {
                                 ubots.clear();
                             }
                         }
+
+                        if (withDetails)
+                            transactionEntrances.forEach(answer::set);
                     }
 
-                    return null;
+                    return answer;
                 });
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            return new Binder();
         }
 
-        private void addFinishTransactionVote(String transactionName, int transactionNumber, PublicKey publicKey) {
+        private Binder addFinishTransactionVote(String transactionName, int transactionNumber, boolean withDetails, PublicKey publicKey) {
             report(getLabel(), () -> concatReportMessage( "(", requestId, ") addFinishTransactionVote from " ,
                     ubotsByKey.get(publicKey) , " " , transactionName), DatagramAdapter.VerboseLevel.BASE);
 
@@ -6460,7 +6477,7 @@ public class Node {
 
             if (state != Node.UBotSessionState.OPERATIONAL) {
                 if (state == UBotSessionState.CLOSING)
-                    return;
+                    return new Binder();
 
                 throw new IllegalStateException("UBot session for " + requestId + " is not established");
             }
@@ -6473,7 +6490,9 @@ public class Node {
                 throw new IllegalArgumentException("UBot#" + ubotNumber + " isn't part of the pool for " + requestId);
 
             try {
-                ubotLock.synchronize(requestId, lock -> {
+                return ubotLock.synchronize(requestId, lock -> {
+                    Binder answer = new Binder();
+
                     synchronized (ubotTransactions) {
                         lastActivityTime = ZonedDateTime.now();
 
@@ -6494,13 +6513,18 @@ public class Node {
                                 ubots.clear();
                             }
                         }
+
+                        if (withDetails)
+                            transactionFinishes.forEach(answer::set);
                     }
 
-                    return null;
+                    return answer;
                 });
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            return new Binder();
         }
 
         private Binder getTransactionState(String transactionName, boolean withDetails) {
@@ -6516,6 +6540,18 @@ public class Node {
             }
 
             return res;
+        }
+
+        private void clearTransactionEntranceVotes(String transactionName) {
+            ArrayList<Set<Integer>> transactionArray = transactionEntrances.get(transactionName);
+            if (transactionArray != null)
+                transactionArray.forEach(ubots -> ubots.clear());
+        }
+
+        private void clearTransactionFinishVotes(String transactionName) {
+            ArrayList<Set<Integer>> transactionArray = transactionFinishes.get(transactionName);
+            if (transactionArray != null)
+                transactionArray.forEach(ubots -> ubots.clear());
         }
 
         private void saveToLedger() {
@@ -6723,50 +6759,61 @@ public class Node {
                 if (pending.size() == network.getNodesCount() || (pending.size() >= config.getPositiveConsensus() &&
                         transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
 
-                    // if all pending got consensus
-                    if (gotConsensus.containsAll(pending.keySet())) {
-                        Set<HashId> variants = new HashSet<>(pending.values());
-                        HashId resultRequestId;
-                        if (variants.size() == 1)
-                            resultRequestId = variants.iterator().next();
-                        else {
-                            long max = 0;
-                            Map<HashId, Long> counts = new ConcurrentHashMap<>();
-                            for (HashId variant : variants) {
-                                long count = pending.values().stream().filter(x -> x.equals(variant)).count();
-                                counts.put(variant, count);
-                                if (count > max)
-                                    max = count;
+                    try {
+                        // if all pending got consensus
+                        if (gotConsensus.containsAll(pending.keySet())) {
+                            Set<HashId> variants = new HashSet<>(pending.values());
+                            HashId resultRequestId;
+                            if (variants.size() == 1)
+                                resultRequestId = variants.iterator().next();
+                            else {
+                                long max = 0;
+                                Map<HashId, Long> counts = new ConcurrentHashMap<>();
+                                for (HashId variant : variants) {
+                                    long count = pending.values().stream().filter(x -> x.equals(variant)).count();
+                                    counts.put(variant, count);
+                                    if (count > max)
+                                        max = count;
+                                }
+
+                                Set<HashId> maxAt = new HashSet<>();
+                                final long top = max + pending.size() - network.getNodesCount();
+                                counts.forEach((hash, count) -> {
+                                    if (count >= top)
+                                        maxAt.add(hash);
+                                });
+
+                                if (maxAt.size() == 1) {
+                                    resultRequestId = maxAt.iterator().next();
+                                } else {
+                                    resultRequestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                                }
                             }
 
-                            Set<HashId> maxAt = new HashSet<>();
-                            final long top = max + pending.size() - network.getNodesCount();
-                            counts.forEach((hash, count) -> {
-                                if (count >= top)
-                                    maxAt.add(hash);
-                            });
+                            synchronized (ubotTransactions) {
+                                transactionTimeout = null;
+                                current = resultRequestId;
 
-                            if (maxAt.size() == 1) {
-                                resultRequestId = maxAt.iterator().next();
-                            } else {
-                                resultRequestId = maxAt.stream().sorted(Comparator.comparing(HashId::toBase64String)).findFirst().get();
+                                UBotSessionProcessor usp = getUBotSessionProcessor(resultRequestId, null);
+                                if (usp != null)
+                                    usp.clearTransactionEntranceVotes(name);
                             }
-                        }
 
-                        transactionTimeout = null;
-                        current = resultRequestId;
+                            report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                                    ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
+                                    DatagramAdapter.VerboseLevel.BASE);
 
-                        report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
-                                ") transaction: ", name, " ENTRANCED request: ", resultRequestId, ", pending: ", pending.values()),
-                                DatagramAdapter.VerboseLevel.BASE);
+                            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
+                                    pending.get(myInfo.getNumber()), name, true, true));
 
-                        network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
-                                pending.get(myInfo.getNumber()), name, true, true));
+                            stopEntranceVote();
 
-                        stopEntranceVote();
+                        } else
+                            gotConsensus.add(myInfo.getNumber());
 
-                    } else
-                        gotConsensus.add(myInfo.getNumber());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
 
                 } else if (pending.size() >= config.getPositiveConsensus() && transactionTimeout != null)
                     transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
@@ -6834,21 +6881,33 @@ public class Node {
                 if (finished.size() == network.getNodesCount() || (finished.size() >= config.getPositiveConsensus() &&
                         transactionTimeout != null && transactionTimeout.isBefore(ZonedDateTime.now()))) {
 
-                    // if all finished got consensus
-                    if (gotConsensus.containsAll(pending.keySet())) {
-                        transactionTimeout = null;
-                        current = null;
+                    try {
+                        // if all finished got consensus
+                        if (gotConsensus.containsAll(finished)) {
+                            synchronized (ubotTransactions) {
+                                transactionTimeout = null;
+                                HashId oldRequestId = current;
+                                current = null;
 
-                        report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
-                                ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
+                                UBotSessionProcessor usp = getUBotSessionProcessor(oldRequestId, null);
+                                if (usp != null)
+                                    usp.clearTransactionFinishVotes(name);
+                            }
 
-                        network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
-                                voteRequestId, name, false, true));
+                            report(getLabel(), () -> concatReportMessage("(ExecutableContractId: ", executableContractId,
+                                    ") transaction: ", name, " FINISHED request: " + voteRequestId), DatagramAdapter.VerboseLevel.BASE);
 
-                        stopFinishVote();
+                            network.broadcast(myInfo, new UBotTransactionNotification(myInfo, executableContractId,
+                                    voteRequestId, name, false, true));
 
-                    } else
-                        gotConsensus.add(myInfo.getNumber());
+                            stopFinishVote();
+
+                        } else
+                            gotConsensus.add(myInfo.getNumber());
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
 
                 } else if (finished.size() >= config.getPositiveConsensus() && transactionTimeout != null)
                     transactionTimeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
