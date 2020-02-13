@@ -40,6 +40,7 @@ public class Db implements Cloneable, AutoCloseable {
     private boolean isInTransaction = false;
 
     private Connection connection;
+    private long prevResetTime = System.currentTimeMillis() - 9000;
 
     public Properties getProperties() {
         return properties;
@@ -159,6 +160,32 @@ public class Db implements Cloneable, AutoCloseable {
 //        connection.setAutoCommit(false);
     }
 
+    public boolean reset() {
+        if (System.currentTimeMillis() - prevResetTime < 2000)
+            return false;
+        prevResetTime = System.currentTimeMillis();
+        try {
+            if (this.properties != null)
+                this.connection = DriverManager.getConnection(connectionString, properties);
+            else
+                this.connection = DriverManager.getConnection(connectionString);
+            connection.setAutoCommit(true);
+            if (connectionString.contains("sqlite")) {
+                sqlite = true;
+                queryOne("PRAGMA journal_mode=WAL");
+                update("PRAGMA synchronous=OFF");
+                try {
+                    update("PRAGMA mmap_size=268435456");
+                } catch (java.sql.SQLException e) {
+                    queryOne("PRAGMA mmap_size=268435456");
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     public Db clone() {
         try {
             return new Db(connectionString, properties);
@@ -184,24 +211,29 @@ public class Db implements Cloneable, AutoCloseable {
 
     public <T> T transaction(Callable<T> worker) throws Exception {
         synchronized (connection) {
-            connection.setAutoCommit(false);
-            isInTransaction = true;
             try {
-                T result = worker.call();
-                connection.commit();
-                return result;
-            } catch (RollbackException e) {
-                e.printStackTrace();
-                connection.rollback();
-            } catch (Exception e) {
-                log.e("Exception in transaction: %s", e);
-                e.printStackTrace();
-                connection.rollback();
-                throw (e);
-            } finally {
-                connection.setAutoCommit(true);
-//            connection.commit();
-                isInTransaction = false;
+                connection.setAutoCommit(false);
+                isInTransaction = true;
+                try {
+                    T result = worker.call();
+                    connection.commit();
+                    return result;
+                } catch (RollbackException e) {
+                    e.printStackTrace();
+                    connection.rollback();
+                } catch (Exception e) {
+                    log.e("Exception in transaction: %s", e);
+                    e.printStackTrace();
+                    connection.rollback();
+                    throw (e);
+                } finally {
+                    connection.setAutoCommit(true);
+    //            connection.commit();
+                    isInTransaction = false;
+                }
+            } catch (SQLException se) {
+                reset();
+                throw se;
             }
             return null;
         }
@@ -276,50 +308,65 @@ public class Db implements Cloneable, AutoCloseable {
     private HashMap<String, PreparedStatement> cachedStatements = new HashMap<>();
 
     public PreparedStatement statement(String sqlText, Object... args) throws SQLException {
+        try {
 //        log.d("statement: |" + sqlText + "|  " + Arrays.toString(args));
 //        System.out.println("statement: |" + sqlText + "|  " + Arrays.toString(args));
 //        PreparedStatement statement = cachedStatements.get(sqlText);
-        PreparedStatement statement = null;
+            PreparedStatement statement = null;
 //        if (statement == null) {
-        synchronized (connection) {
-            statement = connection.prepareStatement(sqlText);
-        }
+            synchronized (connection) {
+                statement = connection.prepareStatement(sqlText);
+            }
 //            cachedStatements.put(sqlText, statement);
 //        } else {
 //            statement.clearParameters();
 //        }
-        int index = 1;
-        for (Object arg : args) {
-            statement.setObject(index, arg);
-            index++;
+            int index = 1;
+            for (Object arg : args) {
+                statement.setObject(index, arg);
+                index++;
+            }
+            return statement;
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
-        return statement;
     }
 
     public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
-        PreparedStatement statement = null;
-        synchronized (connection) {
-            statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+        try {
+            PreparedStatement statement = null;
+            synchronized (connection) {
+                statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+            }
+            int index = 1;
+            for (Object arg : args) {
+                statement.setObject(index, arg);
+                index++;
+            }
+            return statement;
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
-        int index = 1;
-        for (Object arg : args) {
-            statement.setObject(index, arg);
-            index++;
-        }
-        return statement;
     }
 
     public ResultSet queryRow(String sqlText, Object... args) throws SQLException {
-        PreparedStatement s = statement(sqlText, args);
-        s.closeOnCompletion();
-        ResultSet rs = s.executeQuery();
+        try {
+            PreparedStatement s = statement(sqlText, args);
+            s.closeOnCompletion();
+            ResultSet rs = s.executeQuery();
 //        if(!isInTransaction) connection.commit();
-        if (rs.next()) {
-            return rs;
-        } else {
-            if (sqlite)
-                s.close();
-            return null;
+            if (rs.next()) {
+                return rs;
+            } else {
+                if (sqlite)
+                    s.close();
+                return null;
+            }
+        } catch (SQLException se) {
+            reset();
+            throw se;
         }
     }
 
@@ -342,6 +389,10 @@ public class Db implements Cloneable, AutoCloseable {
             if (rs.next()) {
                 return (T) rs.getObject(1);
             }
+        } catch (SQLException se) {
+            reset();
+            se.printStackTrace();
+            throw se;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
@@ -363,6 +414,10 @@ public class Db implements Cloneable, AutoCloseable {
         try (PreparedStatement s = statement(sqlText, args)) {
             s.executeUpdate();
 //            if(!isInTransaction) connection.commit();
+        } catch (SQLException se) {
+            se.printStackTrace();
+            reset();
+            throw se;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
@@ -375,6 +430,10 @@ public class Db implements Cloneable, AutoCloseable {
         try {
             statement.executeUpdate();
 //            if(!isInTransaction) connection.commit();
+        } catch (SQLException se) {
+            se.printStackTrace();
+            reset();
+            throw se;
         } catch (Exception e) {
 //            log.e("Exception in update statement: %s", e);
             e.printStackTrace();
