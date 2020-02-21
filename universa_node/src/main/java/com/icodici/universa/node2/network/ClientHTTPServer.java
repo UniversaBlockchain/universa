@@ -711,7 +711,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             Binder res = node.createUBotSession(request);
             return Binder.of("session",res);
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
         }
     }
@@ -731,7 +731,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.COMMAND_FAILED,"", e.getMessage());
         }
     }
@@ -751,7 +751,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             HashId requestId = params.getOrThrow("requestId");
             return Binder.of("session", node.closeUBotSession(requestId, session.getPublicKey(), finished));
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
         }
     }
@@ -775,7 +775,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateVoting",e.getMessage());
         }
     }
@@ -829,7 +829,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             return node.updateUBotStorage(requestId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotUpdateStorage", e.getMessage());
         }
     }
@@ -843,7 +843,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             try {
                 return node.getUBotStorage(executableContractId, storageNames);
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
                 throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
             }
         } else  if(params.containsKey("requestId")) {
@@ -853,7 +853,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             try {
                 return node.getUBotStorage(requestId, storageNames);
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
                 throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
             }
         } else {
@@ -870,7 +870,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             return node.ubotStartTransaction(requestId, transactionName, transactionNumber, withDetails, session.getPublicKey());
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotStartTransaction", e.getMessage());
         }
     }
@@ -884,7 +884,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             return node.ubotFinishTransaction(requestId, transactionName, transactionNumber, withDetails, session.getPublicKey());
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotFinishTransaction", e.getMessage());
         }
     }
@@ -897,7 +897,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         try {
             return node.ubotGetTransactionState(requestId, transactionName, withDetails);
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             throw new CommandFailedException(Errors.FAILURE, "ubotGetTransactionState", e.getMessage());
         }
     }
