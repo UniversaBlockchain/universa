@@ -173,7 +173,9 @@ public class UnsMainTest extends BaseMainTest {
 
         res = ts.client.queryNameRecord(keyToRegister.getPublicKey().getLongAddress().toString());
         names = res.getListOrThrow("names");
-        assertEquals(names.get(0).getString("name"),name);
+
+        assertTrue(names.stream().anyMatch(n->n.getString("name").equals(name)));
+        assertTrue(names.stream().anyMatch(n->n.getString("name").equals(name2)));
 
         long spentSeconds = created2.toEpochSecond()-created.toEpochSecond();
         long leftSeconds = (long) (3600*24*(paidU+paidU2)*configForProvider.getServiceRate(NSmartContract.SmartContractType.UNS1.name()).doubleValue()) - spentSeconds;
