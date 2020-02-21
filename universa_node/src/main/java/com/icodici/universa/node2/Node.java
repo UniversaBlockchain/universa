@@ -135,7 +135,7 @@ public class Node {
     private ConcurrentHashMap<PublicKey, Integer> keyRequestsUbot = new ConcurrentHashMap();
 
 
-    Map<NodeInfo,Set<NodeInfo>> unreachableNodes = new ConcurrentHashMap();
+    Map<NodeInfo,ConnectivityInfo> connectivityMap = new ConcurrentHashMap();
 
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
@@ -213,7 +213,7 @@ public class Node {
         this.ledger = ledger;
         this.network = network;
         if(network instanceof  NetworkV2)
-            ((NetworkV2)network).setUnreachableNodes(unreachableNodes);
+            ((NetworkV2)network).setConnectivityMap(connectivityMap);
         cache = new ItemCache(config.getMaxCacheAge());
         voteCache = new VoteCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
@@ -304,38 +304,42 @@ public class Node {
     }
 
     private void pulseStartSelfDiagostics() {
-        executorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                List<NodeInfo> nodes = network.allNodes();
-                AtomicInteger checked = new AtomicInteger(0);
-                Set<NodeInfo> unreachable = ConcurrentHashMap.newKeySet();
-                AsyncEvent ready = new AsyncEvent();
+        executorService.scheduleAtFixedRate(() -> {
 
-                for(NodeInfo ni : nodes) {
-                    Do.inParallel(() -> {
-                        if(network.pingNodeUDP(ni.getNumber(), 1000) < 0) {
-                            unreachable.add(ni);
-                        }
-                        if(checked.incrementAndGet() == nodes.size()) {
-                            ready.fire();
-                        }
-                    });
+            connectivityMap.forEach((k,v)->{
+                if(v.isExpired()) {
+                    connectivityMap.remove(k);
                 }
+            });
 
-                try {
-                    ready.await();
-                    ConnectivityNotification n = new ConnectivityNotification(myInfo,unreachable);
-                    obtainConnectivityNotification(n);
-                    network.broadcast(myInfo,n);
+            List<NodeInfo> nodes = network.allNodes();
+            AtomicInteger checked = new AtomicInteger(0);
+            Set<NodeInfo> unreachable = ConcurrentHashMap.newKeySet();
+            AsyncEvent ready = new AsyncEvent();
 
-
-                } catch (InterruptedException ignored) {
-
-                }
-                report(getLabel(), () -> concatReportMessage("connectivity diagnostics: ", unreachableNodes),
-                        DatagramAdapter.VerboseLevel.BASE);
+            for(NodeInfo ni : nodes) {
+                Do.inParallel(() -> {
+                    if(network.pingNodeUDP(ni.getNumber(), 1000) < 0) {
+                        unreachable.add(ni);
+                    }
+                    if(checked.incrementAndGet() == nodes.size()) {
+                        ready.fire();
+                    }
+                });
             }
+
+            try {
+                ready.await();
+                ConnectivityNotification n = new ConnectivityNotification(myInfo,unreachable);
+                obtainConnectivityNotification(n);
+                network.broadcast(myInfo,n);
+
+
+            } catch (InterruptedException ignored) {
+
+            }
+            report(getLabel(), () -> concatReportMessage("connectivity diagnostics: ", connectivityMap),
+                    DatagramAdapter.VerboseLevel.BASE);
         },5,5,TimeUnit.SECONDS);
     }
 
@@ -880,7 +884,8 @@ public class Node {
     }
 
     private void obtainConnectivityNotification(ConnectivityNotification notification) {
-        unreachableNodes.put(notification.getFrom(),notification.getUnreachableNodes().stream().map(ni->network.getInfo(ni)).collect(Collectors.toSet()));
+        ConnectivityInfo ci = new ConnectivityInfo(notification.getFrom(),config.getConnectivityInfoValidityPeriod(),notification.getUnreachableNodes().stream().map(ni->network.getInfo(ni)).collect(Collectors.toSet()));
+        connectivityMap.put(notification.getFrom(),ci);
     }
 
     private void obtainUBotTransactionNotification(UBotTransactionNotification notification) {

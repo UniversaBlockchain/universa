@@ -28,6 +28,7 @@ public class Config {
     public Map<String, Integer> minPayment = new HashMap<>();
     public Map<String, BigDecimal> rate = new HashMap<>();
     private KeyAddress authorizedNameServiceCenterAddress;
+    private Duration connectivityInfoValidityPeriod = Duration.ofMinutes(5);
 
     public Config () {
         System.out.println("USING REAL CONFIG");
@@ -159,6 +160,11 @@ public class Config {
     public void setMaxDiskCacheAge(Duration diskCacheAge) {
         maxDiskCacheAge = diskCacheAge;
     }
+
+    public Duration getConnectivityInfoValidityPeriod() {
+        return connectivityInfoValidityPeriod;
+    }
+
 
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);

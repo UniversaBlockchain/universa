@@ -12,7 +12,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
@@ -45,7 +44,7 @@ public class NetworkV2 extends Network {
     private static LogPrinter log = new LogPrinter("TLN");
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
-    private Map<NodeInfo, Set<NodeInfo>> unreachableNodes;
+    private Map<NodeInfo, ConnectivityInfo> connectivityMap;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
@@ -386,6 +385,7 @@ public class NetworkV2 extends Network {
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo, netConfig);
         adapter.receive(this::onReceived);
         adapter.addErrorsCallback(this::exceptionCallback);
+        adapter.setConnectivityMap(connectivityMap);
     }
 
 
@@ -479,8 +479,9 @@ public class NetworkV2 extends Network {
         return ubotClients.get(ubotNumber).command(command,params);
     }
 
-    public void setUnreachableNodes(Map<NodeInfo, Set<NodeInfo>> unreachableNodes) {
-        this.unreachableNodes = unreachableNodes;
-        this.adapter.setUnreachableNodes(unreachableNodes);
+    public void setConnectivityMap(Map<NodeInfo, ConnectivityInfo> connectivityMap) {
+        this.connectivityMap = connectivityMap;
+        if(this.adapter != null)
+            this.adapter.setConnectivityMap(connectivityMap);
     }
 }
