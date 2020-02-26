@@ -415,6 +415,7 @@ public class UBotSessionsTest extends BaseMainTest {
         ParcelProcessingState state;
         do {
             state = ts.client.getPaidOperationProcessingState(paidOperationId);
+            Thread.sleep(100);
         } while (state.isProcessing());
 
         AtomicReference<Binder> session = new AtomicReference<>();

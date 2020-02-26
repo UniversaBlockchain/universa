@@ -1780,7 +1780,7 @@ public class Node {
 
                 UBotSessionProcessor usp = getUBotSessionProcessor(requestId, creationBlock);
 
-                if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                if (usp != null && usp.getState() == UBotSessionState.CLOSING) {
                     usp.abortSession();
                     usp = getUBotSessionProcessor(requestId, creationBlock);
                 }
@@ -1789,7 +1789,8 @@ public class Node {
             });
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            addUBotSessionError(requestId, Errors.FAILURE, "create UBotSessionProcessor", e.getMessage());
+            return Binder.of("errors", ubotSessionErrors.get(requestId));
         }
 
     }
@@ -2196,27 +2197,31 @@ public class Node {
 
                 while(true) {
 
-                    UBotSessionProcessor processor = itemLock.synchronize(requestId, lock -> {
-                        UBotSessionProcessor usp = getUBotSessionProcessor(requestId, createNew.get() ? () -> {
-                            return new UBotSessionProcessor(executableContractId, requestId, requestContract, quantaLimit);
-                        } : null);
-
-                        if(usp != null && usp.getState() == UBotSessionState.CLOSING) {
-                            usp.abortSession();
-                            usp = getUBotSessionProcessor(requestId, createNew.get() ? () -> {
+                    UBotSessionProcessor processor = null;
+                    try {
+                        processor = itemLock.synchronize(requestId, lock -> {
+                            UBotSessionProcessor usp = getUBotSessionProcessor(requestId, createNew.get() ? () -> {
                                 return new UBotSessionProcessor(executableContractId, requestId, requestContract, quantaLimit);
                             } : null);
-                        }
-                        return usp;
-                    });
 
-                    createNew.set(false);
+                            if (usp != null && usp.getState() == UBotSessionState.CLOSING) {
+                                usp.abortSession();
+                                usp = getUBotSessionProcessor(requestId, createNew.get() ? () -> {
+                                    return new UBotSessionProcessor(executableContractId, requestId, requestContract, quantaLimit);
+                                } : null);
+                            }
+                            return usp;
+                        });
+
+                        createNew.set(false);
+                    } catch (IllegalArgumentException e) {
+                        addUBotSessionError(requestId, Errors.FAILURE, "create UBotSessionProcessor", e.getMessage());
+                    }
 
                     if(processor == null) {
                         onFailure.accept("Unable to establish session");
                         break;
                     }
-
 
                     if(processor.state != UBotSessionState.OPERATIONAL) {
                         boolean result = (boolean) processor.getSessionReadyEvent().await();
@@ -5778,12 +5783,31 @@ public class Node {
             report(getLabel(), () -> concatReportMessage( "(", requestId ,") new UBot session processor"),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            this.quantaLimit = quantaLimit;
             this.executableContractId = executableContractId;
             this.requestId = requestId;
             this.requestContract = requestContract;
-            myRandom = Do.randomInt(Integer.MAX_VALUE);
 
+            if (requestContract != null && requestContract.getId().equals(requestId)) {
+                if (quantaLimit == 0)
+                    checkFreeRequest(requestContract);
+                else {
+                    try {
+                        requestContract.getQuantiser().resetNoLimit();
+                        requestContract.check();
+                    } catch (Quantiser.QuantiserException e) {
+                        e.printStackTrace();
+                    }
+
+                    quantaLimit -= requestContract.getProcessedCost();
+
+                    if (quantaLimit <= 0)
+                        throw new IllegalArgumentException("Payment is insufficient for registration request contract");
+                }
+            }
+
+            this.quantaLimit = quantaLimit;
+
+            myRandom = Do.randomInt(Integer.MAX_VALUE);
             state = Node.UBotSessionState.COLLECTING_RANDOMS;
             voteRandom(myInfo, myRandom);
             timeout = ZonedDateTime.now().plus(config.getMaxWaitSessionConsensus());
@@ -5816,6 +5840,74 @@ public class Node {
             this.myRandom = 0; // not needed for saved state
 
             sessionReadyEvent.fire(false);
+        }
+
+        private void checkFreeRequest(Contract requestContract) throws IllegalArgumentException {
+            // check count of new items
+            if (requestContract.getNewItems().size() > 1 ||
+               (requestContract.getNewItems().size() == 1 && !requestContract.getNew().get(0).getId().equals(executableContractId)))
+                throw new IllegalArgumentException("Error request contract: new items of request contract must have no contracts except own executable contract");
+
+            // check request contract fields
+            if (!requestContract.getDefinition().getData().isEmpty())
+                throw new IllegalArgumentException("Error request contract: request contract must have no user definition data");
+
+            if (requestContract.getTransactional() != null && !requestContract.getTransactional().getData().isEmpty())
+                throw new IllegalArgumentException("Error request contract: request contract must have no user transactional data");
+
+            ArrayList<String> requestFields = Do.listOf("method_name", "method_args", "executable_contract_id");
+
+            requestContract.getStateData().forEach((k, v) -> {
+                if (!requestFields.contains(k))
+                    throw new IllegalArgumentException("Error request contract: illegal field state.data." + k);
+            });
+
+            if (requestContract.getNewItems().size() == 0)
+                return;
+
+            // get executable contract
+            Contract executableContract = requestContract.getTransactionPack().getReferencedItems().get(executableContractId);
+            if (executableContract == null) {
+                executableContract = requestContract.getTransactionPack().getSubItem(executableContractId);
+                if (executableContract == null)
+                    throw new IllegalArgumentException("Error request contract: executable contact is not found in new items");
+            }
+
+            // check executable contract new items
+            if (executableContract.getNewItems().size() > 0)
+                throw new IllegalArgumentException("Error executable contract: new items of executable contract must have no contracts");
+
+            // check executable contract fields
+            if (!executableContract.getDefinition().getData().isEmpty())
+                throw new IllegalArgumentException("Error executable contract: executable contract must have no user definition data");
+
+            if (executableContract.getTransactional() != null && !executableContract.getTransactional().getData().isEmpty())
+                throw new IllegalArgumentException("Error executable contract: executable contract must have no user transactional data");
+
+            ArrayList<String> executableFields = Do.listOf("cloud_methods", "cloud_storages", "js");
+            ArrayList<String> executableMethodFields = Do.listOf("pool", "quorum", "max_wait_ubot", "launcher", "storage_read_trust_level", "readsFrom", "writesTo");
+            ArrayList<String> executablePoolQuorumFields = Do.listOf("size", "percentage");
+
+            Binder stateData = executableContract.getStateData();
+
+            stateData.forEach((k, v) -> {
+                if (executableFields.contains(k)) {
+                    if (v instanceof Binder)
+                        ((Binder) v).forEach((km, vm) -> {
+                            ((Binder) vm).forEach((kf, vf) -> {
+                                if (executableMethodFields.contains(kf)) {
+                                    if (vf instanceof Binder)
+                                        ((Binder) vf).forEach((kpq, vpq) -> {
+                                            if (!executablePoolQuorumFields.contains(kpq))
+                                                throw new IllegalArgumentException("Error request contract: illegal field state.data." + k + "." + km + "." + kf + "." + kpq);
+                                        });
+                                } else
+                                    throw new IllegalArgumentException("Error request contract: illegal field state.data." + k + "." + km + "." + kf);
+                            });
+                        });
+                } else
+                    throw new IllegalArgumentException("Error request contract: illegal field state.data." + k);
+            });
         }
 
         private void checkRequest(Contract requestContract) throws IllegalArgumentException {
@@ -6257,7 +6349,7 @@ public class Node {
                 "sessionId", sessionId,
                 "sessionPool", sessionPool,
                 "closeVotes", closeVotes,
-                "quantaLimit", quantaLimit == 0 && sessionPool != null && sessionPool.size() < 17? sessionPool.size()*200 : quantaLimit,
+                "quantaLimit", quantaLimit == 0 && sessionPool != null && sessionPool.size() < 17? sessionPool.size() * 300 : quantaLimit,
                 "closeVotesFinished", closeVotesFinished,
                 "closeVotesNodes1", closeVotesNodes.keySet().stream().map(n->n.toString()).collect(Collectors.toList()),
                 "closeVotesNodes2", closeVotesNodes.values().stream().map(n->n.toString()).collect(Collectors.toList())
