@@ -53,13 +53,7 @@ public class QuorumVoteRole extends Role {
         this.source = source;
         this.quorum = quorum;
 
-        int idx = source.indexOf(".");
-        String from = source.substring(0,idx);
-        String what = source.substring(idx+1);
-
-
         extractValuesAndOperators();
-
     }
 
     private void extractValuesAndOperators() {
@@ -115,9 +109,6 @@ public class QuorumVoteRole extends Role {
     public void initWithDsl(Binder serializedRole) {
         source = serializedRole.getStringOrThrow("source");
         quorum = serializedRole.getStringOrThrow("quorum");
-        int idx = source.indexOf(".");
-        String from = source.substring(0,idx);
-        String what = source.substring(idx+1);
     }
 
     @Override
@@ -208,53 +199,54 @@ public class QuorumVoteRole extends Role {
         for(int i = 0; i < quorumValues.size();i++) {
             long curValue;
             String valueString = quorumValues.get(i);
-            boolean isPercentageBased = valueString.endsWith("%");
-            if(isPercentageBased) {
-                if(totalVotesCount == 0)
-                    throw new IllegalArgumentException("Percentage based quorum requires vote list to be provided at registration");
-                valueString = valueString.substring(0,valueString.length()-1);
-            } else if(valueString.equals("N")) {
+            if (valueString.equals("N")) {
                 curValue = totalVotesCount;
-            }
-
-            try {
-                curValue = isPercentageBased ? (long) Math.floor(totalVotesCount * Double.parseDouble(valueString) / 100) : Long.parseLong(valueString);
-            } catch (NumberFormatException ignored) {
-                int idx = valueString.indexOf(".");
-                String from;
-                String what;
-                if(idx == -1) {
-                    from = "this";
-                    what = "state.data."+valueString;
-                } else {
-                    from = valueString.substring(0,idx);
-                    what = valueString.substring(idx+1);
-                }
-
-                if(from.equals("this")) {
-                    valueString = getContract().get(what).toString();
-                } else {
-                    Reference ref = getContract().getReferences().get(from);
-                    if(ref == null) {
-                        throw  new IllegalArgumentException("Reference with name '" + from + "' wasn't found for role " + getName());
-                    }
-
-                    if(ref.matchingItems.size() != 1) {
-                        throw  new IllegalArgumentException("Reference with name '" + from + "' should be matching exactly one contract within transaction to be used in QuorumVoteRole");
-                    }
-
-                    valueString = ((Contract)ref.matchingItems.get(0)).get(what).toString();
+            } else {
+                boolean isPercentageBased = valueString.endsWith("%");
+                if (isPercentageBased) {
+                    if (totalVotesCount == 0)
+                        throw new IllegalArgumentException("Percentage based quorum requires vote list to be provided at registration");
+                    valueString = valueString.substring(0, valueString.length() - 1);
                 }
 
                 try {
                     curValue = isPercentageBased ? (long) Math.floor(totalVotesCount * Double.parseDouble(valueString) / 100) : Long.parseLong(valueString);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(e);
+                } catch (NumberFormatException ignored) {
+                    int idx = valueString.indexOf(".");
+                    String from;
+                    String what;
+                    if (idx == -1) {
+                        from = "this";
+                        what = "state.data." + valueString;
+                    } else {
+                        from = valueString.substring(0, idx);
+                        what = valueString.substring(idx + 1);
+                    }
+
+                    if (from.equals("this")) {
+                        valueString = getContract().get(what).toString();
+                    } else {
+                        Reference ref = getContract().getReferences().get(from);
+                        if (ref == null) {
+                            throw new IllegalArgumentException("Reference with name '" + from + "' wasn't found for role " + getName());
+                        }
+
+                        if (ref.matchingItems.size() != 1) {
+                            throw new IllegalArgumentException("Reference with name '" + from + "' should be matching exactly one contract within transaction to be used in QuorumVoteRole");
+                        }
+
+                        valueString = ((Contract) ref.matchingItems.get(0)).get(what).toString();
+                    }
+
+                    try {
+                        curValue = isPercentageBased ? (long) Math.floor(totalVotesCount * Double.parseDouble(valueString) / 100) : Long.parseLong(valueString);
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException(e);
+                    }
                 }
             }
 
-
-            if(i == 0) {
+            if (i == 0) {
                 value = curValue;
             } else {
                 switch (quorumOperators.get(i-1)) {
