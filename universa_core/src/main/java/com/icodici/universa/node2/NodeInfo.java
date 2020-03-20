@@ -194,7 +194,7 @@ public class NodeInfo implements BiSerializable {
 
 
     public String domainUrlStringV4() {
-        return publicHost.equals("localhost") ? "https://localhost:"+clientAddress.getPort() : "https://" + publicHost + ":" + publicHttpPort;
+        return "https://" + publicHost;
     }
 
     public String directUrlStringV4() {

@@ -51,6 +51,11 @@ public class TopologyBuilder {
 
 
     private List<Binder> loadTopologyFrom(String someNodeUrl, PublicKey verifyWith) throws IOException {
+
+        if(someNodeUrl.startsWith("https")) {
+            someNodeUrl = someNodeUrl.replace(":8080","");
+        }
+
         URL url = new URL(someNodeUrl + "/" + (verifyWith == null ? "network" : "topology"));
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
@@ -89,25 +94,29 @@ public class TopologyBuilder {
     }
 
     private void receiveFrom(Binder inputInfo, PublicKey key) {
-        try {
-            List<Binder> receivedTopology = loadTopologyFrom((String) ((List) inputInfo.get("direct_urls")).get(0), key);
+        //performing two attempts. 1st by ip over http, 2nd by hostname over https
+        for(int attempt = 0; attempt < 2; attempt++) {
+            try {
+                List<Binder> receivedTopology = loadTopologyFrom((String) ((List) inputInfo.get(attempt == 0 ? "direct_urls" : "domain_urls")).get(0), key);
 
-            synchronized (updateLock) {
-                for (Binder receivedInfo : receivedTopology) {
-                    PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
+                synchronized (updateLock) {
+                    for (Binder receivedInfo : receivedTopology) {
+                        PublicKey receivedKey = (PublicKey) receivedInfo.get("key");
 
-                    if (!nodeCoordinates.containsKey(receivedKey)) {
-                        nodeCoordinates.put(receivedKey, new ArrayList<>());
+                        if (!nodeCoordinates.containsKey(receivedKey)) {
+                            nodeCoordinates.put(receivedKey, new ArrayList<>());
+                        }
+                        receivedInfo.put("key", receivedKey.packToBase64String());
+                        nodeCoordinates.get(receivedKey).add(receivedInfo);
                     }
-                    receivedInfo.put("key", receivedKey.packToBase64String());
-                    nodeCoordinates.get(receivedKey).add(receivedInfo);
+                    confirmedKeys.add(key);
                 }
-                confirmedKeys.add(key);
+                break;
+            } catch (IOException ignored) {
+
             }
-
-        } catch (IOException ignored) {
-
         }
+
     }
 
     private void doReacquire() {
