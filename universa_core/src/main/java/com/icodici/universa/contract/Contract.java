@@ -4267,6 +4267,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 case UNS1:
                     result = new UnsContract(data, tp);
                     break;
+                case UNS2:
+                    result = new UnsContract(data, tp);
+                    break;
                 case FOLLOWER1:
                     result = new FollowerContract(data, tp);
                     break;

@@ -52,12 +52,14 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(), new BigDecimal("4"));
         rate.put(NSmartContract.SmartContractType.UNS1.name(), new BigDecimal("0.25"));
+        rate.put(NSmartContract.SmartContractType.UNS2.name(), new BigDecimal("0.365"));
         rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), new BigDecimal("1"));
 
         rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", new BigDecimal("1"));
 
         minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name()).doubleValue()));
+        minPayment.put(NSmartContract.SmartContractType.UNS2.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS2.name()).doubleValue()));
         minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 100);
     }
 

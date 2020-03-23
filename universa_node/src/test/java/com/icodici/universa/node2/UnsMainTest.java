@@ -11,6 +11,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.network.Client;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -65,6 +66,76 @@ public class UnsMainTest extends BaseMainTest {
         ts.shutdown();
     }
 
+
+    @Test
+    public void uns2Case() throws Exception {
+
+        TestSpace ts = prepareTestSpace();
+
+        PrivateKey unsIssuer = TestKeys.privateKey(2);
+
+        //create initial contract
+        UnsContract uns = new UnsContract(unsIssuer, NSmartContract.SmartContractType.UNS2);
+        //NodeConfigProvider nodeInfoProvider = new NodeConfigProvider();
+        uns.attachToNetwork(ts.client);
+
+        String name = "test.ya.ru"+System.currentTimeMillis();
+        String desc = "test domain";
+        uns.addName(name,"/"+name,desc);
+        uns.addData(Binder.of("type","dns", "dns_type","A","value",Binder.of("ttl",300,"IPv4","127.0.0.1")));
+        uns.addData(Binder.of("type","dns", "dns_type","AAAA","value",Binder.of("ttl",600,"IPv6","2a02:6b8::2:242")));
+        uns.addData(Binder.of("type","dns", "dns_type","CNAME","value",Binder.of("ttl",500,"domain_name","ya.ru")));
+        uns.addData(Binder.of("type","dns", "dns_type","MX","value",Binder.of("ttl",550,"preference",20,"exchange","alt-mx.ya.ru")));
+        uns.addData(Binder.of("type","dns", "dns_type","MX","value",Binder.of("ttl",550,"preference",5,"exchange","add-mx.ya.ru")));
+
+        //unsContract.addData({type: "dns", dns_type: "A", value: {ttl: 300, IPv4: "127.0.0.1"}});
+        //unsContract.addData({type: "dns", dns_type: "AAAA", value: {ttl: 600, IPv6: "2a02:6b8::2:242"}});
+        //unsContract.addData({type: "dns", dns_type: "CNAME", value: {ttl: 500, domain_name: "ya.ru"}});
+        //unsContract.addData({type: "dns", dns_type: "MX", value: {ttl: 550, preference: 20, exchange: "alt-mx.ya.ru"}});
+        //unsContract.addData({type: "dns", dns_type: "MX", value: {ttl: 550, preference: 5, exchange: "add-mx.ya.ru"}});
+
+
+        int paidU = 10000;
+        uns.setPayingAmount(paidU);
+        uns.seal();
+
+
+
+        //register and ensure every key is required and can't be skipped
+        registerWithMinimumKeys(uns,Do.listOf(unsIssuer),ts,paidU);
+
+
+        Contract c = Contract.fromPackedTransaction(ts.client.queryNameContract(name, NSmartContract.SmartContractType.UNS2));
+        //query contract from the network
+        uns = (UnsContract) c;
+        assertEquals(uns.getAllData().get(0).getBinder("value"),Binder.of("ttl",300,"IPv4","127.0.0.1"));
+
+
+        //create revision and change data associated
+        uns = (UnsContract) uns.createRevision();
+        uns.attachToNetwork(ts.client);
+        uns.getAllData().get(0).put("value",Binder.of("ttl",300,"IPv4","192.168.1.1"));
+        uns.setPayingAmount(0);
+        uns.seal();
+
+        //make sure no payment is required and no additional keys rather than
+        //owner key is required to modify data record
+        registerWithMinimumKeys(uns,Do.listOf(unsIssuer),ts,0);
+
+        uns = (UnsContract) Contract.fromPackedTransaction(ts.client.queryNameContract(name,NSmartContract.SmartContractType.UNS2));
+        assertEquals(uns.getAllData().get(0).getBinder("value"),Binder.of("ttl",300,"IPv4","192.168.1.1"));
+
+        uns = (UnsContract) uns.createRevision();
+        uns.attachToNetwork(ts.client);
+        int paidU2 = 1460;
+        uns.setPayingAmount(paidU2);
+        uns.seal();
+
+        //top up balance
+        registerWithMinimumKeys(uns,Do.listOf(unsIssuer),ts,paidU2);
+
+        ts.shutdown();
+    }
 
     @Test
     public void unsCase() throws Exception {

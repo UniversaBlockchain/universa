@@ -408,12 +408,17 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         Binder b = new Binder();
         String nameContract = params.getStringOrThrow("name");
-        NNameRecord nr = node.getLedger().getNameRecord(nameContract);
-        if (nr != null) {
-            NImmutableEnvironment env = node.getLedger().getEnvironment(nr.getEnvironmentId());
-            if (env != null) {
-                byte[] packedContract = env.getContract().getLastSealedBinary();
-                b.put("packedContract", packedContract);
+        String type = params.getString("type","UNS1");
+        Set<NNameRecord> nrs = node.getLedger().getNameRecords(nameContract);
+        if (nrs != null) {
+            for(NNameRecord nr : nrs) {
+                NImmutableEnvironment env = node.getLedger().getEnvironment(nr.getEnvironmentId());
+                if (env != null) {
+                    if((((NSmartContract)env.getContract()).getExtendedType().equals(type))) {
+                        byte[] packedContract = env.getContract().getLastSealedBinary();
+                        b.put("packedContract", packedContract);
+                    }
+                }
             }
         }
         return b;

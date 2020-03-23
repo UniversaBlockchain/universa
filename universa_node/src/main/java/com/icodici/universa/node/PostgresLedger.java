@@ -1278,9 +1278,15 @@ public class PostgresLedger implements Ledger {
             List<String> names = getNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String name : names) {
-                NNameRecord nr = getNameRecord(name);
-                //nr.setId(nrModel.id);
-                nameRecords.add(nr);
+                Set<NNameRecord> nrs = getNameRecords(name);
+                if(nrs == null) {
+                    //TODO:?
+                    continue;
+                }
+                for(NNameRecord nr : nrs) {
+                    if(nr.getEnvironmentId() == environmentId)
+                        nameRecords.add(nr);
+                }
             }
             List<NameRecordEntry> nameRecordEntries = new ArrayList<>(getNameEntries(environmentId));
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder,
@@ -2564,6 +2570,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
+    @Deprecated
     public NNameRecord getNameRecord(final String name) {
         List<NNameRecord> res = getNameBy("WHERE name_storage.name_full=? ", (statement)-> {
             try {
@@ -2578,6 +2585,22 @@ public class PostgresLedger implements Ledger {
         if(res.size() == 0)
             return null;
         throw new Failure("getNameRecord failed");
+    }
+
+    @Override
+    public Set<NNameRecord> getNameRecords(final String name) {
+        List<NNameRecord> res = getNameBy("WHERE name_storage.name_full=? ", (statement)-> {
+            try {
+                statement.setString(1, name);
+            } catch (SQLException e) {
+                throw new Failure("getNameRecords failed: " + e);
+            }
+        });
+
+        if(res.size() == 0)
+            return null;
+
+        return new HashSet<>(res);
     }
 
     @Override
@@ -2621,9 +2644,14 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    @Deprecated
     public List<NNameRecordEntry> getNameEntries(final String nameReduced) {
-        NNameRecord nr = getNameRecord(nameReduced);
-        return getNameEntries(nr.getEnvironmentId());
+        Set<NNameRecord> nrs = getNameRecords(nameReduced);
+        List<NNameRecordEntry> result = new ArrayList<>();
+        for(NNameRecord nr : nrs) {
+            result.addAll(getNameEntries(nr.getEnvironmentId()));
+        }
+        return result;
     }
 
     @Override

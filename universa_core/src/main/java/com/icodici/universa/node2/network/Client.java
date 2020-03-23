@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
@@ -1285,6 +1286,28 @@ public class Client {
     public byte[] queryNameContract(String name) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("queryNameContract", "name", name);
+            try {
+                Bytes bytes = result.getBytesOrThrow("packedContract");
+                return bytes.getData();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Query the  {@link com.icodici.universa.contract.services.UnsContract} that registers the name
+     * (passed as the argument).
+     *
+     * @param name to look for
+     * @param type to look for UNS1 or UNS2
+     * @return packed {@link com.icodici.universa.contract.services.UnsContract} if found;
+     * or {@code null} if not found
+     * @throws ClientError
+     */
+    public byte[] queryNameContract(String name, NSmartContract.SmartContractType type) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryNameContract", "name", name, "type",type.name());
             try {
                 Bytes bytes = result.getBytesOrThrow("packedContract");
                 return bytes.getData();

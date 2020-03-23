@@ -286,7 +286,9 @@ public interface Ledger {
     void addNameRecordEntry(final NNameRecordEntry nameRecordEntryModel);
     void removeNameRecordEntry(NNameRecordEntry nameRecordEntry);
 
-    NNameRecord getNameRecord(final String nameReduced);
+    @Deprecated
+    NNameRecord getNameRecord(final String name);
+    Set<NNameRecord> getNameRecords(final String name);
     List<NNameRecordEntry> getNameEntries(final long environmentId);
     List<NNameRecordEntry> getNameEntries(final String nameReduced);
     List<NNameRecord> getNamesByAddress (String address);
