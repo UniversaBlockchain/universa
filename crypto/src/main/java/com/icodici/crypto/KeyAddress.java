@@ -204,11 +204,11 @@ public class KeyAddress implements KeyMatcher {
             case RSAPublic:
             case RSAPrivate:
                 if (((PublicKey) k).getPublicExponent() == 0x10001) {
-                    int l = i.getKeyLength();
-                    if (l == 2048 / 8)
-                        return 0x01;
-                    if (l == 4096 / 8)
-                        return 0x02;
+                    switch (i.getKeyLength()) {
+                        case 2048/8: return 0x01;
+                        case 4096/8: return 0x02;
+                        case 8192/8: return 0x03;
+                    }
                 }
                 break;
         }
