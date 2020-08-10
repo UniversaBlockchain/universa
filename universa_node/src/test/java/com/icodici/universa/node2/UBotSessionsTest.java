@@ -1,22 +1,22 @@
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.QuorumVoteRole;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64u;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -27,10 +27,8 @@ import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static com.icodici.universa.node2.network.VerboseLevel.*;
 import static junit.framework.TestCase.assertEquals;
@@ -59,7 +57,8 @@ public class UBotSessionsTest extends BaseMainTest {
         int quorumSize = 4;
         int poolSize = 5;
 
-        for (int k = 0; k < 3; k++) {
+
+        for (int k = 0; k < 1; k++) {
             if (k != 0)
                 Thread.sleep(60 * 1000);
 
@@ -237,7 +236,7 @@ public class UBotSessionsTest extends BaseMainTest {
             AsyncEvent readyEvent3 = new AsyncEvent();
 
             HashId finalRequestId2 = requestContract.getId();
-
+            AtomicReference<HashId> sessionId2 = new AtomicReference<>();
             for(int i = 0; i < ts.clients.size();i++) {
                 int finalI = i;
                 Do.inParallel(()->{
@@ -248,6 +247,7 @@ public class UBotSessionsTest extends BaseMainTest {
                             continue;
                         }
                         if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                            sessionId2.set((HashId) res.getBinderOrThrow("session").get("sessionId"));
                             pool2.set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
                             if (readyCounter3.incrementAndGet() == ts.clients.size()) {
                                 readyEvent3.fire();
@@ -266,6 +266,7 @@ public class UBotSessionsTest extends BaseMainTest {
             readyEvent3.await();
 
             System.out.println(pool2);
+            System.out.println(sessionId2.get());
 
             Set<Integer> poolQuorum2 = new HashSet<>();
             while(poolQuorum2.size() < quorumSize) {
@@ -331,6 +332,47 @@ public class UBotSessionsTest extends BaseMainTest {
                 }
                 Thread.sleep(1000);
             }
+
+            Contract contract = new Contract(TestKeys.privateKey(1));
+
+            Reference refUbotRegistry = new Reference(contract);
+            refUbotRegistry.name = "refUbotRegistry";
+            refUbotRegistry.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
+            contract.addReference(refUbotRegistry);
+
+            Reference refUbot = new Reference(contract);
+            refUbot.name = "refUbot";
+            contract.getDefinition().getData().put("ubot",executableContract.getOrigin());
+            refUbot.setConditions(Binder.of("all_of",Do.listOf("this.ubot==this.definition.data.ubot")));
+            contract.addReference(refUbot);
+
+            QuorumVoteRole role = new QuorumVoteRole("issuer", contract, "refUbotRegistry.state.roles.ubots", ""+quorumSize);
+            contract.addRole(role);
+            contract.seal();
+
+
+            quorumClients2.forEach(c -> {
+                try {
+                    for(int i = 0; i < c.size(); i++) {
+                        c.getClient(i).command("addKeyToContract", "itemId", contract.getId());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            Client randomClient2 = Do.sample(quorumClients2);
+            randomClient2.command("ubotApprove","sessionId", sessionId2.get(),"packedItem",contract.getPackedTransaction());
+
+
+            ItemResult ir = randomClient2.getState(contract);
+
+            while(ir.state.isPending()) {
+                Thread.sleep(500);
+                ir = randomClient2.getState(contract);
+            }
+            System.out.println(ir);
+            assertEquals(ir.state,ItemState.APPROVED);
 
 
             quorumClients2.forEach(c->{

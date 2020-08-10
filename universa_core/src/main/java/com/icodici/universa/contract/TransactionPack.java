@@ -70,6 +70,19 @@ public class TransactionPack implements BiSerializable {
     private Map<HashId, Contract> referencedItems = new HashMap<>();
     private Map<String, Contract> taggedItems = new HashMap<>();
     private Set<PublicKey> keysForPack = new HashSet<>();
+
+    /**
+     * U-bot id transaction is registered by
+     */
+    private HashId ubotId;
+    public void setUbotId(HashId ubotId) {
+        this.ubotId = ubotId;
+    }
+    public HashId getUbotId() {
+        return ubotId;
+    }
+
+
     private Contract contract;
 
     /**

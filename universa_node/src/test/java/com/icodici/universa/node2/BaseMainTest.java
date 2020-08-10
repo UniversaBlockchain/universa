@@ -11,10 +11,7 @@ import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.InnerContractsService;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.Ledger;
-import com.icodici.universa.node.PostgresLedger;
+import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -177,6 +174,18 @@ public class BaseMainTest {
         testSpace.clients = new ArrayList();
         for (int i = 0; i < 4; i++)
             testSpace.clients.add(new Client(testSpace.myKey, testSpace.nodes.get(i).myInfo, null));
+
+        testSpace.nodes.forEach(n->n.node.getServiceContracts().values().forEach(b -> {
+            try {
+                Contract c = Contract.fromPackedTransaction(b);
+                StateRecord record = n.node.getLedger().findOrCreate(c.getId());
+                record.setState(ItemState.APPROVED);
+                record.save();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
+
         return testSpace;
     }
 

@@ -2936,6 +2936,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getRole("creator");
             case "tag":
                 return (T) Binder.of("contractForSearchByTag", this);
+            case "ubot":
+                return (T) getTransactionPack().getUbotId();
             case "newItems":
             case "revokingItems":
                 if (sealedBinary == null || apiLevel < 3)

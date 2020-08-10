@@ -105,6 +105,7 @@ public class ParcelNotification extends ItemNotification {
 
     public enum ParcelNotificationClass {
         PARCEL,
-        PAID_OPERATION;
+        PAID_OPERATION,
+        UBOT_REGISTRATION;
     }
 }

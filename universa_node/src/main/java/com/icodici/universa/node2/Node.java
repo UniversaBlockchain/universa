@@ -456,12 +456,32 @@ public class Node {
      *
      * @return current (or last known) item state
      */
+
     public @NonNull ItemResult registerItem(Approvable item) {
+        return registerItem(item, null);
+    }
+
+    /**
+     * Asynchronous (non blocking) check/register for item from white list. If the item is new and eligible to process with the
+     * consensus, the processing will be started immediately. If it is already processing, the current state will be
+     * returned.
+     *
+     * If item is not signed by keys from white list will return {@link ItemResult#UNDEFINED}
+     *
+     * @param item to register/check state
+     * @param ubotSessionId id of ubot session item is registered within
+     *
+     * @return current (or last known) item state
+     */
+    public @NonNull ItemResult registerItem(Approvable item, HashId ubotSessionId) {
 
         report(getLabel(), () -> concatReportMessage("register item: ", item.getId()),
                 DatagramAdapter.VerboseLevel.BASE);
 //        if (item.isInWhiteList(config.getKeysWhiteList())) {
         Object x = checkItemInternal(item.getId(), null, item, true, true);
+        if(x instanceof ItemProcessor && ubotSessionId != null) {
+            ((ItemProcessor) x).setUbotSessionId(ubotSessionId);
+        }
 
         ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
         report(getLabel(), () -> concatReportMessage("item processor for: ", item.getId(),
@@ -1131,10 +1151,23 @@ public class Node {
             } else {
                 // if we haven't results for item, we looking for or create parcel processor
                 Object x;
-                if (notification.getNotificationClass() == ParcelNotification.ParcelNotificationClass.PAID_OPERATION)
-                    x = checkPaidOperationInternal(notification.getParcelId(), null, true);
-                else
-                    x = checkParcelInternal(notification.getParcelId(), null, true);
+                switch (notification.getNotificationClass()) {
+                    case PAID_OPERATION:
+                        x = checkPaidOperationInternal(notification.getParcelId(), null, true);
+                        break;
+                    case UBOT_REGISTRATION:
+                        x = checkItemInternal(notification.getItemId(), null, null, true, true);
+                        if (x instanceof ItemProcessor) {
+                            ((ItemProcessor)x).setUbotSessionId(notification.getParcelId());
+                        }
+                        break;
+                    case PARCEL:
+                        x = checkParcelInternal(notification.getParcelId(), null, true);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unknown notification class");
+                }
+
                 NodeInfo from = notification.getFrom();
 
                 if (x instanceof ParcelProcessor) {
@@ -1231,6 +1264,35 @@ public class Node {
                                     );
                                 }
                             }
+                        }
+                        return null;
+                    });
+                } else if (x instanceof ItemProcessor) {
+                    ItemProcessor ip = (ItemProcessor) x;
+                    ItemResult result = notification.getItemResult();
+                    ip.lock(() -> {
+
+                        // we might still need to download and process it
+                        if (result.haveCopy) {
+                            ip.addToSources(from);
+                        }
+                        if (result.state != ItemState.PENDING)
+                            ip.vote(from, result.state);
+                        else
+                            log.e("pending vote on item " + notification.getItemId() + " from " + from);
+
+                        // We answer only if (1) answer is requested and (2) we have position on the subject:
+                        if (notification.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
+                            network.deliver(
+                                    from,
+                                    new ParcelNotification(myInfo,
+                                            notification.getItemId(),
+                                            ip.getUbotSessionId(),
+                                            ip.getResult(),
+                                            ip.needsVoteFrom(from),
+                                            notification.getType(),
+                                            notification.getNotificationClass())
+                            );
                         }
                         return null;
                     });
@@ -1616,11 +1678,11 @@ public class Node {
     }
 
     protected String concatReportMessage(Object... messages) {
-        String returnMessage = "";
+        StringBuilder returnMessage = new StringBuilder();
         for (Object m : messages) {
-            returnMessage += m != null ? m.toString() : "null";
+            returnMessage.append(m != null ? m.toString() : "null");
         }
-        return returnMessage;
+        return returnMessage.toString();
     }
 
 
@@ -3208,6 +3270,8 @@ public class Node {
 
     private class ItemProcessor {
 
+        private HashId ubotSessionId;
+
         private final HashId itemId;
         private final HashId parcelId;
         //private final Config config;
@@ -3531,7 +3595,20 @@ public class Node {
                             }
                         } else {
 
-
+                            try {
+                                if(item instanceof Contract && ubotSessionId != null) {
+                                    Optional<UBotSessionProcessor> x = ubotSessionProcessors.values().stream().filter(sp -> sp.sessionId.equals(ubotSessionId)).findAny();
+                                    if(x.isPresent()) {
+                                        Contract requestContract = x.get().requestContract;
+                                        HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
+                                        Contract ubotContract = requestContract.getTransactionPack().findContract(c -> c.getId().equals(executableContractId));
+                                        HashId ubotId = ubotContract.getOrigin();
+                                        ((Contract) item).getTransactionPack().setUbotId(ubotId);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                             checkPassed = item.check();
 
                             // if item is smart contract we check it additionally
@@ -3880,10 +3957,17 @@ public class Node {
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
-                ParcelNotification.ParcelNotificationClass notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
+
+                ParcelNotification.ParcelNotificationClass notClass;
+
                 if (usedForPaidOperation)
                     notClass = ParcelNotification.ParcelNotificationClass.PAID_OPERATION;
-                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType, notClass);
+                else if(ubotSessionId != null) {
+                    notClass = ParcelNotification.ParcelNotificationClass.UBOT_REGISTRATION;
+                } else {
+                    notClass = ParcelNotification.ParcelNotificationClass.PARCEL;
+                }
+                notification = new ParcelNotification(myInfo, itemId,  ubotSessionId != null ? ubotSessionId : parcelId, getResult(), true, notificationType, notClass);
                 network.broadcast(myInfo, notification);
             }
         }
@@ -4858,6 +4942,15 @@ public class Node {
 
         private boolean isDone() {
             return processingState.isDone();
+        }
+
+
+        public void setUbotSessionId(HashId ubotSessionId) {
+            this.ubotSessionId = ubotSessionId;
+        }
+
+        public HashId getUbotSessionId() {
+            return ubotSessionId;
         }
 
         public <T> T lock(Supplier<T> c) {

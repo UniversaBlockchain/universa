@@ -605,12 +605,12 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         try {
             Contract contract = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
-
             Reference reference = new Reference(contract);
             reference.name = "refUbotRegistry";
             reference.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
 
             QuorumVoteRole role = new QuorumVoteRole("", contract, "refUbotRegistry.state.roles.ubots", node.getSessionQuorum(sessionId));
+
 
             if(!contract.getCreator().resolve().equalsIgnoreName(role) || !contract.getReferences().get("refUbotRegistry").equalsIgnoreType(reference)) {
                 throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a ubot pool contract.");
@@ -619,7 +619,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
             return Binder.of(
                     "itemResult",
-                    node.registerItem(contract)
+                    node.registerItem(contract,sessionId)
             );
         } catch (Exception e) {
             System.out.println("approve ERROR: " + e.getMessage());
