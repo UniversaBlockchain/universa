@@ -324,6 +324,8 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
         addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
         addSecureEndpoint("ubotApprove", this::ubotApprove);
+        addSecureEndpoint("ubotAddKeyToContract", this::ubotAddKeyToContract);
+        addSecureEndpoint("ubotGetContractKeys",this::ubotGetContractKeys);
 
         addSecureEndpoint("initiateVoting",this::initiateVoting);
         addSecureEndpoint("voteForContract",this::voteForContract);
@@ -605,17 +607,6 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         try {
             Contract contract = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
-            Reference reference = new Reference(contract);
-            reference.name = "refUbotRegistry";
-            reference.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
-
-            QuorumVoteRole role = new QuorumVoteRole("", contract, "refUbotRegistry.state.roles.ubots", node.getSessionQuorum(sessionId));
-
-
-            if(!contract.getCreator().resolve().equalsIgnoreName(role) || !contract.getReferences().get("refUbotRegistry").equalsIgnoreType(reference)) {
-                throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a ubot pool contract.");
-            }
-
 
             return Binder.of(
                     "itemResult",
@@ -626,6 +617,31 @@ public class ClientHTTPServer extends BasicHttpServer {
 
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approve", e.getMessage()));
+        }
+    }
+
+    private Binder ubotAddKeyToContract(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+
+        checkNode(session);
+
+
+        HashId sessionId = params.getOrThrow("sessionId");
+        if(!node.isSessionUbot(session.getPublicKey(),sessionId)) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a Ubot key OR no session found with given id OR Ubot doesn't belong to session");
+        }
+
+        return Binder.of("expiresAt",
+                node.ubotAddKeyToContract((HashId) params.get("itemId"), sessionId, session.getPublicKey()));
+    }
+
+
+    private Binder ubotGetContractKeys(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return node.ubotGetContractKeys((HashId) params.get("itemId"),(HashId) params.get("sessionId"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetContractKeys",e.getMessage());
         }
     }
 
@@ -707,18 +723,22 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder ubotCreateSession(Binder params, Session session) throws CommandFailedException {
         checkNode(session, false);
-        if(!node.checkKeyLimitUbot(session.getPublicKey())) {
+
+        Contract request;
+        try {
+            request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
+        }
+
+        HashId parentSessionId = (HashId) request.getStateData().get("parent_session_id");
+
+        if(parentSessionId == null && !node.checkKeyLimitUbot(session.getPublicKey())) {
             throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of UBot requests for key per minute, please call again after a while");
         }
 
-        try {
-            Contract request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
-            Binder res = node.createUBotSession(request);
-            return Binder.of("session",res);
-        } catch (Exception e) {
-            //e.printStackTrace();
-            throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
-        }
+        Binder res = node.createUBotSession(request);
+        return Binder.of("session",res);
     }
 
     private Binder ubotCreateSessionPaid(Binder params, Session session) throws CommandFailedException {

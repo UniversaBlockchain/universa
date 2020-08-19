@@ -477,8 +477,41 @@ public class Node {
 
         report(getLabel(), () -> concatReportMessage("register item: ", item.getId()),
                 DatagramAdapter.VerboseLevel.BASE);
-//        if (item.isInWhiteList(config.getKeysWhiteList())) {
+        if(ubotSessionId != null && item instanceof Contract) {
+
+            Optional<UBotSessionProcessor> y = ubotSessionProcessors.values().stream().filter(sp -> sp.sessionId.equals(ubotSessionId)).findAny();
+            HashId ubotId = null;
+            if(y.isPresent()) {
+                Contract requestContract = y.get().requestContract;
+                HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
+                Contract ubotContract = requestContract.getTransactionPack().findContract(c -> c.getId().equals(executableContractId));
+                ubotId = ubotContract.getOrigin();
+            }
+
+            Contract contract = (Contract) item;
+            contract.getTransactionPack().setUbotId(ubotId);
+
+            Reference refUbotRegistry = new Reference(contract);
+            refUbotRegistry.name = "refUbotRegistry";
+            refUbotRegistry.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
+
+            Reference refUbot = new Reference(contract);
+            refUbot.name = "refUbot";
+            refUbot.setConditions(Binder.of("all_of",Do.listOf("this.ubot==\""+ ubotId.toBase64String()+ "\"")));
+
+            QuorumVoteRole role = new QuorumVoteRole("", contract, "refUbotRegistry.state.roles.ubots", getSessionQuorum(ubotSessionId));
+            role.addRequiredReference(refUbot, Role.RequiredMode.ALL_OF);
+
+            if(!contract.getCreator().resolve().equalsIgnoreName(role)
+                    || !contract.getReferences().get("refUbotRegistry").equalsIgnoreType(refUbotRegistry)
+                    || !contract.getReferences().get("refUbot").equalsIgnoreType(refUbot)) {
+
+                throw new IllegalArgumentException("Not a ubot pool contract.");
+            }
+        }
+
         Object x = checkItemInternal(item.getId(), null, item, true, true);
+
         if(x instanceof ItemProcessor && ubotSessionId != null) {
             ((ItemProcessor) x).setUbotSessionId(ubotSessionId);
         }
@@ -2138,6 +2171,19 @@ public class Node {
         return Binder.of("keys",keys);
     }
 
+    public Binder ubotGetContractKeys(HashId itemId, HashId sessionId) {
+        UBotSessionProcessor usp = getUBotSessionProcessorBySessionId(sessionId);
+        Set<PublicKey> keys = usp.getVoteCache().getVoteKeys(itemId);
+
+
+        return Binder.of("keys",keys);
+    }
+
+    public ZonedDateTime ubotAddKeyToContract(HashId itemId, HashId sessionId, PublicKey publicKey) {
+        UBotSessionProcessor usp = getUBotSessionProcessorBySessionId(sessionId);
+            return usp.getVoteCache().addVote(itemId, publicKey);
+    }
+
     public ZonedDateTime addKeyToContract(HashId itemId, PublicKey publicKey) {
         return voteCache.addVote(itemId, publicKey);
     }
@@ -3566,6 +3612,17 @@ public class Node {
                             if(votedByKeys == null) {
                                 votedByKeys = new HashSet<>();
                             }
+
+                            if(ubotSessionId != null) {
+                                UBotSessionProcessor usp = getUBotSessionProcessorBySessionId(ubotSessionId);
+                                if(usp != null) {
+                                    Set<PublicKey> keys = usp.getVoteCache().getVoteKeys(itemId);
+                                    if(keys != null) {
+                                        votedByKeys.addAll(keys);
+                                    }
+                                }
+                            }
+
                             ((Contract) item).setVotedByKeys(votedByKeys);
 
 
@@ -3596,10 +3653,11 @@ public class Node {
                         } else {
 
                             try {
-                                if(item instanceof Contract && ubotSessionId != null) {
-                                    Optional<UBotSessionProcessor> x = ubotSessionProcessors.values().stream().filter(sp -> sp.sessionId.equals(ubotSessionId)).findAny();
-                                    if(x.isPresent()) {
-                                        Contract requestContract = x.get().requestContract;
+                                //set ubot id if available and not set yet
+                                if(item instanceof Contract && ubotSessionId != null && ((Contract) item).getTransactionPack().getUbotId() == null) {
+                                    UBotSessionProcessor usp = getUBotSessionProcessorBySessionId(ubotSessionId);
+                                    if(usp != null) {
+                                        Contract requestContract = usp.requestContract;
                                         HashId executableContractId = (HashId) requestContract.getStateData().get("executable_contract_id");
                                         Contract ubotContract = requestContract.getTransactionPack().findContract(c -> c.getId().equals(executableContractId));
                                         HashId ubotId = ubotContract.getOrigin();
@@ -5802,6 +5860,13 @@ public class Node {
 
     public class UBotSessionProcessor {
 
+        private final VoteCache voteCache = new VoteCache(config.getMaxCacheAge());
+        private HashId parentSessionId;
+
+        public VoteCache getVoteCache() {
+            return voteCache;
+        }
+
         private final HashId executableContractId;
         private final Integer myRandom;
         private final int quantaLimit;
@@ -5881,6 +5946,7 @@ public class Node {
             this.requestContract = requestContract;
 
             if (requestContract != null && requestContract.getId().equals(requestId)) {
+                this.parentSessionId = (HashId) requestContract.getStateData().get("parent_session_id");
                 if (quantaLimit == 0)
                     checkFreeRequest(requestContract);
                 else {
@@ -5909,7 +5975,7 @@ public class Node {
 
             // register request contract
             if (requestContract != null && requestContract.getId().equals(requestId))
-                executorService.schedule(() -> registerItem(requestContract), 0, TimeUnit.SECONDS);
+                executorService.schedule(() -> registerItem(requestContract,parentSessionId), 0, TimeUnit.SECONDS);
         }
 
         public UBotSessionProcessor(Ledger.UbotSessionCompact compact) {
@@ -5933,6 +5999,7 @@ public class Node {
             this.myRandom = 0; // not needed for saved state
 
             sessionReadyEvent.fire(false);
+            parentSessionId = (HashId) requestContract.getStateData().get("parent_session_id");
         }
 
         private void checkFreeRequest(Contract requestContract) throws IllegalArgumentException {
@@ -5948,7 +6015,7 @@ public class Node {
             if (requestContract.getTransactional() != null && !requestContract.getTransactional().getData().isEmpty())
                 throw new IllegalArgumentException("Error request contract: request contract must have no user transactional data");
 
-            ArrayList<String> requestFields = Do.listOf("method_name", "method_args", "executable_contract_id");
+            ArrayList<String> requestFields = Do.listOf("method_name", "method_args", "executable_contract_id","parent_session_id");
 
             requestContract.getStateData().forEach((k, v) -> {
                 if (!requestFields.contains(k))
@@ -6040,6 +6107,10 @@ public class Node {
             Reference executableConstraint = requestContract.getReferences().get("executable_contract_constraint");
             if (executableConstraint == null)
                 throw new IllegalArgumentException("Error request contract: executable_contract_constraint is not defined");
+
+            if(requestContract.isRoleReference(executableConstraint)) {
+                throw new IllegalArgumentException("Error request contract: executable_contract_constraint found in contract role");
+            }
 
             Binder conditions = executableConstraint.exportConditions();
             List<Object> condList = conditions.getList(Reference.conditionsModeType.all_of.name(), null);
@@ -6823,6 +6894,17 @@ public class Node {
     }
 
     public boolean isSessionUbot(PublicKey key, HashId sessionId) {
+        UBotSessionProcessor usp = getUBotSessionProcessorBySessionId(sessionId);
+
+        if(usp != null && ubotsByKey.containsKey(key) && usp.sessionPool.contains(ubotsByKey.get(key))) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    private UBotSessionProcessor getUBotSessionProcessorBySessionId(HashId sessionId) {
         Optional<UBotSessionProcessor> uspO = ubotSessionProcessors.values().stream().filter(sp-> {
             HashId id = (HashId) sp.getSession().get("sessionId");
             return  id != null && id.equals(sessionId);
@@ -6832,18 +6914,10 @@ public class Node {
 
         if(!uspO.isPresent()) {
             usp = loadUBotSessionProcessorFromLedgerBySessionId(sessionId);
-            if(usp == null)
-                return false;
         } else {
             usp = uspO.get();
         }
-
-        if(ubotsByKey.containsKey(key) && usp.sessionPool.contains(ubotsByKey.get(key))) {
-            return true;
-        } else {
-            return false;
-        }
-
+        return usp;
     }
 
     public String getSessionQuorum(HashId sessionId) {

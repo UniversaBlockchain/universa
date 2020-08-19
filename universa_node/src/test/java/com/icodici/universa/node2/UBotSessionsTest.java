@@ -7,6 +7,7 @@ import com.icodici.universa.TestKeys;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.QuorumVoteRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -343,10 +344,11 @@ public class UBotSessionsTest extends BaseMainTest {
             Reference refUbot = new Reference(contract);
             refUbot.name = "refUbot";
             contract.getDefinition().getData().put("ubot",executableContract.getOrigin());
-            refUbot.setConditions(Binder.of("all_of",Do.listOf("this.ubot==this.definition.data.ubot")));
+            refUbot.setConditions(Binder.of("all_of",Do.listOf("this.ubot==\""+executableContract.getOrigin().toBase64String()+"\"")));
             contract.addReference(refUbot);
 
             QuorumVoteRole role = new QuorumVoteRole("issuer", contract, "refUbotRegistry.state.roles.ubots", ""+quorumSize);
+            role.addRequiredReference(refUbot, Role.RequiredMode.ALL_OF);
             contract.addRole(role);
             contract.seal();
 
@@ -354,7 +356,7 @@ public class UBotSessionsTest extends BaseMainTest {
             quorumClients2.forEach(c -> {
                 try {
                     for(int i = 0; i < c.size(); i++) {
-                        c.getClient(i).command("addKeyToContract", "itemId", contract.getId());
+                        c.getClient(i).command("ubotAddKeyToContract", "itemId", contract.getId(),"sessionId", sessionId2.get());
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -373,6 +375,157 @@ public class UBotSessionsTest extends BaseMainTest {
             }
             System.out.println(ir);
             assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+            //session with parent
+
+
+            requestContract = new Contract(TestKeys.privateKey(1));
+
+            refUbotRegistry = new Reference(requestContract);
+            refUbotRegistry.name = "refUbotRegistry";
+            refUbotRegistry.setConditions(Binder.of("all_of",Do.listOf("ref.tag==\"universa:ubot_registry_contract\"")));
+            requestContract.addReference(refUbotRegistry);
+
+            refUbot = new Reference(requestContract);
+            refUbot.name = "refUbot";
+            refUbot.setConditions(Binder.of("all_of",Do.listOf("this.ubot==\""+executableContract.getOrigin().toBase64String()+"\"")));
+            requestContract.addReference(refUbot);
+
+            role = new QuorumVoteRole("issuer", requestContract, "refUbotRegistry.state.roles.ubots", ""+quorumSize);
+            role.addRequiredReference(refUbot, Role.RequiredMode.ALL_OF);
+            requestContract.addRole(role);
+
+            requestContract.getStateData().put("parent_session_id",sessionId2.get());
+            requestContract.getStateData().put("executable_contract_id",executableContract.getId());
+            requestContract.getStateData().put("method_name","getRandom");
+            requestContract.getStateData().put("method_args", Do.listOf(1000));
+
+            ContractsService.addReferenceToContract(requestContract, executableContract, "executable_contract_constraint",
+                    Reference.TYPE_EXISTING_DEFINITION, Do.listOf("ref.id==this.state.data.executable_contract_id"), true);
+
+
+            Contract finalRequestContract = requestContract;
+            quorumClients2.forEach(c -> {
+                try {
+                    for(int i = 0; i < c.size(); i++) {
+                        c.getClient(i).command("ubotAddKeyToContract", "itemId", finalRequestContract.getId(),"sessionId", sessionId2.get());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+
+            randomClient2.command("ubotApprove","sessionId", sessionId2.get(),"packedItem",requestContract.getPackedTransaction());
+
+
+            ir = randomClient2.getState(requestContract);
+
+            while(ir.state.isPending()) {
+                Thread.sleep(500);
+                ir = randomClient2.getState(requestContract);
+            }
+            System.out.println(ir);
+            assertEquals(ir.state,ItemState.APPROVED);
+
+
+            /*System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
+            AtomicInteger readyCounterX = new AtomicInteger();
+            AsyncEvent readyEventX = new AsyncEvent();
+
+            HashId finalRequestIdX = requestContract.getId();
+            AtomicReference<HashId> sessionIdX = new AtomicReference<>();
+            AtomicReference<List<Integer>> poolX = new AtomicReference<>();
+            for(int i = 0; i < ts.clients.size();i++) {
+                int finalI = i;
+                Do.inParallel(()->{
+                    while (true) {
+                        Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId", finalRequestIdX);
+                        Thread.sleep(500);
+                        if(res.get("session") != null && res.getBinderOrThrow("session").get("state") == null) {
+                            continue;
+                        }
+                        if(res.get("session") != null && res.getBinderOrThrow("session").getString("state").equals("OPERATIONAL")) {
+                            sessionIdX.set((HashId) res.getBinderOrThrow("session").get("sessionId"));
+                            poolX.set(res.getBinderOrThrow("session").getListOrThrow("sessionPool"));
+                            if (readyCounterX.incrementAndGet() == ts.clients.size()) {
+                                readyEventX.fire();
+                            }
+                            break;
+                        }
+                    }
+                }).failure(new DeferredResult.Handler() {
+                    @Override
+                    public void handle(Object data) {
+                        System.out.println("ERR: "+data);
+                    }
+                });
+            }
+
+            readyEventX.await();
+
+
+            Set<Integer> poolQuorumX = new HashSet<>();
+            while(poolQuorumX.size() < quorumSize) {
+                poolQuorumX.add(Do.sample(poolX.get()));
+            }
+
+            Set<Client> quorumClientsX = new HashSet<>();
+            poolQuorumX.forEach(n-> {
+                Client client = null;
+                while (client == null) {
+                    try {
+                        client =new Client("./src/test_node_config_v2/test_node_config_v2.json",null,ubotKeys.get(n));
+                    } catch (ConnectException e) {
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                quorumClientsX.add(client);
+            });
+
+
+            quorumClientsX.forEach(c->{
+                for(int i = 0; i < c.size();i++) {
+                    int finalI = i;
+                    Do.inParallel(()->{
+                        try {
+                            c.getClient(finalI).command("ubotCloseSession","requestId",finalRequestId2, "finished", true);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+            });
+
+            AsyncEvent readyEventX2 = new AsyncEvent();
+            AtomicInteger readyCounterX2 = new AtomicInteger();
+
+            for(int i = 0; i < ts.clients.size();i++) {
+                int finalI = i;
+                Do.inParallel(()->{
+                    while (true) {
+                        Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId",finalRequestId2);
+                        Thread.sleep(500);
+                        if(res.getBinder("session").get("state") == null) {
+                            if (readyCounterX2.incrementAndGet() == ts.clients.size()) {
+                                readyEventX2.fire();
+                            }
+                            break;
+                        }
+                    }
+                }).failure(new DeferredResult.Handler() {
+                    @Override
+                    public void handle(Object data) {
+                        System.out.println("ERR: "+data);
+                    }
+                });
+            }
+            readyEventX2.await();*/
+
 
 
             quorumClients2.forEach(c->{

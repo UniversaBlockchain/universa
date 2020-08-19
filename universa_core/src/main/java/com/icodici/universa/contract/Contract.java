@@ -925,6 +925,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
+    public boolean isRoleReference(Reference reference) {
+        return roles.values().stream().anyMatch(role -> role.containReference(reference.name)) || state.roles.values().stream().anyMatch(role -> role.containReference(reference.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(reference.name));
+    }
+
     public Set<String> checkReferencedItems(Set<String> roleRefsToResolve) throws Quantiser.QuantiserException {
 
         Set<String> result = new HashSet<>();
@@ -950,8 +954,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     continue;
                 }
             } else {
-                boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || state.roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
-                if (roleReference)
+                if (isRoleReference(rm))
                     continue;
             }
 
