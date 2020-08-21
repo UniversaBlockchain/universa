@@ -33,8 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.icodici.universa.node2.network.VerboseLevel.*;
 import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class UBotSessionsTest extends BaseMainTest {
 
@@ -378,7 +377,7 @@ public class UBotSessionsTest extends BaseMainTest {
 
 
 
-            //session with parent
+            //session with parent and predefined pool
 
 
             requestContract = new Contract(TestKeys.privateKey(1));
@@ -397,6 +396,7 @@ public class UBotSessionsTest extends BaseMainTest {
             role.addRequiredReference(refUbot, Role.RequiredMode.ALL_OF);
             requestContract.addRole(role);
 
+            requestContract.getStateData().put("predefined_pool",pool.get());
             requestContract.getStateData().put("parent_session_id",sessionId2.get());
             requestContract.getStateData().put("executable_contract_id",executableContract.getId());
             requestContract.getStateData().put("method_name","getRandom");
@@ -418,7 +418,7 @@ public class UBotSessionsTest extends BaseMainTest {
             });
 
 
-            randomClient2.command("ubotApprove","sessionId", sessionId2.get(),"packedItem",requestContract.getPackedTransaction());
+            /*randomClient2.command("ubotApprove","sessionId", sessionId2.get(),"packedItem",requestContract.getPackedTransaction());
 
 
             ir = randomClient2.getState(requestContract);
@@ -428,10 +428,10 @@ public class UBotSessionsTest extends BaseMainTest {
                 ir = randomClient2.getState(requestContract);
             }
             System.out.println(ir);
-            assertEquals(ir.state,ItemState.APPROVED);
+            assertEquals(ir.state,ItemState.APPROVED);*/
 
 
-            /*System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
+            System.out.println(ts.client.command("ubotCreateSession","packedRequest",requestContract.getPackedTransaction()));
             AtomicInteger readyCounterX = new AtomicInteger();
             AsyncEvent readyEventX = new AsyncEvent();
 
@@ -464,8 +464,12 @@ public class UBotSessionsTest extends BaseMainTest {
                 });
             }
 
+
             readyEventX.await();
 
+            assertEquals(poolX.get(),pool.get());
+
+            System.out.println(poolX);
 
             Set<Integer> poolQuorumX = new HashSet<>();
             while(poolQuorumX.size() < quorumSize) {
@@ -493,7 +497,7 @@ public class UBotSessionsTest extends BaseMainTest {
                     int finalI = i;
                     Do.inParallel(()->{
                         try {
-                            c.getClient(finalI).command("ubotCloseSession","requestId",finalRequestId2, "finished", true);
+                            c.getClient(finalI).command("ubotCloseSession","requestId",finalRequestIdX, "finished", true);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -508,7 +512,7 @@ public class UBotSessionsTest extends BaseMainTest {
                 int finalI = i;
                 Do.inParallel(()->{
                     while (true) {
-                        Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId",finalRequestId2);
+                        Binder res = ts.clients.get(finalI).command("ubotGetSession", "requestId",finalRequestIdX);
                         Thread.sleep(500);
                         if(res.getBinder("session").get("state") == null) {
                             if (readyCounterX2.incrementAndGet() == ts.clients.size()) {
@@ -524,7 +528,7 @@ public class UBotSessionsTest extends BaseMainTest {
                     }
                 });
             }
-            readyEventX2.await();*/
+            readyEventX2.await();
 
 
 

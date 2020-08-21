@@ -6015,7 +6015,7 @@ public class Node {
             if (requestContract.getTransactional() != null && !requestContract.getTransactional().getData().isEmpty())
                 throw new IllegalArgumentException("Error request contract: request contract must have no user transactional data");
 
-            ArrayList<String> requestFields = Do.listOf("method_name", "method_args", "executable_contract_id","parent_session_id");
+            ArrayList<String> requestFields = Do.listOf("method_name", "method_args", "executable_contract_id","parent_session_id","predefined_pool");
 
             requestContract.getStateData().forEach((k, v) -> {
                 if (!requestFields.contains(k))
@@ -6323,7 +6323,6 @@ public class Node {
                         throw new TimeoutException("Session max timeout reached");
 
                     ItemResult ir = waitItem(requestId, timeout);
-
                     if (ir.state == ItemState.UNDEFINED) {
                         timeout -= 100;
                         Thread.sleep(100);
@@ -6428,11 +6427,18 @@ public class Node {
             if(list.size() < poolSize)
                 return null;
 
+            Set<Integer> pool = new HashSet<>();
+            if(requestContract.getStateData().containsKey("predefined_pool")) {
+                List predefinedPool = requestContract.getStateData().getArray("predefined_pool");
+                if(predefinedPool.size() > poolSize)
+                    return null;
+                pool.addAll(predefinedPool);
+            }
+
             BigInteger bigInteger = new BigInteger(sessionId.getDigest());
             if(bigInteger.compareTo(BigInteger.ZERO) < 0) {
                 bigInteger = bigInteger.negate();
             }
-            Set<Integer> pool = new HashSet<>();
             while(pool.size() < poolSize) {
                 BigInteger size = BigInteger.valueOf(list.size());
                 BigInteger[] res = bigInteger.divideAndRemainder(size);
