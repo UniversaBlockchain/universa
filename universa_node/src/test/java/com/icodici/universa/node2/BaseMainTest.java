@@ -22,6 +22,7 @@ import org.junit.Ignore;
 import java.io.File;
 import java.io.IOException;
 import java.sql.PreparedStatement;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
@@ -180,6 +181,7 @@ public class BaseMainTest {
                 Contract c = Contract.fromPackedTransaction(b);
                 StateRecord record = n.node.getLedger().findOrCreate(c.getId());
                 record.setState(ItemState.APPROVED);
+                record.setExpiresAt(ZonedDateTime.now().plusMonths(1));
                 record.save();
             } catch (IOException e) {
                 e.printStackTrace();
