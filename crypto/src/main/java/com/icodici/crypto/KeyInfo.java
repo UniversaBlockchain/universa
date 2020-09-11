@@ -200,7 +200,7 @@ public class KeyInfo {
 
     public byte[] getTag() {
         if (tag == null)
-            return new byte[] {0};
+            return new byte[] {};
         return tag;
     }
 
