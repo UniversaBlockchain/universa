@@ -199,6 +199,8 @@ public class KeyInfo {
     }
 
     public byte[] getTag() {
+        if (tag == null)
+            return new byte[] {};
         return tag;
     }
 

@@ -6427,18 +6427,26 @@ public class Node {
             if(list.size() < poolSize)
                 return null;
 
-            Set<Integer> pool = new HashSet<>();
-            if(requestContract.getStateData().containsKey("predefined_pool")) {
-                List predefinedPool = requestContract.getStateData().getArray("predefined_pool");
-                if(predefinedPool.size() > poolSize)
-                    return null;
-                pool.addAll(predefinedPool);
-            }
-
             BigInteger bigInteger = new BigInteger(sessionId.getDigest());
             if(bigInteger.compareTo(BigInteger.ZERO) < 0) {
                 bigInteger = bigInteger.negate();
             }
+
+            Set<Integer> pool = new HashSet<>();
+            if(requestContract.getStateData().containsKey("predefined_pool")) {
+                List predefinedPool = requestContract.getStateData().getArray("predefined_pool");
+                if(predefinedPool.size() > poolSize)
+                    for (int i = 0; i < poolSize; i++) {
+                        BigInteger size = BigInteger.valueOf(predefinedPool.size());
+                        BigInteger[] res = bigInteger.divideAndRemainder(size);
+                        int idx = res[1].intValue();
+                        bigInteger = res[0];
+                        pool.add((Integer) predefinedPool.remove(idx));
+                    }
+                else
+                    pool.addAll(predefinedPool);
+            }
+
             while(pool.size() < poolSize) {
                 BigInteger size = BigInteger.valueOf(list.size());
                 BigInteger[] res = bigInteger.divideAndRemainder(size);
