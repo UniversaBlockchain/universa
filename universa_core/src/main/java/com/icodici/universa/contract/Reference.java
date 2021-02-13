@@ -595,13 +595,21 @@ public class Reference implements BiSerializable {
 
                     leftOperand = leftOperand.substring(5);
                     leftOperandContract = baseContract;
-                } else if ((firstPointPos = leftOperand.indexOf(".")) > 0) {
+                } else if ((firstPointPos = leftOperand.indexOf(".")) > 0 ||
+                        (firstPointPos == -1 && simpleUnaryOperators.contains(indxOperator))) {
                     if (baseContract == null)
                         throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
 
-                    Reference ref = baseContract.findReferenceByName(leftOperand.substring(0, firstPointPos));
+                    String refName = leftOperand;
+                    if (firstPointPos > 0)
+                        refName = leftOperand.substring(0, firstPointPos);
+
+                    if (refName.equals(name))
+                        throw new IllegalArgumentException("Reference '" + refName + "' links to itself");
+
+                    Reference ref = baseContract.findReferenceByName(refName);
                     if (ref == null)
-                        throw new IllegalArgumentException("Not found reference: " + leftOperand.substring(0, firstPointPos));
+                        throw new IllegalArgumentException("Not found reference: " + refName);
 
                     // quantize reference
                     if (quantiser != null)
@@ -611,11 +619,13 @@ public class Reference implements BiSerializable {
                         if (ref.isMatchingWithQuantized(checkedContract, contracts, iteration + 1, quantiser))
                             leftOperandContract = checkedContract;
 
-                    if (leftOperandContract == null)
-                        return false;
-                        //throw new IllegalArgumentException("Not found referenced contract for reference: " + leftOperand.substring(0, firstPointPos));
+                    if (firstPointPos > 0) {
+                        if (leftOperandContract == null)
+                            return false;
 
-                    leftOperand = leftOperand.substring(firstPointPos + 1);
+                        leftOperand = leftOperand.substring(firstPointPos + 1);
+                    } else
+                        leftOperand = null;
                 } else
                     throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
             } else if (typeOfLeftOperand == compareOperandType.CONSTOTHER) {
@@ -1256,19 +1266,24 @@ public class Reference implements BiSerializable {
             }
         } else {       // if rightOperand == null && rightExpression == null, then operation: defined / undefined
             if (indxOperator == DEFINED) {
-                try {
-                    if (leftOperandContract.get(leftOperand) != null)
-                        ret = true;
-                } catch (Exception e) {}
+                if (leftOperand != null) {
+                    try {
+                        if (leftOperandContract.get(leftOperand) != null)
+                            ret = true;
+                    } catch (Exception e) {}
+                } else
+                    ret = leftOperandContract != null;
             } else if (indxOperator == UNDEFINED) {
-                try {
-                    ret = (leftOperandContract.get(leftOperand) == null);
-                }
-                catch (Exception e) {
-                    ret = true;
-                }
-            }
-            else
+                if (leftOperand != null) {
+                    try {
+                        ret = (leftOperandContract.get(leftOperand) == null);
+                    }
+                    catch (Exception e) {
+                        ret = true;
+                    }
+                } else
+                    ret = leftOperandContract == null;
+            } else
                 throw new IllegalArgumentException("Invalid operator in condition");
         }
 

@@ -1506,6 +1506,33 @@ state:
          - this.state.data.revokingItemsId in ref.revokingItems
          - this.state.data.revokingItemsIds in ref.revokingItems
 
+ - reference:
+     name: ref_undefined
+     where:
+       all_of:
+         - ref.state.undefined_field defined
+
+ - reference:
+     name: ref_definition
+     where:
+       all_of:
+         - ref_roles defined
+         - ref_integer defined
+         - ref_float defined
+         - ref_string defined
+         - ref_boolean defined
+         - ref_time defined
+         - ref_parent defined
+         - ref_inherited defined
+         - ref_hashes defined
+         - ref_bigdecimal defined
+         - ref_can_play defined
+         - ref_arithmetic defined
+         - ref_tags defined
+         - ref_in defined
+         - ref_in_for_revoking defined
+         - ref_undefined undefined
+
  # required section. any application data that could be changed.
  data:
    tag: test_tag_contract1

@@ -302,6 +302,10 @@ public class ReferenceConditionsTest {
         System.out.println("Check in conditions");
         assertTrue(refContract.getReferences().get("ref_in").matchingItems.contains(contract2));
         assertTrue(refContract.getReferences().get("ref_in_for_revoking").matchingItems.contains(contract3));
+        System.out.println("Check reference definition conditions");
+        assertTrue(refContract.getReferences().get("ref_definition").matchingItems.contains(contract2));
+        assertTrue(refContract.getReferences().get("ref_definition").matchingItems.contains(contract3));
+        assertTrue(refContract.getReferences().get("ref_undefined").matchingItems.isEmpty());
     }
 
     @Test
