@@ -204,6 +204,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         Binder results = new Binder();
         if (params != null)
             results.putAll(params);
+        results.remove("__type");
         results.put("name", name);
         results.put("role", serializer.serialize(role));
         return results;

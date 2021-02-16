@@ -175,6 +175,16 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
+    public boolean equalsIgnoreTypeAndName(Reference a) {
+        Binder dataThis = serialize(new BiSerializer());
+        Binder dataA = a.serialize(new BiSerializer());
+        dataThis.remove("type");
+        dataA.remove("type");
+        dataThis.remove("name");
+        dataA.remove("name");
+        return dataThis.equals(dataA);
+    }
+
     public boolean equalsIgnoreType(Reference a) {
         Binder dataThis = serialize(new BiSerializer());
         Binder dataA = a.serialize(new BiSerializer());
@@ -922,7 +932,7 @@ public class Reference implements BiSerializable {
                         }  else if (left instanceof Reference &&
                                     right instanceof Reference) {
 
-                            boolean equals = ((Reference) left).equalsIgnoreType((Reference) right);
+                            boolean equals = ((Reference) left).equalsIgnoreTypeAndName((Reference) right);
 
                             ret = indxOperator == (equals ? EQUAL : NOT_EQUAL);
 
@@ -1803,6 +1813,8 @@ public class Reference implements BiSerializable {
             throw new IllegalArgumentException("Expected all_of or any_of");
     }
 
+    //static int padding = 0;
+
     /**
      * Check conditions of references
      *
@@ -1816,49 +1828,55 @@ public class Reference implements BiSerializable {
      */
     private boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration, Quantiser quantiser) throws Quantiser.QuantiserException {
 
-        boolean result;
 
         if ((conditions == null) || (conditions.size() == 0))
             return true;
 
-        if (conditions.containsKey(all_of.name()))
-        {
-            List<Object> condList = conditions.getList(all_of.name(), null);
-            if (condList == null)
-                throw new IllegalArgumentException("Expected all_of conditions");
-
-            result = true;
-            for (Object item: condList) {
-                if (item instanceof String)
-                    result = result && checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
-                else
-                    //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
-                    //Binder insideBinder = new Binder(insideHashMap);
-                    result = result && checkConditions((Binder) item, ref, contracts, iteration, quantiser);
-            }
-        }
-        else if (conditions.containsKey(any_of.name()))
-        {
-            List<Object> condList = conditions.getList(any_of.name(), null);
-            if (condList == null)
-                throw new IllegalArgumentException("Expected any_of conditions");
-
-            result = false;
-            for (Object item: condList) {
-                if (item instanceof String)
-                    result = result || checkCondition((String) item, ref, contracts, iteration, quantiser);        // not pre-parsed (old) version
-                else
-                    //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
-                    //Binder insideBinder = new Binder(insideHashMap);
-                    result = result || checkConditions((Binder) item, ref, contracts, iteration, quantiser);
-            }
-        }
-        else if (conditions.containsKey("operator"))                                                    // pre-parsed version
-            result = checkCondition(conditions, ref, contracts, iteration, quantiser);
-        else
+        boolean isAll = conditions.containsKey(all_of.name());
+        List<Object> condList;
+        if(isAll) {
+            condList = conditions.getList(all_of.name(), null);
+        } else if(conditions.containsKey(any_of.name())) {
+            condList = conditions.getList(any_of.name(), null);
+        } else if (conditions.containsKey("operator")) {                                                  // pre-parsed version
+            return checkCondition(conditions, ref, contracts, iteration, quantiser);
+        } else {
             throw new IllegalArgumentException("Expected all_of or any_of");
+        }
 
-        return result;
+        if (condList == null)
+            throw new IllegalArgumentException("Expected conditions");
+
+        for (Object item: condList) {
+            boolean result;
+            //String condstr = (item instanceof String ? (String) item : ( !((Binder)item).containsKey("operator") ? "XXXX" : assemblyCondition((Binder) item)));
+            //for(int p = 0; p < padding; p++) {
+            //    System.out.print("\t");
+            //}
+            //System.out.println("ref " + this.name + " condition '" + condstr + "' START " + ref.getId());
+            //padding++;
+            if (item instanceof String)
+                result = checkCondition((String) item, ref, contracts, iteration, quantiser);
+            else
+                result = checkConditions((Binder) item, ref, contracts, iteration, quantiser);
+            //padding--;
+            //for(int p = 0; p < padding; p++) {
+            //    System.out.print("\t");
+            //}
+            //System.out.println("ref " + this.name + " condition '" + condstr + "' is " + result);
+
+            //in all_of mode any negative result -> stop check, return false
+            if(isAll && !result)
+                return  false;
+
+            //in any_of mode any positive result -> stop check, return true
+            if(!isAll && result)
+                return true;
+        }
+        //we've checked all the conditions.
+        // it means we didn't find any false in all_of mode -> return true
+        // OR we didn't find any true is any_of mode -> return false
+        return isAll;
     }
 
     private final static ZonedDateTime referencesBecomeQuantizedDate = ZonedDateTime.of(2021,1,1,0,0,0,0,ZoneId.of("Z"));
@@ -2322,8 +2340,12 @@ public class Reference implements BiSerializable {
 
         Binder left = condition.getBinder("left", null);
         Binder right = condition.getBinder("right", null);
-
-        int operator = condition.getIntOrThrow("operator");
+        int operator;
+        try {
+            operator = condition.getIntOrThrow("operator");
+        } catch (NumberFormatException e) {
+            throw e;
+        }
 
         int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
         int rightConversion = condition.getInt("rightConversion", NO_CONVERSION);

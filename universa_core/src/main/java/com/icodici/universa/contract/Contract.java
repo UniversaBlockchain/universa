@@ -976,6 +976,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 for(Contract neighbour : neighbours) {
                     if(rm.isMatchingWithQuantized(neighbour, neighbours, getQuantiser())) {
                         rm.addMatchingItem(neighbour);
+//TODO: shouln't we stop here?                        break;
                     }
                 }
 
@@ -2873,8 +2874,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         return definition.data.getOrNull(name.substring(5));
                     if (name.startsWith("references."))
                         return (T) findReferenceByName(name.substring(11), "definition");
+                    if (name.equals("references"))
+                        return (T)getDefinition().getReferences();
                     if (name.startsWith("permissions."))
                         return (T) findPermissisonById(name.substring(12));
+                    if (name.equals("permissions"))
+                        return (T) permissions.values();
 
             }
         } else if (name.startsWith("state.")) {
@@ -2903,6 +2908,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         return state.data.getOrNull(name.substring(5));
                     if (name.startsWith("references."))
                         return (T) findReferenceByName(name.substring(11), "state");
+                    if (name.equals("references"))
+                        return (T)getState().getReferences();
                     if (name.startsWith("roles."))
                         return (T) state.roles.get(name.substring(6));
             }
@@ -2922,6 +2929,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         }
                         if (name.startsWith("references."))
                             return (T) findReferenceByName(name.substring(11), "transactional");
+                        if (name.equals("references"))
+                            return (T)getTransactional().getReferences();
+
                 }
             } else {
                 return null;
@@ -2942,19 +2952,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             case "ubot":
                 return (T) getTransactionPack().getUbotId();
             case "newItems":
+                return (T)newItems.stream().map(c->c.id).collect(Collectors.toSet());
             case "revokingItems":
-                if (sealedBinary == null || apiLevel < 3)
-                    return null;
-
-                byte[] contractBytes = Boss.unpack(sealedBinary).getBinaryOrThrow("data");
-                Binder contractData = Boss.load(contractBytes, null);
-                Set<HashId> hashes = new HashSet<>();
-
-                String key = name.replace("Items", "");
-                for (Object b: contractData.getList(key, Collections.EMPTY_LIST))
-                    hashes.add(HashId.withDigest(((Binder) b).getBinaryOrThrow("composite3")));
-
-                return (T) hashes;
+                return (T)revokingItems.stream().map(c->c.id).collect(Collectors.toSet());
         }
         throw new IllegalArgumentException("bad root: " + originalName);
     }
