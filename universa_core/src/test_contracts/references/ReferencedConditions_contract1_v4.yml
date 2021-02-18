@@ -1300,6 +1300,34 @@ state:
          - round(6.104, ref.state.data.int7 - 1) == floor(ceil(6.1056, ref.state.data.int7), 2)
          - round(6.104, this.state.data.int8 - ref.state.data.int7) == floor(ceil(6.1056, this.state.data.int8 - this.state.data.int6), 2)
 
+         - size(this.definition.references) == 7
+         - size(this.definition.permissions) == 2
+         - size(this.state.references) == 10
+         - size(this.newItems) == 2
+         - size(this.revokingItems) == 0
+         - size(ref.definition.references) == 0
+         - size(ref.definition.permissions) == 2
+         - size(ref.state.references) == 0
+         - size(ref.newItems) == 0
+         - size(ref.revokingItems) == 0
+         - size(this.state.references) >= 8
+         - size(this.newItems) < 3
+         - size(ref.newItems) != 1
+         - size(ref.revokingItems) + 7 != 8
+         - size(this.state.references) / 5 == 2
+         - 4 * size(this.newItems) == 2 * 2 * 2
+         - 5 * size(ref.newItems) != 1
+         - size(this.state.references) + size(this.definition.references) == 17
+         - size(ref.definition.permissions) == size(this.newItems)
+         - (size(this.state.references) / size(ref.definition.permissions)) + size(this.newItems) == size(this.definition.references)
+         - size(this.definition.references) + size(ref.definition.permissions) <= size(this.state.references) - size(ref.newItems)
+         - round(size(this.state.references), -2) == 0
+         - floor(size(this.state.references), -2) == 0
+         - ceil(size(this.state.references), -2) == 100
+         - round(size(this.state.references) / 10, 1) == size(this.newItems) / size(ref.definition.permissions)
+         - floor(size(this.definition.references), -1) == ceil(size(ref.newItems), 2)
+         - ceil(size(this.definition.references), -1) == floor(size(this.state.references), 0)
+
          # mirroring ===========================================================================================\\
 
          - 2*2 == 4
@@ -1399,6 +1427,29 @@ state:
          - round(ref.state.data.bigdecimal2::number*10, -40) >= this.state.data.amount
          - round(ref.state.data.bigdecimal2::number*ref.state.data.bigdecimal2::number, -1000) >= round(this.state.data.bigdecimal2::number*ref.state.data.bigdecimal1::number, -1000)
          - round(-554454.02193092103920101293012902 * this.state.data.bigdecimal1::number, -10) *256 - ref.state.data.float4 >= round(-554454.02193092103920101293012902 * ref.state.data.bigdecimal2::number, -10) * 1000 + 40
+
+         - 7 ==size( this.definition.references)
+         - 2==size( this.definition.permissions )
+         - 10 == size(this.state.references)
+         - 2==size(this.newItems  )
+         - 0 ==  size( this.revokingItems)
+         - 0==size(ref.definition.references)
+         - 2 == size( ref.definition.permissions )
+         - 8 <= size(this.state.references)
+         - 3 > size( this.newItems )
+         - 1!=size( ref.newItems)
+         - 8!=7+size(ref.revokingItems )
+         - 2==size( this.state.references)/5
+         - 1 != 5*size( ref.newItems)
+         - size(this.state.references) + size(this.definition.references) == 17
+         - size(ref.definition.permissions) == size(this.newItems)
+         - size(this.definition.references)==(size(this.state.references) / size(ref.definition.permissions)) + size(this.newItems)
+         - size(this.state.references )-size( ref.newItems)>= size( this.definition.references )+size(ref.definition.permissions)
+         - 0==round( size( this.state.references ),-2)
+         - 0 == floor(size( this.state.references),  -2)
+         - 100==ceil(size(this.state.references),-2)
+         - (size(this.newItems)/size(ref.definition.permissions))==round(size(this.state.references)/10,1)
+         - ceil( size(ref.newItems ),2) ==floor( size(this.definition.references ), -1)
 
          # mirroring ===========================================================================================//
 

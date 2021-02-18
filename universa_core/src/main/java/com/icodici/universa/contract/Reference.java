@@ -258,6 +258,7 @@ public class Reference implements BiSerializable {
     //Operations
     final static String[] operations = {"+", "-", "*", "/"};
     final static String[] roundOperations = {"round(", "floor(", "ceil("};
+    final static String[] paramOperations = {"size("};
 
     final static int PLUS = 0;
     final static int MINUS = 1;
@@ -268,6 +269,9 @@ public class Reference implements BiSerializable {
     final static int ROUND = 100;
     final static int FLOOR = 101;
     final static int CEIL = 102;
+
+    // final static int PARAM_OPERATIONS = 200; TODO: for additional param operations
+    final static int SIZE = 200;
 
     //Conversions
     final static int NO_CONVERSION = 0;
@@ -447,6 +451,14 @@ public class Reference implements BiSerializable {
                 left = evaluateExpression(leftExpression, refContract, contracts, iteration, quantiser);
             else
                 left = evaluateOperand(leftOperand, typeOfLeftOperand, leftConversion, refContract, contracts, iteration, quantiser);
+
+            // unary SIZE operation
+            if (operation == SIZE) {
+                if (left instanceof Collection)
+                    return ((Collection<?>) left).size();
+                else
+                    throw new IllegalArgumentException("Incompatible operand for size operation: " + leftOperand);
+            }
 
             if (typeOfRightOperand == compareOperandType.EXPRESSION)
                 right = evaluateExpression(rightExpression, refContract, contracts, iteration, quantiser);
@@ -1386,7 +1398,8 @@ public class Reference implements BiSerializable {
 
         return baseContract != null && baseContract.getApiLevel() >= 4 && (Arrays.stream(operations).anyMatch(op ->
                 operand.contains(op) && (!op.equals(operations[MINUS]) || operand.lastIndexOf(op) > 0)) ||
-                Arrays.stream(roundOperations).anyMatch(operand::startsWith));
+                Arrays.stream(roundOperations).anyMatch(operand::startsWith) ||
+                Arrays.stream(paramOperations).anyMatch(operand::startsWith));
     }
 
     private int countCommonParentheses(String expression) {
@@ -1483,8 +1496,22 @@ public class Reference implements BiSerializable {
                     break;
                 }
 
-            if (i > CEIL)
-                throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found top-level operation.");
+            if (i > CEIL) {
+                // parse param operations (only 'size' now)
+                if (expression.startsWith(paramOperations[0])) {
+                    if (!expression.endsWith(")"))
+                        throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not expected ')' after rounding operation.");
+
+                    expression = expression.substring(paramOperations[0].length(), expression.length() - 1);
+
+                    if (expression.contains(",") || expression.contains("(") || expression.contains(")"))
+                        throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Unexpected symbol in size operation.");
+
+                    return packExpression(SIZE, expression, null, null, null, compareOperandType.FIELD, compareOperandType.FIELD,
+                            NO_CONVERSION, NO_CONVERSION, false, false);
+                } else
+                    throw new IllegalArgumentException("Invalid format of expression: " + expression + ". Not found top-level operation.");
+            }
         }
         else
             opLen = operations[i].length();
