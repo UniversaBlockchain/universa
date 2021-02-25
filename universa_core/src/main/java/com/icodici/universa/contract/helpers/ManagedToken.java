@@ -294,12 +294,6 @@ public class ManagedToken {
             }
         }
 
-        public static MintingRoot fromTransactionPack(TransactionPack pack) {
-            MintingRoot x = new MintingRoot();
-            x.initFromTransactionPack(pack);
-            return x;
-        }
-
         protected void initFromTransactionPack(TransactionPack pack) {
             mintingRootContract = pack.getTags().get(TP_TAG);
             checkValidity();
@@ -320,6 +314,11 @@ public class ManagedToken {
         private TransactionPack toBeRegistered;
         MintingRoot mintingRoot;
         Contract protocolContract;
+
+        public MintingProtocol(String coinCode, byte[] packedMintingRoot) throws IOException {
+            this(coinCode,new MintingRoot(packedMintingRoot));
+        }
+
 
         public MintingProtocol(String coinCode, MintingRoot root) {
             Contract rootRev = root.getContract().createRevision();
@@ -392,6 +391,14 @@ public class ManagedToken {
 
         }
 
+        public MintingProtocol(byte[] previousTransaction) throws IOException {
+            this(previousTransaction,new MintingRoot(previousTransaction));
+        }
+
+        public MintingProtocol(byte[] packed, byte[] packedMintingRoot) throws IOException {
+            this(packed,new MintingRoot(packedMintingRoot));
+        }
+
         public MintingProtocol(byte[] packed, MintingRoot root) throws IOException {
 
             if(root == null) {
@@ -448,7 +455,25 @@ public class ManagedToken {
     private MintingProtocol mintingProtocol;
     private Contract tokenContract;
 
-    public ManagedToken(BigDecimal amount, MintingProtocol protocol, KeyAddress owner) {
+    public static void updateMintingRootReference(TransactionPack transactionPack, MintingRoot mintingRoot) {
+        transactionPack.getReferencedItems().remove(transactionPack.getTags().get(MintingRoot.TP_TAG).getId());
+        transactionPack.addReferencedItem(mintingRoot.getContract());
+        transactionPack.addTag(MintingRoot.TP_TAG,mintingRoot.getContract().getId());
+    }
+
+    public static void updateMintingRootReference(TransactionPack transactionPack, byte[] packedMintingRoot) throws IOException {
+        updateMintingRootReference(transactionPack,new MintingRoot(packedMintingRoot));
+    }
+
+    public ManagedToken(BigDecimal amount, KeyAddress owner, byte[] previousTransaction) throws IOException {
+        this(amount, owner, new MintingProtocol(previousTransaction));
+    }
+
+    public ManagedToken(BigDecimal amount, KeyAddress owner, byte[] packedMintingProtocol, byte[] packedMintingRoot) throws IOException {
+        this(amount, owner, new MintingProtocol(packedMintingProtocol,packedMintingRoot));
+    }
+
+    public ManagedToken(BigDecimal amount, KeyAddress owner, MintingProtocol protocol) {
         Contract protocolRev = protocol.getContract().createRevision();
         protocolRev.addRole(new RoleLink("creator",protocolRev,"issue_coin"));
         protocolRev.getStateData().put("issued",amount.add(new BigDecimal(protocolRev.getStateData().getString("issued"))).toString());
@@ -556,6 +581,15 @@ public class ManagedToken {
         toBeRegistered.addReferencedItem(mintingProtocol.getMintingRoot().getContract());
         toBeRegistered.addTag(MintingRoot.TP_TAG,mintingProtocol.getMintingRoot().getContract().getId());
 
+    }
+
+
+    public ManagedToken(byte[] packed, byte[] previousTransaction) throws IOException {
+        this(packed,new MintingProtocol(previousTransaction));
+    }
+
+    public ManagedToken(byte[] packed, byte[] packedMintingProtocol, byte[] packedMintingRoot) throws IOException {
+        this(packed,new MintingProtocol(packedMintingProtocol,packedMintingRoot));
     }
 
     public ManagedToken(byte[] packed, MintingProtocol protocol) throws IOException {

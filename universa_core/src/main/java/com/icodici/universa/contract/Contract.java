@@ -2135,6 +2135,23 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param privateKeys - key to sign contract will with
      */
+    public void addSignatureToSeal(PrivateKey... privateKeys) {
+        Set<PrivateKey> set = new HashSet<>();
+        for(PrivateKey key : privateKeys) {
+            set.add(key);
+        }
+        addSignatureToSeal(set);
+    }
+
+    /**
+     * Add signature to sealed (before) contract. Do not deserializing or changing contract bytes,
+     * but will change sealed and hashId.
+     *
+     * Useful if you got contracts from third-party (another computer) and need to sign it.
+     * F.e. contracts that should be sign with two persons.
+     *
+     * @param privateKeys - key to sign contract will with
+     */
     public void addSignatureToSeal(Set<PrivateKey> privateKeys) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
