@@ -2307,7 +2307,9 @@ public class Reference implements BiSerializable {
         if (leftParentheses)
             result += "(";
 
-        if (operation >= ROUND_OPERATIONS)
+        if(operation >= SIZE)
+            result += paramOperations[operation - SIZE];
+        else if (operation >= ROUND_OPERATIONS)
             result += roundOperations[operation - ROUND_OPERATIONS];
 
         if (leftOperand != null) {
