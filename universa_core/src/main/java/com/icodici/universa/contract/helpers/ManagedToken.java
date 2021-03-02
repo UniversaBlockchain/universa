@@ -19,12 +19,31 @@ import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.Set;
 
+/**
+ * Helper class that represents mintable token contract structure with the ability to track the total amount minted.
+ * 1. Issue root contract holding multisig configuration and the total number of protocol contracts issued
+ * 2. Issue protocol contract holding the amount issued (initialy 0)
+ * 3. Issuing or revoking tokens is only possible together with updating one of the protocol contracts.
+ */
+
 public class ManagedToken {
 
     public static class MintingRoot {
         private static final String TP_TAG = "managed_token_root";
         Contract mintingRootContract;
         TransactionPack toBeRegistered;
+
+        /**
+         * Create new minting root object holding contract of appropriate structure.
+         * Providing this object is required for all operations with protocols and tokens.
+         *
+         * This method creates transaction to be registered {@link #getTransaction()}
+         *
+         * @param multisigAddresses addresses of root authority
+         * @param quorum quorum for issuing / revoking tokens
+         * @param strongQuorum quorum for issuing root contract and subsequent protocol contracts
+         */
+
         public MintingRoot(Set<KeyAddress> multisigAddresses,int quorum, int strongQuorum) {
             mintingRootContract = new Contract();
             mintingRootContract.setExpiresAt(ZonedDateTime.now().plusYears(1000));
@@ -283,6 +302,11 @@ public class ManagedToken {
 
         }
 
+        /**
+         * Restore root object from previously registered transaction or contract's sealed binary.
+         *
+         * @param packed packed transaction involving root contract or sealed binary
+         */
         public MintingRoot(byte[] packed) throws IOException {
             Object x = Boss.load(packed);
 
@@ -299,10 +323,20 @@ public class ManagedToken {
             checkValidity();
         }
 
+        /**
+         * Get root contract object
+         * @return root contract
+         */
+
         public Contract getContract() {
             return mintingRootContract;
         }
 
+        /**
+         * Get transaction to be registered
+         *
+         * @return transaction to be registered or null if there is nothing to register
+         */
         public TransactionPack getTransaction() {
             return toBeRegistered ;
         }
@@ -310,16 +344,33 @@ public class ManagedToken {
     }
 
     public static class MintingProtocol {
+
         private static final String TP_TAG = "managed_token_protocol";
         private TransactionPack toBeRegistered;
         MintingRoot mintingRoot;
         Contract protocolContract;
 
+        /**
+         * Creates new protocol object holding contract of appropriate structure.
+         * Contract mentioned will then be used to track the amount of minted tokens
+         *
+         * @param coinCode 'currency' code of tokens
+         * @param packedMintingRoot sealed binary of root contract or transaction involving root contract
+         * @throws IOException
+         */
         public MintingProtocol(String coinCode, byte[] packedMintingRoot) throws IOException {
             this(coinCode,new MintingRoot(packedMintingRoot));
         }
 
-
+        /**
+         * Creates new protocol object holding contract of appropriate structure.
+         * Contract mentioned will then be used to track the amount of minted tokens
+         *
+         * This method creates transaction to be registered {@link #getTransaction()}
+         *
+         * @param coinCode 'currency' code of tokens
+         * @param root root object
+         */
         public MintingProtocol(String coinCode, MintingRoot root) {
             Contract rootRev = root.getContract().createRevision();
             rootRev.getStateData().put("counters_issued",1);
@@ -391,14 +442,31 @@ public class ManagedToken {
 
         }
 
+        /**
+         * Restore protocol object from previously registered transaction
+         *
+         * @param previousTransaction packed transaction involving root contract and protocol contract
+         */
         public MintingProtocol(byte[] previousTransaction) throws IOException {
             this(previousTransaction,new MintingRoot(previousTransaction));
         }
 
+        /**
+         * Restore protocol object from previously registered transaction or contract's sealed binary.
+         *
+         * @param packed packed transaction involving protocol contract or sealed binary
+         * @param packedMintingRoot packed transaction involving root contract or sealed binary
+         */
         public MintingProtocol(byte[] packed, byte[] packedMintingRoot) throws IOException {
             this(packed,new MintingRoot(packedMintingRoot));
         }
 
+        /**
+         * Restore protocol object from previously registered transaction or contract's sealed binary.
+         *
+         * @param packed packed transaction involving protocol contract or sealed binary
+         * @param root root object
+         */
         public MintingProtocol(byte[] packed, MintingRoot root) throws IOException {
 
             if(root == null) {
@@ -436,14 +504,27 @@ public class ManagedToken {
             toBeRegistered = null;
         }
 
+        /**
+         * Get protocol contract
+         * @return protocol contract
+         */
         public Contract getContract() {
             return protocolContract;
         }
 
+        /**
+         * Get root object
+         * @return root object
+         */
         public MintingRoot getMintingRoot() {
             return mintingRoot;
         }
 
+        /**
+         * Get transaction to be registered
+         *
+         * @return transaction to be registered or null if there is nothing to register
+         */
         public  TransactionPack getTransaction() {
             return toBeRegistered;
         }
@@ -455,24 +536,65 @@ public class ManagedToken {
     private MintingProtocol mintingProtocol;
     private Contract tokenContract;
 
+    /**
+     * The last known root contract could become outdated due to multisig changes or issuing new protocol
+     * In this case there is a way to updated root contract within already formed transaction by calling this method
+     *
+     * @param transactionPack transaction to updated
+     * @param mintingRoot root object containing an updated contract
+     */
     public static void updateMintingRootReference(TransactionPack transactionPack, MintingRoot mintingRoot) {
         transactionPack.getReferencedItems().remove(transactionPack.getTags().get(MintingRoot.TP_TAG).getId());
         transactionPack.addReferencedItem(mintingRoot.getContract());
         transactionPack.addTag(MintingRoot.TP_TAG,mintingRoot.getContract().getId());
     }
 
+    /**
+     * The last known root contract could become outdated due to multisig changes or issuing new protocol
+     * In this case there is a way to updated root contract within already formed transaction by calling this method
+     *
+     * @param transactionPack transaction to updated
+     * @param packedMintingRoot packed transaction involving root contract or sealed binary
+     */
     public static void updateMintingRootReference(TransactionPack transactionPack, byte[] packedMintingRoot) throws IOException {
         updateMintingRootReference(transactionPack,new MintingRoot(packedMintingRoot));
     }
 
+    /**
+     * Create new token object ready to issue. Coin code is taken from protocol contract provided
+     *
+     * @param amount amount to issue
+     * @param owner owner address
+     * @param previousTransaction packed transaction involving root contract and protocol contract
+     * @throws IOException
+     */
     public ManagedToken(BigDecimal amount, KeyAddress owner, byte[] previousTransaction) throws IOException {
         this(amount, owner, new MintingProtocol(previousTransaction));
     }
 
+    /**
+     * Create new token object ready to issue. Coin code is taken from protocol contract provided
+     *
+     * @param amount amount to issue
+     * @param owner owner address
+     * @param packedMintingProtocol packed transaction involving protocol contract or its sealed binary
+     * @param packedMintingRoot packed transaction involving root contract or its sealed binary
+     * @throws IOException
+     */
     public ManagedToken(BigDecimal amount, KeyAddress owner, byte[] packedMintingProtocol, byte[] packedMintingRoot) throws IOException {
         this(amount, owner, new MintingProtocol(packedMintingProtocol,packedMintingRoot));
     }
 
+    /**
+     * Create new token object ready to issue. Coin code is taken from protocol contract provided
+     *
+     * This method creates transaction to be registered {@link #getTransaction()}
+     *
+     * @param amount amount to issue
+     * @param owner owner address
+     * @param protocol restored protocol object
+     * @throws IOException
+     */
     public ManagedToken(BigDecimal amount, KeyAddress owner, MintingProtocol protocol) {
         Contract protocolRev = protocol.getContract().createRevision();
         protocolRev.addRole(new RoleLink("creator",protocolRev,"issue_coin"));
@@ -583,35 +705,46 @@ public class ManagedToken {
 
     }
 
-
-    public ManagedToken(byte[] packed, byte[] previousTransaction) throws IOException {
-        this(packed,new MintingProtocol(previousTransaction));
+    /**
+     * Restore token object.
+     *
+     * @param sealedBinary token sealed binary
+     * @param previousTransaction packed transaction involving root contract and protocol contract
+     */
+    public ManagedToken(byte[] sealedBinary, byte[] previousTransaction) throws IOException {
+        this(sealedBinary,new MintingProtocol(previousTransaction));
     }
 
-    public ManagedToken(byte[] packed, byte[] packedMintingProtocol, byte[] packedMintingRoot) throws IOException {
-        this(packed,new MintingProtocol(packedMintingProtocol,packedMintingRoot));
+    /**
+     * Restore token object.
+     *
+     * @param sealedBinary token sealed binary
+     * @param packedMintingProtocol packed transaction involving protocol contract or sealed binary
+     * @param packedMintingRoot packed transaction involving root contract or sealed binary
+     */
+    public ManagedToken(byte[] sealedBinary, byte[] packedMintingProtocol, byte[] packedMintingRoot) throws IOException {
+        this(sealedBinary,new MintingProtocol(packedMintingProtocol,packedMintingRoot));
     }
 
-    public ManagedToken(byte[] packed, MintingProtocol protocol) throws IOException {
+    /**
+     * Restore token object.
+     *
+     * @param sealedBinary token sealed binary
+     * @param protocol protocol object
+     */
+    public ManagedToken(byte[] sealedBinary, MintingProtocol protocol) throws IOException {
         if(protocol == null) {
             throw new IllegalArgumentException("MintingProtocol must be provided");
         }
         mintingProtocol = protocol;
 
-        Object x = Boss.load(packed);
+        Object x = Boss.load(sealedBinary);
         if (x instanceof TransactionPack) {
-            initFromTransactionPack((TransactionPack)x);
+            throw new IllegalArgumentException("Expected contract sealed binary. Found packed transaciton");
         } else {
-            tokenContract = Contract.fromSealedBinary(packed);
+            tokenContract = Contract.fromSealedBinary(sealedBinary);
             checkValidity();
         }
-    }
-
-
-    private void initFromTransactionPack(TransactionPack pack) {
-        tokenContract = pack.getTags().get(TP_TAG);
-        checkValidity();
-
     }
 
     private void checkValidity() {
@@ -629,18 +762,38 @@ public class ManagedToken {
         toBeRegistered = null;
     }
 
+    /**
+     * Get token contract
+     * @return token contract
+     */
     public Contract getContract() {
         return tokenContract;
     }
+
+    /**
+     * Get protocol object
+     * @return
+     */
 
     public MintingProtocol getMintingProtocol() {
         return mintingProtocol;
     }
 
+    /**
+     * Get transaction to be registered
+     *
+     * @return transaction to be registered or null if there is nothing to register
+     */
     public TransactionPack getTransaction() {
         return toBeRegistered;
     }
 
+    /**
+     * Revoke token
+     *
+     * This method creates transaction to be registered {@link #getTransaction()}
+     *
+     */
     public void revoke() {
         if(toBeRegistered != null)
             throw new IllegalStateException("transaction already generated");
