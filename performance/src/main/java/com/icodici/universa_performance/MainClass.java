@@ -261,11 +261,13 @@ public class MainClass {
                     "at the moment LAST registration request is COMPLETE - ALL nodes got contracts\n" +
                     "and started registration. A good test run is represented by AVG1 and AVG2 being\n" +
                     "very close to each other as requests are performed to different nodes in parallel\n" +
-                    "and must be completed nearly simmultaneously.");
+                    "and must be completed nearly simultaneously.");
 
             System.out.println( "PEAK represents maximum value of AVG1 calculated every time a single contract is getting\n" +
                     "APPROVED status.\n");
             return;
+        } else if(args.length !=2) {
+            System.out.println("expected format: java -jar uniperformance.jar TOPOLOGY PATH_TO_ADMIN_KEY");
         }
 
         final int BUNCHES_PER_NODE = 1;
@@ -276,11 +278,10 @@ public class MainClass {
         final int PACKS_IN_BUNCH = 5;
 
         System.out.println("Connecting to nodes...");
-        String nodeUrl = "http://node-1-test.utoken.io:8080";
-        Client client = new Client(nodeUrl,TestKeys.privateKey(0),null);
+        Client client = new Client(args[0],null, new PrivateKey(Do.read(args[1])));
 
         System.out.println("Network version: " + client.getVersion());
-        final int NODES_COUNT = client.getNodes().size();
+        final int NODES_COUNT = client.size();
 
         final int PACKES_COUNT = BUNCHES_PER_NODE*NODES_COUNT*PACKS_IN_BUNCH;
 
@@ -346,7 +347,7 @@ public class MainClass {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    System.out.println("Registered " + k + " " + fI);
+                    System.out.println("Sent " + k + " " + fI);
                     long to = System.currentTimeMillis();
                     if(BUNCHES_PER_NODE == 1) {
                         if (to - from < TIME_BETWEEN_BUNCHES) {
@@ -436,5 +437,6 @@ public class MainClass {
 
 
         executorService.shutdownNow();
+        System.exit(0);
     }
 }
