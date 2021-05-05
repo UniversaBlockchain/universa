@@ -13,6 +13,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -86,7 +87,7 @@ public class SplitJoinPermission extends Permission {
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
+    public void checkChangesQuantized(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         MapDelta<String, Binder, Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
         if (dataChanges == null)
             return;
@@ -110,7 +111,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal newValue) {
+    private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal newValue) throws Quantiser.QuantiserException {
         boolean isValid;
 
         // merge means there are mergeable contracts in the revoking items
@@ -145,7 +146,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal oldValue, Decimal newValue) {
+    private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Decimal oldValue, Decimal newValue) throws Quantiser.QuantiserException {
         boolean isValid;
 
         // We need to find the splitted contracts
@@ -175,7 +176,7 @@ public class SplitJoinPermission extends Permission {
         }
     }
 
-    private boolean checkSplitJoinCase(Contract changed, Set<Contract> revokesToRemove, Collection<PublicKey> keys) {
+    private boolean checkSplitJoinCase(Contract changed, Set<Contract> revokesToRemove, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         Decimal splitJoinSum = Decimal.ZERO;
         Decimal rSum = Decimal.ZERO;
 
@@ -206,32 +207,33 @@ public class SplitJoinPermission extends Permission {
     }
 
 
-    private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, boolean checkAllowance) {
+    private boolean hasSimilarPermission(Contract contract, Collection<PublicKey> keys, boolean checkAllowance) throws Quantiser.QuantiserException {
         Collection<Permission> permissions = contract.getPermissions().get("split_join");
         if(permissions == null)
             return false;
 
-        return permissions.stream().anyMatch(p -> {
+        for(Permission p : permissions) {
             if(!((SplitJoinPermission)p).fieldName.equals(fieldName)) {
-                return false;
+                continue;
             }
             if(!((SplitJoinPermission)p).minUnit.equals(minUnit)) {
-                return false;
+                continue;
             }
             if(!((SplitJoinPermission)p).minValue.equals(minValue)) {
-                return false;
+                continue;
             }
             if(((SplitJoinPermission)p).mergeFields.size() != mergeFields.size()) {
-                return false;
+                continue;
             }
             if(!((SplitJoinPermission)p).mergeFields.containsAll(mergeFields)) {
-                return false;
+                continue;
             }
-            if(checkAllowance && !p.isAllowedFor(keys)) {
-                return false;
+            if(checkAllowance && !p.isAllowedForQuantized(keys)) {
+                continue;
             }
             return true;
-        });
+        }
+        return false;
     }
 
     /**

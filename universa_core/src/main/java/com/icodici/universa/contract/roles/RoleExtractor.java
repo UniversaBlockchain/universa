@@ -4,6 +4,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.node2.Quantiser;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.HashSet;
@@ -24,11 +25,13 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeys();
         } else if(role instanceof RoleLink) {
-            return extractKeys(role.resolve());
+            return extractKeys(((RoleLink)role).resolve(true));
         } else if(role instanceof ListRole) {
             Set<PublicKey> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeys(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }
@@ -42,11 +45,13 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleAnonymousIds();
         } else if(role instanceof RoleLink) {
-            return extractAnonymousIds(role.resolve());
+            return extractAnonymousIds(((RoleLink)role).resolve(true));
         } else if(role instanceof ListRole) {
             Set<AnonymousId> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractAnonymousIds(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }
@@ -60,11 +65,13 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeyAddresses();
         } else if(role instanceof RoleLink) {
-            return extractKeyAddresses(role.resolve());
+            return extractKeyAddresses(((RoleLink)role).resolve(true));
         } else if(role instanceof ListRole) {
             Set<KeyAddress> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyAddresses(r)));
             return result;
+        } else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }
@@ -73,11 +80,13 @@ public class RoleExtractor {
         if(role instanceof SimpleRole) {
             return ((SimpleRole) role).getSimpleKeyRecords();
         } else if(role instanceof RoleLink) {
-            return extractKeyRecords(role.resolve());
+            return extractKeyRecords(((RoleLink)role).resolve(false));
         } else if(role instanceof ListRole) {
             Set<KeyRecord> result = new HashSet<>();
             ((ListRole) role).getRoles().forEach(r -> result.addAll(extractKeyRecords(r)));
             return result;
+        }  else if(role instanceof QuorumVoteRole) {
+            return new HashSet<>();
         }
         return null;
     }

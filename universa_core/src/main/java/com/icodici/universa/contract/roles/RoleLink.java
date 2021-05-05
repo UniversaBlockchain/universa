@@ -13,6 +13,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -109,9 +110,16 @@ public class RoleLink extends Role {
      */
     @Override
     public <T extends Role> T resolve() {
+        return resolve(true);
+    }
+
+    public <T extends Role> T resolve(boolean ignoreRefs) {
         int maxDepth = 40;
         for (Role r = this; maxDepth > 0; maxDepth--) {
-            if (r instanceof RoleLink) {
+            if (r instanceof RoleLink && (ignoreRefs || (
+                r.getReferences(Role.RequiredMode.ALL_OF).isEmpty() &&
+                r.getReferences(Role.RequiredMode.ANY_OF).isEmpty()))) {
+
                 r = ((RoleLink) r).getRole();
                 if (r == null)
                     return null;
@@ -134,7 +142,8 @@ public class RoleLink extends Role {
     @Override
     @Deprecated
     public Set<KeyRecord> getKeyRecords() {
-        return resolve().getKeyRecords();
+        final Role role = resolve();
+        return (role == null) ? null : role.getKeyRecords();
     }
 
     /**
@@ -180,12 +189,23 @@ public class RoleLink extends Role {
      * @return true if role is allowed to keys
      */
     @Override
-    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        if(!super.isAllowedForKeys(keys))
+    public boolean isAllowedForKeysQuantized(Set<? extends AbstractKey> keys) throws Quantiser.QuantiserException {
+
+        //refereces are checked here
+        if(!super.isAllowedForKeysQuantized(keys))
             return false;
 
-        final Role role = resolve();
-        return (role == null) ? false : role.isAllowedForKeys(keys);
+        //having references checked we can take one step
+        Role role = getRole();
+        if(role == null)
+            return false;
+
+        //resolve possible further links
+        if(role instanceof RoleLink)
+            role =  ((RoleLink)role).resolve(false);
+
+        //check allowance with keys
+        return (role == null) ? false : role.isAllowedForKeysQuantized(keys);
     }
 
     /**
@@ -195,7 +215,9 @@ public class RoleLink extends Role {
      */
     @Override
     public boolean isValid() {
-        final Role role = resolve();
+        //ignore references here
+        final Role role = resolve(true);
+
         return (role == null) ? false : role.isValid();
     }
 
@@ -272,21 +294,19 @@ public class RoleLink extends Role {
      */
     @Override
     public void anonymize() {
-        final Role role = resolve();
+        //ignore references here
+        final Role role = resolve(true);
+        
         if (role != null)
             role.anonymize();
     }
 
     @Override
     @Nullable KeyAddress getSimpleAddress(boolean ignoreRefs) {
-        if(!ignoreRefs  && (requiredAnyReferences.size() > 0 || requiredAllReferences.size() > 0))
-            return null;
+        Role r = resolve(ignoreRefs);
+        if (r != null && r != this)
+            return r.getSimpleAddress(ignoreRefs);
 
-
-        Role r = resolve();
-        if(r != null) {
-            return  r.getSimpleAddress(ignoreRefs);
-        }
         return null;
     }
 

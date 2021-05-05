@@ -1,0 +1,10 @@
+---
+http_client_port: 18012
+http_public_port: 17012
+udp_server_port: 16012
+database: host=localhost port=5432 dbname=ubot_t12
+node_number: 12
+public_host: localhost
+node_name: ubot_12
+ip:
+- 127.0.0.1

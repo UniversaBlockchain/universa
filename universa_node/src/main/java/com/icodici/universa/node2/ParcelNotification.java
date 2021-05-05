@@ -28,10 +28,17 @@ public class ParcelNotification extends ItemNotification {
         return type;
     }
 
-    public ParcelNotification(NodeInfo from, HashId itemId, HashId parcelId, ItemResult itemResult, boolean requestResult, ParcelNotificationType type) {
+    private ParcelNotificationClass notificationClass = ParcelNotificationClass.PARCEL;
+    public ParcelNotificationClass getNotificationClass() {
+        return notificationClass;
+    }
+
+    public ParcelNotification(NodeInfo from, HashId itemId, HashId parcelId, ItemResult itemResult,
+                              boolean requestResult, ParcelNotificationType type, ParcelNotificationClass notificationClass) {
         super(from, itemId, itemResult, requestResult);
         this.parcelId = parcelId;
         this.type = type;
+        this.notificationClass = notificationClass;
     }
 
     protected ParcelNotification() {
@@ -41,6 +48,7 @@ public class ParcelNotification extends ItemNotification {
     protected void writeTo(Boss.Writer bw) throws IOException {
         super.writeTo(bw);
         bw.writeObject(type.ordinal());
+        bw.writeObject(notificationClass.ordinal());
         if(parcelId != null)
             bw.writeObject(parcelId.getDigest());
     }
@@ -49,6 +57,7 @@ public class ParcelNotification extends ItemNotification {
     protected void readFrom(Boss.Reader br) throws IOException {
         super.readFrom(br);
         type = ParcelNotificationType.values()[br.readInt()];
+        notificationClass = ParcelNotificationClass.values()[br.readInt()];
         try {
             byte[] parcelBytes = br.readBinary();
             if (parcelBytes != null)
@@ -92,5 +101,11 @@ public class ParcelNotification extends ItemNotification {
         public boolean isTU() {
             return this == PAYMENT;
         }
+    }
+
+    public enum ParcelNotificationClass {
+        PARCEL,
+        PAID_OPERATION,
+        UBOT_REGISTRATION;
     }
 }

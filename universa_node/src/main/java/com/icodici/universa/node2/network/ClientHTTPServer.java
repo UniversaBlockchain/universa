@@ -13,9 +13,8 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ExtendedSignature;
-import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.roles.QuorumVoteRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -27,6 +26,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -45,6 +45,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
+    private PaidOperationCache paidOperationCache;
     private EnvCache envCache;
     private NetConfig netConfig;
     private Config config;
@@ -119,6 +120,34 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
             if (data != null) {
                 // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
+        on("/paidOperation", (request, response) -> {
+            String encodedString = request.getPath().substring(15);
+
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
+
+            byte[] data = null;
+            if (encodedString.equals("cache_test")) {
+                data = "the cache test data".getBytes();
+            } else {
+                HashId id = HashId.withDigest(encodedString);
+                if (paidOperationCache != null) {
+                    PaidOperationCacheItem p = paidOperationCache.get(id);
+                    if (p != null && p.paidOperation != null) {
+                        data = p.paidOperation.pack();
+                    }
+                }
+            }
+            if (data != null) {
+                // paidOperation should be same immutable like contracts: cache forever
                 Binder hh = response.getHeaders();
                 hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
                 hh.put("Cache-Control", "max-age=315360000");
@@ -260,11 +289,13 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
+        addSecureEndpoint("getPaidOperationProcessingState", this::getPaidOperationProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("resyncItem", this::resyncItem);
         addSecureEndpoint("pingNode", this::pingNode);
         addSecureEndpoint("setVerbose", this::setVerbose);
         addSecureEndpoint("approveParcel", this::approveParcel);
+        addSecureEndpoint("approvePaidOperation", this::approvePaidOperation);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
         addSecureEndpoint("storageGetRate", this::storageGetRate);
@@ -284,6 +315,27 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getServiceContracts", this::getServiceContracts);
 
         addSecureEndpoint("proxy", this::proxy);
+
+
+        addSecureEndpoint("ubotCreateSession", this::ubotCreateSession);
+        addSecureEndpoint("ubotCreateSessionPaid", this::ubotCreateSessionPaid);
+        addSecureEndpoint("ubotGetSession", this::ubotGetSession);
+        addSecureEndpoint("ubotUpdateStorage", this::ubotUpdateStorage);
+        addSecureEndpoint("ubotGetStorage", this::ubotGetStorage);
+        addSecureEndpoint("ubotCloseSession", this::ubotCloseSession);
+        addSecureEndpoint("ubotApprove", this::ubotApprove);
+        addSecureEndpoint("ubotAddKeyToContract", this::ubotAddKeyToContract);
+        addSecureEndpoint("ubotGetContractKeys",this::ubotGetContractKeys);
+
+        addSecureEndpoint("initiateVoting",this::initiateVoting);
+        addSecureEndpoint("voteForContract",this::voteForContract);
+
+        addSecureEndpoint("addKeyToContract",this::addKeyToContract);
+        addSecureEndpoint("getContractKeys",this::getContractKeys);
+
+        addSecureEndpoint("ubotStartTransaction", this::ubotStartTransaction);
+        addSecureEndpoint("ubotFinishTransaction", this::ubotFinishTransaction);
+        addSecureEndpoint("ubotGetTransactionState", this::ubotGetTransactionState);
     }
 
     @Override
@@ -358,12 +410,17 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         Binder b = new Binder();
         String nameContract = params.getStringOrThrow("name");
-        NNameRecord nr = node.getLedger().getNameRecord(nameContract);
-        if (nr != null) {
-            NImmutableEnvironment env = node.getLedger().getEnvironment(nr.getEnvironmentId());
-            if (env != null) {
-                byte[] packedContract = env.getContract().getLastSealedBinary();
-                b.put("packedContract", packedContract);
+        String type = params.getString("type","UNS1");
+        Set<NNameRecord> nrs = node.getLedger().getNameRecords(nameContract);
+        if (nrs != null) {
+            for(NNameRecord nr : nrs) {
+                NImmutableEnvironment env = node.getLedger().getEnvironment(nr.getEnvironmentId());
+                if (env != null) {
+                    if((((NSmartContract)env.getContract()).getExtendedType().equals(type))) {
+                        byte[] packedContract = env.getContract().getLastSealedBinary();
+                        b.put("packedContract", packedContract);
+                    }
+                }
             }
         }
         return b;
@@ -534,6 +591,60 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
+
+    private Binder ubotApprove(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+
+        checkNode(session);
+
+
+
+        HashId sessionId = params.getOrThrow("sessionId");
+        if(!node.isSessionUbot(session.getPublicKey(),sessionId)) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a Ubot key OR no session found with given id OR Ubot doesn't belong to session");
+        }
+
+
+
+        try {
+            Contract contract = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+
+            return Binder.of(
+                    "itemResult",
+                    node.registerItem(contract,sessionId)
+            );
+        } catch (Exception e) {
+            System.out.println("approve ERROR: " + e.getMessage());
+
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approve", e.getMessage()));
+        }
+    }
+
+    private Binder ubotAddKeyToContract(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+
+        checkNode(session);
+
+
+        HashId sessionId = params.getOrThrow("sessionId");
+        if(!node.isSessionUbot(session.getPublicKey(),sessionId)) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "ubotApprove", "Not a Ubot key OR no session found with given id OR Ubot doesn't belong to session");
+        }
+
+        return Binder.of("expiresAt",
+                node.ubotAddKeyToContract((HashId) params.get("itemId"), sessionId, session.getPublicKey()));
+    }
+
+
+    private Binder ubotGetContractKeys(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return node.ubotGetContractKeys((HashId) params.get("itemId"),(HashId) params.get("sessionId"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetContractKeys",e.getMessage());
+        }
+    }
+
     private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         try {
@@ -546,6 +657,20 @@ public class ClientHTTPServer extends BasicHttpServer {
             System.out.println("approveParcel ERROR: " + e.getMessage());
             return Binder.of(
                     "result", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
+        }
+    }
+
+    private Binder approvePaidOperation(Binder params, Session session) throws IOException {
+        checkNode(session);
+        try {
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(PaidOperation.unpack(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            System.out.println("approvePaidOperation ERROR: " + e.getMessage());
+            return Binder.of(
+                    "result", itemResultOfError(Errors.COMMAND_FAILED,"approvePaidOperation", e.getMessage()));
         }
     }
 
@@ -592,6 +717,213 @@ public class ClientHTTPServer extends BasicHttpServer {
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"getState", e.getMessage()));
+        }
+    }
+
+
+    private Binder ubotCreateSession(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, false);
+
+        Contract request;
+        try {
+            request = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedRequest"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.BAD_VALUE,"packedRequest", e.getMessage());
+        }
+
+        HashId parentSessionId = (HashId) request.getStateData().get("parent_session_id");
+
+        if(parentSessionId == null && !node.checkKeyLimitUbot(session.getPublicKey())) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of UBot requests for key per minute, please call again after a while");
+        }
+
+        Binder res = node.createUBotSession(request);
+        return Binder.of("session",res);
+    }
+
+    private Binder ubotCreateSessionPaid(Binder params, Session session) throws CommandFailedException {
+        try {
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            byte[] packedRequest = params.getBinaryOrThrow("packedRequest");
+
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "ubot_session", Binder.of("packedRequest", packedRequest)).pack());
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
+            );
+
+
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"", e.getMessage());
+        }
+    }
+
+    private Binder ubotGetSession(Binder params, Session session) throws CommandFailedException {
+        if(params.containsKey("requestId")) {
+            HashId requestId = params.getOrThrow("requestId");
+            return Binder.of("session", node.getUBotSession(requestId, session.getPublicKey()));
+        } else {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetSession","requestId must present");
+        }
+    }
+
+    private Binder ubotCloseSession(Binder params, Session session) throws CommandFailedException {
+        try {
+            boolean finished = params.getBooleanOrThrow("finished");
+            HashId requestId = params.getOrThrow("requestId");
+            return Binder.of("session", node.closeUBotSession(requestId, session.getPublicKey(), finished));
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE,"ubotCloseSession", e.getMessage());
+        }
+    }
+
+
+    private Binder initiateVoting(Binder params, Session session) throws CommandFailedException {
+        try {
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            byte[] packedRequest = params.getBinaryOrThrow("packedItem");
+            String roleName = params.getString("role","creator");
+            List<HashId> candidates = params.getListOrThrow("candidates");
+
+
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "initiate_vote", Binder.of("packedItem", packedRequest,"role",roleName,"candidates",candidates)).pack());
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
+            );
+
+
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"initiateVoting",e.getMessage());
+        }
+    }
+
+    private Binder voteForContract(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+        try {
+            byte[] packedU = params.getBinaryOrThrow("packedU");
+            HashId candidateId = (HashId) params.getOrThrow("candidateId");
+            byte[] signature =  params.getBinaryOrThrow("signature");
+            HashId votingId = (HashId) params.getOrThrow("votingId");
+            List<Object> referencedItems = params.getList("referencedItems", null);
+
+            PaidOperation po = PaidOperation.unpack(new PaidOperation(TransactionPack.unpack(packedU), "do_vote", Binder.of("candidateId", candidateId,"signature",signature,"votingId",votingId,"referencedItems",referencedItems)).pack());
+            return Binder.of(
+                    "result",
+                    node.registerPaidOperation(po),
+                    "paidOperationId",
+                    po.getId()
+            );
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"voteForContract",e.getMessage());
+        }
+    }
+
+
+    private Binder addKeyToContract(Binder params, Session session) throws CommandFailedException {
+        return Binder.of("expiresAt",
+                node.addKeyToContract((HashId) params.get("itemId"), session.getPublicKey()));
+    }
+
+    private Binder getContractKeys(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+
+        try {
+            return node.getContractKeys((HashId) params.get("itemId"));
+        } catch (Exception e) {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"getContractKeys",e.getMessage());
+        }
+    }
+
+
+
+
+    private Binder ubotUpdateStorage(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String storageName = params.getStringOrThrow("storageName");
+        HashId fromValue = (HashId) params.get("fromValue");
+        HashId toValue = params.getOrThrow("toValue");
+
+        try {
+            return node.updateUBotStorage(requestId, storageName, fromValue, toValue, session.getPublicKey(), params.containsKey("fromValue"));
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotUpdateStorage", e.getMessage());
+        }
+    }
+
+    private Binder ubotGetStorage(Binder params, Session session) throws CommandFailedException {
+        if(params.containsKey("executableContractId")) {
+
+            HashId executableContractId = params.getOrThrow("executableContractId");
+            List<String> storageNames = params.getListOrThrow("storageNames");
+
+            try {
+                return node.getUBotStorage(executableContractId, storageNames);
+            } catch (Exception e) {
+                //e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
+            }
+        } else  if(params.containsKey("requestId")) {
+            HashId requestId = params.getOrThrow("requestId");
+            List<String> storageNames = params.getListOrThrow("storageNames");
+
+            try {
+                return node.getUBotStorage(requestId, storageNames);
+            } catch (Exception e) {
+                //e.printStackTrace();
+                throw new CommandFailedException(Errors.FAILURE, "ubotGetStorage", e.getMessage());
+            }
+        } else {
+            throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotGetStorage","Either executableContractId or requestId should present");
+        }
+    }
+
+    private Binder ubotStartTransaction(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+        int transactionNumber = params.getIntOrThrow("transactionNumber");
+        boolean withDetails = params.getBoolean("withDetails", false);
+
+        try {
+            return node.ubotStartTransaction(requestId, transactionName, transactionNumber, withDetails, session.getPublicKey());
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotStartTransaction", e.getMessage());
+        }
+    }
+
+    private Binder ubotFinishTransaction(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+        int transactionNumber = params.getIntOrThrow("transactionNumber");
+        boolean withDetails = params.getBoolean("withDetails", false);
+
+        try {
+            return node.ubotFinishTransaction(requestId, transactionName, transactionNumber, withDetails, session.getPublicKey());
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotFinishTransaction", e.getMessage());
+        }
+    }
+
+    private Binder ubotGetTransactionState(Binder params, Session session) throws CommandFailedException {
+        HashId requestId = params.getOrThrow("requestId");
+        String transactionName = params.getStringOrThrow("transactionName");
+        boolean withDetails = params.getBoolean("withDetails", false);
+
+        try {
+            return node.ubotGetTransactionState(requestId, transactionName, withDetails);
+        } catch (Exception e) {
+            //e.printStackTrace();
+            throw new CommandFailedException(Errors.FAILURE, "ubotGetTransactionState", e.getMessage());
         }
     }
 
@@ -767,6 +1099,26 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of(
                     "processingState",
                     "getParcelProcessingState ERROR: " + e.getMessage()
+            );
+        }
+    }
+
+    private Binder getPaidOperationProcessingState(Binder params, Session session) throws CommandFailedException {
+        checkNode(session, true);
+        try {
+            HashId operationId = (HashId) params.get("operationId");
+            Binder res = Binder.of("processingState",
+                    node.checkPaidOperationProcessingState(operationId));
+            List<ErrorRecord> errors = node.getPaidOperationErrors(operationId);
+            if (errors != null)
+                res.set("errors", errors);
+            return res;
+        } catch (Exception e) {
+            System.out.println("getPaidOperationProcessingState ERROR: " + e.getMessage());
+            //TODO: return processing state not String
+            return Binder.of(
+                    "processingState",
+                    "getPaidOperationProcessingState ERROR: " + e.getMessage()
             );
         }
     }
@@ -965,6 +1317,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setParcelCache(ParcelCache cache) {
         this.parcelCache = cache;
+    }
+
+    public void setPaidOperationCache(PaidOperationCache cache) {
+        this.paidOperationCache = cache;
     }
 
     public void setEnvCache(EnvCache cache) {

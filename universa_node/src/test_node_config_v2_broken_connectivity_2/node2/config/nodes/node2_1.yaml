@@ -1,0 +1,10 @@
+---
+http_client_port: 8080
+http_server_port: 2082
+udp_server_port: 6001
+database: jdbc:postgresql://localhost:5432/universa_node_t1
+node_number: 1
+public_host: localhost
+node_name: node2_1
+ip:
+- 127.0.0.1

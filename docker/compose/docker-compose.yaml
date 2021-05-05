@@ -2,23 +2,24 @@ version: '2.1'
 services:
   db:
     image: postgres:latest
-    ports:
-      - 5432:5432
+#    ports:
+#      - 5432:5432
     environment:
       POSTGRES_PASSWORD: universa-pass
       POSTGRES_USER: root
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 2s
+      test: ["CMD","cat", "/var/tmp/db_init_completed.lock"]
+      interval: 1s
       retries: 10
       timeout: 10s
     volumes:
      - ./init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
     networks:
-      main:
+      net_4nodes:
         aliases:
           - db
         ipv4_address: 10.6.0.10
+        ipv6_address: fdf0:e132:efcf:2fae::10
   node-1-local:
     image: universa/node:latest
     command: --config /deploy/
@@ -33,97 +34,106 @@ services:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-1/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-1:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 1
     networks:
-      main:
+      net_4nodes:
         aliases:
-          - node-1-local.utoken.io
+          - node-1-local
         ipv4_address: 10.6.0.11
+        ipv6_address: fdf0:e132:efcf:2fae::11
   node-2-local:
     image: universa/node:latest
     command: --config /deploy/
     links:
      - db
     ports:
-      - 2053:2052
-      - 2083:2082
-      - 2701:2700
+      - 2053:2053
+      - 2083:2083
+      - 2701:2701
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-2/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-2:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 2
     networks:
-      main:
+      net_4nodes:
         aliases:
-          - node-2-local.utoken.io
+          - node-2-local
         ipv4_address: 10.6.0.12
+        ipv6_address: fdf0:e132:efcf:2fae::12
   node-3-local:
     image: universa/node:latest
     command: --config /deploy/
     links:
      - db
     ports:
-      - 2054:2052
-      - 2084:2082
-      - 2702:2700
+      - 2054:2054
+      - 2084:2084
+      - 2702:2702
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-3/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-3:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 3
     networks:
-      main:
+      net_4nodes:
         aliases:
-          - node-3-local.utoken.io
+          - node-3-local
         ipv4_address: 10.6.0.13
+        ipv6_address: fdf0:e132:efcf:2fae::13
   node-4-local:
     image: universa/node:latest
     command: --config /deploy/
     links:
      - db
     ports:
-      - 2055:2052
-      - 2085:2082
-      - 2703:2700
+      - 2055:2055
+      - 2085:2085
+      - 2703:2703
     depends_on:
       db:
         condition: service_healthy
     volumes:
      - ./deploy/config-node-4/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/shared.yaml:/deploy/config/shared.yaml
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-4:/deploy/tmp
-     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 4
     networks:
-      main:
+      net_4nodes:
         aliases:
-          - node-4-local.utoken.io
+          - node-4-local
         ipv4_address: 10.6.0.14
-      
+        ipv6_address: fdf0:e132:efcf:2fae::14
+
 networks:
-  main:
+  net_4nodes:
     driver: bridge
+    enable_ipv6: true
     ipam:
-     config:
-       - subnet: 10.6.0.0/16
-         gateway: 10.6.0.1
+      config:
+        - subnet:  10.6.0.0/16
+          gateway: 10.6.0.1
+        # Generated using https://simpledns.com/private-ipv6
+        - subnet:  fdf0:e132:efcf:2fae::/64
+          gateway: fdf0:e132:efcf:2fae::1
+        # IPs:     fdf0:e132:efcf:2fae:xxxx:xxxx:xxxx:xxxx

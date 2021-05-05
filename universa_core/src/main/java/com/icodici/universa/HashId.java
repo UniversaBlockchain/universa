@@ -164,7 +164,7 @@ public class HashId implements Comparable<HashId> {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.fromKeysValues(
-                        "composite3", ((HashId) object).getDigest()
+                        "composite3", serializer.serialize(((HashId) object).getDigest())
                 );
             }
 

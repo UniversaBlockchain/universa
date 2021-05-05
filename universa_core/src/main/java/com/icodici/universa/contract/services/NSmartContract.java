@@ -232,6 +232,7 @@ public class NSmartContract extends Contract implements NContract {
         N_SMART_CONTRACT,
         SLOT1,
         UNS1,
+        UNS2,
         FOLLOWER1
     }
 

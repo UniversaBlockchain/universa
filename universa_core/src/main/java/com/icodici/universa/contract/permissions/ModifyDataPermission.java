@@ -7,10 +7,8 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.biserializer.BiType;
-import net.sergeych.biserializer.DefaultBiMapper;
+import com.icodici.universa.node2.Quantiser;
+import net.sergeych.biserializer.*;
 import net.sergeych.diff.*;
 import net.sergeych.tools.Binder;
 
@@ -76,11 +74,12 @@ public class ModifyDataPermission extends Permission {
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
+    public void checkChangesQuantized(Contract contract, Contract changedContract, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         Delta data = stateChanges.get("data");
         if (data != null && data instanceof MapDelta) {
             Map mapChanges = ((MapDelta) data).getChanges();
             mapChanges.keySet().removeIf(key -> {
+
                 Object changed = mapChanges.get(key);
 
                 Object value = "";
@@ -103,7 +102,9 @@ public class ModifyDataPermission extends Permission {
 
         for (String rootField : rootFields) {
             boolean containsField = this.fields.containsKey("/" + rootField);
-            List<String> foundField = this.fields.get("/" + rootField);
+
+            List<String> foundField = BossBiMapper.getInstance().serialize(this.fields.get("/" + rootField));
+            //List<String> foundField = this.fields.get("/" + rootField);
 
             Delta rootFieldChanges = stateChanges.get(rootField);
             if (rootFieldChanges != null) {

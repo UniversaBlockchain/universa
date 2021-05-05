@@ -11,16 +11,18 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ExtendedSignature;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
+import com.icodici.universa.ubot.PoolState;
+import com.icodici.universa.ubot.UBotTools;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -33,7 +35,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,6 +55,8 @@ public class Client {
     private final PublicKey nodePublicKey;
 
     List<Client> clients;
+    Map<Integer,BasicHttpClient> ubotClients = new HashMap<>();
+    List<Binder> ubotTopology;
 
     private String version;
     private List<Binder> topology;
@@ -118,16 +121,18 @@ public class Client {
      * @return connected to node
      */
     public Client getClient(int i) throws IOException {
-        Client c = clients.get(i);
-        if (c == null) {
-            NodeRecord r = nodes.get(i);
-            c = new Client(r.url, clientPrivateKey, r.key, null);
-            if (topology != null) {
-                c.httpClient.nodeNumber = topology.get(i).getIntOrThrow("number");
+        synchronized (clients) {
+            Client c = clients.get(i);
+            if (c == null) {
+                NodeRecord r = nodes.get(i);
+                c = new Client(r.url, clientPrivateKey, r.key, null);
+                if (topology != null) {
+                    c.httpClient.nodeNumber = topology.get(i).getIntOrThrow("number");
+                }
+                clients.set(i, c);
             }
-            clients.set(i, c);
+            return c;
         }
-        return c;
     }
 
     /**
@@ -171,6 +176,45 @@ public class Client {
             return answer.getBinderOrThrow("contracts");
         });
     }
+
+    public HashId initiateVote(byte[] packedU, Contract votingContract, String votingRole, Collection<HashId> candidates) throws ClientError {
+
+        return protect(() -> {
+            return (HashId)httpClient.command("initiateVoting","packedU",packedU,"packedItem",votingContract.getPackedTransaction(),"role",votingRole,"candidates",candidates).get("paidOperationId");
+        });
+
+    }
+
+
+    public HashId voteForContract(byte[] packedU, HashId votingId, HashId candidateId, List<byte[]> referencedItems) throws ClientError {
+        return protect(() -> {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+            outputStream.write( votingId.getDigest() );
+            outputStream.write( candidateId.getDigest() );
+            byte[] data = outputStream.toByteArray();
+
+            return (HashId)httpClient.command("voteForContract","packedU",packedU,"votingId",votingId,"candidateId",candidateId, "referencedItems",referencedItems,"signature",ExtendedSignature.sign(clientPrivateKey,data)).get("paidOperationId");
+        });
+
+    }
+
+    public HashId voteForContract(byte[] packedU, HashId votingId, HashId candidateId) throws ClientError {
+        return voteForContract(packedU,votingId,candidateId,null);
+    }
+
+    public ZonedDateTime signContractBySessionKey(HashId itemId) throws ClientError {
+        return protect(() -> {
+            return (ZonedDateTime)httpClient.command("addKeyToContract","itemId",itemId).get("expiresAt");
+        });
+
+    }
+
+    public Binder getContractKeys(HashId itemId) throws ClientError {
+        return protect(() -> {
+            return httpClient.command("getContractKeys","itemId",itemId);
+        });
+    }
+
 
     protected interface Executor<T> {
         T execute() throws Exception;
@@ -279,8 +323,10 @@ public class Client {
         NodeRecord r = Do.sample(nodes);
         httpClient = new BasicHttpClient(r.url);
         this.nodePublicKey = r.key;
+
         if (!delayedStart)
             httpClient.start(clientPrivateKey, r.key, session);
+
     }
 
 
@@ -647,6 +693,58 @@ public class Client {
         }
     }
 
+    /**
+     * Send the PaidOperation to network and wait for it processing is complete.
+     * @param packed {@ling PaidOperation} binary
+     * @param millisToWait maximum time to wait
+     * @return payment contract state. If here comes APPROVED - that means what operation was completed successfully.
+     *          If not, payment contract will be in DECLINED state.
+     * @throws ClientError
+     */
+    public ItemResult registerPaidOperationWithState(byte[] packed, long millisToWait) throws ClientError {
+        Object result = protect(() -> httpClient.command("approvePaidOperation", "packedItem", packed)
+                .get("result"));
+        if (result instanceof String) {
+            throw new ClientError(Errors.FAILURE, "registerPaidOperationWithState", "approvePaidOperation returns: " + result);
+        } else {
+            if (millisToWait > 0) {
+                Instant end = Instant.now().plusMillis(millisToWait);
+                try {
+                    PaidOperation paidOperation = PaidOperation.unpack(packed);
+                    Thread.sleep(100);
+                    ParcelProcessingState pState = getPaidOperationProcessingState(paidOperation.getId());
+                    int interval = 1000;
+                    // first, PaidOperation should be completed
+                    //System.out.println("pState is: " + pState);
+                    while (Instant.now().isBefore(end) && pState.isProcessing()) {
+                        Thread.sleep(interval);
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
+                        pState = getPaidOperationProcessingState(paidOperation.getId());
+                        //System.out.println("pState is: " + pState);
+                    }
+                    // PaidOperationProcessor commits/rollbacks final payment state after processing of its operation;
+                    // so next, payment state should not be pending
+                    ItemResult lastResult = getState(paidOperation.getPaymentContract().getId());
+                    //System.out.println("test: " + lastResult);
+                    while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                        Thread.sleep(interval);
+                        interval -= 350;
+                        interval = Math.max(interval, 300);
+                        lastResult = getState(paidOperation.getPaymentContract().getId());
+                        //System.out.println("test: " + lastResult);
+                    }
+                    return lastResult;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    throw new ClientError(e);
+                }
+            } else {
+                throw new ClientError(Errors.COMMAND_PENDING, "registerPaidOperationWithState",
+                        "waiting time is up, please update payload state later");
+            }
+        }
+    }
 
     /**
      * Get the state of the contract on the currently connected node.
@@ -872,6 +970,26 @@ public class Client {
         return protect(() -> {
             Binder result = httpClient.command("getParcelProcessingState",
                     "parcelId", parcelId);
+
+            Object ps = result.getOrThrow("processingState");
+            if (ps instanceof ParcelProcessingState)
+                return (ParcelProcessingState) ps;
+
+            return ParcelProcessingState.valueOf(result.getBinder("processingState").getStringOrThrow("state"));
+        });
+    }
+
+    /**
+     * Get the processing state of given PaidOperation.
+     *
+     * @param operationId id of the {@link com.icodici.universa.contract.PaidOperation} to get state of
+     * @return processing state of the operation, from ParcelProcessingState enum
+     * @throws ClientError
+     */
+    public ParcelProcessingState getPaidOperationProcessingState(HashId operationId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getPaidOperationProcessingState",
+                    "operationId", operationId);
 
             Object ps = result.getOrThrow("processingState");
             if (ps instanceof ParcelProcessingState)
@@ -1178,6 +1296,28 @@ public class Client {
     }
 
     /**
+     * Query the  {@link com.icodici.universa.contract.services.UnsContract} that registers the name
+     * (passed as the argument).
+     *
+     * @param name to look for
+     * @param type to look for UNS1 or UNS2
+     * @return packed {@link com.icodici.universa.contract.services.UnsContract} if found;
+     * or {@code null} if not found
+     * @throws ClientError
+     */
+    public byte[] queryNameContract(String name, NSmartContract.SmartContractType type) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryNameContract", "name", name, "type",type.name());
+            try {
+                Bytes bytes = result.getBytesOrThrow("packedContract");
+                return bytes.getData();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        });
+    }
+
+    /**
      * Get the contract with the given contract id.
      *
      * @param itemId contract hash
@@ -1394,4 +1534,204 @@ public class Client {
             return binder;
         });
     }
+
+    public Binder createSession(Contract requestContract, byte[] packedU, boolean waitPreviousSession) throws ClientError {
+        return protect(() -> {
+            HashId uId = Contract.fromPackedTransaction(packedU).getId();
+
+            do {
+                Binder answer = (Binder) command("ubotCreateSessionPaid", "packedRequest", requestContract.getPackedTransaction(),"packedU",packedU);
+
+                HashId paidOperationId = (HashId) answer.get("paidOperationId");
+                while(getPaidOperationProcessingState(paidOperationId).isProcessing()) {
+                    Thread.sleep(100);
+                }
+
+                if(getState(uId).state == ItemState.UNDEFINED) {
+                    Thread.sleep(500);
+                    continue;
+                }
+                ItemResult ir = getState(uId);
+                if(ir.state == ItemState.DECLINED) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","U declined: " + ir.errors);
+                }
+
+                if(ir.state != ItemState.APPROVED) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","U is not approved: " + ir.state);
+                }
+
+                Binder session = command("ubotGetSession", "requestId", requestContract.getId()).getBinderOrThrow("session");
+
+                if(session == null || session.get("state") == null || !session.get("state").equals("OPERATIONAL")) {
+                    throw new CommandFailedException(Errors.COMMAND_FAILED,"ubotCreateSession","session is not operational :" +  session.get("errors"));
+                }
+
+                return session;
+
+            } while (waitPreviousSession);
+
+            return null;
+        });
+    }
+
+    public Binder startCloudMethod(Contract requestContract,byte[] packedU, boolean waitPreviousSession) throws ClientError {
+        Binder session = createSession(requestContract, packedU, waitPreviousSession);
+        if(session == null) {
+            return null;
+        }
+        List<Integer> ubots = session.getListOrThrow("sessionPool");
+
+        Map<Integer,Binder> errors = new HashMap<>();
+        for(int i = 0; i < 3; i++) {
+            int randomPoolUbotNumber = Do.sample(ubots);
+
+            BasicHttpClient ubotHttpClient = connectToUbot(randomPoolUbotNumber);
+
+            Binder response;
+            try {
+                response = ubotHttpClient.command("executeCloudMethod", "contract", requestContract.getPackedTransaction());
+            } catch (IOException e) {
+                continue;
+            }
+
+            if (!response.getString("status", "error").equals("ok")) {
+                errors.put(randomPoolUbotNumber,response);
+            } else {
+                return session;
+            }
+        }
+        if(!errors.isEmpty()) {
+            session.put("ubot_errors",errors);
+        }
+
+        return session;
+    }
+
+    public BasicHttpClient connectToUbot(int ubotNumber) throws ClientError {
+        if(!ubotClients.containsKey(ubotNumber)) {
+
+            if(ubotTopology == null) {
+                byte[] ubotRegistryBytes = getServiceContracts().getBinaryOrThrow("ubot_registry_contract");
+                if (ubotRegistryBytes == null) {
+                    throw new ClientError(Errors.NOT_FOUND, "ubot_registry_contract", "unable to get ubot registry contract");
+                }
+                Contract ubotRegistry;
+                try {
+                    ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+                } catch (IOException e) {
+                    throw new ClientError(e);
+                }
+
+                ubotTopology = ubotRegistry.getStateData().getListOrThrow("topology");
+            }
+
+            Binder ubot = ubotTopology.stream().filter(b -> b.getIntOrThrow("number") == ubotNumber).findAny().get();
+
+            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)));
+
+            try {
+                ubotHttpClient.start(clientPrivateKey, new PublicKey(Base64u.decodeCompactString(ubot.getStringOrThrow("key"))), null);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new ClientError(e);
+            }
+            ubotClients.put(ubotNumber, ubotHttpClient);
+
+        }
+
+        return ubotClients.get(ubotNumber);
+    }
+
+    /**
+     * Gets the current state of the cloud method.
+     *
+     * @param  requestContractId - The Request contract id.
+     * @param  ubotNumber - UBot number to request the current state from.
+     * @return cloud method state, fields in the object:
+     *      state - method status,
+     *      result - method result,
+     *      errors - error list.
+     */
+    public Binder getCloudMethodState(HashId requestContractId, Integer ubotNumber) throws ClientError {
+        BasicHttpClient ubotHttpClient = connectToUbot(ubotNumber);
+
+        try {
+            return ubotHttpClient.command("getState", "requestContractId", requestContractId);
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+    }
+
+
+
+    public Binder executeCloudMethod(byte[] packedRequest, byte[] packedU, boolean waitPreviousSession,float trustLevel) throws IOException {
+
+        Contract requestContract = Contract.fromPackedTransaction(packedRequest);
+
+        Binder session = startCloudMethod(requestContract,packedU, waitPreviousSession);
+        if(session.containsKey("ubot_errors")) {
+            return session;
+        }
+
+        byte[] ubotRegistryBytes = getServiceContracts().getBinaryOrThrow("ubot_registry_contract");
+        if(ubotRegistryBytes == null) {
+            throw new ClientError(Errors.NOT_FOUND,"ubot_registry_contract","unable to get ubot registry contract");
+        }
+        Contract ubotRegistry;
+        try {
+            ubotRegistry = Contract.fromPackedTransaction(ubotRegistryBytes);
+        } catch (IOException e) {
+            throw new ClientError(e);
+        }
+
+        int quorum = UBotTools.getRequestQuorumSize(requestContract, ubotRegistry);
+        int minAnswersRequired = (int) Math.max(Math.ceil(quorum*trustLevel),1);
+
+        List<Integer> ubots = session.getListOrThrow("sessionPool");
+        AsyncEvent readyEvent = new AsyncEvent();
+        Map<Integer,Binder> answers = new ConcurrentHashMap<>();
+
+        ubots.forEach(ubotNumber -> {
+            Do. inParallel(() -> {
+                try {
+                    while(true) {
+                        Binder response = getCloudMethodState(requestContract.getId(),ubotNumber);
+                        if(response.containsKey("state") && !PoolState.valueOf(response.getStringOrThrow("state")).isRunning()) {
+                            answers.put(ubotNumber,response);
+                            break;
+                        }
+                        Thread.sleep(100);
+                    }
+                } catch (Exception e) {
+                    answers.put(ubotNumber,Binder.of("state", PoolState.FAILED.name(),"exception",e));
+                }
+                Map<Binder, Long> counts =
+                        answers.values().stream().collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+
+                Long max = Collections.max(counts.values());
+                if(answers.size() == ubots.size() || max >= minAnswersRequired) {
+                    readyEvent.fire();
+                }
+            });
+        });
+
+        try {
+            readyEvent.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Map<Binder, Long> counts =
+                answers.values().stream().collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+        Long max = Collections.max(counts.values());
+        if(max >= minAnswersRequired) {
+            for(Binder res : counts.keySet()) {
+                if(counts.get(res) == max) {
+                    return res;
+                }
+            }
+        }
+        return null;
+    }
+
 }

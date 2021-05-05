@@ -1,0 +1,10 @@
+---
+http_client_port: 18009
+http_public_port: 17009
+udp_server_port: 16009
+database: host=localhost port=5432 dbname=ubot_t9
+node_number: 9
+public_host: localhost
+node_name: ubot_9
+ip:
+- 127.0.0.1

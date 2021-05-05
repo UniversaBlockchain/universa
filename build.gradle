@@ -1,6 +1,6 @@
 group 'com.icodici'
 allprojects {
-    version '3.13.2'
+    version '3.14.4'
 }
 
 apply plugin: 'java'
@@ -13,5 +13,5 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'junit', name: 'junit', version: '4.13.1'
 }

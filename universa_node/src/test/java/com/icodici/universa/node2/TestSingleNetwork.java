@@ -9,14 +9,17 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -54,6 +57,11 @@ public class TestSingleNetwork extends Network {
     }
 
     @Override
+    public PaidOperation getPaidOperation(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        return null;
+    }
+
+    @Override
     public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
         return nodes.get(nodeInfo).checkItem(id);
     }
@@ -66,6 +74,16 @@ public class TestSingleNetwork extends Network {
     @Override
     public int pingNodeTCP(int nodeNumber, int timeoutMillis) {
         return 0;
+    }
+
+    @Override
+    public void setUbotTopology(List<Binder> ubotTopology) {
+
+    }
+
+    @Override
+    public Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException {
+        return null;
     }
 
     public void addNode(NodeInfo ni, Node node) {

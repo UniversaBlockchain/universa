@@ -10,7 +10,9 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.*;
 import com.icodici.crypto.digest.Crc32;
 import com.icodici.universa.Errors;
+import com.icodici.universa.node2.ConnectivityInfo;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
@@ -25,6 +27,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class UDPAdapter extends DatagramAdapter {
 
@@ -38,6 +41,7 @@ public class UDPAdapter extends DatagramAdapter {
     private Timer timerHandshake = new Timer();
     private Timer timerRetransmit = new Timer();
     private Timer timerProtectionFromDuple = new Timer();
+    private Map<NodeInfo, ConnectivityInfo> connectivityMap;
 
 
     /**
@@ -112,6 +116,103 @@ public class UDPAdapter extends DatagramAdapter {
      * @param packet data to send. It's {@link Packet#makeByteArray()} should returns data with size less than {@link DatagramAdapter#MAX_PACKET_SIZE}
      */
     private void sendPacket(NodeInfo destination, Packet packet) {
+        //create immutable snapshot
+        Map<NodeInfo,ConnectivityInfo> connectivityMapInstant = this.connectivityMap != null ? new HashMap<>(this.connectivityMap) : new HashMap<>();
+
+        Set<NodeInfo> unreachableByMe = connectivityMapInstant.containsKey(myNodeInfo) ? connectivityMapInstant.get(myNodeInfo).getUnreachableNodes() : new HashSet<>();
+
+        //check if not ECHO packed and is being sent to an unreachable node
+        if(packet.type != PacketTypes.ECHO && unreachableByMe.contains(destination)) {
+            Map<NodeInfo,Integer> routeLengths = new HashMap<>();
+            routeLengths.put(destination,0);
+            Set<NodeInfo> uncheckedNodes = new HashSet<>(connectivityMapInstant.keySet());
+
+            //we might not receive connectivity diagnostics of the destination, so it is not on connectivityMap yet
+            //still need to add it to uncheckedNodes
+            uncheckedNodes.add(destination);
+
+            while(!routeLengths.containsKey(myNodeInfo) && !uncheckedNodes.isEmpty()) {
+
+                //find unchecked node with minimum known route length
+                NodeInfo x = uncheckedNodes.stream().min(Comparator.comparingInt(n->routeLengths.getOrDefault(n, connectivityMapInstant.size()))).get();
+                Integer xRouteLength = routeLengths.get(x);
+
+
+
+                //no unchecked elements with known route length exists
+                if(xRouteLength == null) {
+                    //NO ROUTE TO HOST
+                    break;
+                }
+
+                //find neighbors with unknown route length and set it to xRouteLength+1 for them
+                for(NodeInfo ni : connectivityMapInstant.keySet()) {
+                    if(!routeLengths.containsKey(ni) && !connectivityMapInstant.get(ni).getUnreachableNodes().contains(x)) {
+                        routeLengths.put(ni,xRouteLength+1);
+                    }
+                }
+
+                //mark x checked
+                uncheckedNodes.remove(x);
+
+            }
+
+            if(!routeLengths.containsKey(myNodeInfo)) {
+                //NO ROUTE TO HOST
+                return;
+            }
+
+            List<NodeInfo> route = new ArrayList<>();
+            while(true) {
+                NodeInfo x;
+                if(route.isEmpty()) {
+                    x = myNodeInfo;
+                } else {
+                    x = route.get(route.size()-1);
+                }
+
+                //find mininum route length node
+                Set<NodeInfo> toFindIn = new HashSet(connectivityMapInstant.keySet());
+
+                //... among ones reachable from x
+                toFindIn.removeAll(connectivityMapInstant.get(x).getUnreachableNodes());
+                //... among ones not on the route already
+                toFindIn.removeAll(route);
+
+                try {
+                    //next route node found
+                    NodeInfo next = toFindIn.stream().min(Comparator.comparingInt(n->routeLengths.getOrDefault(n, connectivityMapInstant.size()))).get();
+                    route.add(next);
+
+                    if(routeLengths.get(next) == 1) {
+                        break;
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+            NodeInfo proxy = route.get(0);
+
+            if(proxy == null) {
+                //host unreachable
+                return;
+            } else {
+                NodeInfo finalProxy = proxy;
+                NodeInfo finalDestination = destination;
+                report(logLabel, ()->"asking " + finalProxy + " to retransmit message to: " + finalDestination, VerboseLevel.DETAILED);
+
+
+                Packet original = packet;
+                packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
+                        proxy.getNumber(), PacketTypes.RETRANSMIT, original.makeByteArray());
+                destination = proxy;
+
+            }
+        }
+
         byte[] payload = packet.makeByteArray();
         InetSocketAddress destAddr = myNodeInfo.hasV6() ? destination.getNodeAddressV6() : destination.getNodeAddress();
         DatagramPacket dp = new DatagramPacket(payload, payload.length, destAddr.getAddress(), destAddr.getPort());
@@ -209,7 +310,7 @@ public class UDPAdapter extends DatagramAdapter {
     public int pingNodeUDP(int number, int timeoutMillis) {
         Packet p = new Packet();
         p.type = PacketTypes.ECHO;
-        p.packetId = Do.randomInt(Integer.MAX_VALUE);
+        p.packetId = getNextPacketId();
         p.payload = new byte[]{};
         p.receiverNodeId = 0;
         p.senderNodeId = 0;
@@ -555,6 +656,10 @@ public class UDPAdapter extends DatagramAdapter {
     /** Uses for listen threads naming. (In local tests we can see many adapters running on one machine.) */
     private static int socketListenThreadNumber = 1;
 
+    public void setConnectivityMap(Map<NodeInfo, ConnectivityInfo> connectivityMap) {
+        this.connectivityMap = connectivityMap;
+    }
+
     /**
      * This thread listen socket for packets and processes them by types.
      */
@@ -631,6 +736,9 @@ public class UDPAdapter extends DatagramAdapter {
                                 break;
                             case PacketTypes.SESSION_ACK:
                                 onReceiveSessionAck(packet);
+                                break;
+                            case PacketTypes.RETRANSMIT:
+                                onReceiveRetransmit(packet);
                                 break;
                             case PacketTypes.ECHO:
                                 AsyncEvent e = pingWaiters.remove(packet.packetId);
@@ -972,6 +1080,14 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
+    private void onReceiveRetransmit(Packet packet) {
+        Packet packetToRetransmit = new Packet();
+        packetToRetransmit.parseFromByteArray(packet.payload);
+        report(logLabel, ()->"retransmitting message from " + netConfig.getInfo(packetToRetransmit.senderNodeId) + " to " + netConfig.getInfo(packetToRetransmit.receiverNodeId), VerboseLevel.DETAILED);
+        sendPacket(netConfig.getInfo(packetToRetransmit.receiverNodeId),packetToRetransmit);
+
+    }
+
 
     /**
      * Implements protection from duplication received packets.
@@ -1190,6 +1306,7 @@ public class UDPAdapter extends DatagramAdapter {
         static public final int SESSION_PART2  = 8;
         static public final int SESSION_ACK    = 9;
         static public final int ECHO           = 10;
+        static public final int RETRANSMIT           = 11;
     }
 
 

@@ -1,12 +1,15 @@
 ---
-http_client_port: 2052
+http_client_port: 2054
+public_http_port: 2054
 http_client_listen:
 - 0.0.0.0
-http_server_port: 2082
-udp_server_port: 2700
-database: jdbc:postgresql://db:5432/node3db?user=node3user&password=uniPass
+http_server_port: 2084
+udp_server_port: 2702
+database: jdbc:postgresql://10.6.0.10:5432/node3db?user=node3user&password=uniPass
 node_number: 3
-public_host: node-3-local.utoken.io
-node_name: node-3-local.utoken.io
+public_host: 127.0.0.1
+node_name: node-3-local
 ip:
-- 10.6.0.13
+- 127.0.0.1
+ipv6:
+- fdf0:e132:efcf:2fae::13

@@ -9,12 +9,14 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Notification;
+import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -73,6 +75,9 @@ public abstract class Network {
     public abstract Parcel getParcel(HashId itemId, NodeInfo node, Duration maxTimeout)
             throws InterruptedException;
 
+    public abstract PaidOperation getPaidOperation(HashId itemId, NodeInfo node, Duration maxTimeout)
+            throws InterruptedException;
+
     /**
      * Deliver notification to all nodes except one
      *
@@ -122,4 +127,8 @@ public abstract class Network {
     public abstract int pingNodeUDP(int number, int timeoutMillis);
 
     public abstract int pingNodeTCP(int nodeNumber, int timeoutMillis);
+
+    public abstract void setUbotTopology(List<Binder> ubotTopology);
+
+    public abstract Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException;
 }

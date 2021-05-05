@@ -12,10 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
-import com.icodici.universa.contract.services.FollowerContract;
 import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
-import com.icodici.universa.contract.services.UnsContract;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -73,6 +70,19 @@ public class TransactionPack implements BiSerializable {
     private Map<HashId, Contract> referencedItems = new HashMap<>();
     private Map<String, Contract> taggedItems = new HashMap<>();
     private Set<PublicKey> keysForPack = new HashSet<>();
+
+    /**
+     * U-bot id transaction is registered by
+     */
+    private HashId ubotId;
+    public void setUbotId(HashId ubotId) {
+        this.ubotId = ubotId;
+    }
+    public HashId getUbotId() {
+        return ubotId;
+    }
+
+
     private Contract contract;
 
     /**
@@ -264,92 +274,68 @@ public class TransactionPack implements BiSerializable {
                 }
             }
 
+            Map<HashId,ContractDependencies> pendingSubItems = new HashMap<>();
+            // then extract subItems
+            List<Bytes> subItemsBytesList = deserializer.deserializeCollection(
+                    data.getListOrThrow("subItems")
+            );
+
+            if (subItemsBytesList != null) {
+                // First of all extract contracts dependencies from subItems
+                for (Bytes b : subItemsBytesList) {
+                    ContractDependencies ct = new ContractDependencies(b.toArray());
+                    pendingSubItems.put(ct.id, ct);
+                }
+            }
+
+
+
+
+            byte[] bb = data.getBinaryOrThrow("contract");
+            HashId mainId = HashId.of(bb);
+
             // then extracn given referenced items
             List<Bytes> foreignReferenceBytesList = deserializer.deserializeCollection(
                     data.getList("referencedItems", new ArrayList<>())
             );
             if(foreignReferenceBytesList != null) {
                 for (Bytes b : foreignReferenceBytesList) {
-                    Contract frc = new Contract(b.toArray(), this);
+                    HashId refId = HashId.of(b.getData());
+                    //sometimes subItems may appear in references items list.
+                    //checking it here in order to avoid multiple instances
+                    //of same contract
+                    if(refId.equals(mainId) || pendingSubItems.containsKey(refId)) {
+                        continue;
+                    }
+
+                    Contract frc = Contract.fromSealedBinary(b.toArray(), this);
                     quantiser.addWorkCostFrom(frc.getQuantiser());
                     referencedItems.put(frc.getId(), frc);
                 }
             }
 
 
-            // then extract subItems
-            List<Bytes> subItemsBytesList = deserializer.deserializeCollection(
-                    data.getListOrThrow("subItems")
-            );
 
-            HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
-            List<HashId> allContractsHids = new ArrayList<>();
-            HashMap<ContractDependencies, Bytes> sortedSubItemsBytesList = new HashMap<>();
+                while (!pendingSubItems.isEmpty()) {
+                    HashId candidateId = null;
+                    for(HashId id : pendingSubItems.keySet()) {
+                        if(Collections.disjoint(pendingSubItems.get(id).dependencies, pendingSubItems.keySet())) {
+                            candidateId = id;
+                            break;
+                        }
+                    }
 
-            if (subItemsBytesList != null) {
-                // First of all extract contracts dependencies from subItems
-                for (Bytes b : subItemsBytesList) {
-                    ContractDependencies ct = new ContractDependencies(b.toArray());
-                    allContractsTrees.put(ct, b);
-                    allContractsHids.add(ct.id);
+                    if(candidateId == null) {
+                        throw new IllegalArgumentException("circular dependencies in subitems");
+                    }
+
+                    Contract si = Contract.fromSealedBinary(pendingSubItems.remove(candidateId).sealed, this);
+                    subItems.put(si.getId(),si);
                 }
 
-                // then recursively from ends of dependencies tree to top go throw it level by level
-                // and add items to subItems on the each level of tree's hierarchy
-                do {
-                    // first add contract from ends of trees, means without own subitems
-                    sortedSubItemsBytesList = new HashMap<>();
-                    List<ContractDependencies> removingContractDependencies = new ArrayList<>();
-                    for (ContractDependencies ct : allContractsTrees.keySet()) {
-                        if (ct.dependencies.size() == 0) {
-                            sortedSubItemsBytesList.put(ct, allContractsTrees.get(ct));
-                            removingContractDependencies.add(ct);
-                        }
-                    }
 
-                    // remove found items from tree's list
-                    for (ContractDependencies ct : removingContractDependencies) {
-                        allContractsTrees.remove(ct);
-                    }
-
-                    // then add contract with already exist subitems in the subItems or will never find in the tree
-                    removingContractDependencies = new ArrayList<>();
-                    for (ContractDependencies ct : allContractsTrees.keySet()) {
-                        boolean allDependenciesSafe = true;
-                        for (HashId hid : ct.dependencies) {
-                            if (!subItems.containsKey(hid) && allContractsHids.contains(hid)) {
-                                allDependenciesSafe = false;
-                            }
-                        }
-                        if (allDependenciesSafe) {
-                            sortedSubItemsBytesList.put(ct, allContractsTrees.get(ct));
-                            removingContractDependencies.add(ct);
-                        }
-                    }
-
-                    // remove found items from tree's list
-                    for (ContractDependencies ct : removingContractDependencies) {
-                        allContractsTrees.remove(ct);
-                    }
-
-                    // add found binaries on the hierarchy level to subItems
-                    for (ContractDependencies ct : sortedSubItemsBytesList.keySet()) {
-                        Bytes b = sortedSubItemsBytesList.get(ct);
-                        createNeededContractAndAddToSubItems(b, quantiser);
-                    }
-
-                    // then repeat until we can find hierarchy
-                } while (sortedSubItemsBytesList.size() != 0);
-
-                // finally add not found binaries on the hierarchy levels to subItems
-                for (ContractDependencies ct : allContractsTrees.keySet()) {
-                    Bytes b = allContractsTrees.get(ct);
-                    createNeededContractAndAddToSubItems(b, quantiser);
-                }
-            }
-
-            byte[] bb = data.getBinaryOrThrow("contract");
             contract = Contract.fromSealedBinary(bb,this);
+            contract.getId();
 
             Binder tagsBinder = data.getBinder("tags", new Binder());
             for(String tag : tagsBinder.keySet()) {
@@ -397,8 +383,10 @@ public class TransactionPack implements BiSerializable {
             if(referencedItems.size() > 0) {
                 of.set("referencedItems",
                         serializer.serialize(
-                                referencedItems.values().stream()
-                                        .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
+                                referencedItems.keySet().stream().filter(id->!subItems.containsKey(id) && !id.equals(contract.getId()))
+                                        .map(x -> referencedItems.get(x).getLastSealedBinary()).collect(Collectors.toList())
+//                                referencedItems.values().stream()
+//                                        .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
                         ));
             }
 
@@ -526,15 +514,23 @@ public class TransactionPack implements BiSerializable {
         subItems.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
     }
 
+    public void setReferenceContextKeys(Set<PublicKey> referenceEffectiveKeys) {
+        contract.setReferenceContextKeys(referenceEffectiveKeys);
+        subItems.values().forEach(si->si.setReferenceContextKeys(referenceEffectiveKeys));
+        referencedItems.values().forEach(ri->ri.setReferenceContextKeys(referenceEffectiveKeys));
+    }
+
     /**
      * Class that extracts subItems from given contract bytes and build dependencies. But do not do anything more.
      */
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
         private final HashId id;
+        private final byte[] sealed;
 
         public ContractDependencies(byte[] sealed) throws IOException {
             this.id = HashId.of(sealed);
+            this.sealed = sealed;
             Binder data = Boss.unpack(sealed);
             byte[] contractBytes = data.getBinaryOrThrow("data");
 

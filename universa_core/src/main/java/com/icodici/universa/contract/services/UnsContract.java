@@ -57,6 +57,8 @@ public class UnsContract extends NSmartContract {
     private Integer paidU;
 
 
+    private NSmartContract.SmartContractType unsType = SmartContractType.UNS1;
+
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If
      * the transaction pack fails to resolve a link, no error will be reported - not sure it's a good idea. If need, the
@@ -106,12 +108,30 @@ public class UnsContract extends NSmartContract {
         addUnsSpecific();
     }
 
+    public UnsContract(PrivateKey key,NSmartContract.SmartContractType unsType) throws ClientError {
+        super(key);
+        if(unsType != SmartContractType.UNS1 && unsType != SmartContractType.UNS2) {
+            throw new IllegalArgumentException("illegal value, should be either '" + SmartContractType.UNS1 + "' or '" + SmartContractType.UNS2 + "'. Found: " + unsType.name());
+        }
+
+        this.unsType = unsType;
+
+        RevokePermission revokePerm1 = new RevokePermission(new RoleLink("@owner", this,"owner"));
+        addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(new RoleLink("@issuer", this,"issuer"));
+        addPermission(revokePerm2);
+
+        addUnsSpecific();
+
+    }
+
     /**
      * Initialize UnsContract internal data structure with specific UNS1 parameters.
      */
     public void addUnsSpecific() {
-        if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.UNS1.name()))
-            getDefinition().setExtendedType(SmartContractType.UNS1.name());
+        if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(unsType.name()))
+            getDefinition().setExtendedType(unsType.name());
 
         RoleLink ownerLink = new RoleLink("owner_link",this, "owner");
         HashMap<String, Object> fieldsMap = new HashMap<>();
@@ -313,10 +333,12 @@ public class UnsContract extends NSmartContract {
             storedNames.add(unsName);
         }
 
-        storedRecords = deserializer.deserialize(getStateData().getList(ENTRIES_FIELD_NAME, null));
+        storedRecords = getStateData().getList(ENTRIES_FIELD_NAME, null);
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNameDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
+
+        unsType = SmartContractType.valueOf(getExtendedType());
     }
 
     protected UnsContract initializeWithDsl(Binder root) throws EncryptionError {
@@ -324,7 +346,7 @@ public class UnsContract extends NSmartContract {
         ArrayList<?> arrayNames = root.getBinder("state").getBinder("data").getArray(NAMES_FIELD_NAME);
         for (Object name: arrayNames) {
             Binder binder;
-            if (name.getClass().getName().endsWith("Binder"))
+            if (name instanceof Binder)
                 binder = (Binder) name;
             else
                 binder = new Binder((Map) name);
@@ -337,7 +359,7 @@ public class UnsContract extends NSmartContract {
         ArrayList<?> arrayRecords = root.getBinder("state").getBinder("data").getArray(ENTRIES_FIELD_NAME);
         for (Object record: arrayRecords) {
             Binder binder;
-            if (record.getClass().getName().endsWith("Binder"))
+            if (record instanceof Binder)
                 binder = (Binder) record;
             else
                 binder = new Binder((Map) record);
@@ -466,8 +488,8 @@ public class UnsContract extends NSmartContract {
         });
 
 
-        if (!getExtendedType().equals(SmartContractType.UNS1.name())) {
-            addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.UNS1.name() + " instead " + getExtendedType());
+        if(unsType != SmartContractType.UNS1 && unsType != SmartContractType.UNS2) {
+            addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be either '" + SmartContractType.UNS1.name() + "' or '" + SmartContractType.UNS2.name() + "'. Found: " + getExtendedType());
             return false;
         }
 
@@ -479,6 +501,11 @@ public class UnsContract extends NSmartContract {
 
         if (!newRecords.stream().allMatch(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
+                if(unsType == SmartContractType.UNS2) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "UNS2 only allows data records.");
+                    return false;
+                }
+
                 if(!unsRecord.getAddresses().isEmpty()) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to origin AND addresses found. Should be either origin or addresses or data");
                     return false;
@@ -515,6 +542,10 @@ public class UnsContract extends NSmartContract {
             }
 
             if(!unsRecord.getAddresses().isEmpty()) {
+                if(unsType == SmartContractType.UNS2) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "UNS2 only allows data records.");
+                    return false;
+                }
 
                 if(unsRecord.getData() != null) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "record referencing to addresses AND data found. Should be either origin or addresses or data");
@@ -551,6 +582,17 @@ public class UnsContract extends NSmartContract {
         if(!newNames.isEmpty() && !getAdditionalKeysAddressesToSignWith().stream().allMatch(ka -> getEffectiveKeys().stream().anyMatch(ek -> ka.isMatchingKey(ek)))) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
             return false;
+        }
+
+        if(unsType == SmartContractType.UNS2) {
+
+
+            for(int i =0; i < storedNames.size();i++) {
+                UnsName name = storedNames.get(i);
+                if(!name.getUnsReducedName().equals("/"+name.getUnsName())) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"For UNS2 reduced name should be equals to corresponding name preceded by a '/' symbol.");
+                }
+            }
         }
 
         List<String> reducedNamesToCkeck = getReducedNamesToCheck();

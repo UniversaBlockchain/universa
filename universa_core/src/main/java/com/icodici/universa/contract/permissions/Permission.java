@@ -12,6 +12,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
 import net.sergeych.biserializer.BiSerializer;
@@ -127,9 +128,11 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Check permission is allowed to keys
      *
      * @param keys is public keys
+     * @deprecated use {@link #isAllowedForKeysQuantized(PublicKey...)}
      * @return true if permission is allowed to keys
      */
-    public boolean isAllowedForKeys(PublicKey... keys) {
+    @Deprecated
+    public boolean isAllowedForKeys(PublicKey... keys){
         Set<PublicKey> keySet = new HashSet<>();
         for (PublicKey k : keys)
             keySet.add(k);
@@ -140,8 +143,10 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Check permission is allowed to keys
      *
      * @param keys is collection of public keys
+     * @deprecated use {@link #isAllowedForKeysQuantized(Collection)}
      * @return true if permission is allowed to keys
      */
+    @Deprecated
     public boolean isAllowedForKeys(Collection<PublicKey> keys) {
 //        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
         return isAllowedFor(keys);
@@ -151,10 +156,47 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Check permission is allowed to keys and references
      *
      * @param keys is collection of public keys
+     * @deprecated use {@link #isAllowedForQuantized(Collection)}
      * @return true if permission is allowed to keys and references
      */
-    public boolean isAllowedFor(Collection<PublicKey> keys) {
+    @Deprecated
+    public boolean isAllowedFor(Collection<PublicKey> keys){
         return role.isAllowedForKeys(new HashSet<>(keys));
+    }
+
+
+    /**
+     * Check permission is allowed to keys
+     *
+     * @param keys is public keys
+     * @return true if permission is allowed to keys
+     */
+    public boolean isAllowedForKeysQuantized(PublicKey... keys) throws Quantiser.QuantiserException {
+        Set<PublicKey> keySet = new HashSet<>();
+        for (PublicKey k : keys)
+            keySet.add(k);
+        return isAllowedForQuantized(keySet);
+    }
+
+    /**
+     * Check permission is allowed to keys
+     *
+     * @param keys is collection of public keys
+     * @return true if permission is allowed to keys
+     */
+    public boolean isAllowedForKeysQuantized(Collection<PublicKey> keys) throws Quantiser.QuantiserException {
+//        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
+        return isAllowedForQuantized(keys);
+    }
+
+    /**
+     * Check permission is allowed to keys and references
+     *
+     * @param keys is collection of public keys
+     * @return true if permission is allowed to keys and references
+     */
+    public boolean isAllowedForQuantized(Collection<PublicKey> keys) throws Quantiser.QuantiserException {
+        return role.isAllowedForKeysQuantized(new HashSet<>(keys));
     }
 
     @Override
@@ -162,6 +204,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         Binder results = new Binder();
         if (params != null)
             results.putAll(params);
+        results.remove("__type");
         results.put("name", name);
         results.put("role", serializer.serialize(role));
         return results;
@@ -190,7 +233,32 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
      * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
      */
-    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys);
+    public final void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) {
+        try {
+            checkChangesQuantized(contract,changed,stateChanges,revokingItems,keys);
+        } catch (Quantiser.QuantiserException e) {
+            throw new Quantiser.QuantiserExceptionRuntime(e);
+        }
+    }
+
+
+    /**
+     * Process changes of the contract. Implementation should check and remove all allowed changes from the stateChanges
+     * parameter, and add errors to the contract using {@link Contract#addError(Errors, String)} for all relevant but
+     * inappropriate changes.
+     * <p>
+     * <b>IMPORTANT NOTE</b>. Implementations usually should not add errors to the contract unless the permission can be
+     * used <i>only once in any contract</i>, such as change_owher or revoke. In all other cases, when the permission
+     * could be specified several times for different roles and with different parameter, implementation should do
+     * nothing on the error and let others porceed. Unprocessed changes will cause error if no permission will clear
+     * it.
+     *  @param contract source (valid) contract
+     * @param changed is contract for checking
+     * @param stateChanges map of changes, see {@link Delta} for details
+     * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
+     * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
+     */
+    public abstract void checkChangesQuantized(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys) throws Quantiser.QuantiserException;
 
     /**
      * Get permission as string.

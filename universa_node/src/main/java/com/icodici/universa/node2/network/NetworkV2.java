@@ -8,16 +8,20 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.PaidOperation;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
@@ -40,6 +44,7 @@ public class NetworkV2 extends Network {
     private static LogPrinter log = new LogPrinter("TLN");
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
+    private Map<NodeInfo, ConnectivityInfo> connectivityMap;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
@@ -179,6 +184,22 @@ public class NetworkV2 extends Network {
                         " IN ",
                         ((ItemNotification)notification).getItemId().toString()),
                         DatagramAdapter.VerboseLevel.DETAILED);
+            } else if(notification instanceof UBotSessionNotification) {
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " SN ",
+                        ((UBotSessionNotification)notification).toString()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
+            } else if(notification instanceof UBotTransactionNotification) {
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " TN ",
+                        ((UBotTransactionNotification)notification).toString()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else {
                 report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
             }
@@ -216,7 +237,6 @@ public class NetworkV2 extends Network {
             return tp.getContract();
         } catch (Exception e) {
             report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e, DatagramAdapter.VerboseLevel.BASE);
-            e.printStackTrace();
             return null;
         }
     }
@@ -270,6 +290,27 @@ public class NetworkV2 extends Network {
         }
     }
 
+    @Override
+    public PaidOperation getPaidOperation(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        try {
+            URL url = new URL((myInfo.hasV6() ? nodeInfo.serverUrlStringV6() : nodeInfo.serverUrlString()) + "/paidOperation/" + itemId.toBase64String());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout((int) (maxTimeout.getSeconds()*1000));
+            if (200 != connection.getResponseCode())
+                return null;
+            byte[] data = Do.read(connection.getInputStream());
+            PaidOperation paidOperation = PaidOperation.unpack(data);
+            return paidOperation;
+        } catch (Exception e) {
+            report(getLabel(), "download(getPaidOperation) failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
+            return null;
+        }
+    }
+
     private final Map<NodeInfo,Client> cachedClients = new HashMap<>();
 
     @Override
@@ -317,6 +358,11 @@ public class NetworkV2 extends Network {
         }
     }
 
+    @Override
+    public void setUbotTopology(List<Binder> ubotTopology) {
+        this.ubotTopology = ubotTopology;
+    }
+
     private String exceptionCallback(String message) {
         report(getLabel(), "UDP adapter error: " + message, DatagramAdapter.VerboseLevel.BASE);
         return message;
@@ -339,6 +385,7 @@ public class NetworkV2 extends Network {
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo, netConfig);
         adapter.receive(this::onReceived);
         adapter.addErrorsCallback(this::exceptionCallback);
+        adapter.setConnectivityMap(connectivityMap);
     }
 
 
@@ -405,5 +452,36 @@ public class NetworkV2 extends Network {
             returnMessage.append(m != null ? m.toString() : "null");
         }
         return returnMessage.toString();
+    }
+
+    Map<Integer,BasicHttpClient> ubotClients = new HashMap<>();
+    List<Binder> ubotTopology;
+
+
+    @Override
+    public Binder executeOnUBot(int ubotNumber, String command, Object... params) throws IOException {
+        if(!ubotClients.containsKey(ubotNumber)) {
+
+            Binder ubot = ubotTopology.stream().filter(b -> b.getIntOrThrow("number") == ubotNumber).findAny().get();
+
+            BasicHttpClient ubotHttpClient = new BasicHttpClient(((String) ubot.getListOrThrow("direct_urls").get(0)));
+
+            try {
+                ubotHttpClient.start(myKey, new PublicKey(Base64u.decodeCompactString(ubot.getStringOrThrow("key"))), null);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw e;
+            }
+            ubotClients.put(ubotNumber, ubotHttpClient);
+
+        }
+
+        return ubotClients.get(ubotNumber).command(command,params);
+    }
+
+    public void setConnectivityMap(Map<NodeInfo, ConnectivityInfo> connectivityMap) {
+        this.connectivityMap = connectivityMap;
+        if(this.adapter != null)
+            this.adapter.setConnectivityMap(connectivityMap);
     }
 }

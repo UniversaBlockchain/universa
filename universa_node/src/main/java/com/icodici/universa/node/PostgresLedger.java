@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
@@ -18,7 +19,6 @@ import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
 import net.sergeych.utils.Ut;
 
@@ -33,8 +33,8 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -974,6 +974,9 @@ public class PostgresLedger implements Ledger {
             sqlText = "delete from follower_callbacks where stored_until < ?;";
             db.update(sqlText, now);
 
+            sqlText = "delete from votings where expires_at < ?;";
+            db.update(sqlText, now);
+
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("cleanup failed:" + se);
@@ -1275,9 +1278,15 @@ public class PostgresLedger implements Ledger {
             List<String> names = getNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String name : names) {
-                NNameRecord nr = getNameRecord(name);
-                //nr.setId(nrModel.id);
-                nameRecords.add(nr);
+                Set<NNameRecord> nrs = getNameRecords(name);
+                if(nrs == null) {
+                    //TODO:?
+                    continue;
+                }
+                for(NNameRecord nr : nrs) {
+                    if(nr.getEnvironmentId() == environmentId)
+                        nameRecords.add(nr);
+                }
             }
             List<NameRecordEntry> nameRecordEntries = new ArrayList<>(getNameEntries(environmentId));
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder,
@@ -1502,23 +1511,29 @@ public class PostgresLedger implements Ledger {
         if (conflicts.size() == 0) {
             NSmartContract nsc = environment.getContract();
             removeEnvironment(nsc.getId());
-            long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
 
-            for (NameRecord nr : environment.nameRecords()) {
-                NNameRecord nnr = (NNameRecord)nr;
-                nnr.setEnvironmentId(envId);
-                addNameRecord(nnr);
-            }
+            transaction(() -> {
+                long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
 
-            for (ContractSubscription css : environment.subscriptions())
-                saveSubscriptionInStorage(css.getHashId(), css.isChainSubscription(), css.expiresAt(), envId);
+                for (NameRecord nr : environment.nameRecords()) {
+                    NNameRecord nnr = (NNameRecord)nr;
+                    nnr.setEnvironmentId(envId);
+                    addNameRecord(nnr);
+                }
 
-            for (ContractStorage cst : environment.storages())
-                saveContractInStorage(cst.getContract().getId(), cst.getPackedContract(), cst.expiresAt(), cst.getContract().getOrigin(), envId);
+                for (ContractSubscription css : environment.subscriptions())
+                    saveSubscriptionInStorage(css.getHashId(), css.isChainSubscription(), css.expiresAt(), envId);
 
-            FollowerService fs = environment.getFollowerService();
-            if (fs != null)
-                saveFollowerEnvironment(envId, fs.expiresAt(), fs.mutedAt(), fs.getCallbacksSpent(), fs.getStartedCallbacks());
+                for (ContractStorage cst : environment.storages())
+                    saveContractInStorage(cst.getContract().getId(), cst.getPackedContract(), cst.expiresAt(), cst.getContract().getOrigin(), envId);
+
+                FollowerService fs = environment.getFollowerService();
+                if (fs != null)
+                    saveFollowerEnvironment(envId, fs.expiresAt(), fs.mutedAt(), fs.getCallbacksSpent(), fs.getStartedCallbacks());
+
+                return null;
+            });
+
         }
         return conflicts;
     }
@@ -2464,8 +2479,17 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    private void clearExpiredNameEntries(PooledDb db) throws SQLException {
+        db.update("DELETE FROM name_entry WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id = name_entry.environment_id) = 0");
+    }
+
     private void clearEmptyEnvironments(PooledDb db) throws SQLException {
-        db.update("DELETE FROM environments WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id=environments.id) = 0");
+        db.update("DELETE FROM environments WHERE (SELECT COUNT(*) FROM name_storage WHERE name_storage.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM name_entry WHERE name_entry.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM contract_storage WHERE contract_storage.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM contract_subscription WHERE contract_subscription.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM follower_environments WHERE follower_environments.environment_id = environments.id) = 0 " +
+                "AND (SELECT COUNT(*) FROM follower_callbacks WHERE follower_callbacks.environment_id = environments.id) = 0");
     }
 
     public void clearExpiredNameRecords(Duration holdDuration) {
@@ -2480,6 +2504,7 @@ public class PostgresLedger implements Ledger {
                 statement.setLong(1, Ut.unixTime(before));
                 statement.closeOnCompletion();
                 statement.executeUpdate();
+                clearExpiredNameEntries(db);
                 clearEmptyEnvironments(db);
             }
         } catch (SQLException se) {
@@ -2545,6 +2570,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
+    @Deprecated
     public NNameRecord getNameRecord(final String name) {
         List<NNameRecord> res = getNameBy("WHERE name_storage.name_full=? ", (statement)-> {
             try {
@@ -2559,6 +2585,22 @@ public class PostgresLedger implements Ledger {
         if(res.size() == 0)
             return null;
         throw new Failure("getNameRecord failed");
+    }
+
+    @Override
+    public Set<NNameRecord> getNameRecords(final String name) {
+        List<NNameRecord> res = getNameBy("WHERE name_storage.name_full=? ", (statement)-> {
+            try {
+                statement.setString(1, name);
+            } catch (SQLException e) {
+                throw new Failure("getNameRecords failed: " + e);
+            }
+        });
+
+        if(res.size() == 0)
+            return null;
+
+        return new HashSet<>(res);
     }
 
     @Override
@@ -2602,9 +2644,14 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    @Deprecated
     public List<NNameRecordEntry> getNameEntries(final String nameReduced) {
-        NNameRecord nr = getNameRecord(nameReduced);
-        return getNameEntries(nr.getEnvironmentId());
+        Set<NNameRecord> nrs = getNameRecords(nameReduced);
+        List<NNameRecordEntry> result = new ArrayList<>();
+        for(NNameRecord nr : nrs) {
+            result.addAll(getNameEntries(nr.getEnvironmentId()));
+        }
+        return result;
     }
 
     @Override
@@ -2631,4 +2678,580 @@ public class PostgresLedger implements Ledger {
         });
     }
 
+    @Override
+    public VoteInfo initiateVoting(Contract contract, ZonedDateTime expiresAt, String roleName, Set<HashId> candidates) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "insert into votings(hash,expires_at,packed,role_name) values(?,?,?,?) ON CONFLICT(hash,role_name) DO NOTHING RETURNING id;"
+                            )
+            ) {
+                statement.setBytes(1, contract.getId().getDigest());
+                statement.setLong(2,Ut.unixTime(expiresAt));
+                statement.setBytes(3,contract.getPackedTransaction());
+                statement.setString(4,roleName);
+
+
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (rs == null || !rs.next())
+                        throw new Failure("initiateVoting failed: returning null");
+                    long voteId = rs.getLong(1);
+                    Map<HashId,Long> candidateIds = new HashMap<>();
+                    for(HashId candidateHash : candidates) {
+                        try (
+                                PreparedStatement statementCandidate =
+                                        db.statement(
+                                                "insert into voting_candidates(voting_id,candidate_hash) values(?,?) RETURNING id;"
+                                        )
+                        ) {
+                            statementCandidate.setLong(1, voteId);
+                            statementCandidate.setBytes(2, candidateHash.getDigest());
+                            try (ResultSet rs2 = statementCandidate.executeQuery()) {
+                                if (rs2 == null || !rs2.next())
+                                    throw new Failure("initiateVoting failed: returning null");
+                                candidateIds.put(candidateHash,rs2.getLong(1));
+                            }
+                        }
+                    }
+
+                    VoteInfo voteInfo = new VoteInfo(contract.getId(),roleName,expiresAt,contract,candidates);
+                    voteInfo.votingId = voteId;
+                    voteInfo.candidateIds = candidateIds;
+                    return voteInfo;
+                }
+            }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("initiateVoting failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("initiateVoting failed:" + e);
+        }
+    }
+
+    @Override
+    public VoteInfo getVotingInfo(HashId votingItem) {
+        try {
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT id,role_name,packed,expires_at FROM votings WHERE hash = ?",
+                            votingItem.getDigest()
+                    );
+            ) {
+                if(rs == null)
+                    return null;
+
+                long votingId = rs.getLong(1);
+
+                Map<HashId,Long> candidates = new HashMap<>();
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "select id,candidate_hash from voting_candidates where voting_id = ?"
+                                )
+                ) {
+                    statement.setLong(1, votingId);
+
+                    try (ResultSet rs2 = statement.executeQuery()) {
+                        if (rs2 == null)
+                            throw new Failure("getVotingInfo failed: returning null");
+
+                        while (rs2.next()) {
+                            candidates.put(HashId.withDigest(rs2.getBytes(2)),rs2.getLong(1));
+                        }
+                    }
+                }
+
+                VoteInfo voteInfo = new VoteInfo(votingItem,rs.getString(2),Ut.getTime(rs.getLong(4)),Contract.fromPackedTransaction(rs.getBytes(3)),candidates.keySet());
+                voteInfo.votingId = votingId;
+                voteInfo.candidateIds = candidates;
+                return voteInfo;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("getVotingExpires failed", e);
+        }
+    }
+
+
+    @Override
+    public void addVotes(long votingId, long candidateId, List<KeyAddress> votes) {
+        try (PooledDb db = dbPool.db()) {
+
+            for(KeyAddress ka : votes) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into voting_votes(voting_id,voting_candidate_id,packed_address) values(?,?,?) ON CONFLICT(voting_id,packed_address) DO UPDATE SET voting_candidate_id = EXCLUDED.voting_candidate_id;"
+                                )
+                ) {
+                    statement.setLong(1, votingId);
+                    statement.setLong(2,candidateId);
+                    statement.setBytes(3,ka.getPacked());
+                    db.updateWithStatement(statement);
+                }
+            }
+
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addVote failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("addVote failed:" + e);
+        }
+    }
+
+
+
+    @Override
+    public List<VoteResult> getVotes(HashId itemId, boolean queryAddresses) {
+        try (PooledDb db = dbPool.db()) {
+            String sql = "SELECT votings.id,votings.hash, votings.role_name, voting_candidates.id from votings LEFT JOIN voting_candidates on votings.id=voting_candidates.voting_id WHERE voting_candidates.candidate_hash = ?";
+            try (
+                    PreparedStatement statement = db.statement(sql)
+            ) {
+                statement.setBytes(1, itemId.getDigest());
+
+                try (ResultSet rs = statement.executeQuery()) {
+                    if(rs == null) {
+                        throw new Failure("getVotes failed: returning null");
+                    }
+                    List<VoteResult> results = new ArrayList<>();
+                    while (rs.next()) {
+                        long votingId = rs.getLong(1);
+                        HashId votingContractId = HashId.withDigest(rs.getBytes(2));
+                        String roleName = rs.getString(3);
+                        long candidateId = rs.getLong(4);
+                        if(!queryAddresses) {
+                            sql = "SELECT count(*) FROM voting_votes WHERE voting_candidate_id = ? AND voting_id = ?";
+                            ResultSet rs2 = db.queryRow(sql, candidateId, votingId);
+                            long count = rs2.getLong(1);
+                            VoteResult vr = new VoteResult(itemId, votingContractId, roleName);
+                            vr.setVotesCount(count);
+                            results.add(vr);
+                        } else {
+                            sql = "SELECT packed_address FROM voting_votes WHERE voting_candidate_id = ? AND voting_id = ?";
+                            try(PreparedStatement statement2 = db.statement(sql)) {
+                                statement2.setLong(1, candidateId);
+                                statement2.setLong(2, votingId);
+                                ResultSet rs2 = statement2.executeQuery();
+                                if (rs2 == null)
+                                    throw new Failure("getVotes failed: returning null");
+                                Set<KeyAddress> addresses = new HashSet<>();
+                                while (rs2.next()) {
+                                    addresses.add(new KeyAddress(rs2.getBytes(1)));
+                                }
+                                rs2.close();
+                                VoteResult vr = new VoteResult(itemId, votingContractId, roleName);
+                                vr.setVotes(addresses);
+                                results.add(vr);
+                            }
+                        }
+                    }
+                    return results;
+                }
+            }
+
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getVotesCount failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getVotesCount failed: " + e);
+        }
+    }
+
+    @Override
+    public void closeVote(HashId itemId) {
+        try (PooledDb db = dbPool.db()) {
+
+            String sqlText = "delete from votings where hash = ?;";
+
+            try (
+                    PreparedStatement statement = db.statementReturningKeys(sqlText, itemId.getDigest())
+            ) {
+                db.updateWithStatement(statement);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("closeVote failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void saveUbotSession(UbotSessionCompact sessionCompact) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement(
+        "insert into ubot_session(" +
+                    "executable_contract_id," +
+                    "save_timestamp," +
+                    "request_id," +
+                    "request_contract," +
+                    "state," +
+                    "session_id," +
+                    "storage_updates," +
+                    "close_votes," +
+                    "close_votes_finished," +
+                    "quanta_limit," +
+                    "expires_at) " +
+                "values(?,?,?,?,?,?,?::json,?::json,?::json,?,?) " +
+                "on conflict(executable_contract_id) do update set " +
+                    "save_timestamp = excluded.save_timestamp," +
+                    "request_id = excluded.request_id," +
+                    "request_contract = excluded.request_contract," +
+                    "state = excluded.state," +
+                    "session_id = excluded.session_id," +
+                    "storage_updates = excluded.storage_updates," +
+                    "close_votes = excluded.close_votes," +
+                    "close_votes_finished = excluded.close_votes_finished," +
+                    "quanta_limit = excluded.quanta_limit," +
+                    "expires_at = excluded.expires_at;"
+            );
+            Map<String, Map<Integer,String>> storageUpdates_b64 = new ConcurrentHashMap<>();
+            sessionCompact.storageUpdates.forEach((k, v) -> {
+                Map<Integer,String> innerMap = new ConcurrentHashMap<>();
+                storageUpdates_b64.put(k, innerMap);
+                v.forEach((k0, v0) -> innerMap.put(k0, v0.toBase64String()));
+            });
+            statement.setBytes(1, sessionCompact.executableContractId.getDigest());
+            statement.setLong(2, System.currentTimeMillis());
+            statement.setBytes(3, sessionCompact.requestId.getDigest());
+            statement.setBytes(4, sessionCompact.requestContract);
+            statement.setInt(5, sessionCompact.state);
+            statement.setBytes(6, sessionCompact.sessionId.getDigest());
+            statement.setString(7, JsonTool.toJsonString(storageUpdates_b64));
+            statement.setString(8, JsonTool.toJsonString(sessionCompact.closeVotes));
+            statement.setString(9, JsonTool.toJsonString(sessionCompact.closeVotesFinished));
+            statement.setInt(10, sessionCompact.quantaLimit);
+            statement.setLong(11, Ut.unixTime(sessionCompact.expiresAt));
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotSession failed:" + e);
+        }
+    }
+
+    public void saveUbotStorages(HashId executableContractId, ZonedDateTime expiresAt, Map<String, HashId> storages) {
+        try (PooledDb db = dbPool.db()) {
+            List<String> queryPartsList = new ArrayList<>();
+            for (int i = 0; i < storages.size(); ++i)
+                queryPartsList.add("(?,?,?,?,?)");
+            String queryPart = String.join(",", queryPartsList);
+            PreparedStatement statement = db.statement(
+        "insert into ubot_storage(" +
+                    "executable_contract_id," +
+                    "storage_name," +
+                    "storage_data," +
+                    "save_timestamp," +
+                    "expires_at" +
+                ") " +
+                "values " + queryPart + " " +
+                "on conflict(executable_contract_id,storage_name) do update set " +
+                    "executable_contract_id = excluded.executable_contract_id," +
+                    "storage_name = excluded.storage_name," +
+                    "storage_data = excluded.storage_data," +
+                    "save_timestamp = excluded.save_timestamp," +
+                    "expires_at = excluded.expires_at;"
+            );
+            int n = 0;
+            for (Map.Entry<String,HashId> en : storages.entrySet()) {
+                statement.setBytes(++n, executableContractId.getDigest());
+                statement.setString(++n, en.getKey());
+                statement.setBytes(++n, en.getValue().getDigest());
+                statement.setLong(++n, System.currentTimeMillis());
+                statement.setLong(++n, Ut.unixTime(expiresAt));
+            }
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotStorageData failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotStorageData failed:" + e);
+        }
+    }
+
+    @Override
+    public void saveUbotStorageValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value) {
+        Map<String, HashId> entry = new HashMap<>();
+        entry.put(storageName, value);
+        saveUbotStorages(executableContractId, expiresAt, entry);
+    }
+
+    @Override
+    public HashId getUbotStorageValue(HashId executableContractId, String storageName) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select storage_data from ubot_storage where executable_contract_id=? and storage_name=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, storageName);
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return HashId.withDigest(rs.getBytes("storage_data"));
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void getUbotStorages(HashId executableContractId, Map<String, HashId> dest) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select storage_name, storage_data from ubot_storage where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return;
+            while (rs.next())
+                dest.put(rs.getString("storage_name"), HashId.withDigest(rs.getBytes("storage_data")));
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public UbotSessionCompact loadUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+
+            return sessionCompaсtFromResultSet(rs);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+
+    @Override
+    public UbotSessionCompact loadUbotSessionByRequestId(HashId requestId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where request_id=?;");
+            statement.setBytes(1, requestId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return sessionCompaсtFromResultSet(rs);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public UbotSessionCompact loadUbotSessionById(HashId sessionId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_session where session_id=?;");
+            statement.setBytes(1, sessionId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return null;
+            if (!rs.next())
+                return null;
+            return sessionCompaсtFromResultSet(rs);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotSession failed: " + e);
+        }
+    }
+
+    private static UbotSessionCompact sessionCompaсtFromResultSet(ResultSet rs) throws SQLException {
+        UbotSessionCompact compact = new UbotSessionCompact();
+        compact.executableContractId = HashId.withDigest(rs.getBytes("executable_contract_id"));
+        compact.requestId = HashId.withDigest(rs.getBytes("request_id"));
+        compact.requestContract = rs.getBytes("request_contract");
+        compact.state = rs.getInt("state");
+        compact.sessionId = HashId.withDigest(rs.getBytes("session_id"));
+        compact.storageUpdates = new ConcurrentHashMap<>();
+        Map<String, Map<String,String>> storageUpdates_b64 = JsonTool.fromJson(rs.getString("storage_updates"));
+        storageUpdates_b64.forEach((k, v) -> {
+            Map<Integer,HashId> map = new ConcurrentHashMap<>();
+            v.forEach((k0, v0) -> map.put(Integer.parseInt(k0), HashId.withDigest(v0)));
+            compact.storageUpdates.put(k, map);
+        });
+        compact.closeVotes = ConcurrentHashMap.newKeySet();
+        List<Long> closeVotes = JsonTool.fromJson(rs.getString("close_votes"));
+        closeVotes.forEach(v -> compact.closeVotes.add(v.intValue()));
+        compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
+        List<Long> closeVotesFinished = JsonTool.fromJson(rs.getString("close_votes_finished"));
+        closeVotesFinished.forEach(v -> compact.closeVotesFinished.add(v.intValue()));
+        compact.quantaLimit = rs.getInt("quanta_limit");
+        compact.expiresAt = Ut.getTime(rs.getLong("expires_at"));
+        return compact;
+    }
+
+    @Override
+    public boolean hasUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select count(*) from ubot_session where executable_contract_id=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null)
+                return false;
+            if (!rs.next())
+                return false;
+            int count = rs.getInt(1);
+            return (count != 0);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("hasUbotSession failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("hasUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void deleteUbotSession(HashId executableContractId) {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_session where executable_contract_id=?", executableContractId.getDigest());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void deleteExpiredUbotSessions() {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_session where expires_at<? or expires_at is null", Instant.now().getEpochSecond());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void deleteExpiredUbotStorages() {
+        try (PooledDb db = dbPool.db()) {
+            db.update("delete from ubot_storage where expires_at<?;", Instant.now().getEpochSecond());
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("deleteUbotSession failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("deleteUbotSession failed: " + e);
+        }
+    }
+
+    @Override
+    public void saveUbotTransaction(HashId executableContractId, String transactionName, Binder state) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement(
+                "insert into ubot_transaction(" +
+                            "executable_contract_id," +
+                            "transaction_name," +
+                            "current_session," +
+                            "pending," +
+                            "finished) " +
+                        "values(?,?,?,?::json,?::json) " +
+                        "on conflict(executable_contract_id, transaction_name) do update set " +
+                            "current_session = excluded.current_session," +
+                            "pending = excluded.pending," +
+                            "finished = excluded.finished;"
+            );
+            Map<Integer, String> pending_b64 = new ConcurrentHashMap<>();
+            ((Map<Integer, HashId>) state.get("pending")).forEach((k, v) -> pending_b64.put(k, v.toBase64String()));
+            HashId current = (HashId) state.get("current");
+
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, transactionName);
+            if (current != null)
+                statement.setBytes(3, current.getDigest());
+            else
+                statement.setNull(3, Types.VARBINARY);
+            statement.setString(4, JsonTool.toJsonString(pending_b64));
+            statement.setString(5, JsonTool.toJsonString(state.get("finished")));
+
+            db.updateWithStatement(statement);
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveUbotTransaction failed, sql error:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveUbotTransaction failed:" + e);
+        }
+    }
+
+    @Override
+    public Binder loadUbotTransaction(HashId executableContractId, String transactionName) {
+        try (PooledDb db = dbPool.db()) {
+            PreparedStatement statement = db.statement("select * from ubot_transaction where executable_contract_id=? AND transaction_name=?;");
+            statement.setBytes(1, executableContractId.getDigest());
+            statement.setString(2, transactionName);
+            statement.closeOnCompletion();
+            ResultSet rs = statement.executeQuery();
+            if (rs == null || !rs.next())
+                return null;
+
+            Binder res = new Binder();
+            byte[] hash = rs.getBytes("current_session");
+            res.set("current", rs.wasNull() ? null : HashId.withDigest(hash));
+            res.set("pending", JsonTool.fromJson(rs.getString("pending")));
+            res.set("finished", JsonTool.fromJson(rs.getString("finished")));
+
+            return res;
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("loadUbotTransaction failed, sql error: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("loadUbotTransaction failed: " + e);
+        }
+    }
 }

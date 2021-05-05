@@ -41,6 +41,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.*;
@@ -6576,15 +6577,23 @@ public class MainTest {
 
     @Test
     public void getTopologyFirstTime() throws Exception {
-        String network = "pro";
-        Client cOld = new Client("http://node-1-"+network+".utoken.io",TestKeys.privateKey(1),null);
-        Client.NodeRecord nr = Do.sample(cOld.getNodes());
-        Client cNew = new Client(nr.url,TestKeys.privateKey(1),null,false,nr.key);
-        System.out.println(cNew.getTopology());
+        String someNodeUrl = "http://node-1-pro.utoken.io";
+        PrivateKey clientKey = new PrivateKey(2048);
 
-        /*Gson gson = new Gson();
-        String json = gson.toJson(cNew.getTopology());
-        System.out.println(json);*/
+        createTopologyForCustomNetwork(someNodeUrl,"my_personal_network");
+        Client c = new Client("my_personal_network",null,clientKey);
+        System.out.println(c.getVersion() + " " + c.size() + " " + c.getNodeNumber());
+
+    }
+
+    private void createTopologyForCustomNetwork(String url, String networkName) throws IOException {
+        PrivateKey key = new PrivateKey(2048);
+        Client cOld = new Client(url,key,null);
+        Client.NodeRecord nr = Do.sample(cOld.getNodes());
+        Client cNew = new Client(nr.url,key,null,false,nr.key);
+        FileOutputStream fos = new FileOutputStream(System.getProperty("user.home") + "/.universa/topology/" + networkName + ".json");
+        fos.write(JsonTool.toJsonString(cNew.getTopology()).getBytes());
+        fos.close();
     }
 
     @Test
@@ -7815,7 +7824,7 @@ public class MainTest {
         assertEquals(ir.state,ItemState.DECLINED);
         assertEquals(ir.errors.size(),contract.getErrors().size());
 
-
+        ts.shutdown();
     }
 
 
@@ -7853,4 +7862,21 @@ public class MainTest {
     }
 
 
+    @Ignore
+    @Test
+    public void testDockerContainers() throws Exception {
+
+        PrivateKey key = PrivateKey.unpackWithPassword(Do.read("../docker/compose/whitelist.private.unikey"),"protect_your_keys");
+
+        Client client = new Client("../docker/compose/universa.local.json",null,key);
+        System.out.println(client.size());
+
+        for(int i = 0; i < client.size();i++) {
+            System.out.println(client.pingNode(client.getClient(i).getNodeNumber(),1000));
+        }
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.seal();
+        assertEquals(client.register(contract.getPackedTransaction(),100000).state,ItemState.APPROVED);
+
+    }
 }

@@ -1,6 +1,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.db.Db;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.HashId;
 import com.icodici.universa.TestCase;
@@ -9,6 +10,8 @@ import com.icodici.universa.TestKeys;
 import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeStats;
+import com.icodici.universa.node2.VoteInfo;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Ut;
@@ -25,10 +28,11 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 
 import static org.junit.Assert.*;
 
@@ -963,5 +967,499 @@ public class PostgresLedgerTest extends TestCase {
                 TestKeys.publicKey(2).getLongAddress().toString())));
     }
     */
+
+
+    @Test
+    public void votingTest() throws Exception {
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        contract.seal();
+
+        HashSet<HashId> candidates = new HashSet<>(Do.listOf(HashId.createRandom(), HashId.createRandom(), HashId.createRandom()));
+        ledger.initiateVoting(contract,ZonedDateTime.now().plusSeconds(1000),"owner",candidates);
+
+
+        assertEquals(ledger.getVotes(HashId.createRandom()).size(), 0);
+        assertEquals(ledger.getVotes(Do.sample(candidates)).size(), 1);
+
+
+        Contract contract2 = new Contract(TestKeys.privateKey(1));
+        contract2.seal();
+
+        ledger.initiateVoting(contract2,ZonedDateTime.now().plusSeconds(1000),"owner",candidates);
+
+        assertEquals(ledger.getVotes(Do.sample(candidates)).size(), 2);
+
+
+        VoteInfo vi1 = ledger.getVotingInfo(contract.getId());
+        VoteInfo vi2 = ledger.getVotingInfo(contract2.getId());
+
+        for(HashId hashId : vi1.candidateIds.keySet()) {
+            ledger.addVotes(vi1.votingId,vi1.candidateIds.get(hashId),Do.listOf(TestKeys.publicKey(1).getLongAddress(),TestKeys.publicKey(2).getLongAddress(),TestKeys.publicKey(3).getLongAddress()));
+        }
+
+        HashId last = null;
+        for(HashId hashId : vi2.candidateIds.keySet()) {
+            last = hashId;
+            ledger.addVotes(vi2.votingId,vi2.candidateIds.get(hashId),Do.listOf(TestKeys.publicKey(1).getLongAddress(),TestKeys.publicKey(2).getLongAddress(),TestKeys.publicKey(3).getLongAddress()));
+        }
+
+
+        for(HashId hashId : candidates) {
+            HashId finalLast = last;
+            ledger.getVotes(hashId).forEach(vr -> assertEquals(vr.votesCount.longValue(),hashId.equals(finalLast) ? 3 : 0));
+        }
+
+
+
+
+    }
+
+    @Test
+    public void ubotSessionTest() throws Exception {
+        Map<String, Map<Integer,HashId>> storageUpdates = new ConcurrentHashMap<>();
+        storageUpdates.put("s1", new ConcurrentHashMap<>());
+        storageUpdates.get("s1").put(1, HashId.createRandom());
+        storageUpdates.get("s1").put(2, HashId.createRandom());
+        storageUpdates.get("s1").put(3, HashId.createRandom());
+        storageUpdates.put("s2", new ConcurrentHashMap<>());
+        storageUpdates.get("s2").put(4, HashId.createRandom());
+        storageUpdates.get("s2").put(5, HashId.createRandom());
+        Set<Integer> closeVotes = ConcurrentHashMap.newKeySet();
+        closeVotes.add(1);
+        closeVotes.add(2);
+        closeVotes.add(3);
+        Set<Integer> closeVotesFinished = ConcurrentHashMap.newKeySet();
+        closeVotesFinished.add(4);
+        closeVotesFinished.add(5);
+
+        Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
+        compact.id = 0; // will be generated automatically if needed
+        compact.executableContractId = HashId.createRandom();
+        compact.requestId = HashId.createRandom();
+        compact.requestContract = Do.randomBytes(1024);
+        compact.state = 33;
+        compact.sessionId = HashId.createRandom();
+        compact.storageUpdates = storageUpdates;
+        compact.closeVotes = closeVotes;
+        compact.closeVotesFinished = closeVotesFinished;
+        compact.quantaLimit = 400;
+        compact.expiresAt = ZonedDateTime.now();
+
+        BiConsumer<Ledger.UbotSessionCompact, Ledger.UbotSessionCompact> assertUbotSessionCompactEquals = (expected, loaded) -> {
+            assertEquals(expected.executableContractId, loaded.executableContractId);
+            assertEquals(expected.requestId, loaded.requestId);
+            assertArrayEquals(expected.requestContract, loaded.requestContract);
+            assertEquals(expected.state, loaded.state);
+            assertEquals(expected.sessionId, loaded.sessionId);
+            assertEquals(expected.storageUpdates.size(), loaded.storageUpdates.size());
+            expected.storageUpdates.forEach((k, v) -> {
+                assertTrue(loaded.storageUpdates.containsKey(k));
+                Map<Integer,HashId> lv = loaded.storageUpdates.get(k);
+                assertEquals(v.size(), lv.size());
+                v.forEach((k0, v0) -> {
+                    assertTrue(lv.containsKey(k0));
+                    assertEquals(v0, lv.get(k0));
+                });
+            });
+            assertEquals(expected.closeVotes.size(), loaded.closeVotes.size());
+            assertTrue(loaded.closeVotes.containsAll(expected.closeVotes));
+            assertEquals(expected.closeVotesFinished.size(), loaded.closeVotesFinished.size());
+            assertTrue(loaded.closeVotesFinished.containsAll(expected.closeVotesFinished));
+            assertEquals(expected.quantaLimit, loaded.quantaLimit);
+            assertTrue(Duration.between(expected.expiresAt, loaded.expiresAt).getSeconds() <= 1);
+        };
+
+        // test creation of new ubot_session in ledger
+        ledger.saveUbotSession(compact);
+        Ledger.UbotSessionCompact loaded = ledger.loadUbotSession(compact.executableContractId);
+        assertUbotSessionCompactEquals.accept(compact, loaded);
+
+        // test update of existing ubot_session
+        loaded.state = 44;
+        loaded.requestId = HashId.createRandom();
+        loaded.storageUpdates.get("s1").clear();
+        loaded.closeVotes.add(8);
+        loaded.closeVotesFinished.clear();
+        loaded.closeVotesFinished.add(42);
+        loaded.quantaLimit = 505;
+        loaded.expiresAt = ZonedDateTime.now().plusSeconds(600);
+        ledger.saveUbotSession(loaded);
+        Ledger.UbotSessionCompact loaded2 = ledger.loadUbotSession(loaded.executableContractId);
+        assertEquals(loaded.id, loaded2.id);
+        assertUbotSessionCompactEquals.accept(loaded, loaded2);
+    }
+
+    @Test
+    public void ubotSessionCleanup() throws Exception {
+        Ledger.UbotSessionCompact compact = new Ledger.UbotSessionCompact();
+        compact.storageUpdates = new ConcurrentHashMap<>();
+        compact.executableContractId = HashId.createRandom();
+        compact.expiresAt = ZonedDateTime.now().plusSeconds(2);
+        compact.requestId = HashId.createRandom();
+        compact.sessionId = HashId.createRandom();
+        compact.closeVotes = ConcurrentHashMap.newKeySet();
+        compact.closeVotesFinished = ConcurrentHashMap.newKeySet();
+        ledger.saveUbotSession(compact);
+        assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertTrue(ledger.hasUbotSession(compact.executableContractId));
+        ledger.deleteExpiredUbotSessions();
+        assertNotEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertTrue(ledger.hasUbotSession(compact.executableContractId));
+        System.out.println("wait for session cleanup (~4 sec)...");
+        Thread.sleep(4000);
+        ledger.deleteExpiredUbotSessions();
+        assertEquals(null, ledger.loadUbotSession(compact.executableContractId));
+        assertFalse(ledger.hasUbotSession(compact.executableContractId));
+    }
+
+    @Test
+    public void ubotStorageTest() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storageName = "s1";
+        HashId val1 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val1);
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        HashId val2 = HashId.createRandom();
+        assertNotEquals(val1, val2);
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val2);
+        assertEquals(val2, ledger.getUbotStorageValue(executableContractId, storageName));
+    }
+
+    @Test
+    public void ubotGetStorages() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storage1Name = "s1";
+        String storage2Name = "s2";
+        HashId val1 = HashId.createRandom();
+        HashId val2 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storage1Name, val1);
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storage2Name, val2);
+        Map<String, HashId> storages = new ConcurrentHashMap<>();
+        ledger.getUbotStorages(executableContractId, storages);
+        assertEquals(2, storages.size());
+        assertEquals(val1, storages.get(storage1Name));
+        assertEquals(val2, storages.get(storage2Name));
+    }
+
+    @Test
+    public void ubotStorageCleanup() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(2);
+        String storageName = "s1";
+        HashId val1 = HashId.createRandom();
+        ledger.saveUbotStorageValue(executableContractId, expiresAt, storageName, val1);
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        ledger.deleteExpiredUbotSessions();
+        assertEquals(val1, ledger.getUbotStorageValue(executableContractId, storageName));
+        System.out.println("wait for storage cleanup (~4 sec)...");
+        Thread.sleep(4000);
+        ledger.deleteExpiredUbotStorages();
+        assertEquals(null, ledger.getUbotStorageValue(executableContractId, storageName));
+    }
+
+    @Test
+    public void ubotTransactionTest() throws Exception {
+        HashId executableContractId = HashId.createRandom();
+        String transactionName = "trans";
+        HashId current = HashId.createRandom();
+        HashId pend1 = HashId.createRandom();
+        HashId pend4 = HashId.createRandom();
+        Map<Integer, HashId> pending = new ConcurrentHashMap<>();
+        Set<Integer> finished = ConcurrentHashMap.newKeySet();
+        pending.put(1, pend1);
+        pending.put(4, pend4);
+        Binder state = Binder.of("current", current, "pending", pending, "finished", finished);
+
+        ledger.saveUbotTransaction(executableContractId, transactionName, state);
+
+        Binder loaded = ledger.loadUbotTransaction(executableContractId, transactionName);
+
+        assertEquals(loaded.get("current"), current);
+        assertEquals(((Map)loaded.get("pending")).get("1"), pend1.toBase64String());
+        assertEquals(((Map)loaded.get("pending")).get("4"), pend4.toBase64String());
+        assertEquals(((Map)loaded.get("pending")).size(), 2);
+        assertEquals(((List)loaded.get("finished")).size(), 0);
+    }
+
+    @Ignore
+    @Test
+    // db.queryRow
+    public void reconnectAfterPostgresRestart_queryType1() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                StateRecord sr = null;
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    try {
+                        sr = ledger.getRecord(someHashId);
+                        doRepeat = false;
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
+                }
+
+                if (sr != null && sr.getId().equals(someHashId))
+                    ansCounter.incrementAndGet();
+
+                //System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter);
+                //try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 1000)
+                Thread.sleep(10);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        System.out.println("SUCCESS");
+    }
+
+    @Ignore
+    @Test
+    // db.updateWithStatement
+    public void reconnectAfterPostgresRestart_queryType2() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                StateRecord sr = null;
+                HashId newHashId = HashId.createRandom();
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    sr = ledger.createOutputLockRecord(sr0.getRecordId(), newHashId);
+                    if (sr == null) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    } else {
+                        doRepeat = false;
+                    }
+                }
+                ansCounter.incrementAndGet();
+
+//                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter + ", sr = " + sr);
+//                try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 1000)
+                Thread.sleep(10);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        System.out.println("SUCCESS");
+    }
+
+    @Ignore
+    @Test
+    // db.transaction
+    public void reconnectAfterPostgresRestart_queryType3_transaction() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                AtomicBoolean doRepeat = new AtomicBoolean(true);
+                while (doRepeat.get()) {
+                    try {
+                        Db db = ledger.getDb();
+                        db.transaction(() -> {
+                            ResultSet rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
+                            int iValue = rs.getInt(1);
+                            iValue += 1;
+                            db.queryRow("UPDATE ledger SET state=? WHERE hash=? RETURNING id;", iValue, someHashId.getDigest());
+                            Thread.sleep(10);
+                            rs = db.queryRow("SELECT state FROM ledger, pg_sleep(0.01) WHERE hash=?", someHashId.getDigest());
+                            int iValue2 = rs.getInt(1);
+                            if (iValue2 == iValue)
+                                ansCounter.incrementAndGet();
+                            doRepeat.set(false);
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
+                }
+
+                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter);
+                //try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 100)
+                Thread.sleep(100);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        System.out.println("SUCCESS");
+    }
+
+    @Ignore
+    @Test
+    // db.update
+    public void reconnectAfterPostgresRestart_queryType4() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                StateRecord sr = null;
+                HashId newHashId = HashId.createRandom();
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    try {
+                        ledger.getDb().update("UPDATE ledger SET state=state+1 WHERE hash=?;", someHashId.getDigest());
+                        doRepeat = false;
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
+                }
+                ansCounter.incrementAndGet();
+
+//                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter + ", sr = " + sr);
+//                try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 1000)
+                Thread.sleep(10);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        int finalState = ledger.getDb().queryOne("SELECT state FROM ledger WHERE hash=? LIMIT 1;", someHashId.getDigest());
+        assertEquals(ansCounter.get() + ItemState.LOCKED_FOR_CREATION.ordinal(), finalState);
+        System.out.println("SUCCESS, finalState=" + finalState);
+    }
+
+    @Ignore
+    @Test
+    // db.queryOne
+    public void reconnectAfterPostgresRestart_queryType5() throws Exception {
+        final long TEST_DURATION_SECONDS = 30;
+        System.out.println("TEST_DURATION_SECONDS = " + TEST_DURATION_SECONDS);
+        System.out.println("For success testing, restart pg daemon manually several times during this test running.");
+        HashId someHashId = HashId.createRandom();
+        StateRecord sr0 = new StateRecord(someHashId);
+        sr0.setState(ItemState.LOCKED_FOR_CREATION);
+        ledger.save(sr0);
+        AtomicLong reqCounter = new AtomicLong(0);
+        AtomicLong ansCounter = new AtomicLong(0);
+        ThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors()*2);
+        long t0 = System.currentTimeMillis();
+        while (true) {
+            reqCounter.incrementAndGet();
+            pool.submit(() -> {
+
+                Integer srState = -1;
+                boolean doRepeat = true;
+                while (doRepeat) {
+                    try {
+                        srState = ledger.getDb().queryOne("SELECT state FROM ledger WHERE hash=? LIMIT 1;", someHashId.getDigest());
+                        doRepeat = false;
+                    } catch (Exception e) {
+                        System.out.println("sleep and repeat...");
+                        try {Thread.sleep(2000);} catch (InterruptedException id) {}
+                    }
+                }
+
+                if (srState != null && srState == sr0.getState().ordinal())
+                    ansCounter.incrementAndGet();
+
+//                System.out.println("reqCounter = " + reqCounter + ", ansCounter: " + ansCounter);
+//                try{Thread.sleep(1000);}catch (InterruptedException ie){}
+            });
+            if (reqCounter.get() - ansCounter.get() > 1000)
+                Thread.sleep(10);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*1000)
+                break;
+        }
+        while (ansCounter.get() < reqCounter.get()) {
+            Thread.sleep(1000);
+            System.out.println("waiting for reqCounter == ansCounter: reqCounter = " + reqCounter + ", ansCounter = " + ansCounter);
+            long dt = System.currentTimeMillis() - t0;
+            if (dt >= TEST_DURATION_SECONDS*2*1000)
+                break;
+        }
+        assertEquals(reqCounter.get(), ansCounter.get());
+        System.out.println("SUCCESS");
+    }
 
 }

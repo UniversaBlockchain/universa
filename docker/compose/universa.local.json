@@ -1,0 +1,46 @@
+[
+  {
+    "number": 1,
+    "domain_urls": [
+      "https://127.0.0.1:2052"
+    ],
+    "name": "node-1-local",
+    "direct_urls": [
+      "http://127.0.0.1:2052"
+    ],
+    "key": "HggcAQABxAAB2kRT16M4Isfr9BxUABnTiuFp4IdY64YQaQVvtTb/YIs20rx9nqSkDCppFNNkgSvSMMbiiCe5Gbk7j4ldcUvW/tK5ZeWIszPMdiyeicZ+y8upl3qUuaNgfo8VgMhxvDvFSLryKJ6m/wz9YsEernTtGYnq2lYb01z2WxqBYTnMplE4AG9hfG4SzJMV9x6nprQfS9tUzneQQavKpJO9BHVuyiL/r1zAfCOcG2Uevjx4wT5qs8fCLGWYmYtv35e8cQmWvchJAQ0UOMuecteZGdq/wlwxczeBJb+ueZGEboFRpnl6zXLwjzCSOtu2wbZmg2JR5UUnsbV4dAJEebz28mSH1Q=="
+  },
+  {
+    "number": 2,
+    "domain_urls": [
+      "https://127.0.0.1:2053"
+    ],
+    "name": "node-2-local",
+    "direct_urls": [
+      "http://127.0.0.1:2053"
+    ],
+    "key": "HggcAQABxAABpWWHLga+0v2O7V4BpcxJXohxQU6m1Nf+jzHhMwVLqXumC148eucbmcItoAxXFtMYm5JOtx6/PjKjGjdvys6/HJYXDz3nL1rgNslGrmYq3oVHY9a7uV54KbLHi+wcCbcj6OecxlGtJqG9If1nEKeSEYq4y5idE+St7W0l+qV7vNnbnHLfJtruBvhAxfdLdecR9BAW7tua3qruWkl628M0M1SSGcdW/1RhZrB4Nnf6/ow9zXUO1cXX1eFqzdJVjSfhdaB+grq2oA77XpcPVkUSQQWzbCg8veZZSR4cK0Vjuq8lmDUNGYpaZeNVUbBC/D9ru91jku13pga6HvNGkhhBJQ=="
+  },
+  {
+    "number": 3,
+    "domain_urls": [
+      "https://127.0.0.1:2054"
+    ],
+    "name": "node-3-local",
+    "direct_urls": [
+      "http://127.0.0.1:2054"
+    ],
+    "key": "HggcAQABxAABvAh9seufJGKS76loAk0qj7ZXXacYuaJcUn59UgDGINmD4iZ/uiouDvYY1sX/FXVG15RDSGF2xt5NBP4MyDbncsKb3dHLpBhWBSIs/fFVIK9OwO33H8QDB6sHD+q82a6kpAe8NGrLs+OHJ8+xHyb3WMdgjv2I1me9AK8e0MAULkFzmy+pZ/XJ4klxm0r3h59N8qnDN7G0wsGX6uXxlGNWTk/VlW8pIpdgGf5MnwAZOX0PLMyK95pk5M+H2u5nVwFyajn6ScO1yQeLOpsvbTNPoezQdEJUWUFDAd+lrUB03fNpShbkAE5Yd1D5pXH8DjQFTMHU2niYLuGkPitXut4uhw=="
+  },
+  {
+    "number": 4,
+    "domain_urls": [
+      "https://127.0.0.1:2055"
+    ],
+    "name": "node-4-local",
+    "direct_urls": [
+      "http://127.0.0.1:2055"
+    ],
+    "key": "HggcAQABxAABkLhWEcTcGI1dRdKCNQcarv0USgUTLW69LyIKpBSSyAF+haSJEmAkGE/qpX11RGTctN7KwiyUtF9wTZopBmzn4lsaNO31oOXZVt8TWRqeY4RWc07UeWzqQHcUFNcxJiQHDWpdfFtjypfTYROLHxR0+4FWfE8S5Ngq1tdzbE5ix4UZTTbiMaWjRV2YMFXzwUszSPpPaDWf1oMz1jt6HZhz8q9joZfCNGN/LjJ9OReLZJAkU80efqVD7pzvtc6GnVtcaL714CmsrkcoLxNm/TKat51zlr4DFPG012Z7IwHnvk7naE5FcW91s3eIpXzxoHEReTMc9cfpY3RGF4OYZ28f1Q=="
+  }
+]

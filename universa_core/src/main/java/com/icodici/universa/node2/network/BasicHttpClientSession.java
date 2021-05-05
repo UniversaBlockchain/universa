@@ -19,6 +19,7 @@ public class BasicHttpClientSession {
 
     public Binder asBinder()  {
         return Binder.fromKeysValues(
+                "version",version,
                 "connectMessage", getConnectMessage(),
 //                    "privateKey", privateKey.pack(),
                 "sessionKey", getSessionKey().pack(),
@@ -29,6 +30,7 @@ public class BasicHttpClientSession {
 
     public static BasicHttpClientSession reconstructSession(Binder binder)  {
         BasicHttpClientSession restoringSession = new BasicHttpClientSession();
+        restoringSession.version = binder.getIntOrThrow("version");
         restoringSession.setConnectMessage(binder.getOrThrow("connectMessage"));
 //        restoringSession.privateKey = binder.getBinaryOrThrowgetBinaryOrThrowgetBinaryOrThrow("privateKey");
         restoringSession.setSessionKey(new SymmetricKey(binder.getBinaryOrThrow("sessionKey")));

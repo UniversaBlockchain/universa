@@ -7,17 +7,17 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node2.CallbackRecord;
-import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.NCallbackService;
-import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
 
+import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -171,6 +171,40 @@ public interface Ledger {
     Set<HashId> findBadReferencesOf(Set<HashId> ids);
 
 
+    VoteInfo initiateVoting(Contract contract, ZonedDateTime expiresAt, String roleName, Set<HashId> candidates);
+    VoteInfo getVotingInfo(HashId votingId);
+
+    void addVotes(long votingId, long candidateId, List<KeyAddress> votes);
+
+    default List<VoteResult> getVotes(HashId candidateId) {return getVotes(candidateId,false);}
+    public List<VoteResult> getVotes(HashId candidateId, boolean queryAddresses);
+
+    void closeVote(HashId itemId);
+
+    class UbotSessionCompact {
+        public long id; // record id in database
+        public HashId executableContractId;
+        public HashId requestId;
+        public byte[] requestContract;
+        public int state;
+        public HashId sessionId;
+        public Map<String, Map<Integer,HashId>> storageUpdates;
+        public Set<Integer> closeVotes;
+        public Set<Integer> closeVotesFinished;
+        public int quantaLimit;
+        public ZonedDateTime expiresAt;
+    };
+    void saveUbotSession(UbotSessionCompact sessionCompact);
+    UbotSessionCompact loadUbotSession(HashId executableContractId);
+    UbotSessionCompact loadUbotSessionById(HashId sessionId);
+    UbotSessionCompact loadUbotSessionByRequestId(HashId sessionId);
+    boolean hasUbotSession(HashId executableContractId);
+    void deleteUbotSession(HashId executableContractId);
+    void deleteExpiredUbotSessions();
+    void saveUbotStorageValue(HashId executableContractId, ZonedDateTime expiresAt, String storageName, HashId value);
+    HashId getUbotStorageValue(HashId executableContractId, String storageName);
+    void getUbotStorages(HashId executableContractId, Map<String, HashId> dest);
+    void deleteExpiredUbotStorages();
 
 
     public static class Rollback extends Db.RollbackException {
@@ -252,7 +286,9 @@ public interface Ledger {
     void addNameRecordEntry(final NNameRecordEntry nameRecordEntryModel);
     void removeNameRecordEntry(NNameRecordEntry nameRecordEntry);
 
-    NNameRecord getNameRecord(final String nameReduced);
+    @Deprecated
+    NNameRecord getNameRecord(final String name);
+    Set<NNameRecord> getNameRecords(final String name);
     List<NNameRecordEntry> getNameEntries(final long environmentId);
     List<NNameRecordEntry> getNameEntries(final String nameReduced);
     List<NNameRecord> getNamesByAddress (String address);
@@ -263,4 +299,7 @@ public interface Ledger {
     void clearExpiredNameRecords(Duration holdDuration);
 
     void cleanup(boolean isPermanetMode);
+
+    void saveUbotTransaction(HashId executableContractId, String transactionName, Binder state);
+    Binder loadUbotTransaction(HashId executableContractId, String transactionName);
 }

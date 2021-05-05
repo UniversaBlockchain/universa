@@ -28,6 +28,7 @@ public class Config {
     public Map<String, Integer> minPayment = new HashMap<>();
     public Map<String, BigDecimal> rate = new HashMap<>();
     private KeyAddress authorizedNameServiceCenterAddress;
+    private Duration connectivityInfoValidityPeriod = Duration.ofMinutes(5);
 
     public Config () {
         System.out.println("USING REAL CONFIG");
@@ -51,12 +52,14 @@ public class Config {
 
         rate.put(NSmartContract.SmartContractType.SLOT1.name(), new BigDecimal("4"));
         rate.put(NSmartContract.SmartContractType.UNS1.name(), new BigDecimal("0.25"));
+        rate.put(NSmartContract.SmartContractType.UNS2.name(), new BigDecimal("0.365"));
         rate.put(NSmartContract.SmartContractType.FOLLOWER1.name(), new BigDecimal("1"));
 
         rate.put(NSmartContract.SmartContractType.FOLLOWER1.name() + ":callback", new BigDecimal("1"));
 
         minPayment.put(NSmartContract.SmartContractType.SLOT1.name(), 100);
         minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name()).doubleValue()));
+        minPayment.put(NSmartContract.SmartContractType.UNS2.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS2.name()).doubleValue()));
         minPayment.put(NSmartContract.SmartContractType.FOLLOWER1.name(), 100);
     }
 
@@ -160,6 +163,11 @@ public class Config {
         maxDiskCacheAge = diskCacheAge;
     }
 
+    public Duration getConnectivityInfoValidityPeriod() {
+        return connectivityInfoValidityPeriod;
+    }
+
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }
@@ -197,9 +205,11 @@ public class Config {
     private int positiveConsensus;
     private int resyncBreakConsensus;
     private int limitRequestsForKeyPerMinute = 600;
+    private int limitUbotRequestsForKeyPerMinute = 3;
     private int rateLimitDisablingPayment = 5;
     private Duration unlimitPeriod = Duration.ofMinutes(5);
     private Duration maxElectionsTime = Duration.ofMinutes(15);
+    private Duration maxVoteTime = Duration.ofDays(7);
     private List<Integer> pollTimeMillis = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private List<Integer> consensusReceivedCheckTime = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
@@ -216,6 +226,9 @@ public class Config {
     private Duration followerCallbackStateStoreTime = Duration.ofDays(3);
     private Duration followerCallbackSynchronizationInterval = Duration.ofHours(12);
     private BigDecimal ratioNodesSendFollowerCallbackToComplete = BigDecimal.valueOf(0.3);
+    private Duration maxWaitSessionConsensus = Duration.ofSeconds(20);
+    private Duration maxWaitSessionNode = Duration.ofSeconds(5);
+    private Duration ubotSessionLifeTime = Duration.ofSeconds(60);
 
     private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
@@ -300,6 +313,9 @@ public class Config {
     public Duration getMaxElectionsTime() {
         return maxElectionsTime;
     }
+    public Duration getMaxVoteTime() {
+        return maxVoteTime;
+    }
 
     public Duration getMaxConsensusReceivedCheckTime() {
         return maxConsensusReceivedCheckTime;
@@ -346,6 +362,7 @@ public class Config {
     }
 
     public int getLimitRequestsForKeyPerMinute() { return limitRequestsForKeyPerMinute; }
+    public int getLimitUbotRequestsForKeyPerMinute() { return limitUbotRequestsForKeyPerMinute; }
 
     public int getRateLimitDisablingPayment() { return rateLimitDisablingPayment; }
 
@@ -551,5 +568,17 @@ public class Config {
 
     public void setRatioNodesSendFollowerCallbackToComplete(BigDecimal ratioNodesSendFollowerCallbackToComplete) {
         this.ratioNodesSendFollowerCallbackToComplete = ratioNodesSendFollowerCallbackToComplete;
+    }
+
+    public Duration getMaxWaitSessionConsensus() {
+        return maxWaitSessionConsensus;
+    }
+
+    public Duration getMaxWaitSessionNode() {
+        return maxWaitSessionNode;
+    }
+
+    public Duration getUbotSessionLifeTime() {
+        return ubotSessionLifeTime;
     }
 }

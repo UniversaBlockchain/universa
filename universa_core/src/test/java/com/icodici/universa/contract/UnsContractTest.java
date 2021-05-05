@@ -53,6 +53,7 @@ public class UnsContractTest extends ContractTestBase {
         uns.addNewItems(paymentDecreased);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(randomPrivKey);
+        uns.setPayingAmount(1460);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -90,6 +91,7 @@ public class UnsContractTest extends ContractTestBase {
         uns.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addNewItems(paymentDecreased);
+        uns.setPayingAmount(1460);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -129,6 +131,7 @@ public class UnsContractTest extends ContractTestBase {
         uns.addNewItems(paymentDecreased);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(randomPrivKey);
+        uns.setPayingAmount(1460);
         uns.seal();
         uns.check();
         uns.traceErrors();

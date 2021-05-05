@@ -1,12 +1,15 @@
 ---
-http_client_port: 2052
+http_client_port: 2053
+public_http_port: 2053
 http_client_listen:
 - 0.0.0.0
-http_server_port: 2082
-udp_server_port: 2700
-database: jdbc:postgresql://db:5432/node2db?user=node2user&password=uniPass
+http_server_port: 2083
+udp_server_port: 2701
+database: jdbc:postgresql://10.6.0.10:5432/node2db?user=node2user&password=uniPass
 node_number: 2
-public_host: node-2-local.utoken.io
-node_name: node-2-local.utoken.io
+public_host: 127.0.0.1
+node_name: node-2-local
 ip:
-- 10.6.0.12
+- 127.0.0.1
+ipv6:
+- fdf0:e132:efcf:2fae::12
