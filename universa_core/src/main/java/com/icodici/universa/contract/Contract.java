@@ -2688,6 +2688,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Replace data section of contract state to all-new Binder structure.
+     * @param newStateData
+     */
+    public void setStateData(Binder newStateData) {
+        state.setData(newStateData);
+    }
+
+    /**
      * Set "issuer" role to given keys
      * @param keys keys to set "issuer" role to
      * @return issuer role
@@ -3544,6 +3552,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if( data == null )
                 data = new Binder();
             return data;
+        }
+
+        /**
+         * Replace state data object with a new one
+         * @param newData data to replace state data with
+         */
+        public void setData(Binder newData) {
+            data = newData;
         }
 
         public void deserealizeWith(Binder data, BiDeserializer d) {
