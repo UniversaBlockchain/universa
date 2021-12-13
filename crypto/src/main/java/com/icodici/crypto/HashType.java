@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.*;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
 import org.bouncycastle.crypto.digests.SHA256Digest;
@@ -20,7 +21,7 @@ import java.util.function.Supplier;
 
 /**
  * Enumeration with various supported hash functions.
- *
+ * <p>
  * Created by sergeych on 07/12/16.
  */
 public enum HashType {
@@ -44,25 +45,26 @@ public enum HashType {
 
     private static Map algorithmNameByType = Collections.unmodifiableMap(new HashMap<HashType, String>() {{
         for (Object key : algorithmByType.keySet()) {
-            put((HashType) key, ((Supplier<Digest>)algorithmByType.get(key)).get().getAlgorithmName());
+            put((HashType) key, ((Supplier<Digest>) algorithmByType.get(key)).get().getAlgorithmName());
         }
     }});
     private static Map algorithmTypeByName = Collections.unmodifiableMap(new HashMap<String, HashType>() {{
         for (Object key : algorithmByType.keySet()) {
-            put(((Supplier<Digest>)algorithmByType.get(key)).get().getAlgorithmName(), (HashType) key);
+            put(((Supplier<Digest>) algorithmByType.get(key)).get().getAlgorithmName(), (HashType) key);
         }
     }});
 
     /**
-     * Create a new {@link Digest} for this hash type.
-     * */
+     * Create a new __bouncycastle_ standard {@link Digest} for this hash type. To get an Universa digest instead,
+     * use {@link #createDigest()} instead.
+     */
     public Digest makeDigest() {
         return ((Supplier<Digest>) this.algorithmByType.get(this)).get();
     }
 
     /**
      * Get the name of the algorithm.
-     * */
+     */
     public String getAlgorithmName() {
         return (String) algorithmNameByType.get(this);
     }
@@ -79,5 +81,35 @@ public enum HashType {
             return hashTypeClass;
         }
 
+    }
+
+    /**
+     * Create unicrypto type digest for a given constant
+     * @return instance of the universa digest that implements this algorithm
+     */
+    public com.icodici.crypto.digest.Digest createDigest() {
+        return new GenericBCDigest(makeDigest());
+    }
+
+    /**
+     * Get a unicrypto class object for a hash type
+     * @return universa digest class that (if instantiated) implements this hash algorithm
+     */
+    public Class<? extends com.icodici.crypto.digest.Digest> findDigestClass() {
+        switch (this) {
+            case SHA1:
+                return Sha1.class;
+            case SHA256:
+                return Sha256.class;
+            case SHA512:
+                return Sha512.class;
+            case SHA3_256:
+                return Sha3_256.class;
+            case SHA3_384:
+                return Sha3_384.class;
+            default:
+                break;
+        }
+        throw new IllegalArgumentException("this hash type is not supported for the findDogestClass() operation");
     }
 }

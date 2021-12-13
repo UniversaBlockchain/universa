@@ -13,7 +13,7 @@ import org.bouncycastle.crypto.digests.SHA512tDigest;
 /**
  * SHA-512/256 (SHA-2 family) digest implementation.
  */
-public class Sha512_256 extends SpongyCastleDigest {
+public class Sha512_256 extends BouncyCastleDigest {
 
     final org.bouncycastle.crypto.Digest md = new SHA512tDigest(256);
 

@@ -3,7 +3,7 @@ package com.icodici.crypto.digest;
 /**
  * Any digest implementation based on the BouncyCastle cryptography backend.
  */
-abstract class SpongyCastleDigest extends Digest {
+public abstract class BouncyCastleDigest extends Digest {
 
     protected abstract org.bouncycastle.crypto.Digest getUnderlyingDigest();
 

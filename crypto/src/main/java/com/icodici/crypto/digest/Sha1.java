@@ -13,7 +13,7 @@ import org.bouncycastle.crypto.digests.SHA1Digest;
 /**
  * SHA-1 digest implementation.
  */
-public class Sha1 extends SpongyCastleDigest {
+public class Sha1 extends BouncyCastleDigest {
 
     final org.bouncycastle.crypto.Digest md = new SHA1Digest();
 
