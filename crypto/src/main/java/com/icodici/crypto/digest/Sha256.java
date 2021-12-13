@@ -13,7 +13,7 @@ import org.bouncycastle.crypto.digests.SHA256Digest;
 /**
  * SHA-256 (SHA-2 family) digest implementation.
  */
-public class Sha256 extends SpongyCastleDigest {
+public class Sha256 extends BouncyCastleDigest {
 
     final org.bouncycastle.crypto.Digest md = new SHA256Digest();
 

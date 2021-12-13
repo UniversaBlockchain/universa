@@ -7,8 +7,10 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.BouncyCastleDigest;
 import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.digest.HMAC;
+import org.bouncycastle.crypto.digests.SHA256Digest;
 
 import java.nio.charset.Charset;
 
@@ -90,5 +92,9 @@ public class PBKDF2 {
 
     public static byte[] derive(Class<? extends Digest> hash, String password, byte[] salt, int c, int dkLen) {
         return new PBKDF2(hash, password, salt, c, dkLen).compute();
+    }
+
+    public static byte[] derive(HashType hashType, String password, byte[] salt, int c, int dkLen) {
+        return new PBKDF2(hashType.findDigestClass(), password, salt, c, dkLen).compute();
     }
 }

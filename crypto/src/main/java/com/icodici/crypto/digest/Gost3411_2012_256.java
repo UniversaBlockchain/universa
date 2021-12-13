@@ -13,7 +13,7 @@ import org.bouncycastle.crypto.digests.GOST3411_2012_256Digest;
 /**
  * GOST R 34.11-2012, 256 variation “Streebog” (GOST family) digest implementation.
  */
-public class Gost3411_2012_256 extends SpongyCastleDigest {
+public class Gost3411_2012_256 extends BouncyCastleDigest {
 
     final Digest md = new GOST3411_2012_256Digest();
 
