@@ -981,8 +981,8 @@ public class ContractTest extends ContractTestBase {
         PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
         Contract contract = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
         contract.addSignerKey(key);
-        sealCheckTrace(contract, true);
         contract.setExpiresAt(ZonedDateTime.now().plusMonths(13));
+        sealCheckTrace(contract, true);
 
         assertFalse(contract.isSuitableForTestnet());
 

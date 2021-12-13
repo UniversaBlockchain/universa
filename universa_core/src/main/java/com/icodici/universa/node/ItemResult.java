@@ -177,7 +177,7 @@ public class ItemResult implements IExtDataBinder {
         DefaultBiMapper.registerAdapter(ItemResult.class, new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
-                return ((ItemResult) object).toBinder();
+                return serializer.serialize(((ItemResult) object).toBinder());
             }
 
             @Override
