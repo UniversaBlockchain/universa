@@ -3604,6 +3604,11 @@ public class Node {
                             Map<HashId, Contract> referencedItems = contract.getTransactionPack().getReferencedItems();
                             if(!referencedItems.isEmpty()) {
                                 Set<HashId> invalidItems = ledger.findBadReferencesOf(referencedItems.keySet());
+
+                                //PACK BEFORE REMOVE ANY ITEMS so other nodes can download original Transaction
+                                if(!invalidItems.isEmpty()) {
+                                    contract.getPackedTransaction();
+                                }
                                 invalidItems.forEach(id -> referencedItems.remove(id));
                             }
 
