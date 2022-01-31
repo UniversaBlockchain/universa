@@ -29,8 +29,9 @@ import java.util.Set;
 public class ManagedToken {
 
     public static class MintingRoot {
-        private static final String TP_TAG = "managed_token_root";
+        public static final String TP_TAG = "managed_token_root";
         Contract mintingRootContract;
+        TransactionPack latestTransaction;
         TransactionPack toBeRegistered;
 
         /**
@@ -286,6 +287,7 @@ public class ManagedToken {
             transactionRoot.seal();
             toBeRegistered = transactionRoot.getTransactionPack();
             toBeRegistered.addTag(TP_TAG,mintingRootContract.getId());
+            latestTransaction = toBeRegistered;
         }
 
         private void checkValidity() {
@@ -319,6 +321,7 @@ public class ManagedToken {
         }
 
         protected void initFromTransactionPack(TransactionPack pack) {
+            latestTransaction = pack;
             mintingRootContract = pack.getTags().get(TP_TAG);
             checkValidity();
         }
@@ -328,7 +331,7 @@ public class ManagedToken {
          * @return root contract
          */
 
-        public Contract getContract() {
+        Contract getContract() {
             return mintingRootContract;
         }
 
@@ -341,11 +344,21 @@ public class ManagedToken {
             return toBeRegistered ;
         }
 
+
+        /**
+         * Get latest transaction involving root contract modification (use it to store root)
+         *
+         * @return latest transaction involving root contract
+         */
+        public TransactionPack getLatestTransaction() {
+            return latestTransaction;
+        }
+
     }
 
     public static class MintingProtocol {
 
-        private static final String TP_TAG = "managed_token_protocol";
+        public static final String TP_TAG = "managed_token_protocol";
         private TransactionPack toBeRegistered;
         MintingRoot mintingRoot;
         Contract protocolContract;
@@ -373,7 +386,7 @@ public class ManagedToken {
          */
         public MintingProtocol(String coinCode, MintingRoot root) {
             Contract rootRev = root.getContract().createRevision();
-            rootRev.getStateData().put("counters_issued",1);
+            rootRev.getStateData().put("counters_issued",rootRev.getStateData().getInt("counters_issued",0)+1);
 
             //COUNTER CONTRACT
             protocolContract = new Contract();
@@ -508,7 +521,7 @@ public class ManagedToken {
          * Get protocol contract
          * @return protocol contract
          */
-        public Contract getContract() {
+        Contract getContract() {
             return protocolContract;
         }
 
@@ -529,6 +542,9 @@ public class ManagedToken {
             return toBeRegistered;
         }
 
+        public String getCoinCode() {
+            return protocolContract.get("definition.data.coin_code");
+        }
     }
 
     private static final String TP_TAG = "managed_token";
