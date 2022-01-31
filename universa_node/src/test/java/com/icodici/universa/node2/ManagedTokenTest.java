@@ -171,17 +171,38 @@ public class ManagedTokenTest extends BaseMainTest {
 
                 ir = client.register(transaction.pack(),15*60*1000);
                 if(ir.state != ItemState.APPROVED) {
-                    //TODO: drop draft
+                    storage.markDraftDeclined(transaction.getContract().getId());
                     throw new IllegalStateException(ir.toString());
                 }
             }
             storage.markDraftApproved(transaction.getContract().getId());
             protocol = new ManagedToken.MintingProtocol(transaction.pack());
-            return transaction.pack();
+            return transaction.getTags().get(ManagedToken.TP_TAG).getLastSealedBinary();
         }
 
-        public void revokeCoins(byte[] packed) {
-
+        public void revokeCoins(byte[] packed, Set<PrivateKey> keys, RootUpdateCallBack callBack) throws IOException {
+            ManagedToken token = new ManagedToken(packed,protocol);
+            token.revoke();
+            TransactionPack transaction = token.getTransaction();
+            transaction.getContract().addSignatureToSeal(keys);
+            storage.storeDraft(transaction,"REVOKE_COIN"+protocol.getCoinCode());
+            ItemResult ir = client.register(transaction.pack(),15*60*1000);
+            if(ir.state != ItemState.APPROVED) {
+                storage.markDraftDeclined(transaction.getContract().getId());
+                token = new ManagedToken(packed,protocol);
+                token.revoke();
+                transaction = token.getTransaction();
+                transaction.getContract().addSignatureToSeal(keys);
+                ManagedToken.updateMintingRootReference(transaction,rootUpdate.getLatestRoot());
+                storage.storeDraft(transaction,"REVOKE_COIN"+protocol.getCoinCode());
+                ir = client.register(transaction.pack(),15*60*1000);
+                if(ir.state != ItemState.APPROVED) {
+                    storage.markDraftDeclined(transaction.getContract().getId());
+                    throw new IllegalStateException(ir.toString());
+                }
+            }
+            protocol = new ManagedToken.MintingProtocol(transaction.pack());
+            storage.markDraftApproved(transaction.getContract().getId());
         }
     }
 
@@ -205,7 +226,7 @@ public class ManagedTokenTest extends BaseMainTest {
 
             ItemResult ir = client.register(transaction.pack(),15*60*1000);
             if(ir.state != ItemState.APPROVED) {
-                //TODO: drop draft
+                storage.markDraftDeclined(transaction.getContract().getId());
                 throw new IllegalStateException(ir.toString());
             }
             storage.markDraftApproved(transaction.getContract().getId());
@@ -290,7 +311,7 @@ public class ManagedTokenTest extends BaseMainTest {
             MintingServer  mintingServerSOME = new MintingServer(storage.transactions.get(latestProtocol.transactionRoot).transaction,client,() -> rootServer.getLatestTransaction(),storage);
 
             System.out.println("MINT SOMETHING (EUR/USD)");
-            byte[] packedSOME = mintingServerSOME.issueCoins(new BigDecimal(1000), TestKeys.publicKey(5).getLongAddress(), keys);
+            byte[] packedSOME = mintingServerSOME.issueCoins(new BigDecimal(1000), TestKeys.publicKey(6).getLongAddress(), keys);
 
             byte[] packedProtocolRUR = rootServer.createProtocol("RUR", keys);
             MintingServer mintingServerRUR = new MintingServer(packedProtocolRUR, client, () -> rootServer.getLatestTransaction(), storage);
@@ -301,6 +322,15 @@ public class ManagedTokenTest extends BaseMainTest {
             System.out.println("MINT SOMETHING2 (EUR/USD)");
             byte[] packedSOME2 = mintingServerSOME.issueCoins(new BigDecimal(1000), TestKeys.publicKey(5).getLongAddress(), keys);
 
+            System.out.println("REVOKE SOMETHING (EUR/USD)");
+            Set<PrivateKey> owner = new HashSet<>();
+            owner.add(TestKeys.privateKey(0));
+            owner.add(TestKeys.privateKey(1));
+            owner.add(TestKeys.privateKey(2));
+            owner.add(TestKeys.privateKey(3));
+
+            owner.add(TestKeys.privateKey(6));
+            mintingServerSOME.revokeCoins(packedSOME,owner,() -> rootServer.getLatestTransaction());
         }
 
         System.out.println("========= TRANSACTIONS ==========");

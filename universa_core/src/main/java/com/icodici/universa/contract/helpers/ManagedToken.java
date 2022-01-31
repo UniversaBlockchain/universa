@@ -547,7 +547,7 @@ public class ManagedToken {
         }
     }
 
-    private static final String TP_TAG = "managed_token";
+    public static final String TP_TAG = "managed_token";
     private TransactionPack toBeRegistered;
     private MintingProtocol mintingProtocol;
     private Contract tokenContract;
