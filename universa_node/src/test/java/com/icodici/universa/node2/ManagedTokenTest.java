@@ -66,7 +66,7 @@ public class ManagedTokenTest extends BaseMainTest {
         private Map<HashId,TransactionEntity> transactions = new HashMap<>();
         private Map<HashId,ContractEntity> contracts = new HashMap<>();
 
-        Set<HashId> getNews(Contract contract) {
+        private static Set<HashId> getNews(Contract contract) {
             Set<HashId> result = new HashSet<>();
             result.addAll(contract.getNewItems().stream().map(HashIdentifiable::getId).collect(Collectors.toSet()));
             for(Contract sub : contract.getNew()) {
@@ -75,7 +75,7 @@ public class ManagedTokenTest extends BaseMainTest {
             return result;
         }
 
-        Set<HashId> getRevokes(Contract contract) {
+        private static Set<HashId> getRevokes(Contract contract) {
             Set<HashId> result = new HashSet<>();
             result.addAll(contract.getRevokingItems().stream().map(HashIdentifiable::getId).collect(Collectors.toSet()));
             for(Contract sub : contract.getNew()) {
