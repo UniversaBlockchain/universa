@@ -1,6 +1,6 @@
 group 'com.icodici'
 allprojects {
-    version '3.14.6'
+    version '3.14.7'
 }
 
 apply plugin: 'java'
