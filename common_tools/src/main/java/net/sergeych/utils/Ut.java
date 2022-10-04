@@ -2,6 +2,7 @@ package net.sergeych.utils;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -291,15 +292,7 @@ public class Ut {
             throws IOException {
         final File temp;
 
-        temp = File.createTempFile("temp", Long.toString(System.nanoTime()));
-
-        if (!(temp.delete())) {
-            throw new IOException("Could not delete temp file: " + temp.getAbsolutePath());
-        }
-
-        if (!(temp.mkdir())) {
-            throw new IOException("Could not create temp directory: " + temp.getAbsolutePath());
-        }
+        temp = Files.createTempDirectory("temp" + Long.toString(System.nanoTime())).toFile();
 
         return (temp);
     }
