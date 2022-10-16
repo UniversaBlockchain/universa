@@ -1,5 +1,7 @@
 # Universa
 
+> Important notice. Domain icodici.com was squatted with the help of godaddy.com registrar that just cancelled the account created by a Russian citizen long time ago (and then proposed us to rebuy it in the action). We will not, we'll just move out to other registrar and company. Don't worry, we are just migrating out of the conflict zone. Codebase will soon be changed to reflect attribution change. We also have a backup git repositories and service in the case github will continue the comedy godaddy has just started ;)
+
 This is the Universa network codebase (Java core), containing the node, the console client (`uniclient`) and the associated subsystems.
 
 The latest documentation on Universa is available in Universa Knowledge Base at [kb.universablockchain.com](https://kb.universablockchain.com). For a visual guide on the documentation topics, visit the Universa Development Map at [lnd.im/UniversaDevelopmentMap](https://lnd.im/UniversaDevelopmentMap).
