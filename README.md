@@ -1,6 +1,8 @@
 # Universa
 
-> Important notice. Domain icodici.com was squatted with the help of godaddy.com registrar that just cancelled the account created by a Russian citizen long time ago (and then proposed us to rebuy it in the action). We will not, we'll just move out to other registrar and company. Don't worry, we are just migrating out of the conflict zone. Codebase will soon be changed to reflect attribution change. We also have a backup git repositories and service in the case github will continue the comedy godaddy has just started ;)
+> __Important notice__. Domain `icodici.com` has recently been squatted with the help of a godaddy.com registrar that just cancelled the account (maybe because it was long time ago created by a Russian). They were even so kind to propose us to buy it back in their auction. __As Universa's main idea is to fight any type of fraud and unequity we reject it and will just move out of their reach all our companies and domains__. This will soon be reflected in the codebase.
+ 
+---------------
 
 This is the Universa network codebase (Java core), containing the node, the console client (`uniclient`) and the associated subsystems.
 
