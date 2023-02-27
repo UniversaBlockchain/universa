@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * The address is a short (more or less) representation of any {@link AbstractKey} that implements {@link
- * AbstractKey#updateDigestWithKeyComponents(Digest)} method. The address contains verification code, key type
+ * The address is a short (more or less) representation of any {@link AbstractKey} that implements
+ * {@link AbstractKey#updateDigestWithKeyComponents(Digest)} method. The address contains verification code, key type
  * information and the hash itself. To check that some key matches the address, create {@link KeyAddress} instance from
  * a string or packed bytes and call {@link #isMatchingKey(AbstractKey)} to check it is ok.
  * <p>
@@ -47,12 +47,10 @@ public class KeyAddress implements KeyMatcher {
     /**
      * Build new KeyAddrAddress for a given key
      *
-     * @param key
-     *         to calculate address from
-     * @param typeMark
-     *         any small number between 0 and 15 inclusive to be stored with address (will also be protected)
-     * @param useSha3_384
-     *         use longer but more solid hash which is more resistent to wuantum attacks
+     * @param key         to calculate address from
+     * @param typeMark    any small number between 0 and 15 inclusive to be stored with address (will also be
+     *                    protected)
+     * @param useSha3_384 use longer but more solid hash which is more resistent to wuantum attacks
      */
     public KeyAddress(AbstractKey key, int typeMark, boolean useSha3_384) {
         this.typeMark = typeMark;
@@ -80,11 +78,8 @@ public class KeyAddress implements KeyMatcher {
      * Unpack an address. After construction, use {@link #getTypeMark()} and {@link #isMatchingKey(AbstractKey)} methods
      * to retrieve information.
      *
-     * @param packedSource
-     *         binary data holding the address
-     *
-     * @throws IllegalAddressException
-     *         if the adress is malformed (control code does not match or wrong type code)
+     * @param packedSource binary data holding the address
+     * @throws IllegalAddressException if the adress is malformed (control code does not match or wrong type code)
      */
     public KeyAddress(byte[] packedSource) throws IllegalAddressException {
         packed = packedSource;
@@ -102,19 +97,60 @@ public class KeyAddress implements KeyMatcher {
         Digest crc = new Crc32();
         crc.update(packed, 0, digestLength1);
         if (!Arrays.equals(crc.digest(),
-                           Arrays.copyOfRange(packed, digestLength1, digestLength1 + 4)))
+                Arrays.copyOfRange(packed, digestLength1, digestLength1 + 4)))
             throw new IllegalAddressException("control code failed, address is broken");
     }
 
     /**
-     * Unpack the string-encoded key (it actually uses {@link Safe58} to encode). See {@link
-     * KeyAddress#KeyAddress(byte[])} for more.
+     * Special backward-compatible kind of address meaning "no one key matches me", or "nobody". Roles bound to this
+     * address just can't be played even on existing contract and older nodes and
+     * libraries. Its string representaton is "yNb7j1viLcZunrTHozyfJPTZJrprRSPpY485Lwzq1CFK3sFQ3S"
      *
-     * @param packedString
-     *         string with encoded address, use {@link #toString()} to obtain packed string representation
+     * Using it as contract owner is an alternative to revoke the contract leaving it
+     * approved in the network so the state could be checked.
+     */
+
+    static public final KeyAddress shortZero = generateZero(false);
+    /**
+     * Special backward-compatible kind of address meaning "no one key matches me", or "nobody". Roles bound to this
+     * address just can't be played even on existing contract and older nodes and
+     * libraries. Its string representaton is "Xj38UK7Er8VPqwjxBaEFjuKJ48fQbuQr3WGmMfG5wcPbTJ2zfU799qqhVUFCWadXQdKFLw4m"
      *
-     * @throws IllegalAddressException
-     *         if the address is malformed (control code is not valid or bad type code)
+     * Using it as contract owner is an alternative to revoke the contract leaving it
+     * approved in the network so the state could be checked.
+     */
+    static public final KeyAddress longZero = generateZero(true);
+
+    static private KeyAddress generateZero(boolean useLong) {
+        int keyMask = 0x01; // backward compatibility
+        int typeMark = 13;  // special for zero keys
+
+        // We do not compute the digest, we just use zeroes of proper size:
+        int digestSize = (useLong ? 384 : 256) / 8;
+        // impossible components: zero digest
+        byte[] zeroes = new byte[digestSize];
+        Arrays.fill(zeroes, (byte) 0);
+
+        byte[] packed = new byte[1 + 4 + zeroes.length];
+        packed[0] = (byte) (((keyMask << 4) | typeMark) & 0xFF);
+
+        System.arraycopy(zeroes, 0, packed, 1, zeroes.length);
+        Digest crc = new Crc32();
+        crc.update(packed, 0, 1 + zeroes.length);
+        System.arraycopy(crc.digest(), 0, packed, 1 + zeroes.length, 4);
+        try {
+            return new KeyAddress(packed);
+        } catch (IllegalAddressException e) {
+            throw new RuntimeException("failed to create zero key address");
+        }
+    }
+
+    /**
+     * Unpack the string-encoded key (it actually uses {@link Safe58} to encode). See
+     * {@link KeyAddress#KeyAddress(byte[])} for more.
+     *
+     * @param packedString string with encoded address, use {@link #toString()} to obtain packed string representation
+     * @throws IllegalAddressException if the address is malformed (control code is not valid or bad type code)
      */
     public KeyAddress(String packedString) throws IllegalAddressException {
         this(Safe58.decode(packedString));
@@ -128,11 +164,10 @@ public class KeyAddress implements KeyMatcher {
 
     /**
      * Check that the key matches this address, e.g. has of the same type and the digest of its components is the same.
-     * The key components digest is calculated by the key self in the {@link AbstractKey#updateDigestWithKeyComponents(Digest)}
+     * The key components digest is calculated by the key self in the
+     * {@link AbstractKey#updateDigestWithKeyComponents(Digest)}
      *
-     * @param key
-     *         to check
-     *
+     * @param key to check
      * @return true if the key matches (what means, it is the key corresponding to this address)
      */
     @Override
@@ -163,7 +198,9 @@ public class KeyAddress implements KeyMatcher {
     /**
      * @return true if long version SHA3-384) was used for this address
      */
-    public final boolean isLong() { return _isLong; }
+    public final boolean isLong() {
+        return _isLong;
+    }
 
     /**
      * @return packed binary address
@@ -193,9 +230,7 @@ public class KeyAddress implements KeyMatcher {
      * Each supported key has a mask that represents its type. The key that has no known mask can't be processed bt the
      * address.
      *
-     * @param k
-     *         key to calculate mask of.
-     *
+     * @param k key to calculate mask of.
      * @return
      */
     protected static int mask(AbstractKey k) {
@@ -205,9 +240,12 @@ public class KeyAddress implements KeyMatcher {
             case RSAPrivate:
                 if (((PublicKey) k).getPublicExponent() == 0x10001) {
                     switch (i.getKeyLength()) {
-                        case 2048/8: return 0x01;
-                        case 4096/8: return 0x02;
-                        case 8192/8: return 0x03;
+                        case 2048 / 8:
+                            return 0x01;
+                        case 4096 / 8:
+                            return 0x02;
+                        case 8192 / 8:
+                            return 0x03;
                     }
                 }
                 break;

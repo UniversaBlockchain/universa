@@ -4,6 +4,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.JsonTool;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -139,6 +140,23 @@ public class KeyAddressTest {
 //        for( int i=0; i < 3; i++ ) pp[i] = vectors[i].toBinder();
 //        String jstr = JsonTool.toJsonString(pp);
 //        System.out.println(jstr);
+    }
+
+    @Test
+    public void zeroesTest() {
+        KeyAddress z0 = KeyAddress.shortZero;
+        KeyAddress z1 = KeyAddress.longZero;
+        System.out.println(z0.toString());
+//        Bytes.dump(z0.getPacked());
+        System.out.println(z1.toString());
+//        Bytes.dump(z1.getPacked());
+        for( PrivateKey k: TestKeys.privateKeys) {
+            PublicKey pk = (PublicKey) key1.getPublicKey();
+            assertFalse(pk.getLongAddress().isMatchingKeyAddress(z1));
+            assertFalse(pk.getShortAddress().isMatchingKeyAddress(z0));
+            assertFalse(pk.isMatchingKeyAddress(z0));
+            assertFalse(pk.isMatchingKeyAddress(z1));
+        }
     }
 
 

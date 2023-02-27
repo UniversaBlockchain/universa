@@ -9,6 +9,9 @@ package com.icodici.crypto;
 
 import net.sergeych.tools.Do;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by sergeych on 12/12/16.
  */
@@ -77,4 +80,15 @@ public class TestKeys {
                     "9PydN2XsqHGWb7G9Rs4H0HgXndP9/fHjyiPLa/15BuiluRay4VJnmhFR0Tjr\n" +
                     "EL+nURLBubWit2VY/I0GxfDMdlwz3qi00lLW7ss="
     };
+
+
+    static private List<PrivateKey> getPrivateKeys() {
+        ArrayList<PrivateKey> pks = new ArrayList<>();
+        for( int i=0; i<binaryKeys.length; i++) {
+            pks.add(privateKey(i));
+        }
+        return pks;
+    }
+
+    static final List<PrivateKey> privateKeys = getPrivateKeys();
 };
